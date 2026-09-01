@@ -1,5 +1,17 @@
 # blink-esign
 
+[![Unit tests + code checks](https://github.com/blinkbitcoin/blink-esign/actions/workflows/test.yml/badge.svg?event=pull_request)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/test.yml)
+[![E2E tests](https://github.com/blinkbitcoin/blink-esign/actions/workflows/e2e.yml/badge.svg?event=pull_request)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/e2e.yml)
+[![Publish](https://github.com/blinkbitcoin/blink-esign/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/publish.yml)
+[![Coverage 100%](https://img.shields.io/badge/coverage-100%25-brightgreen)](#development)
+[![Node >= 22.11](https://img.shields.io/badge/node-%3E%3D%2022.11-339933?logo=node.js&logoColor=white)](package.json)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](packages/esign-core/tsconfig.json)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+<p align="center">
+  <img src="docs/assets/readme-hero.svg" alt="Your React Native or React web app renders one ESignature component. A SigningSource picks one of three modes: public URL (no backend), Web Forms instance (one backend endpoint), or proxy envelope (this repo's GraphQL backend). The backend-backed modes talk to DocuSign through the optional apps/api service." width="960">
+</p>
+
 Embedded e-signing for React Native and React web apps. One `ESignature`
 component, three integration modes - **you only need the parts for your
 mode**, and for two of the three that is a single small package:
@@ -197,4 +209,6 @@ credentials are set).
 | `make pods` | iOS CocoaPods install |
 
 See [docs/development-guide.md](docs/development-guide.md) for full setup,
-environment variables, and troubleshooting.
+environment variables, and troubleshooting, and [CONTRIBUTING.md](CONTRIBUTING.md)
+for commit conventions (Conventional Commits, enforced by hooks + CI), git
+hooks, and the PR checklist.
