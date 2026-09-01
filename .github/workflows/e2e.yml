@@ -323,11 +323,11 @@ jobs:
           path: examples/react-native-demo/android/app/build/outputs/apk/debug/app-debug.apk
           key: android-apk-v1-${{ hashFiles('examples/react-native-demo/android/**', 'examples/react-native-demo/app.json', 'examples/react-native-demo/package.json', 'package-lock.json') }}
 
-      # The stock runner has ~14GB free; node_modules + Gradle + the Android
-      # system image + Docker don't fit. Drop preinstalled toolchains we
-      # never use (several GB each). Only needed when Gradle actually runs.
+      # The stock runner has ~14GB free; node_modules + the Android system
+      # image + Docker (+ Gradle on a cache miss) don't fit - a run that
+      # skipped this hit "Your device does not have enough disk space to run
+      # avd". Drop preinstalled toolchains we never use (several GB each).
       - name: Free disk space
-        if: steps.android-apk.outputs.cache-hit != 'true'
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost
           sudo rm -rf "$AGENT_TOOLSDIRECTORY/CodeQL"
