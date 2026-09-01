@@ -19,6 +19,26 @@ test('renders correctly', async () => {
   });
 });
 
+test('"Start over" remounts the ESignature component', async () => {
+  let renderer: ReactTestRenderer.ReactTestRenderer;
+  await ReactTestRenderer.act(() => {
+    renderer = ReactTestRenderer.create(<App />);
+  });
+
+  const before = renderer!.root.findByProps({ testID: 'sign-document-button' });
+  const reset = renderer!.root.findByProps({ testID: 'reset-button' });
+  await ReactTestRenderer.act(() => {
+    reset.props.onPress();
+  });
+
+  // A new instance (key change) is mounted, again in the idle state
+  const after = renderer!.root.findByProps({ testID: 'sign-document-button' });
+  expect(after).not.toBe(before);
+  expect(
+    renderer!.root.findAllByProps({ testID: 'sign-document-button' }).length,
+  ).toBeGreaterThan(0);
+});
+
 test('renders with light-content status bar in dark mode', async () => {
   const colorSchemeSpy = jest
     .spyOn(RN, 'useColorScheme')

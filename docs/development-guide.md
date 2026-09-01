@@ -240,6 +240,12 @@ npm run ios
 maestro test examples/react-native-demo/.maestro/
 ```
 
+The flows launch the app once (`app-launch` runs first) and reset between
+flows with the demo's **Start over** control instead of relaunching - see
+[docs/architecture/mobile.md](architecture/mobile.md#e2e-tests-maestro).
+A flow that needs a truly fresh process should `launchApp` with the default
+`stopApp: true` inside a `retry` block, as `app-launch.yaml` does.
+
 ## Code Style
 
 ### TypeScript

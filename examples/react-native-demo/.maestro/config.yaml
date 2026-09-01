@@ -1,10 +1,11 @@
 # Maestro workspace config.
 #
-# app-launch always runs first: it is the boot smoke, so it absorbs the
-# one-time cold cost (XCUITest driver install, app boot, JS bundle load)
-# with a generous wait - every later flow starts against a warm app.
-# Without a pinned order, whichever flow ran first paid that cost and
-# flaked its opening assertion on slow CI runners.
+# app-launch always runs first: it is the boot smoke and the ONLY flow that
+# launches the app, absorbing the one-time cold cost (XCUITest driver
+# install, app boot, JS bundle load) with a generous, retried wait. Every
+# later flow keeps the running process (launchApp stopApp: false) and resets
+# through the demo's "Start over" control - relaunching per flow raced the
+# iOS driver and flaked on slow CI runners.
 executionOrder:
   flowsOrder:
     - app-launch
