@@ -1,11 +1,102 @@
 # blink-esign
 
-E-signature integration for React Native apps: a **backend service** that
-orchestrates envelopes against an e-sign provider (DocuSign, with a
-provider-agnostic adapter interface), and a **plug-and-play React Native
-component** that any host app can drop in to run the signing flow.
+Embedded e-signing for React Native and React web apps. One `ESignature`
+component, three integration modes - **you only need the parts for your
+mode**, and for two of the three that is a single small package:
+
+| Mode | What it is | What your app installs | Backend required |
+|------|-----------|------------------------|------------------|
+| **DocuSign Web Forms** | Prefilled form-based signing; your backend mints an instance URL with one API call | One package via the Apollo-free `/webform` entry - **no Apollo, no GraphQL** | One authenticated endpoint on *your* backend (or run this repo's service) |
+| **Public URL** | A published public form URL embedded directly | Same minimal `/webform` entry | **None** |
+| **Proxy envelope** | Full envelope orchestration: templates, per-recipient sessions, restart on expiry, webhook status sync | The package + `@apollo/client` + `graphql` | This repo's backend service (`apps/api`) |
+
+The GraphQL backend, Apollo wiring, and provider adapters in this repo serve
+the **proxy mode**. If you only need Web Forms, none of that ships with you -
+see [Web Forms](#docusign-web-forms-minimal-install) below and
+[docs/consuming.md](docs/consuming.md).
+
+## Integration
+
+### DocuSign Web Forms (minimal install)
+
+```sh
+npm i @blinkbitcoin/esign-react-native react-native-webview @react-native-community/netinfo
+# NO @apollo/client, NO graphql
+```
+
+```tsx
+import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/webform';
+
+const source = createWebFormsSource({
+  // One call to YOUR backend, which mints the instance URL server-side
+  // (keeps DocuSign credentials off the device). Returns { url }.
+  createInstance: () =>
+    fetch('https://your-backend.example.com/webform/instance', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(r => r.json()),
+});
+
+<ESignature source={source} onComplete={…} onError={…} onCancel={…} />;
+```
+
+The `/webform` subpath is **Apollo-free by construction** (a guard test walks
+the import graph). Registry setup + web equivalent:
+[docs/consuming.md](docs/consuming.md); Web Forms specifics (event model,
+real-DocuSign caveats): [docs/webforms-setup.md](docs/webforms-setup.md).
+
+### Public URL (no backend at all)
+
+```tsx
+import { ESignature, createPublicUrlSource } from '@blinkbitcoin/esign-react-native/webform';
+
+const source = createPublicUrlSource({ url: 'https://your-published-form-url' });
+```
+
+### Proxy envelope mode (full flow, needs the backend service)
+
+Envelope creation from templates, restartable per-recipient sessions, and
+webhook-driven status sync - this is what `apps/api` and the Apollo pieces
+are for:
+
+```tsx
+import {
+  ESignature,
+  createESignApolloClient,
+  createProxySigningSource,
+} from '@blinkbitcoin/esign-react-native';
+import { ApolloProvider } from '@apollo/client/react';
+
+const client = createESignApolloClient({
+  uri: 'https://your-backend.example.com/graphql',
+  getAuthToken: () => readTokenFromSecureStorage(),
+});
+const source = createProxySigningSource({
+  client,
+  contractType: 'loan_agreement',
+  recipient: { name, email },
+});
+
+<ApolloProvider client={client}>
+  <ESignature source={source} onComplete={…} onError={…} onCancel={…} />
+</ApolloProvider>;
+```
+
+All three modes drive the **same component with the same callbacks** - the
+mode lives entirely in the `SigningSource` you pass. The web package
+(`@blinkbitcoin/esign-react`) mirrors this API for React DOM apps, including
+a DocuSign.js source for real Web Forms embedding on web.
+
+Peer dependencies: `react`, `react-native`, `react-native-webview`,
+`@react-native-community/netinfo` - plus `@apollo/client` + `graphql`
+**only for proxy mode** (optional peers).
+
+Packages publish to GitHub Packages under the `blinkbitcoin` org - see
+[docs/consuming.md](docs/consuming.md).
 
 ## Repository Layout
+
+Proxy-mode infrastructure is clearly separated from the packages you install:
 
 | Path | What it is |
 |------|------------|
@@ -29,51 +120,6 @@ make db-up migrate backend              # dev Postgres + migrations + server (:4
 make start                              # Metro
 make ios                                # or: make android
 ```
-
-## Using the Libraries in Your App
-
-The RN and web packages expose the **same public API** (component, client
-factory, error-code contract); pick the one for your platform.
-
-The component is provider-agnostic: give it a `SigningSource` (proxy envelope,
-DocuSign Web Forms, or a public URL). Proxy mode:
-
-```tsx
-import {
-  ESignature,
-  createESignApolloClient,
-  createProxySigningSource,
-} from '@blinkbitcoin/esign-react-native';
-import { ApolloProvider } from '@apollo/client/react';
-
-const client = createESignApolloClient({
-  uri: 'https://your-backend.example.com/graphql',
-  getAuthToken: () => readTokenFromSecureStorage(),
-});
-const source = createProxySigningSource({
-  client,
-  contractType: 'loan_agreement',
-  recipient: { name, email },
-});
-
-<ApolloProvider client={client}>
-  <ESignature source={source} onComplete={…} onError={…} onCancel={…} />
-</ApolloProvider>
-```
-
-Swap the source for `createWebFormsSource` / `createPublicUrlSource` to use
-DocuSign Web Forms — the component and callbacks are identical (see the package
-READMEs).
-
-Peer dependencies your app provides: `react`, `react-native`,
-`react-native-webview`, `@react-native-community/netinfo` — plus
-`@apollo/client` + `graphql` **only for proxy mode** (they are optional peers;
-Web Forms-only apps import from the Apollo-free
-`@blinkbitcoin/esign-react-native/webform` subpath and skip them).
-
-Packages publish to GitHub Packages under the `blinkbitcoin` org — see
-[docs/consuming.md](docs/consuming.md) for registry setup and the minimal
-webform-only install.
 
 ## Development
 
