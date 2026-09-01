@@ -14,6 +14,10 @@ adb install "$APK"
 # the mock provider - reverse both into the emulator.
 adb reverse tcp:8081 tcp:8081
 adb reverse tcp:4000 tcp:4000
+# A starved CI emulator throws "X isn't responding" dialogs (even for the
+# launcher) on top of the app under test, which then fails visibility
+# assertions. Hide ANR/crash dialogs; real crashes still land in logcat.
+adb shell settings put global hide_error_dialogs 1
 export PATH="$HOME/.maestro/bin:$PATH"
 
 adb logcat -c

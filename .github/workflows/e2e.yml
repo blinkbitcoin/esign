@@ -429,7 +429,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-v2-34-x86_64-google_apis-4cores
+          key: avd-v2-34-x86_64-google_apis
 
       - name: Create AVD snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -438,7 +438,6 @@ jobs:
           api-level: 34
           arch: x86_64
           target: google_apis
-          cores: 4
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
@@ -461,7 +460,9 @@ jobs:
           api-level: 34
           arch: x86_64
           target: google_apis
-          cores: 4 # the stock 2 makes the emulator warn it would "run more smoothly with 4"; ubuntu-latest has 4 vCPUs
+          # Stays on the default 2 cores: 4 on a 4-vCPU runner that also hosts
+          # Metro, the backend and Postgres starved the guest (launcher ANRs,
+          # gms services crashing) and the ANR dialog hid the app under test.
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
