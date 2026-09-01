@@ -25,6 +25,12 @@ pre-commit:
       # files from ignored paths silent instead of counting as warnings.
       glob: '*.{ts,tsx}'
       run: npx eslint --no-warn-ignored --max-warnings=0 {staged_files}
+    diagrams:
+      # mermaid-diagrams.md + the SVGs are generated; re-render + reassemble +
+      # stage whenever a diagram source (or the assembler) is committed.
+      # CI still drift-checks the md and SVG presence/pairing.
+      glob: '{docs/diagrams/src/*.mmd,scripts/assemble-diagrams.mjs}'
+      run: make diagrams && git add docs/diagrams/mermaid-diagrams.md docs/diagrams/*.svg
 
 pre-push:
   commands:

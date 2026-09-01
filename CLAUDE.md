@@ -26,6 +26,10 @@ the demo app exists for manual and E2E testing.
   entered automatically via direnv, or `nix develop`. CI uses plain
   setup-node - the flake is convenience, not a hard requirement
 - **Current-state docs**: `docs/index.md` - maintained by hand alongside code changes
+- **Diagrams**: `docs/diagrams/mermaid-diagrams.md` and `docs/diagrams/*.svg`
+  are GENERATED - edit `docs/diagrams/src/*.mmd` and run `make diagrams`
+  (renders SVGs via pinned mermaid-cli + reassembles the doc; a pre-commit
+  hook does this automatically; CI fails on drift)
 
 ## Commands (repo root)
 

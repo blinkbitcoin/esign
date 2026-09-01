@@ -1,8 +1,11 @@
 // Assembles docs/diagrams/mermaid-diagrams.md from the per-diagram sources
 // in docs/diagrams/src/*.mmd. The .mmd files are canonical (editable /
-// individually renderable); the combined file is generated - run
-// `make diagrams` after editing a source. CI fails on drift (see test.yml).
-import { readFileSync, writeFileSync } from 'node:fs';
+// individually renderable); the combined file embeds the pre-rendered
+// docs/diagrams/*.svg (rendered by `make diagrams` via mermaid-cli) so the
+// page loads instantly on GitHub instead of booting eight mermaid iframes.
+// Run `make diagrams` after editing a source. CI fails on drift (see
+// test.yml); a missing SVG fails the assembly here.
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,16 +34,21 @@ const SECTIONS = [
 ];
 
 const blocks = SECTIONS.map(({ file, title, outro }) => {
-  const source = readFileSync(join(here, 'src', file), 'utf8').trim();
-  return `## ${title}\n\n\`\`\`mermaid\n${source}\n\`\`\`\n${outro ? `\n${outro}\n` : ''}`;
+  const svg = `${file.replace(/\.mmd$/, '')}.svg`;
+  if (!existsSync(join(here, svg))) {
+    console.error(`missing ${svg} - run \`make diagrams\` to render it`);
+    process.exit(1);
+  }
+  return `## ${title}\n\n[![${title}](${svg})](src/${file})\n${outro ? `\n${outro}\n` : ''}`;
 });
 
 const out = `<!-- GENERATED FILE - do not edit. Sources: src/*.mmd; run \`make diagrams\`. -->
 
-# Diagrams (Mermaid)
+# Diagrams
 
-These diagrams render automatically in GitHub, GitLab, Obsidian, and VS Code.
-Each diagram's editable source lives in [src/](src/).
+Pre-rendered SVGs for instant loading; click a diagram to open its editable
+Mermaid source in [src/](src/) (which renders natively on GitHub, in VS Code,
+and in Obsidian). Regenerate with \`make diagrams\`.
 
 ---
 

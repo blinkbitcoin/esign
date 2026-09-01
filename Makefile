@@ -45,7 +45,12 @@ build: ## Build the libraries (bob + tsup)
 codegen: ## Regenerate schema.graphql + client types from the backend SDL
 	npm run codegen
 
-diagrams: ## Reassemble docs/diagrams/mermaid-diagrams.md from src/*.mmd
+diagrams: ## Render docs/diagrams/*.svg from src/*.mmd (pinned mermaid-cli) + reassemble the combined doc
+	for f in docs/diagrams/src/*.mmd; do \
+		npx --yes @mermaid-js/mermaid-cli@11.16.0 -i "$$f" \
+			-o "docs/diagrams/$$(basename "$$f" .mmd).svg" \
+			--backgroundColor white --quiet || exit 1; \
+	done
 	node scripts/assemble-diagrams.mjs
 
 # ---------- Run ----------

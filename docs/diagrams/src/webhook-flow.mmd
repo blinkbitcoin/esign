@@ -21,7 +21,7 @@ sequenceDiagram
             WH->>DB: Update status
             WH->>AL: Create audit log entry
             alt Transient failure (e.g. DB outage)
-                WH-->>DS: 500 (DocuSign retries; handler is idempotent)
+                WH-->>DS: 500 (DocuSign retries - handler is idempotent)
             else Success or ignorable (unknown envelope/status, duplicate)
                 WH-->>DS: 200 OK
             end

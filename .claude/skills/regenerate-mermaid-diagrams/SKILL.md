@@ -1,20 +1,25 @@
 ---
 name: regenerate-mermaid-diagrams
-description: Regenerate docs/diagrams/mermaid-diagrams.md from the current documentation and code. Use when architecture, data model, or signing-flow changes make the diagrams stale.
-disable-model-invocation: true
+description: Use when editing or adding any diagram under docs/diagrams/ (sources are src/*.mmd; mermaid-diagrams.md is generated - always run `make diagrams` after changing a source), or when architecture, data-model, or signing-flow changes make the diagrams stale.
 ---
 
 # Regenerate Mermaid Diagrams
 
 Update the diagrams under `docs/diagrams/`. Mermaid is the single diagram
-format on purpose: it renders directly on GitHub, diffs as text, and is
-hand-maintainable alongside the docs.
+*source* format on purpose: it diffs as text and is hand-maintainable
+alongside the docs. The combined page embeds pre-rendered SVGs so it loads
+instantly on GitHub (eight live mermaid blocks each boot their own render
+iframe, which is slow).
 
 **Edit the per-diagram sources in `docs/diagrams/src/*.mmd`** - they are
-canonical. `docs/diagrams/mermaid-diagrams.md` is GENERATED from them by
-`make diagrams` (scripts/assemble-diagrams.mjs, which also owns section titles
-and prose); CI fails if it drifts. Adding a diagram = new .mmd file + an
-entry in assemble-diagrams.mjs's SECTIONS + a row in the table below.
+canonical. `docs/diagrams/*.svg` and `docs/diagrams/mermaid-diagrams.md`
+are GENERATED from them by `make diagrams` (pinned mermaid-cli renders the
+SVGs; scripts/assemble-diagrams.mjs assembles the page and owns section
+titles and prose). A pre-commit hook re-runs this and stages the outputs;
+CI fails if the page drifts or an SVG is missing/stale. Adding a diagram =
+new .mmd file + an entry in assemble-diagrams.mjs's SECTIONS + a row in the
+table below. Keep labels free of bare `;` (mermaid parses it as a statement
+separator - mermaid-cli rejects it even where GitHub's renderer is lenient).
 
 ## Ground rules
 
@@ -67,9 +72,10 @@ These keep the set readable as a progression, not eight unrelated pictures:
 
 ## Verification before finishing
 
-1. Run `make diagrams`; the generated file's block count matches the table
-   above (currently 8) and `git status` shows no unexpected drift.
-2. `grep` the file for stale identifiers: old package names, `Prisma`
+1. Run `make diagrams`; it renders every SVG without a parse error, the
+   generated page's image count matches the table above (currently 8), and
+   `git status` shows regenerated SVGs only for diagrams you touched.
+2. `grep` the sources for stale identifiers: old package names, `Prisma`
    (it is Knex), `docusignId` (it is `providerEnvelopeId`), any route not
    present in `apps/api/src/app.ts`.
 3. ERD matches the latest migration exactly (columns, uniqueness, cascade,
