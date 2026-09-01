@@ -145,4 +145,3 @@ npm run test:e2e            # maestro test examples/react-native-demo/.maestro/
 This documentation is maintained by hand alongside code changes - update the
 relevant doc in the same change.
 
-**Parts metadata:** `docs/project-parts.json`
