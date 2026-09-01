@@ -121,6 +121,13 @@ See [../integration/consuming.md](../integration/consuming.md).
   session-timeout→restart, webform-happy-path (tagged `webform`; needs
   `ESIGN_MODE=webform` Metro)
 - TestID-based element selection
+- One app launch per run: `app-launch` (pinned first in `config.yaml`)
+  boots the app with a retried launch + wait; every later flow keeps the
+  process (`launchApp` with `stopApp: false`) and resets through the demo's
+  **Start over** control (`reset-button`, remounts `ESignature`). Relaunching
+  per flow raced Maestro's iOS driver (terminate + `simctl launch`) and
+  reloaded the dev bundle each time. Each flow dismisses its own host-app
+  alert so none leaks into the next flow.
 
 **Render states and testIDs** - one component, six rendered views:
 

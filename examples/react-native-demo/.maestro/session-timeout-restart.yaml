@@ -5,12 +5,15 @@
 # journey is exercised through real UI + real backend + real DB.
 appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 ---
-- launchApp
-# Cold CI launch: the JS bundle load can outlast a plain assertVisible window
+# Foreground the already-running app and reset in-app (see app-launch.yaml)
+- launchApp:
+    stopApp: false
+- tapOn:
+    id: "reset-button"
 - extendedWaitUntil:
     visible:
       id: "sign-document-button"
-    timeout: 20000
+    timeout: 10000
 - tapOn:
     id: "sign-document-button"
 - extendedWaitUntil:
@@ -42,3 +45,9 @@ appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android:
     visible:
       id: "success-screen"
     timeout: 15000
+
+# Dismiss the completion alert so it never lands in a later flow
+- extendedWaitUntil:
+    visible: "Document signed!.*"
+    timeout: 15000
+- tapOn: "OK"
