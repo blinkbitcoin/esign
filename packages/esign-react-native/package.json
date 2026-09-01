@@ -69,7 +69,7 @@
     "react-native-builder-bob": "^0.40.0",
     "react-native-webview": "^14.0.1",
     "react-test-renderer": "19.2.7",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "react-native-builder-bob": {
     "source": "src",
