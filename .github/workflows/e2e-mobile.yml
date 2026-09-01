@@ -91,6 +91,20 @@ jobs:
           echo "ERROR: Backend failed to start"
           exit 1
 
+      # Runner images rotate simulator generations (iPhone 15 -> 16 -> 17...);
+      # pick whatever iPhone the image actually ships instead of hardcoding.
+      - name: Pick a simulator device
+        run: |
+          DEVICE_NAME=$(xcrun simctl list devices available -j \
+            | jq -r '[.devices[] | .[] | select(.isAvailable and (.name | startswith("iPhone")))] | .[0].name')
+          if [ -z "$DEVICE_NAME" ] || [ "$DEVICE_NAME" = "null" ]; then
+            echo "::error::No available iPhone simulator on this runner"
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "Using simulator: $DEVICE_NAME"
+          echo "SIM_DEVICE=$DEVICE_NAME" >> "$GITHUB_ENV"
+
       - name: Build iOS app for simulator
         run: |
           cd examples/react-native-demo/ios
@@ -99,14 +113,14 @@ jobs:
             -scheme ReactNativeSandbox \
             -configuration Debug \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination "platform=iOS Simulator,name=${SIM_DEVICE},OS=latest" \
             -derivedDataPath build \
             build
 
       - name: Boot iOS Simulator
         run: |
-          xcrun simctl boot "iPhone 16" || true
-          xcrun simctl bootstatus "iPhone 16" -b
+          xcrun simctl boot "$SIM_DEVICE" || true
+          xcrun simctl bootstatus "$SIM_DEVICE" -b
 
       - name: Install app on simulator
         run: |
