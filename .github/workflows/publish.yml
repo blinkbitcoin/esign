@@ -1,4 +1,4 @@
-name: Publish Packages
+name: release / packages
 
 # Publishes the three client packages to GitHub Packages (npm.pkg.github.com)
 # under the blinkbitcoin org. Two publish channels:

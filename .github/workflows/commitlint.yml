@@ -1,4 +1,4 @@
-name: Commit Convention
+name: checks / commits
 
 # Conventional Commits on the PR's commits and its title (squash merges take
 # the title as the commit on main). Rules: commitlint.config.mjs.
@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  commitlint:
+  lint:
     # Dependabot's messages are shaped by dependabot.yml's commit-message
     # config; no need to re-lint its bot-authored commits.
     if: github.actor != 'dependabot[bot]'

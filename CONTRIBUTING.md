@@ -77,7 +77,7 @@ Breaking changes get a `!` after the type/scope (`feat(core)!: ...`) and a
 `BREAKING CHANGE:` footer explaining the migration.
 
 **Where it is enforced:** the `commit-msg` hook runs commitlint on every
-local commit, and the Commit Convention workflow re-checks the PR's commits
+local commit, and the `checks / commits` workflow re-checks the PR's commits
 and its **title** on every push and title edit. The title matters because
 squash merges use it as the commit on `main`, so name the PR the same way you
 would name a commit.
