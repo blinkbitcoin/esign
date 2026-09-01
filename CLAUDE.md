@@ -126,8 +126,11 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
 - TypeScript for all new files; functional components with hooks
 - Prefer `StyleSheet.create()` for styles
 - ESLint 9 flat config (`@react-native` via FlatCompat) for mobile linting; Biome for formatting
-- Git hooks via lefthook (auto-installed by `npm install`): biome + eslint on pre-commit, typecheck on pre-push
-  everywhere and backend linting
+- Git hooks via lefthook (auto-installed by `npm install`): biome + eslint on
+  pre-commit, commitlint on commit-msg, typecheck on pre-push
+- Commit messages and PR titles follow Conventional Commits with an allowed
+  scope list (`commitlint.config.mjs`; e.g. `feat(rn): ...`, `fix(api): ...`,
+  `docs: ...`). Details in `CONTRIBUTING.md`
 - `graphql` is pinned to 16.x repo-wide (Apollo Server 5's peer range) - do
   not bump it to 17 until Apollo Server supports it
 
