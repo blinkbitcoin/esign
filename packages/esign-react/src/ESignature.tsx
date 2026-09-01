@@ -65,6 +65,14 @@ export const ESignature: React.FC<ESignatureProps> = ({
     };
   }, []);
 
+  // Lets async work detect unmount (in-flight source.start(), connectivity)
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // Acquire a session (start or restart) and enter the signing state, mapping
   // any SigningSourceError to a user-facing error state.
   const beginSigning = useCallback(
@@ -72,10 +80,18 @@ export const ESignature: React.FC<ESignatureProps> = ({
       setStatus('loading');
       try {
         const session = await acquire();
+        // The acquire call can outlive the component (user navigated away
+        // mid-loading) - a late result must not update state or fire callbacks
+        if (!mountedRef.current) {
+          return;
+        }
         sessionRef.current = session;
         setSigningUrl(session.url);
         setStatus('signing');
       } catch (e) {
+        if (!mountedRef.current) {
+          return;
+        }
         const sourceError = e as SigningSourceError;
         const code = sourceError?.code ?? 'UNKNOWN_ERROR';
         const message = getErrorMessage(code, sourceError?.message);

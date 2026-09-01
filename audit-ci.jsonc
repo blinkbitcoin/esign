@@ -1,0 +1,14 @@
+{
+  // Fails CI on new high/critical advisories; the allowlist tracks known
+  // upstream-blocked issues (documented reason each - re-check on dep bumps).
+  "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
+  "high": true,
+  "allowlist": [
+    // image-size DoS via crafted images - pinned deep in the Metro/RN chain;
+    // dev-time only, not reachable from the published packages.
+    "GHSA-5p2g-fcmc-qvqq",
+    "GHSA-w3rx-r6r6-pgpr",
+    // esbuild dev-server file read - Vite dev server only, never production.
+    "GHSA-g7r4-m6w7-qqqr"
+  ]
+}

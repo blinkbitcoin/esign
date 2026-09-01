@@ -44,6 +44,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
 
     steps:
       - uses: actions/checkout@v7
@@ -104,3 +106,38 @@ jobs:
         run: npm publish -w packages/esign-react --tag ${{ steps.ver.outputs.disttag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Consumes what was ACTUALLY published: installs the exact version from
+  # GitHub Packages into a clean project and asserts the consumer contract.
+  registry-smoke:
+    needs: [publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://npm.pkg.github.com
+          scope: '@blinkbitcoin'
+
+      - name: Install the published packages (no Apollo)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.publish.outputs.version }}
+        run: |
+          mkdir smoke && cd smoke
+          npm init -y > /dev/null
+          npm install "@blinkbitcoin/esign-core@$VERSION" > /dev/null
+          node -e "
+            const assert = require('node:assert');
+            const webform = require('@blinkbitcoin/esign-core/webform');
+            assert.equal(typeof webform.createWebFormsSource, 'function');
+            assert.equal(typeof webform.createPublicUrlSource, 'function');
+            let apollo = false;
+            try { require.resolve('@apollo/client'); apollo = true; } catch {}
+            assert.equal(apollo, false, 'webform install must not pull Apollo');
+            console.log('registry smoke passed for', process.env.VERSION);
+          "

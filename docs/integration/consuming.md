@@ -97,3 +97,6 @@ from the package root and additionally install `@apollo/client` + `graphql`.
 
 Metro honors package `exports` from RN 0.79+. On older setups, deep-import the
 shipped source instead: `@blinkbitcoin/esign-react-native/src/webform`.
+
+Error handling: every `onError` code is cataloged in
+[error-codes.md](error-codes.md).

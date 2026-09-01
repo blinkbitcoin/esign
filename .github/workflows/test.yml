@@ -35,6 +35,9 @@ jobs:
       - name: Install dependencies (workspace root)
         run: npm ci
 
+      - name: Dependency audit (known upstream issues allowlisted)
+        run: npx audit-ci --config audit-ci.jsonc
+
       - name: Lint GitHub Actions workflows (actionlint)
         run: |
           docker run --rm -v "$PWD":/repo --workdir /repo rhysd/actionlint:latest -color
@@ -44,7 +47,7 @@ jobs:
           node scripts/assemble-diagrams.mjs
           # shellcheck disable=SC2016 # backticks in the message are markdown, not expansion
           git diff --exit-code -- docs/diagrams/README.md \
-            || (echo '::error::docs/diagrams/README.md is stale - edit src/*.mmd and run `make diagrams`' && exit 1)
+            || (echo '::error::README.md is stale - edit src/*.mmd and run `make diagrams`' && exit 1)
 
       - name: Lint + typecheck + format check
         run: make check-code
@@ -53,3 +56,29 @@ jobs:
       # packages and the backend, current-level floors on the demo apps.
       - name: Unit tests with coverage
         run: npm run test:coverage
+
+  package-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies (workspace root)
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Package shape (publint + arethetypeswrong)
+        run: npm run check:packages
+
+      - name: Pack + install smoke (webform Apollo-free boundary)
+        run: bash scripts/pack-smoke.sh

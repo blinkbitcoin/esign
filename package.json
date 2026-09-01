@@ -17,19 +17,25 @@
     "format": "biome format --write examples packages && npm run format -w apps/api",
     "format:check": "biome format examples packages && npm run format:check -w apps/api",
     "build": "npm run build -w packages/esign-core -w packages/esign-react-native -w packages/esign-react",
+    "check:packages": "publint packages/esign-core && publint packages/esign-react-native && publint packages/esign-react && attw --pack packages/esign-core --profile node16 && attw --pack packages/esign-react --profile node16",
     "web": "npm run dev -w examples/react-demo",
     "codegen": "npm run schema:emit -w apps/api && npm run codegen -w packages/esign-core",
     "prepare": "lefthook install"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@biomejs/biome": "^2.5.2",
+    "@changesets/cli": "^2.31.1",
     "@eslint/eslintrc": "^3.3.6",
     "@react-native/eslint-config": "^0.87.1",
+    "audit-ci": "^7.1.0",
     "eslint": "^9.39.5",
     "eslint-plugin-ft-flow": "^3.0.11",
-    "lefthook": "^2.1.12"
+    "lefthook": "^2.1.12",
+    "publint": "^0.3.24"
   },
   "engines": {
     "node": ">= 22.11.0"
-  }
+  },
+  "license": "MIT"
 }

@@ -149,6 +149,43 @@ describe('handleSign (acquisition)', () => {
     expect(await screen.findByTestId('signing-iframe')).toBeTruthy();
   });
 
+  it('ignores a start() that settles after unmount (no state update, no callbacks)', async () => {
+    let resolveStart!: (s: SigningSession) => void;
+    const source = makeSource({
+      start: jest.fn().mockReturnValue(
+        new Promise<SigningSession>(resolve => {
+          resolveStart = resolve;
+        }),
+      ),
+    });
+    const { unmount } = render(
+      <ESignature {...defaultProps} source={source} />,
+    );
+    fireEvent.click(screen.getByTestId('sign-document-button'));
+    unmount();
+    await act(async () => resolveStart(okSession));
+    expect(defaultProps.onError).not.toHaveBeenCalled();
+    expect(defaultProps.onComplete).not.toHaveBeenCalled();
+  });
+
+  it('ignores a start() rejection after unmount (onError not fired)', async () => {
+    let rejectStart!: (e: unknown) => void;
+    const source = makeSource({
+      start: jest.fn().mockReturnValue(
+        new Promise<SigningSession>((_resolve, reject) => {
+          rejectStart = reject;
+        }),
+      ),
+    });
+    const { unmount } = render(
+      <ESignature {...defaultProps} source={source} />,
+    );
+    fireEvent.click(screen.getByTestId('sign-document-button'));
+    unmount();
+    await act(async () => rejectStart({ code: 'PROVIDER_UNAVAILABLE' }));
+    expect(defaultProps.onError).not.toHaveBeenCalled();
+  });
+
   it('shows an error and calls onError when start rejects', async () => {
     const onError = jest.fn();
     const source = makeSource({

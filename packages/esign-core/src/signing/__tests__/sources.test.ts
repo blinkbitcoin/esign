@@ -222,6 +222,47 @@ describe('createWebFormsSource', () => {
     });
   });
 
+  it('start() times out a hung createInstance with NETWORK_ERROR', async () => {
+    jest.useFakeTimers();
+    const source = createWebFormsSource({
+      createInstance: jest.fn().mockReturnValue(new Promise(() => {})),
+      timeoutMs: 5000,
+    });
+    const started = source.start();
+    jest.advanceTimersByTime(5000);
+    await expect(started).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+      message: expect.stringContaining('5000ms'),
+    });
+    jest.useRealTimers();
+  });
+
+  it('start() defaults the timeout to 30s', async () => {
+    jest.useFakeTimers();
+    const source = createWebFormsSource({
+      createInstance: jest.fn().mockReturnValue(new Promise(() => {})),
+    });
+    const started = source.start();
+    jest.advanceTimersByTime(30_000);
+    await expect(started).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+    });
+    jest.useRealTimers();
+  });
+
+  it('start() clears the watchdog when createInstance resolves in time', async () => {
+    jest.useFakeTimers();
+    const source = createWebFormsSource({
+      createInstance: jest.fn().mockResolvedValue({ url: 'https://wf/2' }),
+      timeoutMs: 5000,
+    });
+    await expect(source.start()).resolves.toMatchObject({
+      url: 'https://wf/2',
+    });
+    expect(jest.getTimerCount()).toBe(0);
+    jest.useRealTimers();
+  });
+
   it('uses interpretDocuSignEvent', () => {
     const source = createWebFormsSource({ createInstance: jest.fn() });
     expect(

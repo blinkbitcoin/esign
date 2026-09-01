@@ -41,7 +41,7 @@
     "clean": "rm -rf lib"
   },
   "keywords": ["react-native", "e-signature", "docusign", "signing"],
-  "license": "ISC",
+  "license": "MIT",
   "peerDependencies": {
     "@apollo/client": "^4.0.0",
     "@react-native-community/netinfo": ">=11.0.0",
@@ -113,5 +113,10 @@
     "type": "git",
     "url": "git+https://github.com/blinkbitcoin/blink-esign.git",
     "directory": "packages/esign-react-native"
+  },
+  "sideEffects": false,
+  "type": "commonjs",
+  "engines": {
+    "node": ">= 18"
   }
 }

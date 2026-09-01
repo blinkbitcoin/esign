@@ -157,6 +157,23 @@ The npm scripts underneath:
 
 ## Testing
 
+Three tiers, by what they touch:
+
+1. **Unit + E2E suites are hermetic and mock-only by design.** The Maestro
+   and Playwright flows drive the **mock provider's** signing pages (which
+   emit the real DocuSign event vocabulary) - their assertions target mock
+   page content that a real DocuSign ceremony does not render. Setting
+   `DOCUSIGN_*` variables does **not** (and should not) point these suites
+   at real DocuSign.
+2. **Live API verification is env-gated:** `make test-live` runs real JWT
+   auth + envelope creation + Web Forms instance minting against a DocuSign
+   demo account when `DOCUSIGN_*` is set in `apps/api/.env`, and skips
+   itself entirely when not. Safe to run anytime; never part of CI.
+3. **Live UI verification is manual:** run the demos with
+   `ESIGN_PROVIDER=docusign` and follow the smoke-test checklist in
+   [integration/docusign-proxy.md](integration/docusign-proxy.md) (section
+   5) - `make test-live` logs ready-made signing URLs to hand off to it.
+
 ### Mobile Unit Tests
 
 ```bash
@@ -329,6 +346,11 @@ npm run migrate
 | `DOCUSIGN_TEMPLATE_ID` | docusign | DocuSign template ID |
 | `DOCUSIGN_WEBFORM_ID` | webform mode | Web Forms form id (from the builder) |
 | `DOCUSIGN_WEBFORMS_BASE_URL` | no | Web Forms API base (defaults to demo) |
+| `DOCUSIGN_BASE_URL` | no | eSignature REST base (defaults to the demo environment) |
+| `DOCUSIGN_OAUTH_URL` | no | OAuth host for the JWT grant (defaults to demo) |
+| `DOCUSIGN_RETURN_URL` | no | Where DocuSign redirects after signing (defaults to the built-in return-URL bridge) |
+| `OTEL_*` | no | Standard OpenTelemetry vars; tracing is off unless set (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, `OTEL_TRACES_EXPORTER=console` for stdout) |
+| `NODE_ENV` | no | `production` activates the fail-closed auth/webhook behavior described above |
 | `ALLOW_INSECURE_DEV` | no | Explicit opt-in to run without JWT/HMAC secrets (never in prod) |
 | `CORS_ALLOWED_ORIGINS` | no | Comma-separated CORS allow-list |
 | `DOCUSIGN_HMAC_KEY` | Prod | Webhook HMAC validation secret. Unset: dev allows all webhooks (warns); production rejects all (fail-closed) |
@@ -346,6 +368,13 @@ The library takes the backend URL from the host app via
 `createESignApolloClient({ uri })`. The demo app resolves it per-platform in
 `examples/react-native-demo/src/config.ts` (Android emulators reach the host machine via
 `10.0.2.2`, iOS simulators via `localhost`).
+
+### Demo apps (bundle-time)
+
+| Variable | App | Description |
+|----------|-----|-------------|
+| `ESIGN_MODE` | React Native demo (Metro) | `proxy` (default) / `webform` / `publicurl` - inlined at bundle time |
+| `VITE_ESIGN_MODE` | Web demo (Vite) | Same three modes for the browser demo |
 
 ## CI/CD
 

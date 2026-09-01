@@ -196,6 +196,55 @@ describe('handleSign (acquisition)', () => {
     expect(onError).not.toHaveBeenCalled(); // offline is a state, not an error
   });
 
+  it('ignores a start() that resolves after unmount (no state update, no callbacks)', async () => {
+    let resolveStart!: (session: SigningSession) => void;
+    const source = makeSource({
+      start: jest.fn().mockReturnValue(
+        new Promise<SigningSession>(resolve => {
+          resolveStart = resolve;
+        }),
+      ),
+    });
+    const r = render(<ESignature {...defaultProps} source={source} />);
+
+    await ReactTestRenderer.act(async () => {
+      press(r, 'sign-document-button');
+      await flush();
+    });
+    ReactTestRenderer.act(() => r.unmount());
+
+    await ReactTestRenderer.act(async () => {
+      resolveStart(okSession);
+      await flush();
+    });
+    expect(defaultProps.onError).not.toHaveBeenCalled();
+    expect(defaultProps.onComplete).not.toHaveBeenCalled();
+  });
+
+  it('ignores a start() that rejects after unmount (onError not fired)', async () => {
+    let rejectStart!: (e: unknown) => void;
+    const source = makeSource({
+      start: jest.fn().mockReturnValue(
+        new Promise<SigningSession>((_resolve, reject) => {
+          rejectStart = reject;
+        }),
+      ),
+    });
+    const r = render(<ESignature {...defaultProps} source={source} />);
+
+    await ReactTestRenderer.act(async () => {
+      press(r, 'sign-document-button');
+      await flush();
+    });
+    ReactTestRenderer.act(() => r.unmount());
+
+    await ReactTestRenderer.act(async () => {
+      rejectStart({ code: 'PROVIDER_UNAVAILABLE' });
+      await flush();
+    });
+    expect(defaultProps.onError).not.toHaveBeenCalled();
+  });
+
   it('starts the source and enters signing on success', async () => {
     const source = makeSource();
     const r = render(<ESignature {...defaultProps} source={source} />);
