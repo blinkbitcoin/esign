@@ -3,11 +3,12 @@
 appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 ---
 - launchApp
-# Cold CI launch: the JS bundle load can outlast a plain assertVisible window
+# This flow runs FIRST (see config.yaml) and absorbs the one-time cold cost
+# of driver install + app boot + bundle load - hence the generous window.
 - extendedWaitUntil:
     visible:
       id: "sign-document-button"
-    timeout: 20000
+    timeout: 60000
 
 - assertVisible: "Sign Document"
 - assertVisible:
