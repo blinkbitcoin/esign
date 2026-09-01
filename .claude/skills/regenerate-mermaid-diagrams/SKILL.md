@@ -6,10 +6,15 @@ disable-model-invocation: true
 
 # Regenerate Mermaid Diagrams
 
-Regenerate `docs/diagrams/mermaid-diagrams.md` - the repository's **only**
-diagram artifact. Mermaid is the single diagram format on purpose: it renders
-directly on GitHub, diffs as text, and is hand-maintainable alongside the
-docs (there are no Excalidraw or image sources to keep in sync).
+Update the diagrams under `docs/diagrams/`. Mermaid is the single diagram
+format on purpose: it renders directly on GitHub, diffs as text, and is
+hand-maintainable alongside the docs.
+
+**Edit the per-diagram sources in `docs/diagrams/src/*.mmd`** - they are
+canonical. `docs/diagrams/mermaid-diagrams.md` is GENERATED from them by
+`make diagrams` (docs/diagrams/assemble.mjs, which also owns section titles
+and prose); CI fails if it drifts. Adding a diagram = new .mmd file + an
+entry in assemble.mjs's SECTIONS + a row in the table below.
 
 ## Ground rules
 
@@ -62,8 +67,8 @@ These keep the set readable as a progression, not eight unrelated pictures:
 
 ## Verification before finishing
 
-1. Every fenced block starts with ` ```mermaid ` and the count matches the
-   table above (currently 8).
+1. Run `make diagrams`; the generated file's block count matches the table
+   above (currently 8) and `git status` shows no unexpected drift.
 2. `grep` the file for stale identifiers: old package names, `Prisma`
    (it is Knex), `docusignId` (it is `providerEnvelopeId`), any route not
    present in `apps/api/src/app.ts`.

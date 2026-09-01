@@ -1,6 +1,9 @@
+<!-- GENERATED FILE - do not edit. Sources: src/*.mmd; run `make diagrams`. -->
+
 # Diagrams (Mermaid)
 
 These diagrams render automatically in GitHub, GitLab, Obsidian, and VS Code.
+Each diagram's editable source lives in [src/](src/).
 
 ---
 

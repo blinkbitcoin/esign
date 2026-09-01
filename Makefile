@@ -45,6 +45,9 @@ build: ## Build the libraries (bob + tsup)
 codegen: ## Regenerate schema.graphql + client types from the backend SDL
 	npm run codegen
 
+diagrams: ## Reassemble docs/diagrams/mermaid-diagrams.md from src/*.mmd
+	node docs/diagrams/assemble.mjs
+
 # ---------- Run ----------
 
 start: ## Metro bundler for the example app
@@ -127,4 +130,4 @@ help: ## List available targets
 
 .PHONY: install hooks pods unit coverage typecheck lint format format-check check-code \
 	test build codegen start ios android backend web db-up db-down migrate \
-	test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-mobile e2e-mobile-android test-live clean reset help
+	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-mobile e2e-mobile-android test-live clean reset help
