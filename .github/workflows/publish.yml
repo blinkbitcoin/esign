@@ -28,7 +28,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
+  checks:
     uses: ./.github/workflows/test.yml
   e2e-backend:
     uses: ./.github/workflows/e2e-backend.yml
@@ -38,7 +38,7 @@ jobs:
     uses: ./.github/workflows/e2e-mobile.yml
 
   publish:
-    needs: [test, e2e-backend, e2e-web, e2e-mobile]
+    needs: [checks, e2e-backend, e2e-web, e2e-mobile]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
