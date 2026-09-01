@@ -10,42 +10,49 @@
 
 appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 ---
-- launchApp
-# Cold CI launch: the JS bundle load can outlast a plain assertVisible window
-- extendedWaitUntil:
-    visible:
-      id: "sign-document-button"
-    timeout: 20000
+# Whole flow retries once: on CI simulators Maestro's iOS driver sometimes
+# reads the terminate->relaunch cycle of launchApp as an app crash (no real
+# crash - DiagnosticReports stays empty). Retrying just this flow costs
+# seconds; a suite-level rerun costs minutes.
+- retry:
+    maxRetries: 1
+    commands:
+      - launchApp
+      # Cold CI launch: the JS bundle load can outlast a plain assertVisible window
+      - extendedWaitUntil:
+          visible:
+            id: "sign-document-button"
+          timeout: 20000
 
-# Idle state: start signing
-- tapOn:
-    id: "sign-document-button"
-    label: "Tap Sign Document button"
+      # Idle state: start signing
+      - tapOn:
+          id: "sign-document-button"
+          label: "Tap Sign Document button"
 
-# Envelope creation in flight
-- assertVisible:
-    id: "loading-indicator"
-    label: "Verify loading indicator is shown"
-    optional: true
+      # Envelope creation in flight
+      - assertVisible:
+          id: "loading-indicator"
+          label: "Verify loading indicator is shown"
+          optional: true
 
-# The mock provider's signing page loads in the real WebView
-- extendedWaitUntil:
-    visible:
-      id: "signing-webview"
-    timeout: 15000
+      # The mock provider's signing page loads in the real WebView
+      - extendedWaitUntil:
+          visible:
+            id: "signing-webview"
+          timeout: 15000
 
-# Interact with the signing page itself (inside the WebView): this exercises
-# the page -> postMessage -> component path end-to-end
-- extendedWaitUntil:
-    visible: "Complete Signing"
-    timeout: 15000
-- tapOn: "Complete Signing"
+      # Interact with the signing page itself (inside the WebView): this exercises
+      # the page -> postMessage -> component path end-to-end
+      - extendedWaitUntil:
+          visible: "Complete Signing"
+          timeout: 15000
+      - tapOn: "Complete Signing"
 
-# The component shows success, then fires onComplete after successDelayMs
-- extendedWaitUntil:
-    visible:
-      id: "success-screen"
-    timeout: 15000
-- assertVisible:
-    id: "success-screen"
-    label: "Verify success screen is displayed"
+      # The component shows success, then fires onComplete after successDelayMs
+      - extendedWaitUntil:
+          visible:
+            id: "success-screen"
+          timeout: 15000
+      - assertVisible:
+          id: "success-screen"
+          label: "Verify success screen is displayed"

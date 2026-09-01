@@ -5,40 +5,47 @@
 # journey is exercised through real UI + real backend + real DB.
 appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 ---
-- launchApp
-# Cold CI launch: the JS bundle load can outlast a plain assertVisible window
-- extendedWaitUntil:
-    visible:
-      id: "sign-document-button"
-    timeout: 20000
-- tapOn:
-    id: "sign-document-button"
-- extendedWaitUntil:
-    visible:
-      id: "signing-webview"
-    timeout: 15000
+# Whole flow retries once: on CI simulators Maestro's iOS driver sometimes
+# reads the terminate->relaunch cycle of launchApp as an app crash (no real
+# crash - DiagnosticReports stays empty). Retrying just this flow costs
+# seconds; a suite-level rerun costs minutes.
+- retry:
+    maxRetries: 1
+    commands:
+      - launchApp
+      # Cold CI launch: the JS bundle load can outlast a plain assertVisible window
+      - extendedWaitUntil:
+          visible:
+            id: "sign-document-button"
+          timeout: 20000
+      - tapOn:
+          id: "sign-document-button"
+      - extendedWaitUntil:
+          visible:
+            id: "signing-webview"
+          timeout: 15000
 
-# Simulate the provider expiring the session (button on the mock page)
-- extendedWaitUntil:
-    visible: "Simulate Session Timeout"
-    timeout: 15000
-- tapOn: "Simulate Session Timeout"
+      # Simulate the provider expiring the session (button on the mock page)
+      - extendedWaitUntil:
+          visible: "Simulate Session Timeout"
+          timeout: 15000
+      - tapOn: "Simulate Session Timeout"
 
-# Component enters the restartable error state
-- extendedWaitUntil:
-    visible:
-      id: "restart-button"
-    timeout: 10000
-- assertVisible: "Session expired, tap to restart"
-- tapOn:
-    id: "restart-button"
+      # Component enters the restartable error state
+      - extendedWaitUntil:
+          visible:
+            id: "restart-button"
+          timeout: 10000
+      - assertVisible: "Session expired, tap to restart"
+      - tapOn:
+          id: "restart-button"
 
-# Restart got a fresh signing URL for the SAME envelope - complete it
-- extendedWaitUntil:
-    visible: "Complete Signing"
-    timeout: 15000
-- tapOn: "Complete Signing"
-- extendedWaitUntil:
-    visible:
-      id: "success-screen"
-    timeout: 15000
+      # Restart got a fresh signing URL for the SAME envelope - complete it
+      - extendedWaitUntil:
+          visible: "Complete Signing"
+          timeout: 15000
+      - tapOn: "Complete Signing"
+      - extendedWaitUntil:
+          visible:
+            id: "success-screen"
+          timeout: 15000

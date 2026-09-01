@@ -3,29 +3,36 @@
 # WebView) -> component returns to idle -> host app shows its cancel alert.
 appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 ---
-- launchApp
-# Cold CI launch: the JS bundle load can outlast a plain assertVisible window
-- extendedWaitUntil:
-    visible:
-      id: "sign-document-button"
-    timeout: 20000
-- tapOn:
-    id: "sign-document-button"
-- extendedWaitUntil:
-    visible:
-      id: "signing-webview"
-    timeout: 15000
-- extendedWaitUntil:
-    visible: "Cancel"
-    timeout: 15000
-- tapOn: "Cancel"
+# Whole flow retries once: on CI simulators Maestro's iOS driver sometimes
+# reads the terminate->relaunch cycle of launchApp as an app crash (no real
+# crash - DiagnosticReports stays empty). Retrying just this flow costs
+# seconds; a suite-level rerun costs minutes.
+- retry:
+    maxRetries: 1
+    commands:
+      - launchApp
+      # Cold CI launch: the JS bundle load can outlast a plain assertVisible window
+      - extendedWaitUntil:
+          visible:
+            id: "sign-document-button"
+          timeout: 20000
+      - tapOn:
+          id: "sign-document-button"
+      - extendedWaitUntil:
+          visible:
+            id: "signing-webview"
+          timeout: 15000
+      - extendedWaitUntil:
+          visible: "Cancel"
+          timeout: 15000
+      - tapOn: "Cancel"
 
-# Host app's onCancel fires: demo shows an alert
-- extendedWaitUntil:
-    visible: "Signing was cancelled."
-    timeout: 10000
-- tapOn: "OK"
+      # Host app's onCancel fires: demo shows an alert
+      - extendedWaitUntil:
+          visible: "Signing was cancelled."
+          timeout: 10000
+      - tapOn: "OK"
 
-# Component is back in idle - user can start over
-- assertVisible:
-    id: "sign-document-button"
+      # Component is back in idle - user can start over
+      - assertVisible:
+          id: "sign-document-button"
