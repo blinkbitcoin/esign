@@ -159,6 +159,10 @@ jobs:
           echo "Bundle prewarmed"
 
       - name: Run Maestro tests (webform-tagged flows excluded - they need an ESIGN_MODE=webform Metro)
+        env:
+          # CI simulators are slow to install+launch the XCUITest driver;
+          # the default startup timeout regularly trips on cold runners.
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: '600000'
         run: |
           export PATH="$HOME/.maestro/bin:$PATH"
           npm run test:e2e
@@ -180,6 +184,16 @@ jobs:
     timeout-minutes: 60
 
     steps:
+      # The stock runner has ~14GB free; node_modules + Gradle + the Android
+      # system image + Docker don't fit. Drop preinstalled toolchains we
+      # never use (several GB each).
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY/CodeQL"
+          sudo docker image prune -af
+          df -h /
+
       - name: Checkout code
         uses: actions/checkout@v4
 
