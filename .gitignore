@@ -87,6 +87,9 @@ docs/.archive/
 # Claude Code local settings (per-user permissions; commands/ and skills/ stay tracked)
 .claude/settings.local.json
 
+# Serena (AI tooling) local project state
+.serena/
+
 # TypeScript incremental build info
 *.tsbuildinfo
 
