@@ -245,6 +245,20 @@ describe('handleSign (acquisition)', () => {
     expect(defaultProps.onError).not.toHaveBeenCalled();
   });
 
+  it('enters signing under React.StrictMode (guard re-arms after double-mount)', async () => {
+    const source = makeSource();
+    const r = render(
+      <React.StrictMode>
+        <ESignature {...defaultProps} source={source} />
+      </React.StrictMode>,
+    );
+    await ReactTestRenderer.act(async () => {
+      press(r, 'sign-document-button');
+      await flush();
+    });
+    expect(has(r, 'signing-webview')).toBe(true);
+  });
+
   it('starts the source and enters signing on success', async () => {
     const source = makeSource();
     const r = render(<ESignature {...defaultProps} source={source} />);

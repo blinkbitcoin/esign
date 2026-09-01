@@ -1,4 +1,4 @@
-name: Mobile E2E Tests (Maestro)
+name: E2E Tests
 
 on:
   push:
@@ -10,15 +10,105 @@ on:
 permissions:
   contents: read
 
-# One run per ref; a newer push supersedes an in-flight run. Safe with the
-# publish gates: publish.yml serializes itself per ref, so two publish runs
-# never have gates in flight at once.
+# A newer push to the same ref supersedes an in-flight run. Safe with the
+# publish gates: publish.yml serializes itself per ref.
 concurrency:
-  group: e2e-mobile-${{ github.workflow }}-${{ github.ref }}
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  e2e-mobile-ios:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies (workspace root)
+        run: npm ci
+
+      - name: Check schema artifact and generated client code are current
+        run: |
+          npm run codegen
+          # shellcheck disable=SC2016 # backticks in the message are markdown, not expansion
+          git diff --exit-code -- apps/api/schema.graphql 'packages/*/src/generated' \
+            || (echo '::error::schema.graphql or generated client code is stale - run `make codegen` and commit' && exit 1)
+
+      - name: Start test database
+        run: docker compose -f docker-compose.test.yml up -d --wait
+
+      - name: Wait for database to be ready
+        run: |
+          for i in {1..30}; do
+            if docker compose -f docker-compose.test.yml exec -T postgres-test pg_isready -U test -d esign_test; then
+              echo "Database is ready"
+              exit 0
+            fi
+            echo "Waiting for database... ($i/30)"
+            sleep 2
+          done
+          echo "ERROR: Database failed to become ready after 60 seconds"
+          exit 1
+
+      - name: Run database migrations
+        run: npm run migrate:test
+        working-directory: apps/api
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        working-directory: apps/api
+
+      - name: Stop test database
+        if: always()
+        run: docker compose -f docker-compose.test.yml down
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies (workspace root)
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium --with-deps
+
+      - name: Start test database
+        run: docker compose -f docker-compose.test.yml up -d --wait
+
+      - name: Run migrations (test database)
+        run: npm run migrate:test -w apps/api
+
+      - name: Run browser E2E (Playwright starts backend + Vite)
+        run: npm run test:e2e -w examples/react-demo
+
+      - name: Stop test database
+        if: always()
+        run: docker compose -f docker-compose.test.yml down
+
+  ios:
     runs-on: macos-latest
     timeout-minutes: 60
 
@@ -42,7 +132,7 @@ jobs:
           bundler-cache: true
 
       - name: Cache CocoaPods
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             examples/react-native-demo/ios/Pods
@@ -58,7 +148,7 @@ jobs:
           bundle exec pod install
 
       - name: Cache Maestro CLI
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.maestro
           key: maestro-${{ runner.os }}-2.6.1
@@ -122,6 +212,8 @@ jobs:
           fi
           echo "Using simulator: $DEVICE_NAME"
           echo "SIM_DEVICE=$DEVICE_NAME" >> "$GITHUB_ENV"
+          # Kick the boot off now so it overlaps the Xcode build below
+          xcrun simctl boot "$DEVICE_NAME" || true
 
       - name: Build iOS app for simulator
         run: |
@@ -135,10 +227,8 @@ jobs:
             -derivedDataPath build \
             build
 
-      - name: Boot iOS Simulator
-        run: |
-          xcrun simctl boot "$SIM_DEVICE" || true
-          xcrun simctl bootstatus "$SIM_DEVICE" -b
+      - name: Wait for iOS Simulator (booting since device pick)
+        run: xcrun simctl bootstatus "$SIM_DEVICE" -b
 
       - name: Install app on simulator
         run: |
@@ -166,21 +256,29 @@ jobs:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: '600000'
         run: |
           export PATH="$HOME/.maestro/bin:$PATH"
-          npm run test:e2e
+          # One retry: Maestro's iOS driver misreads a slow terminate->relaunch
+          # cycle as an app crash (~10s terminations on CI simulators hit a
+          # random flow most runs; no real crash - DiagnosticReports stays empty)
+          npm run test:e2e || {
+            echo "::warning::Maestro suite failed - retrying once (known driver relaunch race)"
+            npm run test:e2e
+          }
 
       - name: Stop backend
         if: always()
         run: pkill -f "npm run dev" || true
 
-      - name: Upload Maestro test results
+      - name: Upload Maestro test results + crash reports
         uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: maestro-results
-          path: ~/.maestro/tests/
+          path: |
+            ~/.maestro/tests/
+            ~/Library/Logs/DiagnosticReports/
           retention-days: 7
 
-  e2e-mobile-android:
+  android:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -205,7 +303,7 @@ jobs:
           cache: 'npm'
 
       - name: Setup Java (for Gradle)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
@@ -215,7 +313,7 @@ jobs:
         run: npm ci
 
       - name: Cache Maestro CLI
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.maestro
           key: maestro-${{ runner.os }}-2.6.1
@@ -274,12 +372,12 @@ jobs:
 
       - name: Build Android app (debug)
         working-directory: examples/react-native-demo/android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --build-cache
 
       # AVD snapshot caching per the emulator-runner README: a cold run
       # generates the snapshot once; warm runs boot from it in seconds.
       - name: Cache AVD snapshot
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: avd-cache
         with:
           path: |
