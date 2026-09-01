@@ -28,10 +28,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Caller jobs carry the called workflow's name so the reused jobs label
+  # the same here as in their own runs (CI / Tests / Unit, CI / E2E / iOS).
   checks:
-    name: Checks
+    name: CI / Tests
     uses: ./.github/workflows/test.yml
   e2e:
+    name: CI / E2E
     uses: ./.github/workflows/e2e.yml
 
   publish:
