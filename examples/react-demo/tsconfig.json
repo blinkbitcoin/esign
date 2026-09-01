@@ -13,7 +13,13 @@
     "noEmit": true,
     "types": ["vitest/globals"],
     "paths": {
-      "@blinkbitcoin/esign-react": ["../../packages/esign-react/src"]
+      "@blinkbitcoin/esign-react": ["../../packages/esign-react/src"],
+      "@blinkbitcoin/esignature-core": [
+        "../../packages/esignature-core/src/index.ts"
+      ],
+      "@blinkbitcoin/esignature-core/webform": [
+        "../../packages/esignature-core/src/webform.ts"
+      ]
     }
   },
   "include": ["src", "e2e", "playwright.config.ts"],
