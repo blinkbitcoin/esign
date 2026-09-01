@@ -105,6 +105,7 @@ e2e-mobile: ## Maestro mobile E2E, iOS (needs backend running + simulator with a
 	npm run test:e2e
 
 e2e-mobile-android: ## Maestro mobile E2E, Android (needs backend + emulator with app installed)
+	adb reverse tcp:8081 tcp:8081 && adb reverse tcp:4000 tcp:4000
 	npm run test:e2e:android -w examples/react-native-demo
 
 test-live: ## Live verification against real DocuSign (skips unless DOCUSIGN_* set in apps/api/.env)

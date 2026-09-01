@@ -309,7 +309,10 @@ jobs:
           disable-animations: true
           script: |
             adb install examples/react-native-demo/android/app/build/outputs/apk/debug/app-debug.apk
+            # Metro + backend: the signing WebView loads localhost:4000 URLs
+            # minted by the mock provider - reverse both into the emulator
             adb reverse tcp:8081 tcp:8081
+            adb reverse tcp:4000 tcp:4000
             export PATH="$HOME/.maestro/bin:$PATH"
             npm run test:e2e:android -w examples/react-native-demo
 
