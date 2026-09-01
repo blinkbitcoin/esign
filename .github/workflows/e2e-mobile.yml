@@ -126,10 +126,25 @@ jobs:
         run: |
           xcrun simctl install booted examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator/ReactNativeSandbox.app
 
-      - name: Run Maestro tests
+      # Debug builds load their JS from Metro; prewarming the bundle keeps
+      # the first Maestro launch from racing a cold compile.
+      - name: Start Metro bundler
+        working-directory: examples/react-native-demo
+        run: |
+          npm start &
+          for i in {1..60}; do
+            if curl -s http://localhost:8081/status | grep -q packager-status:running; then
+              echo "Metro is ready"; break
+            fi
+            echo "Waiting for Metro... ($i/60)"; sleep 2
+          done
+          curl -sf "http://localhost:8081/index.bundle?platform=ios&dev=true" -o /dev/null
+          echo "Bundle prewarmed"
+
+      - name: Run Maestro tests (webform-tagged flows excluded - they need an ESIGN_MODE=webform Metro)
         run: |
           export PATH="$HOME/.maestro/bin:$PATH"
-          maestro test examples/react-native-demo/.maestro/ --timeout 120000
+          npm run test:e2e
 
       - name: Stop backend
         if: always()
