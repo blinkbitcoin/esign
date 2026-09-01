@@ -40,6 +40,15 @@ jobs:
           ruby-version: '3.3'
           bundler-cache: true
 
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            examples/react-native-demo/ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: pods-${{ runner.os }}-${{ hashFiles('examples/react-native-demo/ios/Podfile.lock') }}
+          restore-keys: pods-${{ runner.os }}-
+
       - name: Install CocoaPods dependencies
         run: |
           cd examples/react-native-demo
@@ -47,11 +56,19 @@ jobs:
           cd ios
           bundle exec pod install
 
+      - name: Cache Maestro CLI
+        uses: actions/cache@v4
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-2.6.1
+
       - name: Install Maestro CLI
         env:
           MAESTRO_VERSION: 2.6.1 # version the E2E suites are proven against
         run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
+          if [ ! -x "$HOME/.maestro/bin/maestro" ]; then
+            curl -Ls "https://get.maestro.mobile.dev" | bash
+          fi
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
       # macOS runners have no Docker - run the test database via Homebrew
@@ -182,11 +199,19 @@ jobs:
       - name: Install dependencies (workspace root)
         run: npm ci
 
+      - name: Cache Maestro CLI
+        uses: actions/cache@v4
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-2.6.1
+
       - name: Install Maestro CLI
         env:
           MAESTRO_VERSION: 2.6.1 # keep in sync with the iOS job
         run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
+          if [ ! -x "$HOME/.maestro/bin/maestro" ]; then
+            curl -Ls "https://get.maestro.mobile.dev" | bash
+          fi
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
       # Hardware acceleration for the emulator (GitHub-hosted Linux runners
@@ -236,12 +261,37 @@ jobs:
         working-directory: examples/react-native-demo/android
         run: ./gradlew assembleDebug --no-daemon
 
+      # AVD snapshot caching per the emulator-runner README: a cold run
+      # generates the snapshot once; warm runs boot from it in seconds.
+      - name: Cache AVD snapshot
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-34-x86_64-google_apis
+
+      - name: Create AVD snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+
       - name: Run Maestro tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
           arch: x86_64
           target: google_apis
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
             adb install examples/react-native-demo/android/app/build/outputs/apk/debug/app-debug.apk
