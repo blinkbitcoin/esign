@@ -28,13 +28,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Caller jobs carry the called workflow's name so the reused jobs label
-  # the same here as in their own runs (Tests / Unit / Coverage, Tests / E2E / iOS).
+  # Single-segment caller names: GitHub's run graph collapses labels with
+  # three or more "/" segments to "first / ... / last", so "Tests / Unit"
+  # here would render as "Tests / ... / Coverage". This keeps the reused
+  # jobs at two segments (Unit / Coverage, E2E / iOS).
   checks:
-    name: Tests / Unit
+    name: Unit
     uses: ./.github/workflows/test.yml
   e2e:
-    name: Tests / E2E
+    name: E2E
     uses: ./.github/workflows/e2e.yml
 
   publish:
