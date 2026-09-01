@@ -1,4 +1,4 @@
-name: Publish Packages
+name: Release / Packages
 
 # Publishes the three client packages to GitHub Packages (npm.pkg.github.com)
 # under the blinkbitcoin org. Two publish channels:
@@ -28,12 +28,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Single-segment caller names: GitHub's run graph collapses labels with
+  # three or more "/" segments to "first / ... / last", so "Tests / Unit"
+  # here would render as "Tests / ... / Coverage". This keeps the reused
+  # jobs at two segments (Unit / Coverage, E2E / iOS).
   checks:
+    name: Unit
     uses: ./.github/workflows/test.yml
   e2e:
+    name: E2E
     uses: ./.github/workflows/e2e.yml
 
   publish:
+    name: Publish
     needs: [checks, e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -106,6 +113,7 @@ jobs:
   # Consumes what was ACTUALLY published: installs the exact version from
   # GitHub Packages into a clean project and asserts the consumer contract.
   registry-smoke:
+    name: Registry smoke
     needs: [publish]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -127,6 +135,12 @@ jobs:
           mkdir smoke && cd smoke
           npm init -y > /dev/null
           npm install "@blinkbitcoin/esign-core@$VERSION" > /dev/null
+          # Forensics first: if the optional-peer contract regresses, explain it
+          echo "--- npm $(npm -v) / node $(node -v)"
+          echo "--- published manifest peer metadata:"
+          node -p "JSON.stringify(require('@blinkbitcoin/esign-core/package.json').peerDependenciesMeta ?? 'MISSING')"
+          echo "--- why is @apollo/client present (if it is):"
+          npm why @apollo/client || echo "(not installed - as expected)"
           node -e "
             const assert = require('node:assert');
             const webform = require('@blinkbitcoin/esign-core/webform');
