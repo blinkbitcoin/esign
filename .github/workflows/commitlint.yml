@@ -18,8 +18,10 @@ jobs:
   lint:
     name: Lint
     # Dependabot's messages are shaped by dependabot.yml's commit-message
-    # config; no need to re-lint its bot-authored commits.
-    if: github.actor != 'dependabot[bot]'
+    # config; no need to re-lint its bot-authored commits. Keyed on the PR
+    # author, not github.actor: a human updating the branch would otherwise
+    # re-trigger the lint against Dependabot's commits.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
