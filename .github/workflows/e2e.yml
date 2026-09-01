@@ -212,6 +212,8 @@ jobs:
           fi
           echo "Using simulator: $DEVICE_NAME"
           echo "SIM_DEVICE=$DEVICE_NAME" >> "$GITHUB_ENV"
+          # Kick the boot off now so it overlaps the Xcode build below
+          xcrun simctl boot "$DEVICE_NAME" || true
 
       - name: Build iOS app for simulator
         run: |
@@ -225,10 +227,8 @@ jobs:
             -derivedDataPath build \
             build
 
-      - name: Boot iOS Simulator
-        run: |
-          xcrun simctl boot "$SIM_DEVICE" || true
-          xcrun simctl bootstatus "$SIM_DEVICE" -b
+      - name: Wait for iOS Simulator (booting since device pick)
+        run: xcrun simctl bootstatus "$SIM_DEVICE" -b
 
       - name: Install app on simulator
         run: |
@@ -366,7 +366,7 @@ jobs:
 
       - name: Build Android app (debug)
         working-directory: examples/react-native-demo/android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --build-cache
 
       # AVD snapshot caching per the emulator-runner README: a cold run
       # generates the snapshot once; warm runs boot from it in seconds.
