@@ -417,12 +417,31 @@ jobs:
             adb reverse tcp:8081 tcp:8081
             adb reverse tcp:4000 tcp:4000
             export PATH="$HOME/.maestro/bin:$PATH"
-            npm run test:e2e:android -w examples/react-native-demo
+            # Forensics: the failure screenshots show the launcher (the app
+            # process is gone), so keep the device log for the post-mortem.
+            adb logcat -c
+            status=0
+            npm run test:e2e:android -w examples/react-native-demo || status=$?
+            mkdir -p "$RUNNER_TEMP/android-logs"
+            adb logcat -d > "$RUNNER_TEMP/android-logs/logcat.txt" || true
+            adb logcat -d -b crash > "$RUNNER_TEMP/android-logs/logcat-crash.txt" || true
+            if [ "$status" -ne 0 ]; then
+              echo "::group::logcat crash buffer"
+              cat "$RUNNER_TEMP/android-logs/logcat-crash.txt"
+              echo "::endgroup::"
+              echo "::group::logcat (last 300 lines mentioning the app, WebView, or chromium)"
+              grep -aiE 'reactnativesandbox|RNCWebView|chromium|cr_|AndroidRuntime|FATAL|DEBUG|libc|render' \
+                "$RUNNER_TEMP/android-logs/logcat.txt" | tail -300
+              echo "::endgroup::"
+            fi
+            exit "$status"
 
       - name: Upload Maestro test results
         uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: maestro-results-android
-          path: ~/.maestro/tests/
+          path: |
+            ~/.maestro/tests/
+            ${{ runner.temp }}/android-logs/
           retention-days: 7
