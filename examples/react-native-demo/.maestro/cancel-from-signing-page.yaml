@@ -3,12 +3,15 @@
 # WebView) -> component returns to idle -> host app shows its cancel alert.
 appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 ---
-- launchApp
-# Cold CI launch: the JS bundle load can outlast a plain assertVisible window
+# Foreground the already-running app and reset in-app (see app-launch.yaml)
+- launchApp:
+    stopApp: false
+- tapOn:
+    id: "reset-button"
 - extendedWaitUntil:
     visible:
       id: "sign-document-button"
-    timeout: 20000
+    timeout: 10000
 - tapOn:
     id: "sign-document-button"
 - extendedWaitUntil:

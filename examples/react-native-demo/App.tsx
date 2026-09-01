@@ -6,9 +6,12 @@
  */
 
 import { ApolloProvider } from '@apollo/client/react';
+import { useState } from 'react';
 import {
   StatusBar,
   StyleSheet,
+  Text,
+  TouchableOpacity,
   useColorScheme,
   View,
   Alert,
@@ -107,10 +110,26 @@ export const buildSource = (): SigningSource => {
 function AppContent() {
   const safeAreaInsets = useSafeAreaInsets();
   const source = buildSource();
+  // "Start over" remounts the component (fresh source + idle state). The
+  // Maestro flows use it to reset between flows instead of relaunching the
+  // app: on iOS a relaunch (terminate + simctl launch) races the XCUITest
+  // driver for a few seconds and reloads the dev bundle from Metro.
+  const [sessionKey, setSessionKey] = useState(0);
 
   return (
     <View style={[styles.container, { paddingTop: safeAreaInsets.top }]}>
+      <View style={styles.toolbar}>
+        <TouchableOpacity
+          onPress={() => setSessionKey(k => k + 1)}
+          testID="reset-button"
+          accessibilityRole="button"
+          accessibilityLabel="Start over"
+        >
+          <Text style={styles.toolbarText}>Start over</Text>
+        </TouchableOpacity>
+      </View>
       <ESignature
+        key={sessionKey}
         source={source}
         onComplete={handleSigningComplete}
         onError={handleSigningError}
@@ -124,6 +143,15 @@ function AppContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  toolbar: {
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  toolbarText: {
+    color: '#007AFF',
+    fontSize: 15,
   },
 });
 

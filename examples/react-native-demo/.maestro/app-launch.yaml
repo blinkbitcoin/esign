@@ -1,15 +1,28 @@
 # Maestro E2E: launch smoke test - the app boots to the signing idle screen.
 # Fast-fail signal for broken builds before the longer flows run.
+#
+# This is the ONLY flow that (re)launches the app (see config.yaml for the
+# order). The later flows keep the running process and reset through the
+# demo's "Start over" control instead: on iOS a relaunch (terminate +
+# `simctl launch`) leaves the XCUITest driver racing the new process for a
+# few seconds ("Application is not running", kAXErrorInvalidUIElement) and
+# reloads the dev bundle from Metro every time.
 appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 ---
-- launchApp
-# This flow runs FIRST (see config.yaml) and absorbs the one-time cold cost
-# of driver install + app boot + bundle load - hence the generous window.
-- extendedWaitUntil:
-    visible:
-      id: "sign-document-button"
-    timeout: 60000
+# The one cold launch: driver install + app boot + bundle load. A driver
+# error inside the first wait aborts the wait rather than polling on, so the
+# launch + wait pair is retried as a unit.
+- retry:
+    maxRetries: 2
+    commands:
+      - launchApp
+      - extendedWaitUntil:
+          visible:
+            id: "sign-document-button"
+          timeout: 60000
 
 - assertVisible: "Sign Document"
 - assertVisible:
     id: "cancel-button"
+- assertVisible:
+    id: "reset-button"
