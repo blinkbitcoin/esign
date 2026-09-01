@@ -11,7 +11,7 @@ name: Publish Packages
 #     semver ranges never match prereleases.
 #
 # Both channels are gated on the full test fleet: unit tests with enforced
-# coverage thresholds + all three E2E suites, reused via workflow_call.
+# coverage thresholds + every E2E suite, reused via workflow_call.
 # Requires no extra secrets - GITHUB_TOKEN with packages:write is enough
 # for same-org publishing.
 
@@ -28,17 +28,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
+  checks:
     uses: ./.github/workflows/test.yml
-  e2e-backend:
-    uses: ./.github/workflows/e2e-backend.yml
-  e2e-web:
-    uses: ./.github/workflows/e2e-web.yml
-  e2e-mobile:
-    uses: ./.github/workflows/e2e-mobile.yml
+  e2e:
+    uses: ./.github/workflows/e2e.yml
 
   publish:
-    needs: [test, e2e-backend, e2e-web, e2e-mobile]
+    needs: [checks, e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
