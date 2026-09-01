@@ -145,20 +145,29 @@ Proxy-mode infrastructure is clearly separated from the packages you install:
 | [`examples/react-demo/`](examples/react-demo/README.md) | 🌐 **Web integration demo** — Vite app hosting the web component (`make web`) |
 | `docs/` | Current-state documentation ([start here](docs/index.md)) |
 
-## Quick Start
+## Developing This Repo
+
+Only needed if you're working on the packages or the backend themselves -
+**consuming the packages requires none of this** (see
+[Integration](#integration) above).
+
+One-time setup:
 
 ```sh
-make install                            # npm ci across all workspaces
+make install                             # npm ci across all workspaces (also installs git hooks)
 direnv allow . && direnv allow apps/api  # once per machine (loads env + nix flake dev shell)
-
-make db-up migrate backend              # dev Postgres + migrations + server (:4000)
-
-# Example app (new terminal)
-make start                              # Metro
-make ios                                # or: make android
 ```
 
-## Development
+Run the full proxy-mode stack against the demo apps:
+
+```sh
+make db-up migrate backend              # dev Postgres + migrations + server (:4000)
+
+# in a new terminal:
+make start                              # Metro
+make ios                                # or: make android
+make web                                # or the web demo (Vite)
+```
 
 `make help` lists all targets (thin wrappers over the npm workspace scripts):
 
@@ -168,10 +177,9 @@ make ios                                # or: make android
 | `make unit` / `make coverage` | Test suites (100% coverage enforced on packages + backend; demos floored at current level) |
 | `make check-code` | Lint + typecheck + format check only |
 | `make build` | Build the library (react-native-builder-bob) |
-| `make db-up` / `make migrate` / `make backend` | Dev database + server |
-| `make e2e-backend` | Backend E2E: test DB up → migrate → tests → teardown |
-| `make ios` / `make android` / `make start` | RN example app |
-| `make web` | Web example app (Vite dev server) |
+| `make e2e-backend` / `make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown |
+| `make e2e-mobile` / `make e2e-mobile-android` | Maestro E2E against a running stack |
+| `make test-live` | Opt-in live DocuSign API verification (skips without credentials) |
 | `make pods` | iOS CocoaPods install |
 
 See [docs/development-guide.md](docs/development-guide.md) for full setup,
