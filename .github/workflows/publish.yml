@@ -20,6 +20,7 @@ on:
     types: [published]
   push:
     branches: [main]
+    paths-ignore: ['docs/**', '**.md'] # docs-only pushes ship nothing new
   workflow_dispatch:
 
 concurrency:
