@@ -1,8 +1,7 @@
 # Project Documentation Index
 
 **Project:** blink-esign
-**Updated:** 2026-07-02
-**Scan Level:** Quick
+**Updated:** 2026-09-01
 
 ---
 
@@ -36,13 +35,14 @@
 
 ---
 
-## Generated Documentation
+## Documentation
 
 ### Core Documentation
 - [Project Overview](./project-overview.md) - Executive summary and tech stack
 - [Source Tree Analysis](./source-tree-analysis.md) - Annotated directory structure
 - [Development Guide](./development-guide.md) - Setup, commands, and workflows
-- [DocuSign Setup](./docusign-setup.md) - Testing with a real DocuSign account (incl. known return-URL gap)
+- [DocuSign Setup](./docusign-setup.md) - Real-DocuSign setup for proxy mode + the live smoke-test checklist
+- [Web Forms Setup](./webforms-setup.md) - DocuSign Web Forms mode: mock and live runs, event model
 - [Consuming the Packages](./consuming.md) - GitHub Packages setup + minimal webform-only install
 - [Security Model](./security.md) - Auth, webhooks, headers, rate limiting, fail-closed boot
 
@@ -89,15 +89,12 @@
 # 1. Install all workspaces (single root lockfile)
 npm ci
 
-# 2. Start backend
-cd apps/api
-docker-compose up -d          # Start database
-npm run migrate               # Run migrations
-npm run dev                   # Start server (tsx watch)
+# 2. Start backend (dev Postgres + migrations + server)
+make db-up migrate backend
 
 # 3. Start the demo app (new terminal, from repo root)
-npm start                     # Metro
-npm run ios                   # or npm run android
+make start                    # Metro
+make ios                      # or: make android
 ```
 
 ### Run Tests
@@ -106,12 +103,11 @@ npm run ios                   # or npm run android
 # Everything (library + demo + backend)
 npm test
 
-# Backend E2E tests
-docker-compose -f docker-compose.test.yml up -d --wait
-cd apps/api && npm run migrate:test && npm run test:e2e
+# Backend E2E tests (test DB lifecycle included)
+make e2e-backend
 
-# Mobile E2E tests (requires Maestro)
-npm run test:e2e            # maestro test examples/react-native-demo/.maestro/
+# Mobile E2E tests (requires Maestro + running stack)
+make e2e-mobile             # or: make e2e-mobile-android
 ```
 
 ---
