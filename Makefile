@@ -101,8 +101,11 @@ e2e-web-publicurl: test-db-up ## Playwright browser E2E for the web demo in publ
 	npm run test:e2e:publicurl -w examples/react-demo
 	$(MAKE) test-db-down
 
-e2e-mobile: ## Maestro mobile E2E (needs backend running + simulator with app installed)
+e2e-mobile: ## Maestro mobile E2E, iOS (needs backend running + simulator with app installed)
 	npm run test:e2e
+
+e2e-mobile-android: ## Maestro mobile E2E, Android (needs backend + emulator with app installed)
+	npm run test:e2e:android -w examples/react-native-demo
 
 test-live: ## Live verification against real DocuSign (skips unless DOCUSIGN_* set in apps/api/.env)
 	npm run test:live -w apps/api
@@ -123,4 +126,4 @@ help: ## List available targets
 
 .PHONY: install hooks pods unit coverage typecheck lint format format-check check-code \
 	test build codegen start ios android backend web db-up db-down migrate \
-	test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-mobile test-live clean reset help
+	test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-mobile e2e-mobile-android test-live clean reset help

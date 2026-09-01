@@ -1,7 +1,7 @@
 # Maestro E2E: user cancels from inside the signing ceremony.
 # Drives: idle -> envelope creation -> mock signing page -> Cancel (in the
 # WebView) -> component returns to idle -> host app shows its cancel alert.
-appId: org.reactjs.native.example.ReactNativeSandbox
+appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 ---
 - launchApp
 - tapOn:

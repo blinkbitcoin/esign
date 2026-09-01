@@ -40,6 +40,15 @@ jobs:
           ruby-version: '3.3'
           bundler-cache: true
 
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            examples/react-native-demo/ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: pods-${{ runner.os }}-${{ hashFiles('examples/react-native-demo/ios/Podfile.lock') }}
+          restore-keys: pods-${{ runner.os }}-
+
       - name: Install CocoaPods dependencies
         run: |
           cd examples/react-native-demo
@@ -47,11 +56,19 @@ jobs:
           cd ios
           bundle exec pod install
 
+      - name: Cache Maestro CLI
+        uses: actions/cache@v4
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-2.6.1
+
       - name: Install Maestro CLI
         env:
           MAESTRO_VERSION: 2.6.1 # version the E2E suites are proven against
         run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
+          if [ ! -x "$HOME/.maestro/bin/maestro" ]; then
+            curl -Ls "https://get.maestro.mobile.dev" | bash
+          fi
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
       # macOS runners have no Docker - run the test database via Homebrew
@@ -126,10 +143,29 @@ jobs:
         run: |
           xcrun simctl install booted examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator/ReactNativeSandbox.app
 
-      - name: Run Maestro tests
+      # Debug builds load their JS from Metro; prewarming the bundle keeps
+      # the first Maestro launch from racing a cold compile.
+      - name: Start Metro bundler
+        working-directory: examples/react-native-demo
+        run: |
+          npm start &
+          for i in {1..60}; do
+            if curl -s http://localhost:8081/status | grep -q packager-status:running; then
+              echo "Metro is ready"; break
+            fi
+            echo "Waiting for Metro... ($i/60)"; sleep 2
+          done
+          curl -sf "http://localhost:8081/index.bundle?platform=ios&dev=true" -o /dev/null
+          echo "Bundle prewarmed"
+
+      - name: Run Maestro tests (webform-tagged flows excluded - they need an ESIGN_MODE=webform Metro)
+        env:
+          # CI simulators are slow to install+launch the XCUITest driver;
+          # the default startup timeout regularly trips on cold runners.
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: '600000'
         run: |
           export PATH="$HOME/.maestro/bin:$PATH"
-          maestro test examples/react-native-demo/.maestro/ --timeout 120000
+          npm run test:e2e
 
       - name: Stop backend
         if: always()
@@ -140,5 +176,147 @@ jobs:
         if: failure()
         with:
           name: maestro-results
+          path: ~/.maestro/tests/
+          retention-days: 7
+
+  e2e-mobile-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      # The stock runner has ~14GB free; node_modules + Gradle + the Android
+      # system image + Docker don't fit. Drop preinstalled toolchains we
+      # never use (several GB each).
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY/CodeQL"
+          sudo docker image prune -af
+          df -h /
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Setup Java (for Gradle)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Install dependencies (workspace root)
+        run: npm ci
+
+      - name: Cache Maestro CLI
+        uses: actions/cache@v4
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-2.6.1
+
+      - name: Install Maestro CLI
+        env:
+          MAESTRO_VERSION: 2.6.1 # keep in sync with the iOS job
+        run: |
+          if [ ! -x "$HOME/.maestro/bin/maestro" ]; then
+            curl -Ls "https://get.maestro.mobile.dev" | bash
+          fi
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      # Hardware acceleration for the emulator (GitHub-hosted Linux runners
+      # expose KVM but the device node needs opening up)
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Start test database
+        run: docker compose -f docker-compose.test.yml up -d --wait
+
+      - name: Run database migrations
+        run: npm run migrate:test
+        working-directory: apps/api
+
+      - name: Start backend with mock provider
+        run: |
+          cd apps/api
+          ESIGN_PROVIDER=mock npx dotenv-cli -e .env.test -- npm run dev &
+          for i in {1..30}; do
+            if curl -s http://localhost:4000/health > /dev/null; then
+              echo "Backend is ready"; exit 0
+            fi
+            echo "Waiting for backend... ($i/30)"; sleep 2
+          done
+          echo "ERROR: Backend failed to start"; exit 1
+
+      # The emulator reaches the backend as 10.0.2.2:4000 (host loopback
+      # alias - see examples/react-native-demo/src/config.ts); Metro is
+      # reached via adb reverse below.
+      - name: Start Metro bundler
+        working-directory: examples/react-native-demo
+        run: |
+          npm start &
+          for i in {1..60}; do
+            if curl -s http://localhost:8081/status | grep -q packager-status:running; then
+              echo "Metro is ready"; break
+            fi
+            echo "Waiting for Metro... ($i/60)"; sleep 2
+          done
+          curl -sf "http://localhost:8081/index.bundle?platform=android&dev=true" -o /dev/null
+          echo "Bundle prewarmed"
+
+      - name: Build Android app (debug)
+        working-directory: examples/react-native-demo/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      # AVD snapshot caching per the emulator-runner README: a cold run
+      # generates the snapshot once; warm runs boot from it in seconds.
+      - name: Cache AVD snapshot
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-34-x86_64-google_apis
+
+      - name: Create AVD snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+
+      - name: Run Maestro tests on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            adb install examples/react-native-demo/android/app/build/outputs/apk/debug/app-debug.apk
+            adb reverse tcp:8081 tcp:8081
+            export PATH="$HOME/.maestro/bin:$PATH"
+            npm run test:e2e:android -w examples/react-native-demo
+
+      - name: Upload Maestro test results
+        uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: maestro-results-android
           path: ~/.maestro/tests/
           retention-days: 7

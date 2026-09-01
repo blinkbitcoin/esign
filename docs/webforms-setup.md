@@ -49,7 +49,8 @@ make e2e-web-webform
 
 # Mobile (deterministic, real WebView):
 #   backend + ESIGN_MODE=webform Metro + simulator, then:
-#   maestro test examples/react-native-demo/.maestro/webform-happy-path.yaml
+#   maestro test examples/react-native-demo/.maestro/webform-happy-path.yaml \
+#     -e APP_ID=org.reactjs.native.example.ReactNativeSandbox
 ```
 
 Both exercise `createWebFormsSource` + `interpretDocuSignEvent` against a page

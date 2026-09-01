@@ -355,7 +355,7 @@ The library takes the backend URL from the host app via
 |----------|---------|---------|
 | `test.yml` | Push/PR (non-main) + publish gate | Unit tests + coverage thresholds + check-code |
 | `e2e-backend.yml` | Push/PR (non-main) + publish gate | Backend E2E tests |
-| `e2e-mobile.yml` | Push/PR (non-main) + publish gate | Mobile E2E tests (iOS) |
+| `e2e-mobile.yml` | Push/PR (non-main) + publish gate | Mobile E2E tests (iOS simulator + Android emulator) |
 | `e2e-web.yml` | Push/PR (non-main) + publish gate | Web browser E2E (Playwright) |
 | `publish.yml` | GitHub Release → stable; main push / manual → prerelease (`next`) | Publish to GitHub Packages, gated on all four test workflows |
 | `docs-check.yml` | Push/PR to main | Warns when architecture-relevant changes ship without a docs/ update |
