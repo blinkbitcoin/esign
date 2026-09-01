@@ -383,10 +383,8 @@ The library takes the backend URL from the host app via
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | `test.yml` | Push/PR (non-main) + publish gate | Unit tests + coverage thresholds + check-code |
-| `e2e-backend.yml` | Push/PR (non-main) + publish gate | Backend E2E tests |
-| `e2e-mobile.yml` | Push/PR (non-main) + publish gate | Mobile E2E tests (iOS simulator + Android emulator) |
-| `e2e-web.yml` | Push/PR (non-main) + publish gate | Web browser E2E (Playwright) |
-| `publish.yml` | GitHub Release → stable; main push / manual → prerelease (`next`) | Publish to GitHub Packages, gated on all four test workflows |
+| `e2e.yml` | Push/PR (non-main) + publish gate | All E2E suites as jobs: `backend`, `web` (Playwright), `ios` (simulator), `android` (emulator) |
+| `publish.yml` | GitHub Release → stable; main push / manual → prerelease (`next`) | Publish to GitHub Packages, gated on the checks + e2e workflows |
 | `docs-check.yml` | Push/PR to main | Warns when architecture-relevant changes ship without a docs/ update |
 
 All workflows run with `permissions: contents: read` (publish adds
