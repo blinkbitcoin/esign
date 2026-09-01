@@ -127,6 +127,12 @@ jobs:
           mkdir smoke && cd smoke
           npm init -y > /dev/null
           npm install "@blinkbitcoin/esign-core@$VERSION" > /dev/null
+          # Forensics first: if the optional-peer contract regresses, explain it
+          echo "--- npm $(npm -v) / node $(node -v)"
+          echo "--- published manifest peer metadata:"
+          node -p "JSON.stringify(require('@blinkbitcoin/esign-core/package.json').peerDependenciesMeta ?? 'MISSING')"
+          echo "--- why is @apollo/client present (if it is):"
+          npm why @apollo/client || echo "(not installed - as expected)"
           node -e "
             const assert = require('node:assert');
             const webform = require('@blinkbitcoin/esign-core/webform');
