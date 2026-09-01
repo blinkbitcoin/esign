@@ -1,4 +1,4 @@
-name: CI / Tests
+name: Tests / Unit
 
 on:
   push:
@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   unit:
-    name: Unit
+    name: Coverage
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
