@@ -29,7 +29,7 @@
     "@eslint/eslintrc": "^3.3.6",
     "@react-native/eslint-config": "^0.87.1",
     "audit-ci": "^7.1.0",
-    "eslint": "^9.39.5",
+    "eslint": "^10.9.1",
     "eslint-plugin-ft-flow": "^3.0.11",
     "lefthook": "^2.1.12",
     "publint": "^0.3.24"
