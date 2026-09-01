@@ -18,11 +18,11 @@ import NetInfo from '@react-native-community/netinfo';
 import {
   getErrorMessage,
   isRestartable,
-} from '@blinkbitcoin/esignature-core/webform';
+} from '@blinkbitcoin/esign-core/webform';
 import type {
   SigningSession,
   SigningSourceError,
-} from '@blinkbitcoin/esignature-core/webform';
+} from '@blinkbitcoin/esign-core/webform';
 import type {
   ESignatureProps,
   ESignatureStatus,
@@ -32,7 +32,7 @@ import type {
 // Re-exported for backwards-compatible imports (Apollo-free).
 // getApolloErrorCode is re-exported from index.ts, NOT here - this file must
 // stay reachable from the Apollo-free ./webform entry.
-export { getErrorMessage } from '@blinkbitcoin/esignature-core/webform';
+export { getErrorMessage } from '@blinkbitcoin/esign-core/webform';
 
 /**
  * ESignature component for document signing flow.

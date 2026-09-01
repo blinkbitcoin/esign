@@ -3,10 +3,8 @@
   "compilerOptions": {
     "types": ["jest", "node"],
     "paths": {
-      "@blinkbitcoin/esignature-core": ["../esignature-core/src/index.ts"],
-      "@blinkbitcoin/esignature-core/webform": [
-        "../esignature-core/src/webform.ts"
-      ]
+      "@blinkbitcoin/esign-core": ["../esign-core/src/index.ts"],
+      "@blinkbitcoin/esign-core/webform": ["../esign-core/src/webform.ts"]
     }
   },
   "include": [

@@ -1,6 +1,6 @@
 # Architecture - Mobile (Library + Demo)
 
-**Parts:** `packages/esign-react-native` (the product, over `packages/esignature-core`) + `examples/react-native-demo` (integration host)
+**Parts:** `packages/esign-react-native` (the product, over `packages/esign-core`) + `examples/react-native-demo` (integration host)
 **Type:** Publishable React Native library with demo app
 **Updated:** 2026-09-01
 
@@ -23,7 +23,7 @@
 ## Architecture Pattern
 
 **Provider-agnostic component over a `SigningSource` strategy** (the
-abstraction lives in `@blinkbitcoin/esignature-core`). The component never
+abstraction lives in `@blinkbitcoin/esign-core`). The component never
 talks to Apollo/DocuSign directly - a source owns URL acquisition and the
 event protocol; the component owns the state machine, WebView embedding,
 offline handling, and UX.
@@ -43,7 +43,7 @@ App.tsx (host)
 ## Package Structure
 
 ```
-packages/esignature-core/src/       # platform-agnostic (shared with web)
+packages/esign-core/src/       # platform-agnostic (shared with web)
 ├── index.ts             # Full entry (all sources + Apollo factory)
 ├── webform.ts           # Apollo-free entry (./webform subpath)
 ├── signing/             # SigningSource + sources + event interpreters

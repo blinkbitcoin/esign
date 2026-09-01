@@ -1,7 +1,7 @@
 // Guard: the ./webform entry must stay Apollo-free.
 //
 // Walks the static import graph from src/webform.ts (following relative
-// imports and @blinkbitcoin/esignature-core/* self-references) and asserts no
+// imports and @blinkbitcoin/esign-core/* self-references) and asserts no
 // reached file imports '@apollo/' or 'graphql'. This is the guarantee that a
 // Web Forms-only consumer never needs those packages installed.
 
@@ -74,7 +74,7 @@ describe('webform entry (Apollo-free guarantee)', () => {
   it('never reaches a file that imports @apollo/* or graphql', () => {
     const { files, externals } = collectImportGraph(
       path.join(SRC, 'webform.ts'),
-      '@blinkbitcoin/esignature-core',
+      '@blinkbitcoin/esign-core',
       SRC,
     );
 
@@ -91,7 +91,7 @@ describe('webform entry (Apollo-free guarantee)', () => {
   it('the full index DOES reach Apollo (sanity check that the walker works)', () => {
     const { externals } = collectImportGraph(
       path.join(SRC, 'index.ts'),
-      '@blinkbitcoin/esignature-core',
+      '@blinkbitcoin/esign-core',
       SRC,
     );
     expect(externals.some(spec => spec.startsWith('@apollo/'))).toBe(true);

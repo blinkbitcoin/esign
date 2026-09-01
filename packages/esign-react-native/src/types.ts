@@ -4,9 +4,9 @@
 import type {
   SigningSession,
   SigningSource,
-} from '@blinkbitcoin/esignature-core/webform';
+} from '@blinkbitcoin/esign-core/webform';
 
-export type { RecipientData } from '@blinkbitcoin/esignature-core/webform';
+export type { RecipientData } from '@blinkbitcoin/esign-core/webform';
 
 /**
  * Result returned on successful signing completion. envelopeId is optional

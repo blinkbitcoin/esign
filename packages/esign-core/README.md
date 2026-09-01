@@ -1,4 +1,4 @@
-# @blinkbitcoin/esignature-core
+# @blinkbitcoin/esign-core
 
 Platform-agnostic core shared by
 [`@blinkbitcoin/esign-react-native`](../esign-react-native) and
@@ -14,8 +14,8 @@ as their dependency. Install directly only to build a custom integration.
 
 | Import | Contents | Needs Apollo? |
 |--------|----------|---------------|
-| `@blinkbitcoin/esignature-core` | Everything: all three sources, Apollo factory, GraphQL operations, `ErrorCode` contract | Yes (`@apollo/client` + `graphql` peers) |
-| `@blinkbitcoin/esignature-core/webform` | Web Forms only: `createWebFormsSource`, `createPublicUrlSource`, interpreters, `getErrorMessage`, types | **No — Apollo-free by construction** (guard-tested) |
+| `@blinkbitcoin/esign-core` | Everything: all three sources, Apollo factory, GraphQL operations, `ErrorCode` contract | Yes (`@apollo/client` + `graphql` peers) |
+| `@blinkbitcoin/esign-core/webform` | Web Forms only: `createWebFormsSource`, `createPublicUrlSource`, interpreters, `getErrorMessage`, types | **No — Apollo-free by construction** (guard-tested) |
 
 `@apollo/client` and `graphql` are **optional** peer dependencies — required
 only when the full entry (proxy mode) is used.

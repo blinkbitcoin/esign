@@ -11,13 +11,13 @@ export default defineConfig({
         __dirname,
         '../../packages/esign-react/src/index.ts',
       ),
-      '@blinkbitcoin/esignature-core/webform': path.resolve(
+      '@blinkbitcoin/esign-core/webform': path.resolve(
         __dirname,
-        '../../packages/esignature-core/src/webform.ts',
+        '../../packages/esign-core/src/webform.ts',
       ),
-      '@blinkbitcoin/esignature-core': path.resolve(
+      '@blinkbitcoin/esign-core': path.resolve(
         __dirname,
-        '../../packages/esignature-core/src/index.ts',
+        '../../packages/esign-core/src/index.ts',
       ),
     },
   },

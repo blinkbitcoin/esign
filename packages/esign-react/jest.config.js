@@ -1,8 +1,7 @@
 module.exports = {
   testEnvironment: 'jsdom',
   moduleNameMapper: {
-    '^@blinkbitcoin/esignature-core$':
-      '<rootDir>/../esignature-core/src/index.ts',
+    '^@blinkbitcoin/esign-core$': '<rootDir>/../esign-core/src/index.ts',
   },
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   collectCoverageFrom: ['src/**/*.{ts,tsx}'],

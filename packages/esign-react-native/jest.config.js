@@ -2,10 +2,9 @@ module.exports = {
   preset: '@react-native/jest-preset',
   testPathIgnorePatterns: ['/node_modules/', '/lib/'],
   moduleNameMapper: {
-    '^@blinkbitcoin/esignature-core/webform$':
-      '<rootDir>/../esignature-core/src/webform.ts',
-    '^@blinkbitcoin/esignature-core$':
-      '<rootDir>/../esignature-core/src/index.ts',
+    '^@blinkbitcoin/esign-core/webform$':
+      '<rootDir>/../esign-core/src/webform.ts',
+    '^@blinkbitcoin/esign-core$': '<rootDir>/../esign-core/src/index.ts',
     '^react-native-webview$': '<rootDir>/__mocks__/react-native-webview.tsx',
     '^@react-native-community/netinfo$':
       '<rootDir>/__mocks__/@react-native-community/netinfo.ts',

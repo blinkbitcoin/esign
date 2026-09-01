@@ -14,7 +14,7 @@
     "ignoreDeprecations": "6.0",
     "types": ["jest"],
     "paths": {
-      "@blinkbitcoin/esignature-core": ["../esignature-core/src/index.ts"]
+      "@blinkbitcoin/esign-core": ["../esign-core/src/index.ts"]
     }
   },
   "include": ["src"],

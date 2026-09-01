@@ -1,4 +1,4 @@
-// @blinkbitcoin/esignature-core - platform-agnostic core shared by the RN and
+// @blinkbitcoin/esign-core - platform-agnostic core shared by the RN and
 // web signing packages: the SigningSource abstraction + built-in sources, the
 // Apollo client factory + error-code contract, the GraphQL operations, and the
 // generated types. No React/DOM/WebView - the platform packages layer the

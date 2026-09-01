@@ -61,7 +61,7 @@ jobs:
       - name: Resolve version and dist-tag
         id: ver
         run: |
-          PACKAGES="packages/esignature-core packages/esign-react-native packages/esign-react"
+          PACKAGES="packages/esign-core packages/esign-react-native packages/esign-react"
           if [ "${{ github.event_name }}" = "release" ]; then
             VERSION="${{ github.event.release.tag_name }}"
             VERSION="${VERSION#v}"
@@ -74,14 +74,14 @@ jobs:
             done
             echo "disttag=latest" >> "$GITHUB_OUTPUT"
           else
-            BASE=$(node -p "require('./packages/esignature-core/package.json').version")
+            BASE=$(node -p "require('./packages/esign-core/package.json').version")
             VERSION="${BASE}-pre.${{ github.run_number }}.$(git rev-parse --short HEAD)"
             for p in $PACKAGES; do
               (cd "$p" && npm pkg set version="$VERSION")
             done
             # ^X.Y.Z never matches a prerelease - pin core exactly
-            (cd packages/esign-react-native && npm pkg set "dependencies.@blinkbitcoin/esignature-core=$VERSION")
-            (cd packages/esign-react && npm pkg set "dependencies.@blinkbitcoin/esignature-core=$VERSION")
+            (cd packages/esign-react-native && npm pkg set "dependencies.@blinkbitcoin/esign-core=$VERSION")
+            (cd packages/esign-react && npm pkg set "dependencies.@blinkbitcoin/esign-core=$VERSION")
             echo "disttag=next" >> "$GITHUB_OUTPUT"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -90,8 +90,8 @@ jobs:
       - name: Build (core first - the platform packages need its dist)
         run: npm run build
 
-      - name: Publish @blinkbitcoin/esignature-core
-        run: npm publish -w packages/esignature-core --tag ${{ steps.ver.outputs.disttag }}
+      - name: Publish @blinkbitcoin/esign-core
+        run: npm publish -w packages/esign-core --tag ${{ steps.ver.outputs.disttag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

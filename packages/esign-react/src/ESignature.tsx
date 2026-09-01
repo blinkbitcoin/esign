@@ -5,13 +5,13 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import { getErrorMessage, isRestartable } from '@blinkbitcoin/esignature-core';
+import { getErrorMessage, isRestartable } from '@blinkbitcoin/esign-core';
 import { isMountable } from './docusignWebForms';
 import type {
   SigningEvent,
   SigningSession,
   SigningSourceError,
-} from '@blinkbitcoin/esignature-core';
+} from '@blinkbitcoin/esign-core';
 import type {
   ESignatureProps,
   ESignatureStatus,
@@ -22,7 +22,7 @@ import type {
 export {
   getErrorMessage,
   getApolloErrorCode,
-} from '@blinkbitcoin/esignature-core';
+} from '@blinkbitcoin/esign-core';
 
 /**
  * ESignature component for the document signing flow on web (iframe-embedded).

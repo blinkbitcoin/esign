@@ -2,12 +2,9 @@
 // Named exports only (ESLint enforced)
 // The props contract mirrors packages/esign-react-native/src/types.ts.
 
-import type {
-  SigningSession,
-  SigningSource,
-} from '@blinkbitcoin/esignature-core';
+import type { SigningSession, SigningSource } from '@blinkbitcoin/esign-core';
 
-export type { RecipientData } from '@blinkbitcoin/esignature-core';
+export type { RecipientData } from '@blinkbitcoin/esign-core';
 
 /**
  * Result returned on successful signing completion. envelopeId is optional

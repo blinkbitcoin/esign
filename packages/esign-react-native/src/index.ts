@@ -12,10 +12,10 @@
 //   createWebFormsSource({ createInstance }) · createPublicUrlSource({ url })
 //
 // The signing abstraction, sources, Apollo factory, and operations come from
-// @blinkbitcoin/esignature-core and are re-exported here for convenience.
+// @blinkbitcoin/esign-core and are re-exported here for convenience.
 
 export { ESignature, getErrorMessage } from './ESignature';
-export { getApolloErrorCode } from '@blinkbitcoin/esignature-core';
+export { getApolloErrorCode } from '@blinkbitcoin/esign-core';
 export type {
   ESignatureProps,
   ESignatureStatus,
@@ -39,7 +39,7 @@ export {
   ErrorCode,
   CREATE_ENVELOPE_MUTATION,
   GET_SIGNING_URL_MUTATION,
-} from '@blinkbitcoin/esignature-core';
+} from '@blinkbitcoin/esign-core';
 export type {
   SigningSource,
   RestartableSigningSource,
@@ -56,4 +56,4 @@ export type {
   CreateEnvelopeResult,
   GetSigningUrlInput,
   GetSigningUrlResult,
-} from '@blinkbitcoin/esignature-core';
+} from '@blinkbitcoin/esign-core';

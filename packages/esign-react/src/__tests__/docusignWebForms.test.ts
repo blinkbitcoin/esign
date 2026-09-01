@@ -4,7 +4,7 @@ import {
   type DocuSignSigning,
   type DocuSignSdk,
 } from '../docusignWebForms';
-import { createPublicUrlSource } from '@blinkbitcoin/esignature-core';
+import { createPublicUrlSource } from '@blinkbitcoin/esign-core';
 
 // A fake DocuSign.js SDK so the wiring (load → signing → on → mount) is tested
 // without the real bundle.js.

@@ -1,7 +1,7 @@
 // Guard: the ./webform entry must stay Apollo-free.
 //
 // Walks the static import graph from src/webform.ts - following relative
-// imports AND crossing into @blinkbitcoin/esignature-core's source (webform
+// imports AND crossing into @blinkbitcoin/esign-core's source (webform
 // subpath) - and asserts no reached file imports '@apollo/' or 'graphql'.
 // This is the package's guarantee that a Web Forms-only consumer never needs
 // GraphQL dependencies installed.
@@ -10,8 +10,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const RN_SRC = path.resolve(__dirname, '..');
-const CORE_SRC = path.resolve(__dirname, '../../../esignature-core/src');
-const CORE_PKG = '@blinkbitcoin/esignature-core';
+const CORE_SRC = path.resolve(__dirname, '../../../esign-core/src');
+const CORE_PKG = '@blinkbitcoin/esign-core';
 
 const IMPORT_RE =
   /(?:import|export)\s+(?:type\s+)?[^'"]*from\s+['"]([^'"]+)['"]/g;

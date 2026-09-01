@@ -6,11 +6,6 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   clean: true,
-  external: [
-    'react',
-    '@apollo/client',
-    'graphql',
-    '@blinkbitcoin/esignature-core',
-  ],
+  external: ['react', '@apollo/client', 'graphql', '@blinkbitcoin/esign-core'],
   outExtension: ({ format }) => ({ js: format === 'cjs' ? '.cjs' : '.js' }),
 });

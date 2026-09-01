@@ -11,7 +11,7 @@ the demo app exists for manual and E2E testing.
 | Workspace | Path | Role |
 |-----------|------|------|
 | `backend` | `apps/api/` | Express 5 + Apollo Server 5 GraphQL API, Knex/PostgreSQL, provider adapters (DocuSign/mock), webhooks |
-| `@blinkbitcoin/esignature-core` | `packages/esignature-core/` | Platform-agnostic core: `SigningSource` abstraction + sources, Apollo factory, GraphQL operations + codegen (no React/DOM) |
+| `@blinkbitcoin/esign-core` | `packages/esign-core/` | Platform-agnostic core: `SigningSource` abstraction + sources, Apollo factory, GraphQL operations + codegen (no React/DOM) |
 | `@blinkbitcoin/esign-react-native` | `packages/esign-react-native/` | Publishable RN library: `ESignature` component (WebView) over core |
 | `@blinkbitcoin/esign-react` | `packages/esign-react/` | Publishable React **web** library: `ESignature` (iframe) + DocuSign.js source over core |
 | `esign-react-native-example` | `examples/react-native-demo/` | RN 0.86 demo app hosting the RN library (Maestro E2E target) |
@@ -88,13 +88,13 @@ npm run migrate:test         # Same against the .env.test database
   (demo) wiring.
 - **Provider-agnostic**: `ESignature` takes a `SigningSource` (not
   contract/Apollo details). The abstraction + the proxy/webforms/public sources
-  + event interpreters live in `@blinkbitcoin/esignature-core`. Add a provider =
+  + event interpreters live in `@blinkbitcoin/esign-core`. Add a provider =
   a new `SigningSource`; the component never changes.
 - Native-module mocks live in `packages/esign-react-native/__mocks__/`
   and are reused by the demo's jest config.
 - The platform-agnostic code (the `SigningSource` abstraction + sources, the
   Apollo client factory, the GraphQL operations + generated types) lives in
-  **`@blinkbitcoin/esignature-core`** (`packages/esignature-core/`), depended on
+  **`@blinkbitcoin/esign-core`** (`packages/esign-core/`), depended on
   and re-exported by both the RN and web packages. Each platform package now
   contains only its `ESignature` component (+ web-only `docusignWebForms.ts`).
   Codegen runs in core; the KEPT-IN-SYNC duplication is gone.

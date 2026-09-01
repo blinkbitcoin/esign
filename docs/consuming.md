@@ -9,7 +9,7 @@ The three client packages publish to **GitHub Packages** under the
 |---------|-----|
 | `@blinkbitcoin/esign-react-native` | React Native apps |
 | `@blinkbitcoin/esign-react` | React web apps |
-| `@blinkbitcoin/esignature-core` | (transitive dependency of both; also usable standalone) |
+| `@blinkbitcoin/esign-core` | (transitive dependency of both; also usable standalone) |
 
 Publishing has two channels (both gated on the full test fleet - unit
 coverage thresholds + all three E2E suites):

@@ -14,7 +14,7 @@
 //   createWebFormsSource · createPublicUrlSource · createDocuSignWebFormsSource
 //
 // The signing abstraction, sources, Apollo factory, and operations come from
-// @blinkbitcoin/esignature-core (shared with the RN package) and are re-exported.
+// @blinkbitcoin/esign-core (shared with the RN package) and are re-exported.
 
 export { ESignature, getErrorMessage, getApolloErrorCode } from './ESignature';
 export type {
@@ -50,7 +50,7 @@ export {
   ErrorCode,
   CREATE_ENVELOPE_MUTATION,
   GET_SIGNING_URL_MUTATION,
-} from '@blinkbitcoin/esignature-core';
+} from '@blinkbitcoin/esign-core';
 export type {
   SigningSource,
   RestartableSigningSource,
@@ -67,4 +67,4 @@ export type {
   CreateEnvelopeResult,
   GetSigningUrlInput,
   GetSigningUrlResult,
-} from '@blinkbitcoin/esignature-core';
+} from '@blinkbitcoin/esign-core';

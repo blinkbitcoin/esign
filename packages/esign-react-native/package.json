@@ -96,7 +96,7 @@
     ]
   },
   "dependencies": {
-    "@blinkbitcoin/esignature-core": "^0.1.0"
+    "@blinkbitcoin/esign-core": "^0.1.0"
   },
   "peerDependenciesMeta": {
     "@apollo/client": {

@@ -12,7 +12,7 @@ import ReactTestRenderer from 'react-test-renderer';
 
 import { ESignature, getErrorMessage } from '../ESignature';
 import { getApolloErrorCode } from '../index';
-import { interpretProxyEvent } from '@blinkbitcoin/esignature-core';
+import { interpretProxyEvent } from '@blinkbitcoin/esign-core';
 import {
   simulateWebViewMessage,
   simulateRawWebViewMessage,
@@ -23,10 +23,7 @@ import NetInfo, {
   resetMockNetworkState,
 } from '../../__mocks__/@react-native-community/netinfo';
 
-import type {
-  SigningSource,
-  SigningSession,
-} from '@blinkbitcoin/esignature-core';
+import type { SigningSource, SigningSession } from '@blinkbitcoin/esign-core';
 
 // react-native-webview is mocked via moduleNameMapper in jest.config.js
 

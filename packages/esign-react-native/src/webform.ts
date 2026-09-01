@@ -22,7 +22,7 @@ export {
   interpretDocuSignEvent,
   interpretProxyEvent,
   isRestartable,
-} from '@blinkbitcoin/esignature-core/webform';
+} from '@blinkbitcoin/esign-core/webform';
 export type {
   SigningSource,
   RestartableSigningSource,
@@ -32,4 +32,4 @@ export type {
   WebFormsSigningSourceOptions,
   WebFormsInstance,
   PublicUrlSigningSourceOptions,
-} from '@blinkbitcoin/esignature-core/webform';
+} from '@blinkbitcoin/esign-core/webform';

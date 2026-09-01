@@ -139,7 +139,7 @@ Ordered by how likely you are to need each part:
 |------|------------------|
 | [`packages/esign-react-native/`](packages/esign-react-native/README.md) | The React Native library you install: the `ESignature` component and the signing sources. |
 | [`packages/esign-react/`](packages/esign-react/README.md) | The React web library: the same component and sources for browser apps, embedding with an iframe instead of a WebView. |
-| [`packages/esignature-core/`](packages/esignature-core/README.md) | The shared core both libraries build on: the `SigningSource` abstraction and event interpreters, plus the GraphQL client pieces used by mode 3. It arrives automatically as a dependency - you never install it directly. |
+| [`packages/esign-core/`](packages/esign-core/README.md) | The shared core both libraries build on: the `SigningSource` abstraction and event interpreters, plus the GraphQL client pieces used by mode 3. It arrives automatically as a dependency - you never install it directly. |
 | [`apps/api/`](apps/api/README.md) | The backend service for mode 3: a GraphQL API that creates envelopes through provider adapters (DocuSign and a mock), persists status in PostgreSQL, and receives provider webhooks. Not needed for modes 1 and 2. |
 | [`examples/react-native-demo/`](examples/react-native-demo/README.md) | A complete React Native app hosting the component. Used for manual testing, and the mobile end-to-end suites drive it. |
 | [`examples/react-demo/`](examples/react-demo/README.md) | The same for the browser: a small React app hosting the web component, driven by the browser end-to-end suites. |

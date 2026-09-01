@@ -16,12 +16,9 @@ import {
 } from '@testing-library/react';
 
 import { ESignature, getErrorMessage, getApolloErrorCode } from '../ESignature';
-import { interpretProxyEvent } from '@blinkbitcoin/esignature-core';
+import { interpretProxyEvent } from '@blinkbitcoin/esign-core';
 
-import type {
-  SigningSource,
-  SigningSession,
-} from '@blinkbitcoin/esignature-core';
+import type { SigningSource, SigningSession } from '@blinkbitcoin/esign-core';
 
 const okSession: SigningSession = {
   url: 'https://sign/1',

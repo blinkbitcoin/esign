@@ -14,11 +14,9 @@
     "types": ["vitest/globals"],
     "paths": {
       "@blinkbitcoin/esign-react": ["../../packages/esign-react/src"],
-      "@blinkbitcoin/esignature-core": [
-        "../../packages/esignature-core/src/index.ts"
-      ],
-      "@blinkbitcoin/esignature-core/webform": [
-        "../../packages/esignature-core/src/webform.ts"
+      "@blinkbitcoin/esign-core": ["../../packages/esign-core/src/index.ts"],
+      "@blinkbitcoin/esign-core/webform": [
+        "../../packages/esign-core/src/webform.ts"
       ]
     }
   },

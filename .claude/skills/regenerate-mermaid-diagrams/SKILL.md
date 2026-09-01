@@ -1,54 +1,73 @@
 ---
 name: regenerate-mermaid-diagrams
-description: Regenerate Mermaid diagrams from existing project documentation. Use when architecture docs have been updated and diagrams need to reflect changes.
+description: Regenerate docs/diagrams/mermaid-diagrams.md from the current documentation and code. Use when architecture, data model, or signing-flow changes make the diagrams stale.
 disable-model-invocation: true
 ---
 
 # Regenerate Mermaid Diagrams
 
-Regenerate `docs/diagrams/mermaid-diagrams.md` from current project documentation.
+Regenerate `docs/diagrams/mermaid-diagrams.md` - the repository's **only**
+diagram artifact. Mermaid is the single diagram format on purpose: it renders
+directly on GitHub, diffs as text, and is hand-maintainable alongside the
+docs (there are no Excalidraw or image sources to keep in sync).
 
-## Steps
+## Ground rules
 
-1. Read the existing documentation in `docs/`:
-   - `docs/architecture-mobile.md` - Mobile app components and state
-   - `docs/architecture-backend.md` - Backend services and providers
-   - `docs/data-models-backend.md` - Database schema and relationships
-   - `docs/api-contracts-backend.md` - GraphQL schema and endpoints
+- **Docs are the source of truth for shape, code for names.** Derive each
+  diagram from the doc listed below, then verify every identifier (package
+  names, routes, columns, event names) against the code - docs can lag.
+- **Never invent components.** If a doc and the code disagree, fix the doc
+  first (or flag it), then diagram the corrected state.
+- The current package names are `@blinkbitcoin/esign-core`,
+  `@blinkbitcoin/esign-react-native`, `@blinkbitcoin/esign-react` under
+  `packages/`; the backend is `apps/api`. If these have changed, trust
+  `packages/*/package.json` over any doc.
 
-2. Generate these diagrams:
+## The eight diagrams, and where each comes from
 
-   **System Architecture** (flowchart TB)
-   - Mobile app subgraph with key components
-   - Backend subgraph with services, GraphQL, webhooks
-   - External services (DocuSign, Database)
-   - Connections with technology labels
+| # | Diagram | Type | Source of truth |
+|---|---------|------|-----------------|
+| 1 | System Architecture | `flowchart TB` | `README.md` (modes) + `docs/integration-architecture.md`; routes from `apps/api/src/app.ts` |
+| 2 | Data Flow (proxy mode) | `flowchart LR` | `docs/integration-architecture.md` end-to-end flow |
+| 3 | Signing Flow Process | `flowchart TD` | `docs/architecture-mobile.md` state flow; event names from `packages/esign-core/src/signing/` |
+| 4 | Database ERD | `erDiagram` | `docs/data-models-backend.md`; verify against `apps/api/migrations/` |
+| 5 | Component Hierarchy | `flowchart TB` | `docs/architecture-mobile.md` + demo `App.tsx` |
+| 6 | Webhook Flow | `sequenceDiagram` | `docs/architecture-backend.md` webhook section + `apps/api/src/webhook.ts` |
+| 7 | GraphQL Request Flow | `sequenceDiagram` | `docs/api-contracts-backend.md` + `apps/api/src/schema.ts` |
+| 8 | Web Forms Mode Flow | `sequenceDiagram` | `docs/webforms-setup.md` + `apps/api/src/providers/docusign/client.ts` |
 
-   **Data Flow Diagram** (flowchart LR)
-   - User actor, numbered process nodes (1.0, 2.0, etc.)
-   - Data stores, labeled flows between nodes
+## Pedagogy and consistency rules
 
-   **Database ERD** (erDiagram)
-   - All entities from Prisma schema
-   - Relationships with cardinality
-   - Key fields with types
+These keep the set readable as a progression, not eight unrelated pictures:
 
-   **Component Hierarchy** (flowchart TB)
-   - React component tree
-   - State transitions
+- **Mode-aware labeling.** The repo has three integration modes (public URL /
+  Web Forms / proxy). Any diagram that is mode-specific says so in its
+  heading (e.g. "Data Flow Diagram (proxy mode)"); the System Architecture
+  diagram shows where the three modes diverge and notes that public-URL mode
+  needs no backend and only the proxy source touches Apollo.
+- **Same names everywhere.** A node representing `ESignature`,
+  `SigningSource`, a route, or a DB column uses the exact identifier from
+  code - never a paraphrase ("Signing component") that readers must map.
+- **Consistent colors** (hex, applied via `style`):
+  - `#b2f2bb` green - success / terminal-good states
+  - `#ffc9c9` red - error / terminal-bad states
+  - `#ffec99` yellow - recoverable states (offline, session expiry, cancel)
+- **Event vocabulary is real.** Use the actual signing event names
+  (`signing_complete`, `cancel`, `decline`, `session_timeout`; DocuSign
+  `sessionEnd` with `signingResult` / `formConfirmation` / `sessionTimeout`)
+  from `packages/esign-core/src/signing/events.ts` - the diagrams double as
+  protocol documentation.
+- Separate diagrams with `---`; keep the one-line intro under each `##`
+  heading if it adds a constraint the picture can't show.
 
-   **Webhook Sequence** (sequenceDiagram)
-   - DocuSign -> Webhook -> Database flow
-   - HMAC validation, status updates
+## Verification before finishing
 
-3. Use consistent styling:
-   - Green (#b2f2bb) for success states
-   - Red (#ffc9c9) for error states
-   - Yellow (#ffec99) for warnings/pending
-   - Blue (#d0ebff) for primary components
-
-4. Add horizontal rules (---) between diagram sections.
-
-5. Update `docs/project-scan-report.json` timestamp if it exists.
-
-6. Report completion with the file path.
+1. Every fenced block starts with ` ```mermaid ` and the count matches the
+   table above (currently 8).
+2. `grep` the file for stale identifiers: old package names, `Prisma`
+   (it is Knex), `docusignId` (it is `providerEnvelopeId`), any route not
+   present in `apps/api/src/app.ts`.
+3. ERD matches the latest migration exactly (columns, uniqueness, cascade,
+   audit `action` values including `session_restart` and `creation_failed`).
+4. `docs/index.md` still links the file with an accurate description.
+5. Run `npm run format` and `make check-code`.

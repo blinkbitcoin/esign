@@ -55,15 +55,7 @@
 - [Data Models - Backend](./data-models-backend.md) - Knex schema and database design
 
 ### Diagrams
-
-#### Excalidraw (Editable)
-- [System Architecture](./diagrams/system-architecture.excalidraw) - Mobile ↔ Backend ↔ DocuSign
-- [Data Flow Diagram](./diagrams/data-flow.excalidraw) - Signing data flow (DFD)
-- [Signing Flowchart](./diagrams/signing-flowchart.excalidraw) - Process flow from tap to completion
-- [Database ERD](./diagrams/database-erd.excalidraw) - Envelope and AuditLog entities
-
-#### Mermaid (GitHub/GitLab Rendering)
-- [All Diagrams in Mermaid](./diagrams/mermaid-diagrams.md) - System architecture, data flow, signing flow, ERD, component hierarchy, webhook sequence
+- [Diagrams (Mermaid)](./diagrams/mermaid-diagrams.md) - System architecture, data flow, signing flow, ERD, component hierarchy, webhook + GraphQL + Web Forms sequences (renders directly on GitHub)
 
 ---
 

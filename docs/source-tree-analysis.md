@@ -10,7 +10,7 @@ blink-esign/
 │
 ├── 🧩 SHARED CORE (platform-agnostic)
 │   │
-│   └── packages/esignature-core/
+│   └── packages/esign-core/
 │       ├── src/
 │       │   ├── index.ts           # Full entry (incl. Apollo factory) ⭐
 │       │   ├── webform.ts         # Apollo-free entry (./webform) ⭐

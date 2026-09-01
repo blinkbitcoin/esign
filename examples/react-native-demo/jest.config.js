@@ -5,12 +5,12 @@ module.exports = {
     'node_modules/(?!(@react-native|react-native|@apollo/client|graphql|react-native-webview)/)',
   ],
   moduleNameMapper: {
-    '^@blinkbitcoin/esignature-core/webform$':
-      '<rootDir>/../../packages/esignature-core/src/webform.ts',
+    '^@blinkbitcoin/esign-core/webform$':
+      '<rootDir>/../../packages/esign-core/src/webform.ts',
     '^@blinkbitcoin/esign-react-native/webform$':
       '<rootDir>/../../packages/esign-react-native/src/webform.ts',
-    '^@blinkbitcoin/esignature-core$':
-      '<rootDir>/../../packages/esignature-core/src/index.ts',
+    '^@blinkbitcoin/esign-core$':
+      '<rootDir>/../../packages/esign-core/src/index.ts',
     // Resolve the workspace library straight to source (no build needed)
     '^@blinkbitcoin/esign-react-native$':
       '<rootDir>/../../packages/esign-react-native/src/index.ts',

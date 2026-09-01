@@ -1,4 +1,4 @@
-// @blinkbitcoin/esignature-core/webform - the Apollo-free entry.
+// @blinkbitcoin/esign-core/webform - the Apollo-free entry.
 //
 // Everything reachable from this file is guaranteed to never import
 // '@apollo/client' or 'graphql', so a DocuSign Web Forms-only consumer can
