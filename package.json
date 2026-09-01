@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
-    "@biomejs/biome": "^2.5.2",
+    "@biomejs/biome": "^2.5.11",
     "@changesets/cli": "^2.31.1",
     "@eslint/eslintrc": "^3.3.6",
     "@react-native/eslint-config": "^0.87.1",
