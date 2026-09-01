@@ -129,6 +129,19 @@ describe('rendering by status', () => {
 });
 
 describe('handleSign (acquisition)', () => {
+  it('reaches signing under React.StrictMode (guard re-arms after double-mount)', async () => {
+    const source = makeSource();
+    render(
+      <React.StrictMode>
+        <ESignature {...defaultProps} source={source} />
+      </React.StrictMode>,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('sign-document-button'));
+    });
+    expect(await screen.findByTestId('signing-iframe')).toBeTruthy();
+  });
+
   it('goes offline without calling the source', () => {
     onLineSpy.mockReturnValue(false);
     const source = makeSource();

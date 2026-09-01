@@ -68,6 +68,9 @@ export const ESignature: React.FC<ESignatureProps> = ({
   // Lets async work detect unmount (in-flight source.start(), connectivity)
   const mountedRef = useRef(true);
   useEffect(() => {
+    // Re-arm on mount: StrictMode mounts, runs cleanup, then mounts again -
+    // without this line the guard would stay false after the dev double-mount
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
     };

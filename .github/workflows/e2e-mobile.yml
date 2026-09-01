@@ -172,12 +172,14 @@ jobs:
         if: always()
         run: pkill -f "npm run dev" || true
 
-      - name: Upload Maestro test results
+      - name: Upload Maestro test results + crash reports
         uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: maestro-results
-          path: ~/.maestro/tests/
+          path: |
+            ~/.maestro/tests/
+            ~/Library/Logs/DiagnosticReports/
           retention-days: 7
 
   e2e-mobile-android:

@@ -69,8 +69,10 @@ export const ESignature: React.FC<ESignatureProps> = ({
   // Lets async work detect unmount (in-flight source.start(), connectivity)
   const mountedRef = useRef(true);
 
-  // Cleanup on unmount: cancel the success timeout, mark unmounted
+  // Cleanup on unmount: cancel the success timeout, mark unmounted.
+  // Re-arms on mount so a StrictMode double-mount can't leave the guard stuck
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
       if (successTimeoutRef.current) {
