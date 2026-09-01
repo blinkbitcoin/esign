@@ -17,16 +17,11 @@ Two ways to run it:
 
 ## How it flows
 
-```
-demo (webform mode)  ──POST /webform/instance──▶  backend
-                                                  provider.createWebFormInstance(prefill)
-                                                    mock     → mock-webform URL
-                                                    docusign → real instance URL
-        ◀──────────── { url } ─────────────────
-  createWebFormsSource embeds url in WebView/iframe
-        ◀─ postMessage: { type: 'signingComplete' | 'signingCancel' | ... }
-  interpretDocuSignEvent → onComplete / onCancel / ...
-```
+[![Web Forms Mode Flow](../diagrams/webforms-flow.svg)](../diagrams/src/webforms-flow.mmd)
+
+The embedded page reports back via postMessage
+(`{ type: 'signingComplete' | 'signingCancel' | ... }`);
+`interpretDocuSignEvent` maps those to `onComplete` / `onCancel` / ...
 
 The backend endpoint is provider-agnostic (`POST /webform/instance`,
 authenticated); the mode is chosen by `ESIGN_PROVIDER`. Nothing DocuSign-specific

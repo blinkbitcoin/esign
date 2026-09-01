@@ -13,31 +13,9 @@ executed through `tsx`); data access goes through repository modules
 
 ## Entity Relationship Diagram
 
-```
-┌───────────────────────────────────────────┐
-│                 Envelope                  │
-├───────────────────────────────────────────┤
-│ PK  id                  UUID              │
-│     providerEnvelopeId  String (unique)   │
-│     userId              String            │
-│     contractType        String            │
-│     status              String            │
-│     createdAt           DateTime          │
-│     updatedAt           DateTime          │
-└──────────────┬────────────────────────────┘
-               │
-               │ 1:N (ON DELETE CASCADE)
-               ▼
-┌───────────────────────────────────────────┐
-│                 AuditLog                  │
-├───────────────────────────────────────────┤
-│ PK  id                  UUID              │
-│ FK  envelopeId          UUID              │
-│     action              String            │
-│     timestamp           DateTime          │
-│     metadata            JSONB (nullable)  │
-└───────────────────────────────────────────┘
-```
+[![Database ERD](../diagrams/database-erd.svg)](../diagrams/src/database-erd.mmd)
+
+The `Envelope` → `AuditLog` relation is 1:N with `ON DELETE CASCADE`.
 
 ## Migrations
 

@@ -40,6 +40,11 @@ App.tsx (host)
     └── WebView → postMessage → source.interpret() → normalized events
 ```
 
+The state machine end to end, including offline handling and session
+restart:
+
+[![Signing Flow Process](../diagrams/signing-flow.svg)](../diagrams/src/signing-flow.mmd)
+
 ## Package Structure
 
 ```
@@ -166,6 +171,8 @@ Web Forms uses the `sessionEnd` vocabulary (`signingResult`,
 `sessionTimeout`, ...) - see [../integration/webforms.md](../integration/webforms.md).
 
 ## Demo Host (`examples/react-native-demo/App.tsx`)
+
+[![Component Hierarchy](../diagrams/component-hierarchy.svg)](../diagrams/src/component-hierarchy.mmd)
 
 | Component | Purpose |
 |-----------|---------|

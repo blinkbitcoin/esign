@@ -184,20 +184,11 @@ type EnvelopeResult {
   would invalidate the signature
 
 ### Flow
-```
-Provider → POST /webhook/esign
-              ↓
-    provider.verifyWebhook()      → 401 on failure
-              ↓
-    provider.parseWebhookEvent()  → 400 on malformed payload
-              ↓
-    handleWebhookEvent()          (generic, provider-neutral)
-      ├─ unknown status/envelope  → ack with 200, log warning
-      ├─ status unchanged         → ack with 200 (idempotent)
-      └─ status changed           → update + audit log in one transaction
-              ↓
-    200 on success / 500 on transient failure
-```
+
+[![Webhook Flow](../diagrams/webhook-flow.svg)](../diagrams/src/webhook-flow.mmd)
+
+`handleWebhookEvent()` is generic and provider-neutral: verification and
+payload parsing are delegated to the provider adapter.
 
 A transient processing failure (e.g. database outage) returns **500** so the
 provider retries later; the handler's idempotency makes retries safe.

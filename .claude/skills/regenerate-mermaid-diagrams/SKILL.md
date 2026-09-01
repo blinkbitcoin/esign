@@ -33,18 +33,22 @@ separator - mermaid-cli rejects it even where GitHub's renderer is lenient).
   `packages/`; the backend is `apps/api`. If these have changed, trust
   `packages/*/package.json` over any doc.
 
-## The eight diagrams, and where each comes from
+## The eight diagrams: provenance and embeds
 
-| # | Diagram | Type | Source of truth |
-|---|---------|------|-----------------|
-| 1 | System Architecture | `flowchart TB` | `README.md` (modes) + `docs/architecture/integration.md`; routes from `apps/api/src/app.ts` |
-| 2 | Data Flow (proxy mode) | `flowchart LR` | `docs/architecture/integration.md` end-to-end flow |
-| 3 | Signing Flow Process | `flowchart TD` | `docs/architecture/mobile.md` state flow; event names from `packages/esign-core/src/signing/` |
-| 4 | Database ERD | `erDiagram` | `docs/architecture/data-models.md`; verify against `apps/api/migrations/` |
-| 5 | Component Hierarchy | `flowchart TB` | `docs/architecture/mobile.md` + demo `App.tsx` |
-| 6 | Webhook Flow | `sequenceDiagram` | `docs/architecture/backend.md` webhook section + `apps/api/src/webhook.ts` |
-| 7 | GraphQL Request Flow | `sequenceDiagram` | `docs/architecture/api-contracts.md` + `apps/api/src/schema.ts` |
-| 8 | Web Forms Mode Flow | `sequenceDiagram` | `docs/integration/webforms.md` + `apps/api/src/providers/docusign/client.ts` |
+The SVGs are also embedded in the docs each diagram belongs to (same
+`[![...](.svg)](.mmd)` pattern as the combined page) - renaming or removing
+a diagram must update the "Embedded in" doc too:
+
+| # | Diagram | Type | Source of truth | Embedded in |
+|---|---------|------|-----------------|-------------|
+| 1 | System Architecture | `flowchart TB` | `README.md` (modes) + `docs/architecture/integration.md`; routes from `apps/api/src/app.ts` | `integration.md` (Parts) |
+| 2 | Data Flow (proxy mode) | `flowchart LR` | `docs/architecture/integration.md` end-to-end flow | combined page only (the doc's ASCII flow carries extra detail) |
+| 3 | Signing Flow Process | `flowchart TD` | `docs/architecture/mobile.md` state flow; event names from `packages/esign-core/src/signing/` | `mobile.md` (Architecture Pattern) |
+| 4 | Database ERD | `erDiagram` | `docs/architecture/data-models.md`; verify against `apps/api/migrations/` | `data-models.md` (ERD section) |
+| 5 | Component Hierarchy | `flowchart TB` | `docs/architecture/mobile.md` + demo `App.tsx` | `mobile.md` (Demo Host) |
+| 6 | Webhook Flow | `sequenceDiagram` | `docs/architecture/backend.md` webhook section + `apps/api/src/webhook.ts` | `backend.md` (Webhook Flow) |
+| 7 | GraphQL Request Flow | `sequenceDiagram` | `docs/architecture/api-contracts.md` + `apps/api/src/schema.ts` | `api-contracts.md` (createEnvelope) |
+| 8 | Web Forms Mode Flow | `sequenceDiagram` | `docs/integration/webforms.md` + `apps/api/src/providers/docusign/client.ts` | `webforms.md` (How it flows) |
 
 ## Pedagogy and consistency rules
 

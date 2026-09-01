@@ -90,6 +90,8 @@ type AuditLog {
 Creates a new signing envelope and returns the signing URL. The envelope and
 its `initiated` audit log are persisted in a single transaction.
 
+[![GraphQL Request Flow](../diagrams/graphql-request-flow.svg)](../diagrams/src/graphql-request-flow.mmd)
+
 **Request:**
 ```graphql
 mutation CreateEnvelope($input: CreateEnvelopeInput!) {
