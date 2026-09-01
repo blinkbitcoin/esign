@@ -145,7 +145,7 @@ Ordered by how likely you are to need each part:
 | [`examples/react-demo/`](examples/react-demo/README.md) | The same for the browser: a small React app hosting the web component, driven by the browser end-to-end suites. |
 | `docs/` | Documentation of how everything currently works - start at [docs/index.md](docs/index.md). |
 
-## Developing This Repo
+## Development
 
 Only needed if you're working on the packages or the backend themselves -
 **consuming the packages requires none of this** (see
@@ -158,7 +158,16 @@ make install                             # npm ci across all workspaces (also in
 direnv allow . && direnv allow apps/api  # once per machine (loads env + nix flake dev shell)
 ```
 
-Run the full proxy-mode stack against the demo apps:
+**Working on the libraries** requires nothing else - no backend, no
+database. The unit suites, lint, and typecheck run standalone:
+
+```sh
+make test
+```
+
+**Running the demo apps** is where the backend comes in: the demos sign
+against a locally running service and its Postgres. By default it uses the
+**mock provider**, so no DocuSign account or credentials are needed:
 
 ```sh
 make db-up migrate backend              # dev Postgres + migrations + server (:4000)
@@ -168,6 +177,11 @@ make start                              # Metro
 make ios                                # or: make android
 make web                                # or the web demo (Vite)
 ```
+
+**Real DocuSign** stays opt-in: configure credentials per
+[docs/docusign-setup.md](docs/docusign-setup.md), then `make test-live`
+verifies the API contracts against a demo account (it skips itself when no
+credentials are set).
 
 `make help` lists all targets (thin wrappers over the npm workspace scripts):
 
