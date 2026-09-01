@@ -9,8 +9,11 @@ tags:
   - webform
 ---
 - launchApp
-- assertVisible:
-    id: "sign-document-button"
+# Cold CI launch: the JS bundle load can outlast a plain assertVisible window
+- extendedWaitUntil:
+    visible:
+      id: "sign-document-button"
+    timeout: 20000
 - tapOn:
     id: "sign-document-button"
 

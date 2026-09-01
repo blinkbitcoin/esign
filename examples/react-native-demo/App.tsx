@@ -115,6 +115,7 @@ function AppContent() {
         onComplete={handleSigningComplete}
         onError={handleSigningError}
         onCancel={handleSigningCancel}
+        successDelayMs={4000}
       />
     </View>
   );

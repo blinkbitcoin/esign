@@ -6,6 +6,11 @@
 appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 ---
 - launchApp
+# Cold CI launch: the JS bundle load can outlast a plain assertVisible window
+- extendedWaitUntil:
+    visible:
+      id: "sign-document-button"
+    timeout: 20000
 - tapOn:
     id: "sign-document-button"
 - extendedWaitUntil:

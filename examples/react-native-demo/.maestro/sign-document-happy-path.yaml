@@ -11,11 +11,13 @@
 appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 ---
 - launchApp
+# Cold CI launch: the JS bundle load can outlast a plain assertVisible window
+- extendedWaitUntil:
+    visible:
+      id: "sign-document-button"
+    timeout: 20000
 
 # Idle state: start signing
-- assertVisible:
-    id: "sign-document-button"
-    label: "Verify Sign Document button is visible"
 - tapOn:
     id: "sign-document-button"
     label: "Tap Sign Document button"
