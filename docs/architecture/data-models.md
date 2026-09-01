@@ -13,7 +13,7 @@ executed through `tsx`); data access goes through repository modules
 
 ## Entity Relationship Diagram
 
-[![Database ERD](../diagrams/database-erd.svg)](../diagrams/src/database-erd.mmd)
+[![Database ERD](../diagrams/dist/database-erd.svg)](../diagrams/src/database-erd.mmd)
 
 The `Envelope` → `AuditLog` relation is 1:N with `ON DELETE CASCADE`.
 

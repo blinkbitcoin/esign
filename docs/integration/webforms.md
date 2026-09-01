@@ -17,7 +17,7 @@ Two ways to run it:
 
 ## How it flows
 
-[![Web Forms Mode Flow](../diagrams/webforms-flow.svg)](../diagrams/src/webforms-flow.mmd)
+[![Web Forms Mode Flow](../diagrams/dist/webforms-flow.svg)](../diagrams/src/webforms-flow.mmd)
 
 The embedded page reports back via postMessage
 (`{ type: 'signingComplete' | 'signingCancel' | ... }`);

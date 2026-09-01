@@ -10,7 +10,7 @@ and in Obsidian). Regenerate with `make diagrams`.
 
 ## System Architecture
 
-[![System Architecture](system-architecture.svg)](src/system-architecture.mmd)
+[![System Architecture](dist/system-architecture.svg)](src/system-architecture.mmd)
 
 The public-URL mode needs no backend at all; Apollo/GraphQL is loaded only
 by the proxy source (the `/webform` package entries never reach it).
@@ -19,40 +19,40 @@ by the proxy source (the `/webform` package entries never reach it).
 
 ## Data Flow Diagram (proxy mode)
 
-[![Data Flow Diagram (proxy mode)](data-flow-proxy.svg)](src/data-flow-proxy.mmd)
+[![Data Flow Diagram (proxy mode)](dist/data-flow-proxy.svg)](src/data-flow-proxy.mmd)
 
 ---
 
 ## Signing Flow Process
 
-[![Signing Flow Process](signing-flow.svg)](src/signing-flow.mmd)
+[![Signing Flow Process](dist/signing-flow.svg)](src/signing-flow.mmd)
 
 ---
 
 ## Database ERD
 
-[![Database ERD](database-erd.svg)](src/database-erd.mmd)
+[![Database ERD](dist/database-erd.svg)](src/database-erd.mmd)
 
 ---
 
 ## Component Hierarchy
 
-[![Component Hierarchy](component-hierarchy.svg)](src/component-hierarchy.mmd)
+[![Component Hierarchy](dist/component-hierarchy.svg)](src/component-hierarchy.mmd)
 
 ---
 
 ## Webhook Flow
 
-[![Webhook Flow](webhook-flow.svg)](src/webhook-flow.mmd)
+[![Webhook Flow](dist/webhook-flow.svg)](src/webhook-flow.mmd)
 
 ---
 
 ## GraphQL Request Flow
 
-[![GraphQL Request Flow](graphql-request-flow.svg)](src/graphql-request-flow.mmd)
+[![GraphQL Request Flow](dist/graphql-request-flow.svg)](src/graphql-request-flow.mmd)
 
 ---
 
 ## Web Forms Mode Flow
 
-[![Web Forms Mode Flow](webforms-flow.svg)](src/webforms-flow.mmd)
+[![Web Forms Mode Flow](dist/webforms-flow.svg)](src/webforms-flow.mmd)

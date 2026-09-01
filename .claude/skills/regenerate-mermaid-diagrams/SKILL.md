@@ -1,6 +1,6 @@
 ---
 name: regenerate-mermaid-diagrams
-description: Use when editing or adding any diagram under docs/diagrams/ (sources are src/*.mmd; mermaid-diagrams.md is generated - always run `make diagrams` after changing a source), or when architecture, data-model, or signing-flow changes make the diagrams stale.
+description: Use when editing or adding any diagram under docs/diagrams/ (sources are src/*.mmd; the combined page (docs/diagrams/README.md) is generated - always run `make diagrams` after changing a source), or when architecture, data-model, or signing-flow changes make the diagrams stale.
 ---
 
 # Regenerate Mermaid Diagrams
@@ -12,7 +12,7 @@ instantly on GitHub (eight live mermaid blocks each boot their own render
 iframe, which is slow).
 
 **Edit the per-diagram sources in `docs/diagrams/src/*.mmd`** - they are
-canonical. `docs/diagrams/*.svg` and `docs/diagrams/mermaid-diagrams.md`
+canonical. `docs/diagrams/dist/*.svg` and `docs/diagrams/README.md`
 are GENERATED from them by `make diagrams` (pinned mermaid-cli renders the
 SVGs; scripts/assemble-diagrams.mjs assembles the page and owns section
 titles and prose). A pre-commit hook re-runs this and stages the outputs;

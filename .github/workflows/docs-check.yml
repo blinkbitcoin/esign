@@ -51,7 +51,7 @@ jobs:
           # not change without its re-rendered SVG in the same push/PR.
           # `make diagrams` produces both; the pre-commit hook stages both.
           STALE_SVGS=$(echo "$CHANGED_FILES" | grep -E '^docs/diagrams/src/.*\.mmd$' | while read -r f; do
-            svg="docs/diagrams/$(basename "$f" .mmd).svg"
+            svg="docs/diagrams/dist/$(basename "$f" .mmd).svg"
             echo "$CHANGED_FILES" | grep -qx "$svg" || printf ' %s' "$f"
           done)
           if [ -n "$STALE_SVGS" ]; then

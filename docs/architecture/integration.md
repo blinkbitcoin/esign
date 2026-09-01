@@ -11,7 +11,7 @@
 | `backend` | `apps/api/` | Express + Apollo API | The main service: envelope orchestration, persistence, webhooks |
 | `demo` | `examples/react-native-demo/` | RN app | Integration demo hosting the library (manual + Maestro E2E) |
 
-[![System Architecture](../diagrams/system-architecture.svg)](../diagrams/src/system-architecture.mmd)
+[![System Architecture](../diagrams/dist/system-architecture.svg)](../diagrams/src/system-architecture.mmd)
 
 ## Integration Points
 

@@ -1,8 +1,8 @@
-// Assembles docs/diagrams/mermaid-diagrams.md from the per-diagram sources
-// in docs/diagrams/src/*.mmd. The .mmd files are canonical (editable /
-// individually renderable); the combined file embeds the pre-rendered
-// docs/diagrams/*.svg (rendered by `make diagrams` via mermaid-cli) so the
-// page loads instantly on GitHub instead of booting eight mermaid iframes.
+// Assembles docs/diagrams/README.md from the per-diagram sources in
+// docs/diagrams/src/*.mmd. The .mmd files are canonical (editable /
+// individually renderable); the combined page embeds the pre-rendered
+// docs/diagrams/dist/*.svg (rendered by `make diagrams` via mermaid-cli) so
+// it loads instantly on GitHub instead of booting eight mermaid iframes.
 // Run `make diagrams` after editing a source. CI fails on drift (see
 // test.yml); a missing SVG fails the assembly here.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -34,7 +34,7 @@ const SECTIONS = [
 ];
 
 const blocks = SECTIONS.map(({ file, title, outro }) => {
-  const svg = `${file.replace(/\.mmd$/, '')}.svg`;
+  const svg = `dist/${file.replace(/\.mmd$/, '')}.svg`;
   if (!existsSync(join(here, svg))) {
     console.error(`missing ${svg} - run \`make diagrams\` to render it`);
     process.exit(1);
@@ -54,5 +54,7 @@ and in Obsidian). Regenerate with \`make diagrams\`.
 
 ${blocks.join('\n---\n\n')}`;
 
-writeFileSync(join(here, 'mermaid-diagrams.md'), `${out.trim()}\n`);
-console.log(`assembled mermaid-diagrams.md from ${SECTIONS.length} sources`);
+writeFileSync(join(here, 'README.md'), `${out.trim()}\n`);
+console.log(
+  `assembled docs/diagrams/README.md from ${SECTIONS.length} sources`,
+);

@@ -185,7 +185,7 @@ type EnvelopeResult {
 
 ### Flow
 
-[![Webhook Flow](../diagrams/webhook-flow.svg)](../diagrams/src/webhook-flow.mmd)
+[![Webhook Flow](../diagrams/dist/webhook-flow.svg)](../diagrams/src/webhook-flow.mmd)
 
 `handleWebhookEvent()` is generic and provider-neutral: verification and
 payload parsing are delegated to the provider adapter.
@@ -295,6 +295,10 @@ npm run test:e2e
 | `DOCUSIGN_HMAC_KEY` | Webhook HMAC key (fail-closed in prod when unset) |
 | `JWT_SECRET` | HS256 JWT verification key (fail-closed in prod when unset) |
 | `PORT` | Server port (default: 4000) |
+
+Full reference (every variable, incl. optional overrides and OTEL):
+[development-guide.md](../development-guide.md#environment-variables-reference);
+runnable template: `apps/api/.env.example`.
 
 ## Entry Points
 

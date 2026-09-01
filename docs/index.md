@@ -64,7 +64,7 @@ Organized by namespace - pick by what you're doing:
 | Doc | Covers |
 |-----|--------|
 | [development-guide.md](./development-guide.md) | Working on this repo: setup, commands, quality gates, CI |
-| [diagrams/mermaid-diagrams.md](./diagrams/mermaid-diagrams.md) | All eight diagrams (render directly on GitHub) |
+| [diagrams/](./diagrams/README.md) | All eight diagrams (render directly on GitHub) |
 
 ---
 
