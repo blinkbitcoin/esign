@@ -136,7 +136,7 @@ blink-esign/
 │   ├── biome.json                 # Formatter config (backend has its own)
 │   ├── .editorconfig              # Editor + Biome defaults
 │   ├── .gitattributes             # EOL normalization; protects pbxproj/gradlew.bat
-│   ├── .npmrc                     # engine-strict (enforces engines >= 22.11)
+│   ├── .npmrc                     # engine-strict (enforces engines 22.22+ / 24.15+)
 │   │
 │   └── .github/
 │       └── workflows/

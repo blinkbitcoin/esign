@@ -18,7 +18,7 @@ the demo app exists for manual and E2E testing.
 | `esign-react-example` | `examples/react-demo/` | Vite web demo hosting the web library (`make web`) |
 
 - **Language**: TypeScript everywhere (TS 6.0)
-- **Node**: >= 22.11.0
+- **Node**: ^22.22.2 || >= 24.15.0 (floor set by jsdom 30)
 - **Env management**: direnv (house convention) - `.envrc` at root (`use
   flake` + workspace bins on PATH) and in `apps/api/` (loads `.env`); the
   backend also self-loads `.env` via dotenv as a non-direnv fallback

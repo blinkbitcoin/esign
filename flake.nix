@@ -21,7 +21,7 @@
       nativeBuildInputs = with pkgs;
         [
           # Active LTS, matching the house convention (blink-mobile pins
-          # nodejs_24). package.json engines stays ">= 22.11" - that's the
+          # nodejs_24). package.json engines stays "^22.22.2 || >= 24.15" - that's the
           # *minimum* the library supports for consumers, not the dev pin.
           nodejs_24
 
