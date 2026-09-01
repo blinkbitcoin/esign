@@ -1,9 +1,9 @@
 name: Tests / E2E
 
+# pull_request only, no push trigger: a push to a PR branch used to start
+# both, in parallel, and the PR side is what gates the merge. main is
+# covered by the publish workflow's gates (workflow_call below).
 on:
-  push:
-    branches-ignore: [main] # main is covered by the publish workflow's gates
-    paths-ignore: ['docs/**', '**.md'] # docs-only pushes skip; PRs always run
   pull_request:
   workflow_call: # reused as a publish gate (see publish.yml)
 
