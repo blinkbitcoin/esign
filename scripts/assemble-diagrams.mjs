@@ -1,12 +1,17 @@
 // Assembles docs/diagrams/mermaid-diagrams.md from the per-diagram sources
-// in src/*.mmd. The .mmd files are canonical (editable / individually
-// renderable); the combined file is generated - run `make diagrams` after
-// editing a source. CI fails on drift (see test.yml).
+// in docs/diagrams/src/*.mmd. The .mmd files are canonical (editable /
+// individually renderable); the combined file is generated - run
+// `make diagrams` after editing a source. CI fails on drift (see test.yml).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const here = dirname(fileURLToPath(import.meta.url));
+const here = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'docs',
+  'diagrams',
+);
 
 const SECTIONS = [
   {

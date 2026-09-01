@@ -12,9 +12,9 @@ hand-maintainable alongside the docs.
 
 **Edit the per-diagram sources in `docs/diagrams/src/*.mmd`** - they are
 canonical. `docs/diagrams/mermaid-diagrams.md` is GENERATED from them by
-`make diagrams` (docs/diagrams/assemble.mjs, which also owns section titles
+`make diagrams` (scripts/assemble-diagrams.mjs, which also owns section titles
 and prose); CI fails if it drifts. Adding a diagram = new .mmd file + an
-entry in assemble.mjs's SECTIONS + a row in the table below.
+entry in assemble-diagrams.mjs's SECTIONS + a row in the table below.
 
 ## Ground rules
 

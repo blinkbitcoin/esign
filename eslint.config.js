@@ -22,8 +22,9 @@ module.exports = [
       '**/lib/**',
       '**/dist/**',
       '**/generated/**',
-      // docs tooling (plain node ESM) - not RN code; Biome covers it
+      // docs + repo tooling (plain node ESM) - not RN code; Biome covers it
       'docs/**',
+      'scripts/**',
     ],
   },
   ...compat.extends('@react-native'),

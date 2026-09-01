@@ -41,7 +41,7 @@ jobs:
 
       - name: Check generated diagrams are current
         run: |
-          node docs/diagrams/assemble.mjs
+          node scripts/assemble-diagrams.mjs
           # shellcheck disable=SC2016 # backticks in the message are markdown, not expansion
           git diff --exit-code -- docs/diagrams/mermaid-diagrams.md \
             || (echo '::error::mermaid-diagrams.md is stale - edit src/*.mmd and run `make diagrams`' && exit 1)

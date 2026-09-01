@@ -46,7 +46,7 @@ codegen: ## Regenerate schema.graphql + client types from the backend SDL
 	npm run codegen
 
 diagrams: ## Reassemble docs/diagrams/mermaid-diagrams.md from src/*.mmd
-	node docs/diagrams/assemble.mjs
+	node scripts/assemble-diagrams.mjs
 
 # ---------- Run ----------
 
