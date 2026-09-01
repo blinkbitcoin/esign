@@ -1,4 +1,4 @@
-name: checks / docs
+name: Checks / Docs
 
 # Docs are hand-maintained alongside code (docs/index.md). This check warns
 # (never fails) when architecture-relevant files change without any docs/
@@ -20,6 +20,7 @@ concurrency:
 
 jobs:
   freshness:
+    name: Freshness
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:

@@ -1,4 +1,4 @@
-name: ci / e2e
+name: CI / E2E
 
 on:
   push:
@@ -18,6 +18,7 @@ concurrency:
 
 jobs:
   backend:
+    name: Backend
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -71,6 +72,7 @@ jobs:
         run: docker compose -f docker-compose.test.yml down
 
   web:
+    name: Web
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -109,6 +111,7 @@ jobs:
         run: docker compose -f docker-compose.test.yml down
 
   ios:
+    name: iOS
     runs-on: macos-latest
     timeout-minutes: 60
 
@@ -279,6 +282,7 @@ jobs:
           retention-days: 7
 
   android:
+    name: Android
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
