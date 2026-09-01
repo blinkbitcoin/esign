@@ -118,8 +118,11 @@ run `make help` for the list. Highlights: `make test` (unit + check-code),
 
 Git hooks (lefthook, auto-installed by `npm install` via the `prepare`
 script): pre-commit formats + lints staged files (Biome, auto-fixes are
-re-staged; ESLint on TS/TSX), pre-push runs the workspace typecheck. Skip
-once with `git commit --no-verify`; CI remains the authoritative gate.
+re-staged; ESLint on TS/TSX), commit-msg enforces Conventional Commits
+(commitlint), pre-push runs the workspace typecheck, and post-merge /
+post-checkout re-run `npm ci` when the lockfile changed. Skip once with
+`git commit --no-verify`; CI remains the authoritative gate. Commit message
+format, scopes, and PR conventions: [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 The npm scripts underneath:
 

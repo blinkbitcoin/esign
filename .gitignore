@@ -97,3 +97,6 @@ docs/.archive/
 packages/*/lib/
 packages/*/dist/
 examples/*/dist/
+
+# lefthook personal overrides (see lefthook.yml)
+lefthook-local.yml
