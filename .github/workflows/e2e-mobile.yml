@@ -157,3 +157,102 @@ jobs:
           name: maestro-results
           path: ~/.maestro/tests/
           retention-days: 7
+
+  e2e-mobile-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Setup Java (for Gradle)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Install dependencies (workspace root)
+        run: npm ci
+
+      - name: Install Maestro CLI
+        env:
+          MAESTRO_VERSION: 2.6.1 # keep in sync with the iOS job
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      # Hardware acceleration for the emulator (GitHub-hosted Linux runners
+      # expose KVM but the device node needs opening up)
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Start test database
+        run: docker compose -f docker-compose.test.yml up -d --wait
+
+      - name: Run database migrations
+        run: npm run migrate:test
+        working-directory: apps/api
+
+      - name: Start backend with mock provider
+        run: |
+          cd apps/api
+          ESIGN_PROVIDER=mock npx dotenv-cli -e .env.test -- npm run dev &
+          for i in {1..30}; do
+            if curl -s http://localhost:4000/health > /dev/null; then
+              echo "Backend is ready"; exit 0
+            fi
+            echo "Waiting for backend... ($i/30)"; sleep 2
+          done
+          echo "ERROR: Backend failed to start"; exit 1
+
+      # The emulator reaches the backend as 10.0.2.2:4000 (host loopback
+      # alias - see examples/react-native-demo/src/config.ts); Metro is
+      # reached via adb reverse below.
+      - name: Start Metro bundler
+        working-directory: examples/react-native-demo
+        run: |
+          npm start &
+          for i in {1..60}; do
+            if curl -s http://localhost:8081/status | grep -q packager-status:running; then
+              echo "Metro is ready"; break
+            fi
+            echo "Waiting for Metro... ($i/60)"; sleep 2
+          done
+          curl -sf "http://localhost:8081/index.bundle?platform=android&dev=true" -o /dev/null
+          echo "Bundle prewarmed"
+
+      - name: Build Android app (debug)
+        working-directory: examples/react-native-demo/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Run Maestro tests on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            adb install examples/react-native-demo/android/app/build/outputs/apk/debug/app-debug.apk
+            adb reverse tcp:8081 tcp:8081
+            export PATH="$HOME/.maestro/bin:$PATH"
+            npm run test:e2e:android -w examples/react-native-demo
+
+      - name: Upload Maestro test results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: maestro-results-android
+          path: ~/.maestro/tests/
+          retention-days: 7

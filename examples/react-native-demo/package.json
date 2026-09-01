@@ -9,11 +9,12 @@
     "start": "react-native start",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "test:e2e": "maestro test .maestro/ --exclude-tags=webform",
+    "test:e2e": "maestro test .maestro/ --exclude-tags=webform -e APP_ID=org.reactjs.native.example.ReactNativeSandbox",
     "test:e2e:record": "maestro record .maestro/",
     "test:e2e:studio": "maestro studio",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test:e2e:webform": "maestro test .maestro/webform-happy-path.yaml"
+    "test:e2e:webform": "maestro test .maestro/webform-happy-path.yaml",
+    "test:e2e:android": "maestro test .maestro/ --exclude-tags=webform -e APP_ID=com.reactnativesandbox"
   },
   "dependencies": {
     "@apollo/client": "^4.2.5",

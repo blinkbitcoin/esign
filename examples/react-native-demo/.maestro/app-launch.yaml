@@ -1,6 +1,6 @@
 # Maestro E2E: launch smoke test - the app boots to the signing idle screen.
 # Fast-fail signal for broken builds before the longer flows run.
-appId: org.reactjs.native.example.ReactNativeSandbox
+appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 ---
 - launchApp
 - assertVisible:

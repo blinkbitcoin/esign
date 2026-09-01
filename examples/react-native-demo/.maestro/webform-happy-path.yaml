@@ -4,7 +4,7 @@
 # plus the backend (mock provider) + database running. The demo mints a
 # mock-webform instance (real DocuSign event vocabulary) and drives it in the
 # WebView.
-appId: org.reactjs.native.example.ReactNativeSandbox
+appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 tags:
   - webform
 ---

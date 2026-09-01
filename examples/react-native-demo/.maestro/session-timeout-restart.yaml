@@ -3,7 +3,7 @@
 # component error state with Restart -> getSigningUrl mutation -> fresh
 # signing page -> complete -> success. This is the only place the restart
 # journey is exercised through real UI + real backend + real DB.
-appId: org.reactjs.native.example.ReactNativeSandbox
+appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 ---
 - launchApp
 - tapOn:
