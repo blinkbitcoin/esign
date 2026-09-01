@@ -6,46 +6,38 @@ mode**, and for two of the three that is a single small package:
 
 | Mode | What it is | What your app installs | Backend required |
 |------|-----------|------------------------|------------------|
-| **DocuSign Web Forms** | Prefilled form-based signing; your backend mints an instance URL with one API call | One package via the Apollo-free `/webform` entry - **no Apollo, no GraphQL** | One authenticated endpoint on *your* backend (or run this repo's service) |
-| **Public URL** | A published public form URL embedded directly | Same minimal `/webform` entry | **None** |
-| **Proxy envelope** | Full envelope orchestration: templates, per-recipient sessions, restart on expiry, webhook status sync | The package + `@apollo/client` + `graphql` | This repo's backend service (`apps/api`) |
+| **1. Public URL** | A published public form URL embedded directly | One package via the Apollo-free `/webform` entry - **no Apollo, no GraphQL** | **None** |
+| **2. Web Forms instances** | Prefilled per-signer forms; your backend mints an instance URL with one API call | Same minimal `/webform` entry | One authenticated endpoint on *your* backend (or run this repo's service) |
+| **3. Proxy envelope** | Full envelope orchestration: templates, per-recipient sessions, restart on expiry, webhook status sync | The package + `@apollo/client` + `graphql` | This repo's backend service (`apps/api`) |
 
-The GraphQL backend, Apollo wiring, and provider adapters in this repo serve
-the **proxy mode**. If you only need Web Forms, none of that ships with you -
-see [Web Forms](#docusign-web-forms-minimal-install) below and
-[docs/consuming.md](docs/consuming.md).
+The GraphQL backend, Apollo wiring, and provider adapters in this repo exist
+for **mode 3 only**. If you need modes 1 or 2, none of that ships with you -
+the [Integration](#integration) section walks each mode from simplest up.
 
 ## Integration
 
-### DocuSign Web Forms (minimal install)
+Every mode drives the **same component with the same callbacks** - the only
+thing that changes is the `SigningSource` you pass in:
+
+```tsx
+<ESignature source={source} onComplete={…} onError={…} onCancel={…} />
+```
+
+The modes below go from simplest to most capable. **Start with the first
+one that covers your needs.**
+
+### 1. Public URL - the simplest (no backend, no credentials)
+
+**Use when:** every signer gets the same form and you don't need per-signer
+prefill - you just publish the form in the DocuSign Web Forms builder and
+embed its public URL.
+
+Install the package and the two WebView peers - nothing else:
 
 ```sh
 npm i @blinkbitcoin/esign-react-native react-native-webview @react-native-community/netinfo
-# NO @apollo/client, NO graphql
+# note: no @apollo/client, no graphql - not needed for modes 1 and 2
 ```
-
-```tsx
-import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/webform';
-
-const source = createWebFormsSource({
-  // One call to YOUR backend, which mints the instance URL server-side
-  // (keeps DocuSign credentials off the device). Returns { url }.
-  createInstance: () =>
-    fetch('https://your-backend.example.com/webform/instance', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.json()),
-});
-
-<ESignature source={source} onComplete={…} onError={…} onCancel={…} />;
-```
-
-The `/webform` subpath is **Apollo-free by construction** (a guard test walks
-the import graph). Registry setup + web equivalent:
-[docs/consuming.md](docs/consuming.md); Web Forms specifics (event model,
-real-DocuSign caveats): [docs/webforms-setup.md](docs/webforms-setup.md).
-
-### Public URL (no backend at all)
 
 ```tsx
 import { ESignature, createPublicUrlSource } from '@blinkbitcoin/esign-react-native/webform';
@@ -53,11 +45,58 @@ import { ESignature, createPublicUrlSource } from '@blinkbitcoin/esign-react-nat
 const source = createPublicUrlSource({ url: 'https://your-published-form-url' });
 ```
 
-### Proxy envelope mode (full flow, needs the backend service)
+That's the whole integration: the component embeds the URL in a WebView and
+your callbacks fire on completion/cancel/error.
 
-Envelope creation from templates, restartable per-recipient sessions, and
-webhook-driven status sync - this is what `apps/api` and the Apollo pieces
-are for:
+### 2. Web Forms instances - adds per-signer prefill (one backend endpoint)
+
+**Use when:** you want each signer's data prefilled into the form, or need to
+know *which* signer completed it. DocuSign requires minting a short-lived
+**instance URL** per signer, and that API call carries your DocuSign
+credentials - so it belongs on a backend, not in the app.
+
+1. Add **one authenticated endpoint to your own backend** that calls
+   DocuSign's `createInstance` with the signer's `clientUserId` + prefill
+   values and returns `{ url }`. (This repo's service implements it as
+   `POST /webform/instance` if you'd rather run it than write it - but any
+   backend able to make one REST call works.)
+2. Install exactly as in mode 1 (same minimal packages, still no Apollo).
+3. Point the source at your endpoint:
+
+```tsx
+import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/webform';
+
+const source = createWebFormsSource({
+  createInstance: () =>
+    fetch('https://your-backend.example.com/webform/instance', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(r => r.json()), // -> { url }
+});
+```
+
+Modes 1 and 2 import from the `/webform` subpath, which is **Apollo-free by
+construction** (a guard test walks the import graph to keep it that way).
+Web Forms specifics - event model, real-DocuSign caveats:
+[docs/webforms-setup.md](docs/webforms-setup.md).
+
+### 3. Proxy envelope - full orchestration (this repo's backend service)
+
+**Use when:** you need real envelope workflows: creation from DocuSign
+templates, a distinct session per recipient, session restart after expiry,
+and webhook-driven status tracking in a database. This is the mode the rest
+of this repo exists for - `apps/api` (GraphQL service, provider adapters,
+webhooks) plus the Apollo client wiring.
+
+1. Deploy this repo's backend ([apps/api](apps/api/README.md)).
+2. Install the package **plus** the Apollo peers:
+
+```sh
+npm i @blinkbitcoin/esign-react-native react-native-webview @react-native-community/netinfo \
+      @apollo/client graphql
+```
+
+3. Wire the client and source from the package root (not `/webform`):
 
 ```tsx
 import {
@@ -82,17 +121,15 @@ const source = createProxySigningSource({
 </ApolloProvider>;
 ```
 
-All three modes drive the **same component with the same callbacks** - the
-mode lives entirely in the `SigningSource` you pass. The web package
-(`@blinkbitcoin/esign-react`) mirrors this API for React DOM apps, including
-a DocuSign.js source for real Web Forms embedding on web.
+### Web apps
 
-Peer dependencies: `react`, `react-native`, `react-native-webview`,
-`@react-native-community/netinfo` - plus `@apollo/client` + `graphql`
-**only for proxy mode** (optional peers).
+The web package (`@blinkbitcoin/esign-react`) mirrors all of the above for
+React DOM apps (iframe instead of WebView), and adds a DocuSign.js source
+for real Web Forms embedding on web - see its
+[README](packages/esign-react/README.md).
 
-Packages publish to GitHub Packages under the `blinkbitcoin` org - see
-[docs/consuming.md](docs/consuming.md).
+Packages publish to GitHub Packages under the `blinkbitcoin` org - registry
+setup: [docs/consuming.md](docs/consuming.md).
 
 ## Repository Layout
 
