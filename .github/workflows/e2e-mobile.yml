@@ -42,7 +42,7 @@ jobs:
           bundler-cache: true
 
       - name: Cache CocoaPods
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             examples/react-native-demo/ios/Pods
@@ -58,7 +58,7 @@ jobs:
           bundle exec pod install
 
       - name: Cache Maestro CLI
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.maestro
           key: maestro-${{ runner.os }}-2.6.1
@@ -205,7 +205,7 @@ jobs:
           cache: 'npm'
 
       - name: Setup Java (for Gradle)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
@@ -215,7 +215,7 @@ jobs:
         run: npm ci
 
       - name: Cache Maestro CLI
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.maestro
           key: maestro-${{ runner.os }}-2.6.1
@@ -279,7 +279,7 @@ jobs:
       # AVD snapshot caching per the emulator-runner README: a cold run
       # generates the snapshot once; warm runs boot from it in seconds.
       - name: Cache AVD snapshot
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: avd-cache
         with:
           path: |
