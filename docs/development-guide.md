@@ -338,7 +338,7 @@ npm run migrate
 The `docusign` column means required when `ESIGN_PROVIDER=docusign` — the
 server refuses to start without them (fail-fast). For the full walkthrough
 (account setup, consent grant, template requirements, webhook tunneling, and
-the known return-URL gap) see [docusign-setup.md](docusign-setup.md).
+the known return-URL gap) see [integration/docusign-proxy.md](integration/docusign-proxy.md).
 
 ### Mobile
 

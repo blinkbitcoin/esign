@@ -242,7 +242,7 @@ statuses only - never recipient names, emails, or document content.
 ## Database Schema
 
 Managed by Knex migrations in `apps/api/migrations/` (see
-[data-models-backend.md](data-models-backend.md) for full details).
+[data-models.md](data-models.md) for full details).
 
 ### Envelope
 | Column | Type | Notes |

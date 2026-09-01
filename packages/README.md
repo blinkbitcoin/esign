@@ -10,7 +10,7 @@ packages expose the same public API over a shared core; pick by platform.
 | [`esign-react/`](esign-react/README.md) | 📦 `@blinkbitcoin/esign-react` — React web signing component (iframe + DocuSign.js source) over core |
 
 All three publish to GitHub Packages — see
-[docs/consuming.md](../docs/consuming.md). Web Forms-only consumers use the
+[docs/integration/consuming.md](../docs/integration/consuming.md). Web Forms-only consumers use the
 Apollo-free `/webform` subpath entries (guard-tested; `@apollo/client` and
 `graphql` are optional peers).
 

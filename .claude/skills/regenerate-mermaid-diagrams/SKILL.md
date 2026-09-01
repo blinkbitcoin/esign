@@ -27,14 +27,14 @@ docs (there are no Excalidraw or image sources to keep in sync).
 
 | # | Diagram | Type | Source of truth |
 |---|---------|------|-----------------|
-| 1 | System Architecture | `flowchart TB` | `README.md` (modes) + `docs/integration-architecture.md`; routes from `apps/api/src/app.ts` |
-| 2 | Data Flow (proxy mode) | `flowchart LR` | `docs/integration-architecture.md` end-to-end flow |
-| 3 | Signing Flow Process | `flowchart TD` | `docs/architecture-mobile.md` state flow; event names from `packages/esign-core/src/signing/` |
-| 4 | Database ERD | `erDiagram` | `docs/data-models-backend.md`; verify against `apps/api/migrations/` |
-| 5 | Component Hierarchy | `flowchart TB` | `docs/architecture-mobile.md` + demo `App.tsx` |
-| 6 | Webhook Flow | `sequenceDiagram` | `docs/architecture-backend.md` webhook section + `apps/api/src/webhook.ts` |
-| 7 | GraphQL Request Flow | `sequenceDiagram` | `docs/api-contracts-backend.md` + `apps/api/src/schema.ts` |
-| 8 | Web Forms Mode Flow | `sequenceDiagram` | `docs/webforms-setup.md` + `apps/api/src/providers/docusign/client.ts` |
+| 1 | System Architecture | `flowchart TB` | `README.md` (modes) + `docs/architecture/integration.md`; routes from `apps/api/src/app.ts` |
+| 2 | Data Flow (proxy mode) | `flowchart LR` | `docs/architecture/integration.md` end-to-end flow |
+| 3 | Signing Flow Process | `flowchart TD` | `docs/architecture/mobile.md` state flow; event names from `packages/esign-core/src/signing/` |
+| 4 | Database ERD | `erDiagram` | `docs/architecture/data-models.md`; verify against `apps/api/migrations/` |
+| 5 | Component Hierarchy | `flowchart TB` | `docs/architecture/mobile.md` + demo `App.tsx` |
+| 6 | Webhook Flow | `sequenceDiagram` | `docs/architecture/backend.md` webhook section + `apps/api/src/webhook.ts` |
+| 7 | GraphQL Request Flow | `sequenceDiagram` | `docs/architecture/api-contracts.md` + `apps/api/src/schema.ts` |
+| 8 | Web Forms Mode Flow | `sequenceDiagram` | `docs/integration/webforms.md` + `apps/api/src/providers/docusign/client.ts` |
 
 ## Pedagogy and consistency rules
 

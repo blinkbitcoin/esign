@@ -37,37 +37,36 @@
 
 ## Documentation
 
-### Core Documentation
-- [Source Tree Analysis](./source-tree-analysis.md) - Annotated directory structure
-- [Development Guide](./development-guide.md) - Setup, commands, and workflows
-- [DocuSign Setup](./docusign-setup.md) - Real-DocuSign setup for proxy mode + the live smoke-test checklist
-- [Web Forms Setup](./webforms-setup.md) - DocuSign Web Forms mode: mock and live runs, event model
-- [Consuming the Packages](./consuming.md) - GitHub Packages setup + minimal webform-only install
-- [Security Model](./security.md) - Auth, webhooks, headers, rate limiting, fail-closed boot
+Organized by namespace - pick by what you're doing:
 
-### Architecture
-- [Architecture - Mobile](./architecture-mobile.md) - React Native component architecture
-- [Architecture - Backend](./architecture-backend.md) - Express/Apollo service architecture
-- [Integration Architecture](./integration-architecture.md) - How the parts communicate (GraphQL, webhooks, WebView events)
+### `integration/` - using the packages in your app
 
-### API & Data
-- [API Contracts - Backend](./api-contracts-backend.md) - GraphQL schema and REST endpoints
-- [Data Models - Backend](./data-models-backend.md) - Knex schema and database design
+| Doc | Covers |
+|-----|--------|
+| [consuming.md](integration/consuming.md) | Registry setup (GitHub Packages) + the minimal Web Forms-only install |
+| [webforms.md](integration/webforms.md) | Modes 1-2 (public URL + Web Forms instances): mock and live runs, event model, embedding options |
+| [docusign-proxy.md](integration/docusign-proxy.md) | Mode 3 (proxy envelopes): real-DocuSign setup, return-URL bridge, webhooks, live smoke-test checklist |
 
-### Diagrams
-- [Diagrams (Mermaid)](./diagrams/mermaid-diagrams.md) - System architecture, data flow, signing flow, ERD, component hierarchy, webhook + GraphQL + Web Forms sequences (renders directly on GitHub)
+### `architecture/` - how the system works inside
+
+| Doc | Covers |
+|-----|--------|
+| [mobile.md](architecture/mobile.md) | React Native component: state machine, sources, render states, test doubles |
+| [backend.md](architecture/backend.md) | Express/Apollo service: provider pattern, webhook processing, observability |
+| [integration.md](architecture/integration.md) | How the parts communicate: GraphQL, webhooks, WebView events, shared error codes |
+| [api-contracts.md](architecture/api-contracts.md) | GraphQL schema and REST endpoints |
+| [data-models.md](architecture/data-models.md) | Knex schema and database design |
+| [security.md](architecture/security.md) | Auth, webhook verification, rate limiting, fail-closed boot |
+| [source-tree.md](architecture/source-tree.md) | Annotated directory structure |
+
+### Root
+
+| Doc | Covers |
+|-----|--------|
+| [development-guide.md](./development-guide.md) | Working on this repo: setup, commands, quality gates, CI |
+| [diagrams/mermaid-diagrams.md](./diagrams/mermaid-diagrams.md) | All eight diagrams (render directly on GitHub) |
 
 ---
-
-## Existing Documentation
-
-### AI Assistant Instructions
-| Document | Location | Description |
-|----------|----------|-------------|
-| CLAUDE.md | `./CLAUDE.md` | Claude Code assistant instructions |
-| AGENTS.md | `./AGENTS.md` | Multi-agent collaboration instructions |
-
-
 
 ## Getting Started
 
@@ -104,19 +103,19 @@ make e2e-mobile             # or: make e2e-mobile-android
 
 ### "I want to understand the codebase"
 1. Start with the [README](../README.md) (integration modes + repository layout)
-2. Review [Source Tree Analysis](./source-tree-analysis.md)
+2. Review [Source Tree Analysis](architecture/source-tree.md)
 3. Dive into architecture docs for specific parts
 
 ### "I want to set up my dev environment"
 1. Follow [Development Guide](./development-guide.md)
 
 ### "I want to understand the API"
-1. Review [API Contracts - Backend](./api-contracts-backend.md)
-2. Check [Data Models](./data-models-backend.md) for schema
+1. Review [API Contracts - Backend](architecture/api-contracts.md)
+2. Check [Data Models](architecture/data-models.md) for schema
 
 ### "I want to integrate signing into my own app"
-1. [Consuming the Packages](./consuming.md) - registry setup + minimal Web Forms-only install
-2. Pick a mode: [webforms-setup.md](./webforms-setup.md) (Web Forms / public URL) or [docusign-setup.md](./docusign-setup.md) (proxy envelope mode, webhooks)
+1. [Consuming the Packages](integration/consuming.md) - registry setup + minimal Web Forms-only install
+2. Pick a mode: [integration/webforms.md](integration/webforms.md) (Web Forms / public URL) or [integration/docusign-proxy.md](integration/docusign-proxy.md) (proxy envelope mode, webhooks)
 
 ### "I want to add a new feature"
 1. [Development Guide](./development-guide.md) for workflow + quality gates

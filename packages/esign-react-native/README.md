@@ -9,7 +9,7 @@ The web equivalent with the same public API is
 
 ## Install
 
-Published to **GitHub Packages** - see [docs/consuming.md](../../docs/consuming.md)
+Published to **GitHub Packages** - see [docs/integration/consuming.md](../../docs/integration/consuming.md)
 for the one-time `.npmrc` registry setup.
 
 ```sh

@@ -60,7 +60,7 @@ protocol, not a lenient stand-in.
 ## Live run against real DocuSign
 
 1. Complete the DocuSign account + JWT setup in
-   [docusign-setup.md](docusign-setup.md) (consent, keys, account/user IDs).
+   [docusign-proxy.md](docusign-proxy.md) (consent, keys, account/user IDs).
 2. Build and **publish a Web Form** in the DocuSign Web Forms builder, mapped to
    a template; note its **form id** and the fields' **API reference names**
    (these are the `formValues`/prefill keys).
@@ -69,7 +69,7 @@ protocol, not a lenient stand-in.
    ESIGN_PROVIDER=docusign
    DOCUSIGN_WEBFORM_ID=<form id>
    DOCUSIGN_WEBFORMS_BASE_URL=https://apps-d.docusign.com/api/webforms/v1.1
-   # + the standard DOCUSIGN_* JWT config (see docusign-setup.md)
+   # + the standard DOCUSIGN_* JWT config (see docusign-proxy.md)
    ```
 4. Verify the API contract without a UI: `make test-live` in `apps/api` runs
    `tests/live/webforms.live.test.ts` — real JWT auth + a real
@@ -113,7 +113,7 @@ const source = createDocuSignWebFormsSource({
 ## Remaining live-verification items
 
 Actionable one-pass checklist (capture points + where to fix mismatches):
-[docusign-setup.md, section 5](docusign-setup.md).
+[docusign-proxy.md, section 5](docusign-proxy.md).
 
 - **The exact DocuSign.js SDK surface** — `createDocuSignWebFormsSource` is
   written to the documented API (`loadDocuSign` → `signing({url})` → `.on('sessionEnd')`

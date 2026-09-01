@@ -6,9 +6,9 @@ How to run against a real DocuSign (demo/sandbox) account instead of the mock
 provider. Sections 1-4 cover the **proxy envelope mode** (JWT auth, templates,
 return-URL bridge, Connect webhooks); section 5 is the live smoke-test
 checklist for **all** modes. For the **Web Forms** and **public URL** modes see
-[webforms-setup.md](webforms-setup.md) - section 1 here (account + JWT setup)
+[webforms.md](webforms.md) - section 1 here (account + JWT setup)
 is shared by both docs. See
-[architecture-backend.md](architecture-backend.md) for how the provider
+[../architecture/backend.md](../architecture/backend.md) for how the provider
 adapter works internally.
 
 ## 1. DocuSign Developer Account (~15 min, free)
@@ -55,7 +55,7 @@ DOCUSIGN_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----
 - Config is **fail-fast**: `make backend` refuses to start and names every
   missing variable. With `ESIGN_PROVIDER=docusign`, `DOCUSIGN_HMAC_KEY` is
   also required at boot (webhook signature verification) unless
-  `ALLOW_INSECURE_DEV=true` - see [security.md](security.md).
+  `ALLOW_INSECURE_DEV=true` - see [../architecture/security.md](../architecture/security.md).
 
 Then run as usual: `make db-up migrate backend` plus `make ios` /
 `make android` (RN demo) or `make dev` in `examples/react-demo` (web).
@@ -98,7 +98,7 @@ against payload shapes taken from DocuSign's docs, never against a live
 account. Whoever first runs against a real demo account should confirm those
 shapes in one pass. Capture each payload, tick or correct, then record the
 date in the "Verified against DocuSign docs" section of
-[webforms-setup.md](webforms-setup.md).
+[webforms.md](webforms.md).
 
 Prereq: sections 1–2 done, and the mock E2E suites green first (`make
 check-code`, `make e2e`) so any failure here is a shape mismatch, not a
@@ -114,7 +114,7 @@ regression.
 | 6 | RN WebView + real Web Forms: does a plain WebView receive any events at all? (Assumed **no** — DocuSign.js is web-only) | RN demo in webform mode against the real backend; watch Metro logs for `onMessage` traffic while completing a form | If events do arrive: update the caveat in [consuming.md](consuming.md). If not (expected): the return-URL bridge stays the documented RN path |
 
 Items 2 and 3 need the tunnel from section 4. Items 4–6 need a published Web
-Form ([webforms-setup.md](webforms-setup.md)) and may require Web Forms
+Form ([webforms.md](webforms.md)) and may require Web Forms
 entitlement on the demo account.
 
 ## Gotchas

@@ -78,7 +78,7 @@ const source = createWebFormsSource({
 Modes 1 and 2 import from the `/webform` subpath, which is **Apollo-free by
 construction** (a guard test walks the import graph to keep it that way).
 Web Forms specifics - event model, real-DocuSign caveats:
-[docs/webforms-setup.md](docs/webforms-setup.md).
+[docs/integration/webforms.md](docs/integration/webforms.md).
 
 ### 3. Proxy envelope - full orchestration (this repo's backend service)
 
@@ -129,7 +129,7 @@ for real Web Forms embedding on web - see its
 [README](packages/esign-react/README.md).
 
 Packages publish to GitHub Packages under the `blinkbitcoin` org - registry
-setup: [docs/consuming.md](docs/consuming.md).
+setup: [docs/integration/consuming.md](docs/integration/consuming.md).
 
 ## Repository Layout
 
@@ -179,7 +179,7 @@ make web                                # or the web demo (Vite)
 ```
 
 **Real DocuSign** stays opt-in: configure credentials per
-[docs/docusign-setup.md](docs/docusign-setup.md), then `make test-live`
+[docs/integration/docusign-proxy.md](docs/integration/docusign-proxy.md), then `make test-live`
 verifies the API contracts against a demo account (it skips itself when no
 credentials are set).
 

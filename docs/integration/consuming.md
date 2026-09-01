@@ -89,7 +89,7 @@ from the package root and additionally install `@apollo/client` + `graphql`.
   SDK (web-only, no RN equivalent). What is E2E-proven is the protocol path
   (this repo's mock emits the real `sessionEnd` vocabulary) and the
   return-URL bridge alternative. Validate against a live form before shipping.
-  See [webforms-setup.md](webforms-setup.md).
+  See [webforms.md](webforms.md).
 - The instance URL's token expires ~5 minutes after minting - create the
   instance when the user opens the screen, not in advance.
 

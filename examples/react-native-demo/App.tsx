@@ -26,7 +26,7 @@ import {
   type SigningSource,
 } from '@blinkbitcoin/esign-react-native';
 // Webform mode uses the Apollo-free subpath - dogfoods the minimal entry a
-// Web Forms-only consumer would use (see docs/consuming.md)
+// Web Forms-only consumer would use (see docs/integration/consuming.md)
 import { createWebFormsSource } from '@blinkbitcoin/esign-react-native/webform';
 
 function App() {

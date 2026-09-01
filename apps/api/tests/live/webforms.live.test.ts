@@ -5,7 +5,7 @@
 // skipped. Never part of `npm test` / CI - it needs credentials and network.
 //
 // This automates items 1 (JWT auth) and 4 (createInstance contract) of the
-// live smoke-test checklist in docs/docusign-setup.md. Items 2/3/5/6 (return
+// live smoke-test checklist in docs/integration/docusign-proxy.md. Items 2/3/5/6 (return
 // URL, webhooks, sessionEnd events, RN WebView) involve a browser and a human
 // signer and stay manual - the minted URL is logged so the runner can continue
 // the checklist from it.
@@ -54,7 +54,7 @@ describe.runIf(missing.length === 0)('DocuSign Web Forms API (live, demo account
     const response = await fetch(`${url.origin}${url.pathname}${url.search}`);
     expect(response.ok).toBe(true);
 
-    // Hand-off for the manual checklist items (docs/docusign-setup.md §5):
+    // Hand-off for the manual checklist items (docs/integration/docusign-proxy.md §5):
     // open this URL to observe sessionEnd events / return-URL behavior.
     console.log(`[live] Minted Web Forms instance (token expires ~5 min):\n${result.url}`);
   }, 30_000);

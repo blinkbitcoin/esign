@@ -185,5 +185,5 @@ blink-esign/
 ## Integration Points
 
 How the parts communicate (GraphQL, webhooks, WebView events, database):
-see [integration-architecture.md](integration-architecture.md). Per-part
+see [integration.md](integration.md). Per-part
 entry points are listed in each architecture doc.

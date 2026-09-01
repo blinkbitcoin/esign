@@ -40,4 +40,4 @@ make build       # tsup (ESM + CJS + types, both entries)
 ```
 
 Types in `src/generated/` are generated — edit the backend schema, not them.
-Consuming from another app: see [docs/consuming.md](../../docs/consuming.md).
+Consuming from another app: see [docs/integration/consuming.md](../../docs/integration/consuming.md).

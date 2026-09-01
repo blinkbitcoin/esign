@@ -93,7 +93,7 @@ import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-nati
 ```
 
 `@apollo/client` + `graphql` are optional peers, needed only for proxy mode.
-See [consuming.md](consuming.md).
+See [../integration/consuming.md](../integration/consuming.md).
 
 ## Entry Points
 
@@ -163,7 +163,7 @@ The embedded page posts JSON messages; the active source's `interpret()`
 normalizes them (`SigningEvent`): complete, cancel, decline, sessionExpired,
 error. The proxy protocol uses `{event: 'signing_complete' | ...}`; DocuSign
 Web Forms uses the `sessionEnd` vocabulary (`signingResult`,
-`sessionTimeout`, ...) - see [webforms-setup.md](webforms-setup.md).
+`sessionTimeout`, ...) - see [../integration/webforms.md](../integration/webforms.md).
 
 ## Demo Host (`examples/react-native-demo/App.tsx`)
 

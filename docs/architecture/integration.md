@@ -59,7 +59,7 @@ every client spot needing updates (ErrorCodes map, getErrorMessage copy).
   provider's interactive signing page (what Maestro E2E drives) - and
   `/signing/return` - the bridge translating real DocuSign's redirect
   protocol (`?event=...`) into these postMessage events
-  (see [docusign-setup.md](docusign-setup.md))
+  (see [../integration/docusign-proxy.md](../integration/docusign-proxy.md))
 
 ### 4. Provider → Backend: Webhook Callbacks
 
@@ -83,7 +83,7 @@ every client spot needing updates (ErrorCodes map, getErrorMessage copy).
 
 - **From:** repository modules via shared Knex instance (`apps/api/src/db.ts`)
 - **Schema:** `Envelope` + `AuditLog` (see
-  [data-models-backend.md](data-models-backend.md))
+  [data-models.md](data-models.md))
 
 ## End-to-End Data Flow
 

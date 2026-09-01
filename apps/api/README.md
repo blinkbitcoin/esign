@@ -64,7 +64,7 @@ make e2e            # 14 E2E tests against real Postgres
 | `migrations/` | Knex migrations (TypeScript, run via tsx) |
 | `tests/` / `tests/e2e/` | Unit (mocked DB) / E2E (real DB) |
 
-Full documentation: [architecture](../../docs/architecture-backend.md) ·
-[API contracts](../../docs/api-contracts-backend.md) ·
-[data models](../../docs/data-models-backend.md) ·
-[real-DocuSign setup](../../docs/docusign-setup.md)
+Full documentation: [architecture](../../docs/architecture/backend.md) ·
+[API contracts](../../docs/architecture/api-contracts.md) ·
+[data models](../../docs/architecture/data-models.md) ·
+[real-DocuSign setup](../../docs/integration/docusign-proxy.md)

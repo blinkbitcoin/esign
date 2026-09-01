@@ -4,7 +4,7 @@
 // and only when the DocuSign env vars below are set (DOCUSIGN_TEMPLATE_ID
 // instead of DOCUSIGN_WEBFORM_ID); otherwise skipped. Never part of CI.
 //
-// Automates item 1 of the live smoke-test checklist in docs/docusign-setup.md
+// Automates item 1 of the live smoke-test checklist in docs/integration/docusign-proxy.md
 // (JWT auth, template envelope creation, recipient view) and hands off to
 // item 2: the logged signing URL is the entry to the return-URL bridge, so
 // the runner can open it, sign, and capture the `?event=` redirect.
@@ -63,7 +63,7 @@ describe.runIf(missing.length === 0)('DocuSign envelope API (live, demo account)
     expect(url.protocol).toBe('https:');
     expect(url.hostname).toMatch(/docusign\.(com|net)$/);
 
-    // Hand-off for checklist item 2 (docs/docusign-setup.md §5): open this
+    // Hand-off for checklist item 2 (docs/integration/docusign-proxy.md §5): open this
     // URL, complete/cancel/decline, and capture the `?event=` value on the
     // redirect to the return-URL bridge.
     console.log(
