@@ -1,0 +1,32 @@
+flowchart TD
+    START([Start]) --> TAP[User taps Sign]
+    TAP --> NET{Online?}
+    NET -->|No| OFFLINE[Offline state<br/>Check Connection]
+    OFFLINE --> NET
+    NET -->|Yes| LOADING[Loading]
+    LOADING --> CREATE[source.start - proxy: createEnvelope<br/>webform: mint instance URL<br/>public: static URL]
+    CREATE --> SUCCESS{Success?}
+
+    SUCCESS -->|Yes| WEBVIEW[Signing page in WebView/iframe]
+    SUCCESS -->|No| ERROR[Error state - Retry]
+
+    WEBVIEW --> SIGN[User signs]
+    SIGN --> EVENT{Signing event}
+
+    EVENT -->|complete| SHOW_SUCCESS[Success screen<br/>then onComplete]
+    EVENT -->|cancel| CANCEL[onCancel]
+    EVENT -->|decline| DECLINE[onError DECLINED]
+    EVENT -->|sessionExpired| TIMEOUT[Error state - Restart]
+
+    TIMEOUT -->|restartable source<br/>proxy: getSigningUrl| WEBVIEW
+    TIMEOUT -->|not restartable| LOADING
+    ERROR -->|Retry| LOADING
+
+    SHOW_SUCCESS --> END_SUCCESS([End])
+
+    style START fill:#b2f2bb
+    style END_SUCCESS fill:#b2f2bb
+    style ERROR fill:#ffc9c9
+    style CANCEL fill:#ffec99
+    style TIMEOUT fill:#ffec99
+    style OFFLINE fill:#ffec99

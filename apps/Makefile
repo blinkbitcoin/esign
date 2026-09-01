@@ -4,7 +4,7 @@
 SUBDIRS := $(patsubst %/Makefile,%,$(wildcard */Makefile))
 
 test: ## Unit tests in every app
-coverage: ## Coverage in every app (100% baseline)
+coverage: ## Coverage in every app (100% enforced)
 typecheck: ## tsc --noEmit in every app
 
 test coverage typecheck:

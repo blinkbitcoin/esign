@@ -1,0 +1,38 @@
+flowchart LR
+    U((👤 User))
+
+    subgraph P1[1.0 Mobile App]
+        direction TB
+        p1a[Show UI]
+        p1b[Handle Events]
+    end
+
+    subgraph P2[2.0 Backend API]
+        direction TB
+        p2a[GraphQL Resolvers]
+        p2b[Provider Logic]
+    end
+
+    subgraph P3[3.0 DocuSign]
+        direction TB
+        p3a[Create Envelope]
+        p3b[Generate URL]
+    end
+
+    subgraph P4[4.0 Webhook Handler]
+        direction TB
+        p4a[Validate HMAC]
+        p4b[Update Status]
+    end
+
+    D1[(D1 Database)]
+
+    U -->|Tap Sign| P1
+    P1 -->|createEnvelope| P2
+    P2 -->|API Call| P3
+    P3 -->|Signing URL| P2
+    P2 -->|Store Envelope| D1
+    P2 -->|URL + ID| P1
+    P1 -->|WebView| U
+    P3 -->|Event| P4
+    P4 -->|Update| D1

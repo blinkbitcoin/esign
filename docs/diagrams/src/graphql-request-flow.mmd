@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant App as Mobile App
+    participant AC as Apollo Client
+    participant GQL as GraphQL Server
+    participant PROV as ESignProvider
+    participant DS as DocuSign API
+    participant DB as Database
+
+    App->>AC: createEnvelope mutation
+    AC->>GQL: POST /graphql (Bearer token)
+    GQL->>GQL: Resolve userId (JWT / dev passthrough)
+    GQL->>PROV: createEnvelope()
+    PROV->>DS: Create envelope
+    DS-->>PROV: Envelope ID
+    PROV->>DS: Get signing URL
+    DS-->>PROV: Signing URL
+    PROV-->>GQL: { envelopeId, signingUrl }
+    GQL->>DB: Store envelope + 'initiated' audit log (transaction)
+    DB-->>GQL: Saved (internal UUID)
+    GQL-->>AC: { envelopeId: internal UUID, signingUrl }
+    AC-->>App: Result

@@ -29,7 +29,7 @@ migrate-test: ## Apply migrations to the test database (.env.test)
 e2e: ## E2E tests against the test database (start it from repo root: make test-db-up)
 	npm run test:e2e
 
-test-live: ## Live check against real DocuSign Web Forms (needs DOCUSIGN_* in .env; skips without)
+test-live: ## Live checks against real DocuSign (envelope + Web Forms; needs DOCUSIGN_* in .env; skips without)
 	npm run test:live
 
 schema-emit: ## Regenerate schema.graphql from src/typeDefs.ts

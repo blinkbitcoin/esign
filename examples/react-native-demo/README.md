@@ -25,16 +25,17 @@ machine's LAN IP.
 
 | File | Shows |
 |------|-------|
-| `App.tsx` | Minimal host wiring: `ApolloProvider` + the component + outcome callbacks |
+| `App.tsx` | Minimal host wiring: `buildSource()` picks the mode via `ESIGN_MODE` (proxy / webform / publicurl; Apollo only in proxy mode) + outcome callbacks |
 | `src/apollo.ts` | `createESignApolloClient({ uri, getAuthToken })` — the host owns both |
 | `src/config.ts` | Platform-aware dev URL resolution |
-| `.maestro/` | E2E flows: happy path, cancel-from-signing-page, session-timeout→restart (all drive the real mock signing page inside the WebView) |
+| `.maestro/` | E2E flows: app-launch, happy path, cancel-from-signing-page, session-timeout→restart, webform-happy-path (tagged `webform`; needs an `ESIGN_MODE=webform` Metro). All drive real pages inside the WebView |
 
 ## Testing
 
 ```sh
-make test          # Jest unit tests (12), 100% coverage baseline
-make e2e           # Maestro (needs backend running + app installed on a simulator)
+make test          # Jest unit tests (12); coverage floors enforced - E2E is the real coverage
+make e2e           # Maestro, iOS (needs backend running + app installed on a simulator)
+make e2e-android   # Maestro, Android (adb reverse handles Metro + backend ports)
 ```
 
 The demo sends a fixed dev bearer token; the backend's dev passthrough

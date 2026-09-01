@@ -23,11 +23,13 @@ make dev            # server at http://localhost:4000/graphql
 `.env.example` for every variable, including the fail-closed production
 semantics of `DOCUSIGN_HMAC_KEY` and `JWT_SECRET`).
 
-## Architecture in Five Lines
+## Architecture in Brief
 
-- **Provider boundary**: all DocuSign-specific code lives in `src/docusign.ts`
-  behind the `ESignProvider` interface (`src/types.ts`) — including webhook
-  verification/parsing. New providers = one file + a factory case.
+- **Provider boundary**: all DocuSign-specific code lives in
+  `src/providers/docusign/` behind the `ESignProvider` port
+  (`src/providers/port.ts`) — including webhook verification/parsing and the
+  optional Web Forms capability. New providers = an adapter + a factory case
+  in `src/providers/index.ts`.
 - **Wire contract**: the `ErrorCode` enum in `schema.graphql` (emitted from
   `src/typeDefs.ts` via `make schema-emit`). Client packages codegen from it;
   parity tests + a CI step fail on drift.
@@ -56,8 +58,8 @@ make e2e            # 14 E2E tests against real Postgres
 |------|---------|
 | `src/typeDefs.ts` → `schema.graphql` | GraphQL SDL → emitted schema artifact |
 | `src/schema.ts` | Resolvers |
-| `src/types.ts` | `ESignProvider` interface (the provider boundary) |
-| `src/docusign.ts` / `src/mockProvider.ts` | Provider adapters |
+| `src/providers/port.ts` | `ESignProvider` interface (the provider boundary) |
+| `src/providers/docusign/` / `src/providers/mock.ts` | Provider adapters (factory in `providers/index.ts`) |
 | `src/webhook.ts` | Generic webhook processing (idempotent, transactional) |
 | `src/signingPages.ts` | Mock signing page + real-DocuSign return-URL bridge |
 | `src/auth.ts` | HS256 JWT verification, dev/prod split |

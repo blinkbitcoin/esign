@@ -28,9 +28,11 @@ passthrough treats as the userId.
 ## Testing
 
 ```sh
-make test          # Vitest (jsdom) unit tests (5), 100% coverage baseline
-make e2e           # Playwright browser E2E (4 journeys in real Chromium;
+make test          # Vitest (jsdom) unit tests (5); coverage floors enforced - E2E is the real coverage
+make e2e           # Playwright browser E2E in real Chromium (proxy mode;
                    #   needs the test DB - or run `make e2e-web` at repo root)
+                   # Web Forms / public-URL variants: make e2e-web-webform /
+                   #   e2e-web-publicurl at the repo root
 make build         # production build sanity check
 ```
 

@@ -1,0 +1,20 @@
+erDiagram
+    Envelope ||--o{ AuditLog : "has many"
+
+    Envelope {
+        uuid id PK
+        string providerEnvelopeId UK "Unique"
+        string userId
+        string contractType
+        string status "sent|completed|voided|declined"
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    AuditLog {
+        uuid id PK
+        uuid envelopeId FK
+        string action "initiated|completed|failed|voided|declined|session_restart|creation_failed"
+        datetime timestamp
+        json metadata "nullable - sanitized allow-list, no PII"
+    }

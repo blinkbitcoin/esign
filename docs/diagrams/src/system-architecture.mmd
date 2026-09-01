@@ -1,0 +1,43 @@
+flowchart TB
+    subgraph Hosts["Host apps"]
+        RN[React Native app<br/>esign-react-native: WebView]
+        WEB[React web app<br/>esign-react: iframe / DocuSign.js]
+    end
+
+    subgraph Core["esign-core (shared)"]
+        SRC{SigningSource}
+        PROXY[createProxySigningSource<br/>Apollo - proxy mode only]
+        WF[createWebFormsSource]
+        PUB[createPublicUrlSource]
+    end
+
+    subgraph Backend["Backend (apps/api) - proxy + Web Forms modes"]
+        GQL[/"GraphQL /graphql"/]
+        WFI[/"POST /webform/instance"/]
+        WH[/"POST /webhook/esign"/]
+        SP[/"signing pages + return-URL bridge"/]
+        PROV{ESignProvider}
+        DS[DocuSignProvider]
+        MOCK[MockProvider]
+        KNEX[Knex.js]
+    end
+
+    subgraph External["External"]
+        DOCU[DocuSign API<br/>eSignature + Web Forms]
+        DB[(PostgreSQL)]
+    end
+
+    RN --> SRC
+    WEB --> SRC
+    SRC --> PROXY & WF & PUB
+    PROXY -->|GraphQL| GQL
+    WF -->|one REST call| WFI
+    GQL --> PROV
+    WFI --> PROV
+    PROV --> DS & MOCK
+    DS -->|REST| DOCU
+    DOCU -->|webhooks| WH
+    GQL --> KNEX
+    WH --> KNEX
+    KNEX --> DB
+    RN -.->|embedded signing| SP

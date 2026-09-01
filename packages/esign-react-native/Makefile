@@ -4,7 +4,7 @@
 test: ## Unit tests (Jest)
 	npm test
 
-coverage: ## Unit tests with coverage (100% baseline)
+coverage: ## Unit tests with coverage (100% enforced)
 	npm run test:coverage
 
 typecheck: ## tsc --noEmit

@@ -19,7 +19,7 @@ preview: ## Preview the production build
 test: ## Unit tests (Vitest)
 	npm test
 
-coverage: ## Unit tests with coverage (100% baseline)
+coverage: ## Unit tests with coverage (floors enforced; E2E is the real coverage)
 	npm run test:coverage
 
 typecheck: ## tsc --noEmit

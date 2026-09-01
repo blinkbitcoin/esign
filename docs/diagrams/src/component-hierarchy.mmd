@@ -1,0 +1,32 @@
+flowchart TB
+    subgraph App["Demo App.tsx (host)"]
+        AP[ApolloProvider - proxy mode only]
+        SAP[SafeAreaProvider]
+
+        subgraph Content["AppContent"]
+            ES[ESignature source=SigningSource]
+
+            subgraph States["Component states"]
+                IDLE[idle: Sign button]
+                LOAD[loading: spinner]
+                SIGNING[signing: WebView]
+                SUCCESS[success: confirmation]
+                ERR[error: retry / restart]
+                OFF[offline: check connection]
+            end
+        end
+    end
+
+    AP --> SAP
+    SAP --> Content
+    ES --> States
+
+    IDLE -->|tap| LOAD
+    IDLE -->|no connectivity| OFF
+    OFF -->|reconnected| IDLE
+    LOAD -->|session url| SIGNING
+    LOAD -->|error| ERR
+    SIGNING -->|complete| SUCCESS
+    SIGNING -->|cancel| IDLE
+    SIGNING -->|sessionExpired| ERR
+    ERR -->|restart via source| SIGNING

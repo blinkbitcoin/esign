@@ -4,7 +4,7 @@
 SUBDIRS := $(patsubst %/Makefile,%,$(wildcard */Makefile))
 
 test: ## Unit tests in every package
-coverage: ## Coverage in every package (100% baseline)
+coverage: ## Coverage in every package (100% enforced)
 typecheck: ## tsc --noEmit in every package
 build: ## Build every publishable package
 codegen: ## Regenerate types in every package (from apps/api/schema.graphql)

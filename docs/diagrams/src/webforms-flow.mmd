@@ -1,0 +1,20 @@
+sequenceDiagram
+    participant App as Host app (RN or web)
+    participant BE as Backend (/webform/instance)
+    participant PROV as ESignProvider
+    participant DS as DocuSign Web Forms API
+    participant WV as WebView / iframe
+
+    App->>BE: POST /webform/instance (Bearer token)
+    BE->>PROV: createWebFormInstance(userId, prefill)
+    alt mock provider
+        PROV-->>BE: local mock web-form URL
+    else DocuSign provider
+        PROV->>DS: createInstance(clientUserId, formValues)
+        DS-->>PROV: formUrl + instanceToken (~5 min TTL)
+        PROV-->>BE: formUrl#instanceToken=...
+    end
+    BE-->>App: { url }
+    App->>WV: embed url
+    WV-->>App: sessionEnd event (signingResult / formConfirmation / sessionTimeout)
+    Note over App: interpretDocuSignEvent normalizes to complete / cancel / sessionExpired

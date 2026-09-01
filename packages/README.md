@@ -6,7 +6,7 @@ packages expose the same public API over a shared core; pick by platform.
 | Package | What it is |
 |---------|------------|
 | [`esign-core/`](esign-core/README.md) | 🧩 `@blinkbitcoin/esign-core` — platform-agnostic core: `SigningSource` abstraction + sources, Apollo factory, GraphQL operations + codegen. Dependency of both platform packages. |
-| [`esign-react-native/`](esign-react-native/README.md) | 📦 `@blinkbitcoin/esign-react-native` — RN signing component (WebView) over core |
+| [`esign-react-native/`](esign-react-native/README.md) | 📦 `@blinkbitcoin/esign-react-native` — React Native signing component (WebView) over core |
 | [`esign-react/`](esign-react/README.md) | 📦 `@blinkbitcoin/esign-react` — React web signing component (iframe + DocuSign.js source) over core |
 
 All three publish to GitHub Packages — see
