@@ -117,16 +117,16 @@ See [consuming.md](consuming.md).
   `ESIGN_MODE=webform` Metro)
 - TestID-based element selection
 
-**TestID Attributes:**
-| ID | Component | State |
-|----|-----------|-------|
-| `sign-document-button` | TouchableOpacity | idle |
-| `loading-indicator` | ActivityIndicator | loading |
-| `signing-webview` | WebView | signing |
-| `success-screen` | View | success |
-| `error-message` | Text | error |
-| `restart-button` / `retry-button` | TouchableOpacity | error |
-| `check-connection-button` | TouchableOpacity | offline |
+**Render states and testIDs** - one component, six rendered views:
+
+| Status | View | Key elements (testIDs) |
+|--------|------|------------------------|
+| `idle` | Sign prompt | `sign-document-button`, `cancel-button` |
+| `loading` | Spinner | `loading-indicator` |
+| `signing` | Embedded WebView | `signing-webview` (falls back to a text view if no URL) |
+| `success` | Confirmation | `success-screen`, `success-text` |
+| `error` | Error + recovery | `error-text`, `error-message`, `retry-button` **or** `restart-button` (session expiry preserves the session for restart) |
+| `offline` | Connectivity prompt | `offline-text`, `check-connection-button` (disabled state shows "Checking...") |
 
 ## Dependencies
 
@@ -164,3 +164,35 @@ normalizes them (`SigningEvent`): complete, cancel, decline, sessionExpired,
 error. The proxy protocol uses `{event: 'signing_complete' | ...}`; DocuSign
 Web Forms uses the `sessionEnd` vocabulary (`signingResult`,
 `sessionTimeout`, ...) - see [webforms-setup.md](webforms-setup.md).
+
+## Demo Host (`examples/react-native-demo/App.tsx`)
+
+| Component | Purpose |
+|-----------|---------|
+| `App` | Wraps the tree in providers (Apollo only in proxy mode) + `SafeAreaProvider`, sets `StatusBar` from `useColorScheme()` |
+| `AppContent` | Applies the safe-area top inset, renders `ESignature` (`successDelayMs={4000}` so end-to-end runs get a fair success-screen window) |
+
+Handlers are exported for direct testability: `getRecipientData()`
+(`__DEV__`-gated test recipient), `handleSigningComplete` (success alert),
+`handleSigningError` (logs code + message), `handleSigningCancel`
+(cancellation alert).
+
+## Test Doubles
+
+Not shipped, but part of the component contract
+(`packages/esign-react-native/__mocks__/` + demo `__mocks__/`):
+
+| Mock | Replaces | Notes |
+|------|----------|-------|
+| `react-native-webview.tsx` | WebView | Registers the `onMessage` handler on `globalThis` so tests can post signing events (`simulateWebViewMessage`, `simulateRawWebViewMessage`) |
+| `@react-native-community/netinfo.ts` | NetInfo | Controllable connectivity state |
+| `react-native-safe-area-context.tsx` | SafeAreaProvider/insets | Zero insets, fixed frame (official mock has a circular-import bug in v5.6+) |
+
+## Design Elements
+
+- **Styling:** `StyleSheet.create()` per component; no shared theme module
+- **Accessibility:** every interactive element has `accessibilityRole` +
+  `accessibilityLabel`; status colors chosen for WCAG AA contrast
+  (success `#1E7E34`, error `#C82333`, warning `#F0AD4E`)
+- **Safe areas:** `react-native-safe-area-context` (`useSafeAreaInsets`)
+- **Primary action color:** iOS blue `#007AFF`

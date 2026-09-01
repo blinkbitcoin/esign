@@ -38,7 +38,6 @@
 ## Documentation
 
 ### Core Documentation
-- [Project Overview](./project-overview.md) - Executive summary and tech stack
 - [Source Tree Analysis](./source-tree-analysis.md) - Annotated directory structure
 - [Development Guide](./development-guide.md) - Setup, commands, and workflows
 - [DocuSign Setup](./docusign-setup.md) - Real-DocuSign setup for proxy mode + the live smoke-test checklist
@@ -54,9 +53,6 @@
 ### API & Data
 - [API Contracts - Backend](./api-contracts-backend.md) - GraphQL schema and REST endpoints
 - [Data Models - Backend](./data-models-backend.md) - Knex schema and database design
-
-### Components
-- [Component Inventory - Mobile](./component-inventory-mobile.md) - UI components, render states, testIDs, mocks
 
 ### Diagrams
 
@@ -115,7 +111,7 @@ make e2e-mobile             # or: make e2e-mobile-android
 ## Navigation by Use Case
 
 ### "I want to understand the codebase"
-1. Start with [Project Overview](./project-overview.md)
+1. Start with the [README](../README.md) (integration modes + repository layout)
 2. Review [Source Tree Analysis](./source-tree-analysis.md)
 3. Dive into architecture docs for specific parts
 

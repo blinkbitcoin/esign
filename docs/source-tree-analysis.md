@@ -184,44 +184,6 @@ blink-esign/
 
 ## Integration Points
 
-```
-┌──────────────────────────┐       ┌─────────────────────┐
-│  examples/react-native-demo (host app)    │       │   Backend           │
-│   └─ react-native-       │       │                     │
-│      esignature (lib)    │◄─────►│  src/schema.ts      │
-│      · client.ts factory │GraphQL│  (Apollo Server)    │
-│      · ESignature.tsx    │       │                     │
-│        (WebView)         │       │  app.ts             │◄── Provider
-│                          │       │  (POST /webhook/    │    Callbacks
-└──────────────────────────┘       │   esign)            │
-                                   │  db.ts (Knex)       │◄── PostgreSQL
-                                   └─────────────────────┘
-```
-
-## Key Files by Function
-
-### Entry Points
-- `packages/esign-react-native/src/index.ts` - Library public API
-- `examples/react-native-demo/index.js` - Demo app registration
-- `apps/api/src/index.ts` - Server bootstrap
-- `apps/api/src/server.ts` - Testable server startup
-
-### API Layer
-- `apps/api/src/schema.ts` - GraphQL schema and resolvers
-- `apps/api/src/app.ts` - REST webhook endpoint + auth context
-
-### Business Logic
-- `packages/esign-react-native/src/ESignature.tsx` - Signing flow state machine
-- `apps/api/src/webhook.ts` - Webhook status sync (idempotent, transactional)
-- `apps/api/src/envelope.ts` - Envelope repository
-- `apps/api/src/audit.ts` - Audit logging
-
-### Data Layer
-- `apps/api/src/db.ts` - Knex instance
-- `apps/api/migrations/` - Schema migrations
-- `apps/api/knexfile.ts` - Knex CLI config
-
-### External Integration
-- `apps/api/src/providers/docusign/` - DocuSign adapter (split: adapter + HTTP client + mapping + config)
-- `apps/api/src/providers/mock.ts` - Local mock (mirrors DocuSign)
-- `apps/api/src/auth.ts` - JWT verification
+How the parts communicate (GraphQL, webhooks, WebView events, database):
+see [integration-architecture.md](integration-architecture.md). Per-part
+entry points are listed in each architecture doc.
