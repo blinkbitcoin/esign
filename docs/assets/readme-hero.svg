@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="340" viewBox="0 0 960 340" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" role="img" aria-label="blink-esign: your React Native or React web app renders one ESignature component; a SigningSource picks one of three modes (public URL, Web Forms instance, proxy envelope); the two backend-backed modes go through an optional backend service to DocuSign.">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#2563eb"/>
+    </marker>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f1f5f9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- canvas -->
+  <rect x="0.5" y="0.5" width="959" height="339" rx="16" fill="#f8fafc" stroke="#e2e8f0"/>
+
+  <!-- ===== Column 1: your app ===== -->
+  <text x="150" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#334155" letter-spacing="1">YOUR APP</text>
+
+  <!-- browser window (behind) -->
+  <g transform="translate(96 70)">
+    <rect x="0" y="0" width="180" height="120" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+    <rect x="0" y="0" width="180" height="18" rx="8" fill="#e2e8f0"/>
+    <rect x="0" y="10" width="180" height="8" fill="#e2e8f0"/>
+    <circle cx="11" cy="9" r="3" fill="#f87171"/>
+    <circle cx="21" cy="9" r="3" fill="#fbbf24"/>
+    <circle cx="31" cy="9" r="3" fill="#34d399"/>
+    <rect x="70" y="34" width="70" height="4" rx="2" fill="#cbd5e1"/>
+    <rect x="70" y="44" width="96" height="4" rx="2" fill="#e2e8f0"/>
+    <rect x="70" y="52" width="88" height="4" rx="2" fill="#e2e8f0"/>
+    <rect x="70" y="60" width="96" height="4" rx="2" fill="#e2e8f0"/>
+    <line x1="72" y1="100" x2="166" y2="100" stroke="#94a3b8"/>
+    <path d="M78 96 C 86 80, 92 108, 102 92 S 118 78, 124 96 S 140 108, 156 86" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>
+  </g>
+
+  <!-- phone (in front) -->
+  <g transform="translate(40 60)">
+    <rect x="0" y="0" width="118" height="184" rx="16" fill="#0f172a"/>
+    <rect x="6" y="6" width="106" height="172" rx="12" fill="url(#screen)"/>
+    <rect x="42" y="10" width="34" height="5" rx="2.5" fill="#0f172a"/>
+    <!-- document -->
+    <rect x="18" y="28" width="82" height="128" rx="4" fill="#ffffff" stroke="#e2e8f0"/>
+    <rect x="26" y="42" width="52" height="4" rx="2" fill="#cbd5e1"/>
+    <rect x="26" y="52" width="66" height="4" rx="2" fill="#e2e8f0"/>
+    <rect x="26" y="60" width="60" height="4" rx="2" fill="#e2e8f0"/>
+    <rect x="26" y="68" width="66" height="4" rx="2" fill="#e2e8f0"/>
+    <rect x="26" y="76" width="44" height="4" rx="2" fill="#e2e8f0"/>
+    <!-- signature line + squiggle -->
+    <line x1="26" y1="132" x2="92" y2="132" stroke="#94a3b8" stroke-width="1"/>
+    <path d="M30 128 C 36 110, 42 142, 50 122 S 62 104, 66 126 S 78 140, 88 116" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round"/>
+    <!-- signed check -->
+    <circle cx="86" cy="52" r="10" fill="#16a34a"/>
+    <path d="M81 52.5 L85 56.5 L92 48.5" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- home indicator -->
+    <rect x="42" y="167" width="34" height="4" rx="2" fill="#cbd5e1"/>
+  </g>
+
+  <!-- component chip -->
+  <g transform="translate(68 282)">
+    <rect x="0" y="0" width="180" height="26" rx="13" fill="#eff6ff" stroke="#bfdbfe"/>
+    <text x="90" y="17.5" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.5" fill="#1d4ed8">&lt;ESignature source /&gt;</text>
+  </g>
+  <text x="158" y="266" text-anchor="middle" font-size="11.5" fill="#64748b">React Native · React web</text>
+
+  <!-- arrow app -> source -->
+  <line x1="290" y1="150" x2="336" y2="150" stroke="#2563eb" stroke-width="2" marker-end="url(#arrowBlue)"/>
+
+  <!-- ===== Column 2: signing source / modes ===== -->
+  <text x="500" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#334155" letter-spacing="1">PICK ONE SIGNING SOURCE</text>
+
+  <!-- mode 1 -->
+  <g transform="translate(345 72)">
+    <rect x="0" y="0" width="310" height="56" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+    <circle cx="26" cy="28" r="13" fill="#2563eb"/>
+    <text x="26" y="33" text-anchor="middle" font-size="14" font-weight="700" fill="#ffffff">1</text>
+    <text x="50" y="24" font-size="14" font-weight="700" fill="#0f172a">Public URL</text>
+    <text x="50" y="43" font-size="12" fill="#64748b">embed a published form · no backend</text>
+  </g>
+
+  <!-- mode 2 -->
+  <g transform="translate(345 142)">
+    <rect x="0" y="0" width="310" height="56" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+    <circle cx="26" cy="28" r="13" fill="#2563eb"/>
+    <text x="26" y="33" text-anchor="middle" font-size="14" font-weight="700" fill="#ffffff">2</text>
+    <text x="50" y="24" font-size="14" font-weight="700" fill="#0f172a">Web Forms instance</text>
+    <text x="50" y="43" font-size="12" fill="#64748b">per-signer prefill · one backend endpoint</text>
+  </g>
+
+  <!-- mode 3 -->
+  <g transform="translate(345 212)">
+    <rect x="0" y="0" width="310" height="56" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+    <circle cx="26" cy="28" r="13" fill="#2563eb"/>
+    <text x="26" y="33" text-anchor="middle" font-size="14" font-weight="700" fill="#ffffff">3</text>
+    <text x="50" y="24" font-size="14" font-weight="700" fill="#0f172a">Proxy envelope</text>
+    <text x="50" y="43" font-size="12" fill="#64748b">templates · sessions · webhooks · GraphQL backend</text>
+  </g>
+
+  <text x="500" y="300" text-anchor="middle" font-size="11.5" fill="#64748b">same component, same callbacks - only the source changes</text>
+
+  <!-- ===== Column 3: provider + optional backend ===== -->
+  <text x="810" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#334155" letter-spacing="1">PROVIDER</text>
+
+  <!-- DocuSign / e-sign provider -->
+  <g transform="translate(735 68)">
+    <rect x="0" y="0" width="150" height="62" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+    <!-- pen nib icon -->
+    <path d="M22 44 L34 16 L46 44 Z" fill="none" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="34" cy="34" r="3" fill="#0f172a"/>
+    <text x="96" y="27" text-anchor="middle" font-size="14" font-weight="700" fill="#0f172a">DocuSign</text>
+    <text x="96" y="46" text-anchor="middle" font-size="11.5" fill="#64748b">e-signature API</text>
+  </g>
+
+  <!-- backend -->
+  <g transform="translate(735 176)">
+    <rect x="0" y="0" width="150" height="92" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-dasharray="5 4"/>
+    <text x="75" y="24" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Backend service</text>
+    <text x="75" y="41" text-anchor="middle" font-size="11.5" fill="#64748b">apps/api · optional</text>
+    <text x="75" y="57" text-anchor="middle" font-size="11.5" fill="#64748b">GraphQL · webhooks</text>
+    <!-- db cylinder -->
+    <g transform="translate(58 64)">
+      <ellipse cx="17" cy="4" rx="17" ry="4" fill="#e2e8f0" stroke="#94a3b8"/>
+      <path d="M0 4 v12 a17 4 0 0 0 34 0 V4" fill="#e2e8f0" stroke="#94a3b8"/>
+    </g>
+  </g>
+
+  <!-- arrows: mode 1 -> DocuSign directly -->
+  <line x1="655" y1="100" x2="733" y2="100" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <!-- modes 2 + 3 -> backend -->
+  <path d="M655 170 H695 V222 H733" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <path d="M655 240 H695 V222" fill="none" stroke="#64748b" stroke-width="1.6"/>
+  <!-- backend <-> DocuSign -->
+  <line x1="810" y1="174" x2="810" y2="132" stroke="#64748b" stroke-width="1.6" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="820" y="158" font-size="10.5" fill="#64748b">REST + webhooks</text>
+</svg>

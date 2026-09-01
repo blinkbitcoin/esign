@@ -1,4 +1,4 @@
-name: Unit Tests + Code Checks
+name: Tests / Unit
 
 on:
   push:
@@ -17,7 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  unit-tests:
+  unit:
+    name: Coverage
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -57,7 +58,8 @@ jobs:
       - name: Unit tests with coverage
         run: npm run test:coverage
 
-  package-checks:
+  packages:
+    name: Packages
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
