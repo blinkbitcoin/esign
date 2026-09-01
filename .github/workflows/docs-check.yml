@@ -1,0 +1,68 @@
+name: Docs Freshness Check
+
+# Docs are hand-maintained alongside code (docs/index.md). This check warns
+# (never fails) when architecture-relevant files change without any docs/
+# update in the same push/PR.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-docs-freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # Github context via env vars, not inline interpolation (script injection hygiene)
+      EVENT_NAME: ${{ github.event_name }}
+      BASE_REF: ${{ github.base_ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Need history for diff
+
+      - name: Check for architecture changes without doc updates
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch --no-tags --depth=1 origin "$BASE_REF"
+            CHANGED_FILES=$(git diff --name-only "origin/$BASE_REF"...HEAD 2>/dev/null || echo "")
+          else
+            CHANGED_FILES=$(git diff --name-only HEAD~1 2>/dev/null || echo "")
+          fi
+
+          # Architecture-relevant files
+          ARCH_PATTERNS="apps/api/migrations/|\.graphql$|src/.*index\.ts$|package\.json"
+          ARCH_CHANGES=$(echo "$CHANGED_FILES" | grep -E "$ARCH_PATTERNS" || true)
+
+          # Were docs also updated?
+          DOC_CHANGES=$(echo "$CHANGED_FILES" | grep -E "^docs/|README\.md$" || true)
+
+          if [ -n "$ARCH_CHANGES" ] && [ -z "$DOC_CHANGES" ]; then
+            echo "::warning::Architecture-relevant files changed but docs were not updated:"
+            echo "$ARCH_CHANGES"
+            echo ""
+            echo "Consider updating documentation if these changes affect:"
+            echo "  - API contracts (GraphQL schema)"
+            echo "  - Database models (knex migrations)"
+            echo "  - System architecture (new services/components)"
+            {
+              echo "## Documentation Status"
+              echo ""
+              echo ":warning: Architecture-relevant files changed without a docs/ update:"
+              echo '```'
+              echo "$ARCH_CHANGES"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Docs check OK"
+          fi

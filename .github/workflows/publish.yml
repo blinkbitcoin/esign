@@ -1,0 +1,105 @@
+name: Publish Packages
+
+# Publishes the three client packages to GitHub Packages (npm.pkg.github.com)
+# under the blinkbitcoin org. Two publish channels:
+#
+#   - Stable (`latest` dist-tag): ONLY when a GitHub Release is published.
+#     The release tag (vX.Y.Z) must match every package.json version.
+#   - Prerelease (`next` dist-tag): every push to main (or a manual
+#     dispatch) ships <version>-pre.<run>.<sha>. The inter-package
+#     dependency on core is pinned to the exact prerelease version, since
+#     semver ranges never match prereleases.
+#
+# Both channels are gated on the full test fleet: unit tests with enforced
+# coverage thresholds + all three E2E suites, reused via workflow_call.
+# Requires no extra secrets - GITHUB_TOKEN with packages:write is enough
+# for same-org publishing.
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+  e2e-backend:
+    uses: ./.github/workflows/e2e-backend.yml
+  e2e-web:
+    uses: ./.github/workflows/e2e-web.yml
+  e2e-mobile:
+    uses: ./.github/workflows/e2e-mobile.yml
+
+  publish:
+    needs: [test, e2e-backend, e2e-web, e2e-mobile]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://npm.pkg.github.com
+          scope: '@blinkbitcoin'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve version and dist-tag
+        id: ver
+        run: |
+          PACKAGES="packages/esignature-core packages/esign-react-native packages/esign-react"
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"
+            for p in $PACKAGES; do
+              PKGV=$(node -p "require('./$p/package.json').version")
+              if [ "$PKGV" != "$VERSION" ]; then
+                echo "::error::$p is at $PKGV but the release tag says $VERSION - bump package versions before releasing"
+                exit 1
+              fi
+            done
+            echo "disttag=latest" >> "$GITHUB_OUTPUT"
+          else
+            BASE=$(node -p "require('./packages/esignature-core/package.json').version")
+            VERSION="${BASE}-pre.${{ github.run_number }}.$(git rev-parse --short HEAD)"
+            for p in $PACKAGES; do
+              (cd "$p" && npm pkg set version="$VERSION")
+            done
+            # ^X.Y.Z never matches a prerelease - pin core exactly
+            (cd packages/esign-react-native && npm pkg set "dependencies.@blinkbitcoin/esignature-core=$VERSION")
+            (cd packages/esign-react && npm pkg set "dependencies.@blinkbitcoin/esignature-core=$VERSION")
+            echo "disttag=next" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Publishing version $VERSION"
+
+      - name: Build (core first - the platform packages need its dist)
+        run: npm run build
+
+      - name: Publish @blinkbitcoin/esignature-core
+        run: npm publish -w packages/esignature-core --tag ${{ steps.ver.outputs.disttag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish @blinkbitcoin/esign-react-native
+        run: npm publish -w packages/esign-react-native --tag ${{ steps.ver.outputs.disttag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish @blinkbitcoin/esign-react
+        run: npm publish -w packages/esign-react --tag ${{ steps.ver.outputs.disttag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,39 @@
+# Maestro E2E: session expires mid-signing, user restarts and completes.
+# Drives the full restart UX: signing page -> session_timeout event ->
+# component error state with Restart -> getSigningUrl mutation -> fresh
+# signing page -> complete -> success. This is the only place the restart
+# journey is exercised through real UI + real backend + real DB.
+appId: org.reactjs.native.example.ReactNativeSandbox
+---
+- launchApp
+- tapOn:
+    id: "sign-document-button"
+- extendedWaitUntil:
+    visible:
+      id: "signing-webview"
+    timeout: 15000
+
+# Simulate the provider expiring the session (button on the mock page)
+- extendedWaitUntil:
+    visible: "Simulate Session Timeout"
+    timeout: 15000
+- tapOn: "Simulate Session Timeout"
+
+# Component enters the restartable error state
+- extendedWaitUntil:
+    visible:
+      id: "restart-button"
+    timeout: 10000
+- assertVisible: "Session expired, tap to restart"
+- tapOn:
+    id: "restart-button"
+
+# Restart got a fresh signing URL for the SAME envelope - complete it
+- extendedWaitUntil:
+    visible: "Complete Signing"
+    timeout: 15000
+- tapOn: "Complete Signing"
+- extendedWaitUntil:
+    visible:
+      id: "success-screen"
+    timeout: 15000

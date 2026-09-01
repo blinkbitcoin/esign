@@ -1,0 +1,33 @@
+# EditorConfig: https://editorconfig.org
+# Note: Biome (formatter for backend and mobile) reads this file via
+# useEditorconfig: true; explicit biome.json settings take precedence
+# where both define a value, and these defaults match them (2-space, LF).
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Markdown: a trailing double-space is a hard line break
+[*.md]
+trim_trailing_whitespace = false
+
+# Android/Gradle and JVM sources use 4-space indent (Gradle convention)
+[*.{gradle,java,kt,kts}]
+indent_size = 4
+
+# Xcode project files are tab-indented and machine-managed
+[*.pbxproj]
+indent_style = tab
+
+# Windows scripts require CRLF
+[*.bat]
+end_of_line = crlf
+
+# Makefiles require tabs
+[Makefile]
+indent_style = tab

@@ -1,0 +1,32 @@
+# Git hooks (lefthook). Installed automatically by `npm install` (prepare
+# script). Fast local gates only - CI (.github/workflows/test.yml) remains
+# the authoritative check with the full suite + coverage thresholds.
+
+pre-commit:
+  parallel: true
+  commands:
+    # Biome runs per config root (repo root and apps/api are separate Biome
+    # roots - a single root-invoked run on files from both errors with
+    # "nested root configuration", same reason the npm scripts split them).
+    biome:
+      glob: '*.{ts,tsx,js,jsx,mjs,cjs,json}'
+      exclude:
+        - apps/api/**
+      # format (not check) - mirrors check-code; ESLint owns linting here
+      run: npx biome format --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+    biome-api:
+      root: 'apps/api/'
+      glob: '*.{ts,tsx,js,jsx,mjs,cjs,json}'
+      run: npx biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+    eslint:
+      # Flat config ignores apps/api etc.; --no-warn-ignored keeps staged
+      # files from ignored paths silent instead of counting as warnings.
+      glob: '*.{ts,tsx}'
+      run: npx eslint --no-warn-ignored --max-warnings=0 {staged_files}
+
+pre-push:
+  commands:
+    typecheck:
+      run: npm run typecheck

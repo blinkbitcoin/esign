@@ -1,0 +1,11 @@
+# Keeps the major-tag-pinned actions (@v4 etc.) current without SHA-pinning
+# maintenance burden - PRs arrive when actions release new majors.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']

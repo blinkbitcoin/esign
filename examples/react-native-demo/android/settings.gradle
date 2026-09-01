@@ -1,0 +1,24 @@
+// React Native tooling is resolved via Node module resolution rather than
+// fixed relative paths - in the npm-workspaces layout, packages hoist to the
+// monorepo root's node_modules.
+pluginManagement {
+  def reactNativeGradlePlugin = new File(
+    providers.exec {
+      workingDir(rootDir)
+      commandLine("node", "--print", "require.resolve('@react-native/gradle-plugin/package.json')")
+    }.standardOutput.asText.get().trim()
+  ).getParentFile().getAbsolutePath()
+  includeBuild(reactNativeGradlePlugin)
+}
+plugins { id("com.facebook.react.settings") }
+extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+rootProject.name = 'ReactNativeSandbox'
+include ':app'
+
+def reactNativeGradlePlugin = new File(
+  providers.exec {
+    workingDir(rootDir)
+    commandLine("node", "--print", "require.resolve('@react-native/gradle-plugin/package.json')")
+  }.standardOutput.asText.get().trim()
+).getParentFile().getAbsolutePath()
+includeBuild(reactNativeGradlePlugin)

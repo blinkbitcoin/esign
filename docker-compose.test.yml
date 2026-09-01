@@ -1,0 +1,20 @@
+# Docker Compose configuration for E2E tests
+# Uses tmpfs for RAM-backed ephemeral storage (faster writes, auto-cleanup)
+# Port 5433 to avoid conflicts with dev database on 5432
+
+services:
+  postgres-test:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: esign_test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d esign_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 10

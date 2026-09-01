@@ -1,0 +1,49 @@
+# Maestro E2E test: Sign Document Happy Path
+# Drives the complete signing flow: app launch -> envelope creation ->
+# embedded mock signing page (real WebView) -> postMessage -> success screen.
+#
+# REQUIREMENTS:
+# - Backend running with ESIGN_PROVIDER=mock (mock provider serves an
+#   interactive signing page at /mock-signing/:id)
+# - Database running (the mock provider still persists envelopes)
+# - Metro running (debug build loads JS from the dev server)
+
+appId: org.reactjs.native.example.ReactNativeSandbox
+---
+- launchApp
+
+# Idle state: start signing
+- assertVisible:
+    id: "sign-document-button"
+    label: "Verify Sign Document button is visible"
+- tapOn:
+    id: "sign-document-button"
+    label: "Tap Sign Document button"
+
+# Envelope creation in flight
+- assertVisible:
+    id: "loading-indicator"
+    label: "Verify loading indicator is shown"
+    optional: true
+
+# The mock provider's signing page loads in the real WebView
+- extendedWaitUntil:
+    visible:
+      id: "signing-webview"
+    timeout: 15000
+
+# Interact with the signing page itself (inside the WebView): this exercises
+# the page -> postMessage -> component path end-to-end
+- extendedWaitUntil:
+    visible: "Complete Signing"
+    timeout: 15000
+- tapOn: "Complete Signing"
+
+# The component shows success, then fires onComplete after successDelayMs
+- extendedWaitUntil:
+    visible:
+      id: "success-screen"
+    timeout: 15000
+- assertVisible:
+    id: "success-screen"
+    label: "Verify success screen is displayed"

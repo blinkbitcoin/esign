@@ -1,0 +1,31 @@
+# Maestro E2E: DocuSign Web Forms mode happy path.
+# Requires Metro bundled with ESIGN_MODE=webform:
+#   ESIGN_MODE=webform npm start
+# plus the backend (mock provider) + database running. The demo mints a
+# mock-webform instance (real DocuSign event vocabulary) and drives it in the
+# WebView.
+appId: org.reactjs.native.example.ReactNativeSandbox
+tags:
+  - webform
+---
+- launchApp
+- assertVisible:
+    id: "sign-document-button"
+- tapOn:
+    id: "sign-document-button"
+
+# The mock DocuSign Web Form loads in the real WebView
+- extendedWaitUntil:
+    visible:
+      id: "signing-webview"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "Mock Web Form"
+    timeout: 15000
+
+# Complete signing (posts the real DocuSign 'signingComplete' event)
+- tapOn: "Complete Signing"
+- extendedWaitUntil:
+    visible:
+      id: "success-screen"
+    timeout: 15000

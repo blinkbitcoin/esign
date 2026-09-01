@@ -1,0 +1,26 @@
+# Maestro E2E: user cancels from inside the signing ceremony.
+# Drives: idle -> envelope creation -> mock signing page -> Cancel (in the
+# WebView) -> component returns to idle -> host app shows its cancel alert.
+appId: org.reactjs.native.example.ReactNativeSandbox
+---
+- launchApp
+- tapOn:
+    id: "sign-document-button"
+- extendedWaitUntil:
+    visible:
+      id: "signing-webview"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "Cancel"
+    timeout: 15000
+- tapOn: "Cancel"
+
+# Host app's onCancel fires: demo shows an alert
+- extendedWaitUntil:
+    visible: "Signing was cancelled."
+    timeout: 10000
+- tapOn: "OK"
+
+# Component is back in idle - user can start over
+- assertVisible:
+    id: "sign-document-button"

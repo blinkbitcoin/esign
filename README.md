@@ -1,97 +1,95 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# blink-esign
 
-# Getting Started
+E-signature integration for React Native apps: a **backend service** that
+orchestrates envelopes against an e-sign provider (DocuSign, with a
+provider-agnostic adapter interface), and a **plug-and-play React Native
+component** that any host app can drop in to run the signing flow.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Repository Layout
 
-## Step 1: Start Metro
+| Path | What it is |
+|------|------------|
+| [`apps/api/`](apps/api/README.md) | 🖥️ **The service** — Express + Apollo GraphQL API, Knex/PostgreSQL, provider adapters, webhooks |
+| [`packages/esignature-core/`](packages/esignature-core/README.md) | 🧩 **Shared core** — platform-agnostic `SigningSource` abstraction + sources, Apollo factory, GraphQL operations (dependency of both platform packages) |
+| [`packages/esign-react-native/`](packages/esign-react-native/README.md) | 📦 **The product (RN)** — publishable React Native library: `ESignature` component over the core |
+| [`packages/esign-react/`](packages/esign-react/README.md) | 📦 **The product (web)** — publishable React web library: same flow with iframe embedding |
+| [`examples/react-native-demo/`](examples/react-native-demo/README.md) | 📱 **RN integration demo** — full RN app hosting the RN component (manual testing + Maestro E2E) |
+| [`examples/react-demo/`](examples/react-demo/README.md) | 🌐 **Web integration demo** — Vite app hosting the web component (`make web`) |
+| `docs/` | Current-state documentation ([start here](docs/index.md)) |
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
-
-To start the Metro dev server, run the following command from the root of your React Native project:
-
-```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
-```
-
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
+## Quick Start
 
 ```sh
-# Using npm
-npm run android
+make install                            # npm ci across all workspaces
+direnv allow . && direnv allow apps/api  # once per machine (loads env + nix flake dev shell)
 
-# OR using Yarn
-yarn android
+make db-up migrate backend              # dev Postgres + migrations + server (:4000)
+
+# Example app (new terminal)
+make start                              # Metro
+make ios                                # or: make android
 ```
 
-### iOS
+## Using the Libraries in Your App
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+The RN and web packages expose the **same public API** (component, client
+factory, error-code contract); pick the one for your platform.
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+The component is provider-agnostic: give it a `SigningSource` (proxy envelope,
+DocuSign Web Forms, or a public URL). Proxy mode:
 
-```sh
-bundle install
+```tsx
+import {
+  ESignature,
+  createESignApolloClient,
+  createProxySigningSource,
+} from '@blinkbitcoin/esign-react-native';
+import { ApolloProvider } from '@apollo/client/react';
+
+const client = createESignApolloClient({
+  uri: 'https://your-backend.example.com/graphql',
+  getAuthToken: () => readTokenFromSecureStorage(),
+});
+const source = createProxySigningSource({
+  client,
+  contractType: 'loan_agreement',
+  recipient: { name, email },
+});
+
+<ApolloProvider client={client}>
+  <ESignature source={source} onComplete={…} onError={…} onCancel={…} />
+</ApolloProvider>
 ```
 
-Then, and every time you update your native dependencies, run:
+Swap the source for `createWebFormsSource` / `createPublicUrlSource` to use
+DocuSign Web Forms — the component and callbacks are identical (see the package
+READMEs).
 
-```sh
-bundle exec pod install
-```
+Peer dependencies your app provides: `react`, `react-native`,
+`react-native-webview`, `@react-native-community/netinfo` — plus
+`@apollo/client` + `graphql` **only for proxy mode** (they are optional peers;
+Web Forms-only apps import from the Apollo-free
+`@blinkbitcoin/esign-react-native/webform` subpath and skip them).
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+Packages publish to GitHub Packages under the `blinkbitcoin` org — see
+[docs/consuming.md](docs/consuming.md) for registry setup and the minimal
+webform-only install.
 
-```sh
-# Using npm
-npm run ios
+## Development
 
-# OR using Yarn
-yarn ios
-```
+`make help` lists all targets (thin wrappers over the npm workspace scripts):
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+| Target | Purpose |
+|--------|---------|
+| `make test` | Unit suites + lint + typecheck + format check |
+| `make unit` / `make coverage` | Test suites (100% coverage enforced on packages + backend; demos floored at current level) |
+| `make check-code` | Lint + typecheck + format check only |
+| `make build` | Build the library (react-native-builder-bob) |
+| `make db-up` / `make migrate` / `make backend` | Dev database + server |
+| `make e2e-backend` | Backend E2E: test DB up → migrate → tests → teardown |
+| `make ios` / `make android` / `make start` | RN example app |
+| `make web` | Web example app (Vite dev server) |
+| `make pods` | iOS CocoaPods install |
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+See [docs/development-guide.md](docs/development-guide.md) for full setup,
+environment variables, and troubleshooting.

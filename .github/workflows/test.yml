@@ -1,0 +1,47 @@
+name: Unit Tests + Code Checks
+
+on:
+  push:
+    branches-ignore: [main] # main is covered by the publish workflow's gates
+  pull_request:
+  workflow_call: # reused as a publish gate (see publish.yml)
+
+permissions:
+  contents: read
+
+# A newer push to the same ref supersedes an in-flight run. Safe with the
+# publish gates: publish.yml serializes itself per ref.
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies (workspace root)
+        run: npm ci
+
+      - name: Lint GitHub Actions workflows (actionlint)
+        run: |
+          docker run --rm -v "$PWD":/repo --workdir /repo rhysd/actionlint:latest -color
+
+      - name: Lint + typecheck + format check
+        run: make check-code
+
+      # Coverage thresholds are enforced per workspace: 100% on the three
+      # packages and the backend, current-level floors on the demo apps.
+      - name: Unit tests with coverage
+        run: npm run test:coverage

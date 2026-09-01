@@ -1,44 +1,35 @@
 {
-  "name": "ReactNativeSandbox",
+  "name": "esign-monorepo",
   "version": "0.0.1",
   "private": true,
+  "workspaces": ["packages/*", "apps/*", "examples/*"],
   "scripts": {
-    "android": "react-native run-android",
-    "ios": "react-native run-ios",
-    "lint": "eslint .",
-    "start": "react-native start",
-    "test": "jest",
-    "test:e2e": "maestro test .maestro/",
-    "test:e2e:record": "maestro record .maestro/",
-    "test:e2e:studio": "maestro studio"
-  },
-  "dependencies": {
-    "react": "19.2.0",
-    "react-native": "0.83.1",
-    "@react-native/new-app-screen": "0.83.1",
-    "react-native-safe-area-context": "^5.5.2"
+    "start": "npm run start -w examples/react-native-demo",
+    "ios": "npm run ios -w examples/react-native-demo",
+    "android": "npm run android -w examples/react-native-demo",
+    "backend": "npm run dev -w apps/api",
+    "test": "npm run test -w packages/esignature-core -w packages/esign-react-native -w packages/esign-react -w examples/react-native-demo -w examples/react-demo -w apps/api",
+    "test:coverage": "npm run test:coverage -w packages/esignature-core -w packages/esign-react-native -w packages/esign-react -w examples/react-native-demo -w examples/react-demo && npm run test -w apps/api -- --coverage",
+    "test:e2e": "npm run test:e2e -w examples/react-native-demo",
+    "test:e2e:backend": "npm run test:e2e -w apps/api",
+    "typecheck": "npm run typecheck -w packages/esignature-core -w packages/esign-react-native -w packages/esign-react -w examples/react-native-demo -w examples/react-demo -w apps/api",
+    "lint": "eslint . && npm run lint -w apps/api",
+    "format": "biome format --write examples packages && npm run format -w apps/api",
+    "format:check": "biome format examples packages && npm run format:check -w apps/api",
+    "build": "npm run build -w packages/esignature-core -w packages/esign-react-native -w packages/esign-react",
+    "web": "npm run dev -w examples/react-demo",
+    "codegen": "npm run schema:emit -w apps/api && npm run codegen -w packages/esignature-core",
+    "prepare": "lefthook install"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.2",
-    "@babel/preset-env": "^7.25.3",
-    "@babel/runtime": "^7.25.0",
-    "@react-native-community/cli": "20.0.0",
-    "@react-native-community/cli-platform-android": "20.0.0",
-    "@react-native-community/cli-platform-ios": "20.0.0",
-    "@react-native/babel-preset": "0.83.1",
-    "@react-native/eslint-config": "0.83.1",
-    "@react-native/metro-config": "0.83.1",
-    "@react-native/typescript-config": "0.83.1",
-    "@types/jest": "^29.5.13",
-    "@types/react": "^19.2.0",
-    "@types/react-test-renderer": "^19.1.0",
-    "eslint": "^8.19.0",
-    "jest": "^29.6.3",
-    "prettier": "2.8.8",
-    "react-test-renderer": "19.2.0",
-    "typescript": "^5.8.3"
+    "@biomejs/biome": "^2.5.2",
+    "@eslint/eslintrc": "^3.3.6",
+    "@react-native/eslint-config": "^0.87.1",
+    "eslint": "^9.39.5",
+    "eslint-plugin-ft-flow": "^3.0.11",
+    "lefthook": "^2.1.12"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">= 22.11.0"
   }
 }

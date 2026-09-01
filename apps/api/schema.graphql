@@ -1,0 +1,63 @@
+type Query {
+  health: HealthCheck!
+  envelope(id: String!): Envelope
+  auditLogs(envelopeId: String!): [AuditLog!]!
+}
+
+type Mutation {
+  createEnvelope(input: CreateEnvelopeInput!): EnvelopeResult!
+  getSigningUrl(input: GetSigningUrlInput!): SigningUrlResult!
+}
+
+type HealthCheck {
+  status: String!
+  timestamp: String!
+}
+
+type Envelope {
+  id: String!
+  status: String!
+  contractType: String!
+  createdAt: String!
+}
+
+input RecipientInput {
+  name: String!
+  email: String!
+}
+
+input CreateEnvelopeInput {
+  contractType: String!
+  recipient: RecipientInput!
+}
+
+type EnvelopeResult {
+  envelopeId: String!
+  signingUrl: String!
+}
+
+input GetSigningUrlInput {
+  envelopeId: String!
+  recipient: RecipientInput!
+}
+
+type SigningUrlResult {
+  signingUrl: String!
+}
+
+type AuditLog {
+  id: String!
+  action: String!
+  timestamp: String!
+  metadata: String
+}
+
+enum ErrorCode {
+  ENVELOPE_NOT_FOUND
+  ENVELOPE_CREATION_FAILED
+  PROVIDER_UNAVAILABLE
+  SESSION_EXPIRED
+  UNAUTHORIZED
+  VALIDATION_ERROR
+  PERSISTENCE_FAILED
+}

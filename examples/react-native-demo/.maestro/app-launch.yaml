@@ -1,0 +1,10 @@
+# Maestro E2E: launch smoke test - the app boots to the signing idle screen.
+# Fast-fail signal for broken builds before the longer flows run.
+appId: org.reactjs.native.example.ReactNativeSandbox
+---
+- launchApp
+- assertVisible:
+    id: "sign-document-button"
+- assertVisible: "Sign Document"
+- assertVisible:
+    id: "cancel-button"

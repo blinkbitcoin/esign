@@ -1,0 +1,130 @@
+name: Mobile E2E Tests (Maestro)
+
+on:
+  push:
+    branches-ignore: [main] # main is covered by the publish workflow's gates
+  pull_request:
+  workflow_call: # reused as a publish gate (see publish.yml)
+
+permissions:
+  contents: read
+
+# One run per ref; a newer push supersedes an in-flight run. Safe with the
+# publish gates: publish.yml serializes itself per ref, so two publish runs
+# never have gates in flight at once.
+concurrency:
+  group: e2e-mobile-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-mobile-ios:
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies (workspace root)
+        run: npm ci
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Install CocoaPods dependencies
+        run: |
+          cd examples/react-native-demo
+          bundle install
+          cd ios
+          bundle exec pod install
+
+      - name: Install Maestro CLI
+        env:
+          MAESTRO_VERSION: 2.6.1 # version the E2E suites are proven against
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      # macOS runners have no Docker - run the test database via Homebrew
+      # Postgres instead, matching docker-compose.test.yml (test/test@5433,
+      # tmpfs-equivalent: the runner is ephemeral anyway).
+      - name: Start test database (Homebrew Postgres, port 5433)
+        run: |
+          brew install postgresql@16
+          PGBIN="$(brew --prefix postgresql@16)/bin"
+          echo "test" > "$RUNNER_TEMP/pgpass"
+          "$PGBIN/initdb" -D "$RUNNER_TEMP/pgdata" -U test --pwfile="$RUNNER_TEMP/pgpass"
+          "$PGBIN/pg_ctl" -D "$RUNNER_TEMP/pgdata" -o "-p 5433" -l "$RUNNER_TEMP/pg.log" start
+          for i in {1..15}; do
+            if "$PGBIN/pg_isready" -h localhost -p 5433 -U test; then break; fi
+            echo "Waiting for database... ($i/15)"; sleep 2
+          done
+          "$PGBIN/createdb" -h localhost -p 5433 -U test esign_test
+          "$PGBIN/pg_isready" -h localhost -p 5433 -U test -d esign_test
+
+      - name: Run database migrations
+        run: npm run migrate:test
+        working-directory: apps/api
+
+      - name: Start backend with mock provider
+        run: |
+          cd apps/api
+          ESIGN_PROVIDER=mock npx dotenv-cli -e .env.test -- npm run dev &
+          # Wait for backend to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:4000/health > /dev/null; then
+              echo "Backend is ready"
+              exit 0
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 2
+          done
+          echo "ERROR: Backend failed to start"
+          exit 1
+
+      - name: Build iOS app for simulator
+        run: |
+          cd examples/react-native-demo/ios
+          xcodebuild \
+            -workspace ReactNativeSandbox.xcworkspace \
+            -scheme ReactNativeSandbox \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -derivedDataPath build \
+            build
+
+      - name: Boot iOS Simulator
+        run: |
+          xcrun simctl boot "iPhone 16" || true
+          xcrun simctl bootstatus "iPhone 16" -b
+
+      - name: Install app on simulator
+        run: |
+          xcrun simctl install booted examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator/ReactNativeSandbox.app
+
+      - name: Run Maestro tests
+        run: |
+          export PATH="$HOME/.maestro/bin:$PATH"
+          maestro test examples/react-native-demo/.maestro/ --timeout 120000
+
+      - name: Stop backend
+        if: always()
+        run: pkill -f "npm run dev" || true
+
+      - name: Upload Maestro test results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: maestro-results
+          path: ~/.maestro/tests/
+          retention-days: 7
