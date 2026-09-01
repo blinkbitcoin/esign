@@ -29,7 +29,6 @@
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
     "@eslint/eslintrc": "^3.3.6",
-    "@react-native/babel-preset": "^0.87.1",
     "@react-native/eslint-config": "^0.87.1",
     "@typescript-eslint/eslint-plugin": "^8.69.0",
     "@typescript-eslint/parser": "^8.69.0",
