@@ -35,6 +35,10 @@ jobs:
   checks:
     name: Unit
     uses: ./.github/workflows/test.yml
+    # A called workflow cannot exceed its caller's permissions; test.yml's
+    # `badge` job pushes the coverage badge to the gh-pages branch on main.
+    permissions:
+      contents: write
   e2e:
     name: E2E
     uses: ./.github/workflows/e2e.yml

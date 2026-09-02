@@ -16,6 +16,9 @@ environment variables, and troubleshooting:
 
 - `make test` — unit suites + lint + typecheck + format check. Coverage is
   **100% enforced** on the packages and backend; the demo apps have floors.
+  The README coverage badge is measured, not hardcoded: CI aggregates the
+  packages + backend line coverage and publishes it to the `gh-pages` branch
+  on every push to `main` (`make coverage-badge` renders it locally).
 - Git hooks (see [below](#git-hooks)) format, lint, and check the commit
   message locally.
 - CI runs everything on each push/PR, plus all end-to-end suites
