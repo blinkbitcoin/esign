@@ -1,6 +1,7 @@
 # blink-esign
 
-[![CI](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml?query=branch%3Amain)
+[![Unit](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/badges/main/unit.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml?query=branch%3Amain)
+[![E2E](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/badges/main/e2e.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml?query=branch%3Amain)
 [![Coverage](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/badges/main/coverage.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml?query=branch%3Amain)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
