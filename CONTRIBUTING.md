@@ -20,7 +20,8 @@ environment variables, and troubleshooting:
   aggregates the packages + backend line coverage and publishes it to
   `gh-pages/badges/<branch>/` (`make coverage-badge` renders it locally);
   the README embeds the `main` one. A red `failing` badge replaces it when
-  the coverage run fails.
+  the coverage run fails. The Unit and E2E badges next to it are rendered
+  the same way from the pipeline's job results (`scripts/status-badge.mjs`).
 - Git hooks (see [below](#git-hooks)) format, lint, and check the commit
   message locally.
 - CI (`ci.yml`) is one pipeline for every branch: unit suites with
