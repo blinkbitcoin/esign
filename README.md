@@ -3,9 +3,7 @@
 [![Unit tests + code checks](https://github.com/blinkbitcoin/blink-esign/actions/workflows/test.yml/badge.svg?event=pull_request)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/test.yml)
 [![E2E tests](https://github.com/blinkbitcoin/blink-esign/actions/workflows/e2e.yml/badge.svg?event=pull_request)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/e2e.yml)
 [![Publish](https://github.com/blinkbitcoin/blink-esign/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/publish.yml)
-[![Coverage 100%](https://img.shields.io/badge/coverage-100%25-brightgreen)](#development)
-[![Node 22.22+ / 24.15+](https://img.shields.io/badge/node-22.22%2B%20%7C%2024.15%2B-339933?logo=node.js&logoColor=white)](package.json)
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](packages/esign-core/tsconfig.json)
+[![Coverage](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/coverage.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/publish.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 <p align="center">
@@ -201,6 +199,7 @@ credentials are set).
 |--------|---------|
 | `make test` | Unit suites + lint + typecheck + format check |
 | `make unit` / `make coverage` | Test suites (100% coverage enforced on packages + backend; demos floored at current level) |
+| `make coverage-badge` | Render the coverage badge above from the last `make coverage` run (CI publishes it to `gh-pages` on every `main` push; `--status failing` or `--status pending` renders the placeholders) |
 | `make check-code` | Lint + typecheck + format check only |
 | `make build` | Build the library (react-native-builder-bob) |
 | `make e2e-backend` / `make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown |
