@@ -172,15 +172,25 @@ jobs:
           xcrun simctl boot "$DEVICE_NAME" || true
 
       # Debug builds load their JS from Metro, so the .app only depends on the
-      # native inputs: the ios/ project, the demo's manifest + deps (autolinked
-      # native modules come from the lockfile) and the CocoaPods lockfile.
-      # A JS-only push hits this cache and skips Ruby, Pods and Xcode entirely.
+      # native inputs: the ios/ project (incl. Podfile.lock), app.json, the
+      # Ruby lockfile, and the lockfile-resolved versions of the demo's runtime
+      # deps + @react-native* dev deps (scripts/native-deps-hash.sh - what
+      # autolinking and codegen read). Everything else in package-lock.json is
+      # JS-only, so a jest/eslint/backend bump still hits this cache and skips
+      # Ruby, Pods and Xcode entirely. Bump the v-suffix if an input the script
+      # cannot see changes.
+      - name: Compute native dependency hash
+        id: native-deps
+        run: |
+          HASH=$(bash scripts/native-deps-hash.sh)
+          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+
       - name: Restore iOS app build
         id: ios-app
         uses: actions/cache@v6
         with:
           path: examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator/ReactNativeSandbox.app
-          key: ios-app-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('examples/react-native-demo/ios/**', 'examples/react-native-demo/app.json', 'examples/react-native-demo/package.json', 'examples/react-native-demo/Gemfile.lock', 'package-lock.json') }}
+          key: ios-app-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-deps.outputs.hash }}-${{ hashFiles('examples/react-native-demo/ios/**', 'examples/react-native-demo/app.json', 'examples/react-native-demo/Gemfile.lock') }}
 
       - name: Setup Ruby
         if: steps.ios-app.outputs.cache-hit != 'true'
@@ -329,15 +339,25 @@ jobs:
         uses: actions/checkout@v7
 
       # Debug builds load their JS from Metro, so the APK only depends on the
-      # native inputs: the android/ project and the demo's manifest + deps
-      # (autolinked native modules come from the lockfile). A JS-only push
-      # hits this cache and skips Java, Gradle and the disk cleanup entirely.
+      # native inputs: the android/ project, app.json, and the lockfile-resolved
+      # versions of the demo's runtime deps + @react-native* dev deps
+      # (scripts/native-deps-hash.sh - what autolinking and codegen read).
+      # Everything else in package-lock.json is JS-only, so a jest/eslint/
+      # backend bump still hits this cache and skips Java, Gradle and the disk
+      # cleanup entirely. Bump the v-suffix if an input the script cannot see
+      # changes.
+      - name: Compute native dependency hash
+        id: native-deps
+        run: |
+          HASH=$(bash scripts/native-deps-hash.sh)
+          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+
       - name: Restore Android APK build
         id: android-apk
         uses: actions/cache@v6
         with:
           path: examples/react-native-demo/android/app/build/outputs/apk/debug/app-debug.apk
-          key: android-apk-v1-${{ hashFiles('examples/react-native-demo/android/**', 'examples/react-native-demo/app.json', 'examples/react-native-demo/package.json', 'package-lock.json') }}
+          key: android-apk-v2-${{ steps.native-deps.outputs.hash }}-${{ hashFiles('examples/react-native-demo/android/**', 'examples/react-native-demo/app.json') }}
 
       # The stock runner has ~14GB free; node_modules + the Android system
       # image + Docker (+ Gradle on a cache miss) don't fit - a run that
