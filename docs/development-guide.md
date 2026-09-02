@@ -7,7 +7,7 @@
 
 | Requirement | Version | Purpose |
 |-------------|---------|---------|
-| Node.js | ≥22.11 | Runtime |
+| Node.js | ^22.22.2 or ≥24.15 | Runtime (floor set by jsdom 30) |
 | npm | Latest | Package management |
 | Docker | Latest | Test database |
 | Xcode | Latest | iOS builds (macOS only) |
@@ -34,7 +34,7 @@ npm ci
 direnv allow . && direnv allow apps/api
 ```
 
-Without direnv/nix, any Node >= 22.11 plus a JDK 17 and Ruby 3.2+ works -
+Without direnv/nix, any Node 22.22+ or 24.15+ plus a JDK 17 and Ruby 3.2+ works -
 the flake is the convenient, pinned path, not a hard requirement (CI uses
 plain setup-node).
 
@@ -239,6 +239,12 @@ npm run ios
 # Run Maestro tests
 maestro test examples/react-native-demo/.maestro/
 ```
+
+The flows launch the app once (`app-launch` runs first) and reset between
+flows with the demo's **Start over** control instead of relaunching - see
+[docs/architecture/mobile.md](architecture/mobile.md#e2e-tests-maestro).
+A flow that needs a truly fresh process should `launchApp` with the default
+`stopApp: true` inside a `retry` block, as `app-launch.yaml` does.
 
 ## Code Style
 
