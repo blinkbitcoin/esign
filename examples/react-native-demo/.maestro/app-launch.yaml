@@ -11,7 +11,7 @@ appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android:
 ---
 # The one cold launch: driver install + app boot + bundle load. A driver
 # error inside the first wait aborts the wait rather than polling on, so the
-# launch + wait pair is retried as a unit.
+# whole flow is retried as a unit (per-flow retry, #8).
 - retry:
     maxRetries: 2
     commands:
@@ -20,9 +20,8 @@ appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android:
           visible:
             id: "sign-document-button"
           timeout: 60000
-
-- assertVisible: "Sign Document"
-- assertVisible:
-    id: "cancel-button"
-- assertVisible:
-    id: "reset-button"
+      - assertVisible: "Sign Document"
+      - assertVisible:
+          id: "cancel-button"
+      - assertVisible:
+          id: "reset-button"

@@ -11,53 +11,59 @@
 
 appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 ---
-# Foreground the already-running app (app-launch booted it) and reset the
-# component to idle in-app - no relaunch, see app-launch.yaml.
-- launchApp:
-    stopApp: false
-- tapOn:
-    id: "reset-button"
-- extendedWaitUntil:
-    visible:
-      id: "sign-document-button"
-    timeout: 10000
+# Per-flow retry (#8): a driver hiccup re-runs this flow once from the
+# in-app reset instead of failing the suite. Retrying is safe because the
+# flow starts by resetting the component and ends by dismissing its alert.
+- retry:
+    maxRetries: 1
+    commands:
+      # Foreground the already-running app (app-launch booted it) and reset the
+      # component to idle in-app - no relaunch, see app-launch.yaml.
+      - launchApp:
+          stopApp: false
+      - tapOn:
+          id: "reset-button"
+      - extendedWaitUntil:
+          visible:
+            id: "sign-document-button"
+          timeout: 10000
 
-# Idle state: start signing
-- tapOn:
-    id: "sign-document-button"
-    label: "Tap Sign Document button"
+      # Idle state: start signing
+      - tapOn:
+          id: "sign-document-button"
+          label: "Tap Sign Document button"
 
-# Envelope creation in flight
-- assertVisible:
-    id: "loading-indicator"
-    label: "Verify loading indicator is shown"
-    optional: true
+      # Envelope creation in flight
+      - assertVisible:
+          id: "loading-indicator"
+          label: "Verify loading indicator is shown"
+          optional: true
 
-# The mock provider's signing page loads in the real WebView
-- extendedWaitUntil:
-    visible:
-      id: "signing-webview"
-    timeout: 15000
+      # The mock provider's signing page loads in the real WebView
+      - extendedWaitUntil:
+          visible:
+            id: "signing-webview"
+          timeout: 15000
 
-# Interact with the signing page itself (inside the WebView): this exercises
-# the page -> postMessage -> component path end-to-end
-- extendedWaitUntil:
-    visible: "Complete Signing"
-    timeout: 15000
-- tapOn: "Complete Signing"
+      # Interact with the signing page itself (inside the WebView): this exercises
+      # the page -> postMessage -> component path end-to-end
+      - extendedWaitUntil:
+          visible: "Complete Signing"
+          timeout: 15000
+      - tapOn: "Complete Signing"
 
-# The component shows success, then fires onComplete after successDelayMs
-- extendedWaitUntil:
-    visible:
-      id: "success-screen"
-    timeout: 15000
-- assertVisible:
-    id: "success-screen"
-    label: "Verify success screen is displayed"
+      # The component shows success, then fires onComplete after successDelayMs
+      - extendedWaitUntil:
+          visible:
+            id: "success-screen"
+          timeout: 15000
+      - assertVisible:
+          id: "success-screen"
+          label: "Verify success screen is displayed"
 
-# onComplete fired: the demo shows its alert (successDelayMs = 4s). Dismiss
-# it here so it never lands in the middle of the next flow.
-- extendedWaitUntil:
-    visible: "Document signed!.*"
-    timeout: 15000
-- tapOn: "OK"
+      # onComplete fired: the demo shows its alert (successDelayMs = 4s). Dismiss
+      # it here so it never lands in the middle of the next flow.
+      - extendedWaitUntil:
+          visible: "Document signed!.*"
+          timeout: 15000
+      - tapOn: "OK"

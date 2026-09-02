@@ -3,32 +3,38 @@
 # WebView) -> component returns to idle -> host app shows its cancel alert.
 appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 ---
-# Foreground the already-running app and reset in-app (see app-launch.yaml)
-- launchApp:
-    stopApp: false
-- tapOn:
-    id: "reset-button"
-- extendedWaitUntil:
-    visible:
-      id: "sign-document-button"
-    timeout: 10000
-- tapOn:
-    id: "sign-document-button"
-- extendedWaitUntil:
-    visible:
-      id: "signing-webview"
-    timeout: 15000
-- extendedWaitUntil:
-    visible: "Cancel"
-    timeout: 15000
-- tapOn: "Cancel"
+# Per-flow retry (#8): a driver hiccup re-runs this flow once from the
+# in-app reset instead of failing the suite. Retrying is safe because the
+# flow starts by resetting the component and ends by dismissing its alert.
+- retry:
+    maxRetries: 1
+    commands:
+      # Foreground the already-running app and reset in-app (see app-launch.yaml)
+      - launchApp:
+          stopApp: false
+      - tapOn:
+          id: "reset-button"
+      - extendedWaitUntil:
+          visible:
+            id: "sign-document-button"
+          timeout: 10000
+      - tapOn:
+          id: "sign-document-button"
+      - extendedWaitUntil:
+          visible:
+            id: "signing-webview"
+          timeout: 15000
+      - extendedWaitUntil:
+          visible: "Cancel"
+          timeout: 15000
+      - tapOn: "Cancel"
 
-# Host app's onCancel fires: demo shows an alert
-- extendedWaitUntil:
-    visible: "Signing was cancelled."
-    timeout: 10000
-- tapOn: "OK"
+      # Host app's onCancel fires: demo shows an alert
+      - extendedWaitUntil:
+          visible: "Signing was cancelled."
+          timeout: 10000
+      - tapOn: "OK"
 
-# Component is back in idle - user can start over
-- assertVisible:
-    id: "sign-document-button"
+      # Component is back in idle - user can start over
+      - assertVisible:
+          id: "sign-document-button"

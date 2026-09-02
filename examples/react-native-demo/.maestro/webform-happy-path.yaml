@@ -6,7 +6,7 @@
 # WebView.
 #
 # Runs on its own (tagged, excluded from the default suite), so it owns the
-# cold launch - same retried launch + wait pair as app-launch.yaml.
+# cold launch - the whole flow is retried as a unit, like app-launch.yaml.
 appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox / Android: com.reactnativesandbox
 tags:
   - webform
@@ -19,25 +19,25 @@ tags:
           visible:
             id: "sign-document-button"
           timeout: 60000
-- tapOn:
-    id: "sign-document-button"
+      - tapOn:
+          id: "sign-document-button"
 
-# The mock DocuSign Web Form loads in the real WebView
-- extendedWaitUntil:
-    visible:
-      id: "signing-webview"
-    timeout: 15000
-- extendedWaitUntil:
-    visible: "Mock Web Form"
-    timeout: 15000
+      # The mock DocuSign Web Form loads in the real WebView
+      - extendedWaitUntil:
+          visible:
+            id: "signing-webview"
+          timeout: 15000
+      - extendedWaitUntil:
+          visible: "Mock Web Form"
+          timeout: 15000
 
-# Complete signing (posts the real DocuSign 'signingComplete' event)
-- tapOn: "Complete Signing"
-- extendedWaitUntil:
-    visible:
-      id: "success-screen"
-    timeout: 15000
-- extendedWaitUntil:
-    visible: "Document signed!.*"
-    timeout: 15000
-- tapOn: "OK"
+      # Complete signing (posts the real DocuSign 'signingComplete' event)
+      - tapOn: "Complete Signing"
+      - extendedWaitUntil:
+          visible:
+            id: "success-screen"
+          timeout: 15000
+      - extendedWaitUntil:
+          visible: "Document signed!.*"
+          timeout: 15000
+      - tapOn: "OK"
