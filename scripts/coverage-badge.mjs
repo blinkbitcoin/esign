@@ -99,11 +99,11 @@ const { message, color, detail } = status
 mkdirSync(OUT_DIR, { recursive: true });
 writeFileSync(
   join(OUT_DIR, 'coverage.svg'),
-  makeBadge({ label: 'coverage', message, color, style: 'flat' }),
+  makeBadge({ label: 'Coverage', message, color, style: 'flat' }),
 );
 writeFileSync(
   join(OUT_DIR, 'coverage.json'),
-  `${JSON.stringify({ schemaVersion: 1, label: 'coverage', message, color }, null, 2)}\n`,
+  `${JSON.stringify({ schemaVersion: 1, label: 'Coverage', message, color }, null, 2)}\n`,
 );
 
 console.log(`coverage-badge: ${message} (${detail}) -> coverage/badge/`);

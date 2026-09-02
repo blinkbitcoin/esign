@@ -4,7 +4,7 @@
 [![E2E tests](https://github.com/blinkbitcoin/blink-esign/actions/workflows/e2e.yml/badge.svg?event=pull_request)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/e2e.yml)
 [![Publish](https://github.com/blinkbitcoin/blink-esign/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/publish.yml)
 [![Coverage](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/coverage.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/publish.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
 <p align="center">
   <img src="docs/assets/readme-hero.svg" alt="Your React Native or React web app renders one ESignature component. A SigningSource picks one of three modes: public URL (no backend), Web Forms instance (one backend endpoint), or proxy envelope (this repo's GraphQL backend). The backend-backed modes talk to DocuSign through the optional apps/api service." width="960">
