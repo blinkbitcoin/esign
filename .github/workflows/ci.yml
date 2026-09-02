@@ -13,6 +13,10 @@ name: CI
 #     The tag IS the version (vX.Y.Z -> X.Y.Z); nothing is committed to the
 #     repo, package.json carries a placeholder. `make release V=X.Y.Z`.
 #     A tag with a prerelease part (v1.0.0-rc.1) ships under `next`.
+#     Ships only once the commit's own push-to-main run is green: the gate
+#     below waits for an in-flight main run and fails on a red one, and
+#     release-retry.yml re-runs the failed Publish as soon as main goes
+#     green - so `make release` is fire-and-forget.
 #   - Prerelease (`next` dist-tag): every push to main (or a manual
 #     dispatch) ships <next-patch-after-latest-tag>-pre.<run>.<sha>.
 #   Either way the three packages get the same version and the platform
@@ -138,6 +142,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read # look up the commit's main run
     outputs:
       version: ${{ steps.ver.outputs.version }}
 
@@ -145,6 +150,39 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # tags: the prerelease base is derived from the latest v* tag
+
+      # A release run re-runs the whole gate itself, but the README badges
+      # and "is main green" mean the push-to-main run for that commit. Do not
+      # ship over a red one: wait while it is still running, fail if it
+      # failed. release-retry.yml re-runs this job once main turns green.
+      - name: Require a green main run for the release commit
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          query="repos/$REPO/actions/workflows/ci.yml/runs?event=push&branch=main&head_sha=$GITHUB_SHA&per_page=5"
+          for attempt in $(seq 1 90); do   # up to ~45 min, an E2E fleet's worth
+            read -r id run_status conclusion url < <(gh api "$query" \
+              --jq '.workflow_runs[0] | if . then "\(.id) \(.status) \(.conclusion // "-") \(.html_url)" else "" end')
+            if [ -z "${id:-}" ]; then
+              echo "::error::no push-to-main CI run found for ${GITHUB_SHA::7} - release from a commit that reached main through a merge"
+              exit 1
+            fi
+            if [ "$run_status" != "completed" ]; then
+              echo "main run $url is $run_status - waiting ($attempt)"
+              sleep 30
+              continue
+            fi
+            if [ "$conclusion" != "success" ]; then
+              echo "::error::main run $url concluded '$conclusion' - fix or re-run it (gh run rerun $id --failed); this release's Publish is re-run automatically once it is green"
+              exit 1
+            fi
+            echo "main run $url is green"
+            exit 0
+          done
+          echo "::error::main run $url did not complete in time - re-run this job later (gh run rerun $GITHUB_RUN_ID --failed)"
+          exit 1
 
       - uses: actions/setup-node@v7
         with:

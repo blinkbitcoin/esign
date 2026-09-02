@@ -394,6 +394,7 @@ The library takes the backend URL from the host app via
 | `ci.yml` | Push to main, PRs, GitHub Release, manual | The one pipeline every branch runs: `Unit` (calls `test.yml`) + `E2E` (calls `e2e.yml`), then `Status badges` (Unit / E2E pass-fail badges for the branch to `gh-pages/badges/<branch>/`), and on main pushes / releases / dispatch `Publish` (GitHub Packages: release → stable `latest`, version = the tag; main → prerelease `next`) + `Registry smoke`. Workflow badge, if needed: `ci.yml/badge.svg?branch=<branch>` |
 | `test.yml` | `workflow_call` only | Unit tests + coverage thresholds + check-code, actionlint, package shape; uploads the combined HTML coverage report (`coverage-report` artifact, 30 days); the `badge` job publishes the measured coverage badge (packages + backend) to `gh-pages/badges/<branch>/`, or a red `failing` placeholder when the run fails |
 | `e2e.yml` | `workflow_call` only | All E2E suites as jobs: `backend`, `web` (Playwright), `ios` (simulator), `android` (emulator) |
+| `release-retry.yml` | CI completed on main | When the main run is green, re-runs the failed Publish of any release tagged on that commit (releases wait for / refuse a red main run) |
 | `cancel-closed.yml` | PR closed/merged | Cancels the PR's still-running runs (the push-to-main run is unaffected) and removes its `gh-pages` badge directory |
 | `docs-check.yml` | Push/PR to main | Warns when architecture-relevant changes ship without a docs/ update |
 | `commitlint.yml` | PRs | Conventional Commits on the PR's commits and title |
