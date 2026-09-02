@@ -395,6 +395,7 @@ The library takes the backend URL from the host app via
 | `e2e.yml` | Push/PR (non-main) + publish gate | All E2E suites as jobs: `backend`, `web` (Playwright), `ios` (simulator), `android` (emulator) |
 | `publish.yml` | GitHub Release → stable; main push / manual → prerelease (`next`) | Publish to GitHub Packages, gated on the checks + e2e workflows |
 | `docs-check.yml` | Push/PR to main | Warns when architecture-relevant changes ship without a docs/ update |
+| `cancel-closed.yml` | PR closed/merged | Cancels the PR's still-running `pull_request`/`push` runs (the push-to-main run is unaffected) |
 
 All workflows run with `permissions: contents: read` (publish adds
 `packages: write`; the coverage-badge job gets `contents: write` for the
