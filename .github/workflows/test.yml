@@ -50,22 +50,32 @@ jobs:
       - name: Unit tests with coverage
         run: npm run test:coverage
 
-      # Rendered on every run so the script itself is exercised; only the
-      # `badge` job below (main pushes) publishes it.
-      - name: Render coverage badge (packages + backend)
+      # Badge + combined HTML report (packages + backend). The `badge` job
+      # below publishes the badge per branch; the report stays a run
+      # artifact - private, unlike GitHub Pages, which would expose the
+      # source embedded in it.
+      - name: Render coverage badge + HTML report
         run: npm run coverage:badge
 
       - name: Upload coverage badge
         uses: actions/upload-artifact@v7
         with:
           name: coverage-badge
-          path: coverage/badge/
+          path: coverage/badge/coverage.svg
           retention-days: 1
           if-no-files-found: error
 
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/report/
+          retention-days: 30
+          if-no-files-found: error
+
   # Publishes the coverage badge to the `gh-pages` branch under
-  # badges/<branch>/, so README.md can embed badges/main/coverage.svg the
-  # same way a workflow badge takes ?branch=main. gh-pages is the one branch
+  # badges/<branch>/coverage.svg, so README.md can embed main's the same
+  # way a workflow badge takes ?branch=main. gh-pages is the one branch
   # the org ruleset exempts from the PR-approval requirement, so the default
   # GITHUB_TOKEN can push there. cancel-closed.yml removes a PR's directory
   # when it closes.
@@ -128,11 +138,11 @@ jobs:
           fi
           git clean -fdxq -e node_modules
           mkdir -p "badges/$BRANCH"
-          cp /tmp/badge/coverage.svg /tmp/badge/coverage.json "badges/$BRANCH/"
+          cp /tmp/badge/coverage.svg "badges/$BRANCH/"
           printf '%s\n' \
             '# CI-owned branch' \
             '' \
-            'badges/<branch>/coverage.{svg,json} - written by the Coverage badge job in' \
+            'badges/<branch>/coverage.svg - written by the Coverage badge job in' \
             '.github/workflows/test.yml; badges/<branch>/{unit,e2e}.{svg,json} - by the' \
             'Status badges job in ci.yml. Both run on every CI run; a PR'"'"'s directory is' \
             'removed when it closes.' \

@@ -2,7 +2,7 @@
 
 [![Unit](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/badges/main/unit.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml?query=branch%3Amain)
 [![E2E](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/badges/main/e2e.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml?query=branch%3Amain)
-[![Coverage](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/badges/main/coverage.svg)](https://github.com/blinkbitcoin/blink-esign/blob/gh-pages/badges/main/coverage.json)
+[![Coverage](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/badges/main/coverage.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml?query=branch%3Amain)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
 <p align="center">
@@ -202,7 +202,7 @@ credentials are set).
 |--------|---------|
 | `make test` | Unit suites + lint + typecheck + format check |
 | `make unit` / `make coverage` | Test suites (100% coverage enforced on packages + backend; demos floored at current level) |
-| `make coverage-badge` | Render the coverage badge above from the last `make coverage` run (CI publishes one per branch to `gh-pages/badges/<branch>/`; `--status failing` or `--status pending` renders the placeholders) |
+| `make coverage-badge` | Render the coverage badge above and the combined HTML report (`coverage/report/index.html`) from the last `make coverage` run. CI publishes the badge per branch to `gh-pages/badges/<branch>/` and uploads the report as the `coverage-report` artifact of every run |
 | `make check-code` | Lint + typecheck + format check only |
 | `make build` | Build the library (react-native-builder-bob) |
 | `make e2e-backend` / `make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown |

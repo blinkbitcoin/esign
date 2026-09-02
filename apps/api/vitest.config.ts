@@ -15,8 +15,8 @@ export default defineConfig({
       // index.ts is the server bootstrap (binds a real port, never imported
       // by tests) and is not meaningfully unit-testable.
       exclude: ['src/generated/**', 'src/index.ts'],
-      // json-summary feeds scripts/coverage-badge.mjs (the README badge)
-      reporter: ['text', 'json-summary'],
+      // json-summary feeds scripts/coverage-badge.mjs (README badge + HTML report)
+      reporter: ['text', 'json-summary', 'html'],
       thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },
     },
   },

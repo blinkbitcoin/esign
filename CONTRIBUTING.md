@@ -18,10 +18,13 @@ environment variables, and troubleshooting:
   **100% enforced** on the packages and backend; the demo apps have floors.
   The README coverage badge is measured, not hardcoded: every CI run
   aggregates the packages + backend line coverage and publishes it to
-  `gh-pages/badges/<branch>/` (`make coverage-badge` renders it locally);
-  the README embeds the `main` one. A red `failing` badge replaces it when
-  the coverage run fails. The Unit and E2E badges next to it are rendered
-  the same way from the pipeline's job results (`scripts/status-badge.mjs`).
+  `gh-pages/badges/<branch>/`; the README embeds the `main` one. A red
+  `failing` badge replaces it when the coverage run fails. The same run
+  uploads a combined HTML report as the `coverage-report` artifact (click
+  the badge, open the latest run). `make coverage-badge` renders both
+  locally into `coverage/badge/` and `coverage/report/`. The Unit and E2E
+  badges next to it are rendered the same way from the pipeline's job
+  results (`scripts/status-badge.mjs`).
 - Git hooks (see [below](#git-hooks)) format, lint, and check the commit
   message locally.
 - CI (`ci.yml`) is one pipeline for every branch: unit suites with
