@@ -199,7 +199,7 @@ credentials are set).
 |--------|---------|
 | `make test` | Unit suites + lint + typecheck + format check |
 | `make unit` / `make coverage` | Test suites (100% coverage enforced on packages + backend; demos floored at current level) |
-| `make coverage-badge` | Render the coverage badge above from the last `make coverage` run (CI publishes it to `gh-pages` on every `main` push) |
+| `make coverage-badge` | Render the coverage badge above from the last `make coverage` run (CI publishes it to `gh-pages` on every `main` push; `--status failing` or `--status pending` renders the placeholders) |
 | `make check-code` | Lint + typecheck + format check only |
 | `make build` | Build the library (react-native-builder-bob) |
 | `make e2e-backend` / `make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown |

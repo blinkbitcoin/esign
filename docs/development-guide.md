@@ -391,7 +391,7 @@ The library takes the backend URL from the host app via
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| `test.yml` | Push/PR (non-main) + publish gate | Unit tests + coverage thresholds + check-code; on main, the `badge` job publishes the measured coverage badge (packages + backend) to the `gh-pages` branch for the README |
+| `test.yml` | Push/PR (non-main) + publish gate | Unit tests + coverage thresholds + check-code; on main, the `badge` job publishes the measured coverage badge (packages + backend) to the `gh-pages` branch for the README, or a red `failing` placeholder when the run fails |
 | `e2e.yml` | Push/PR (non-main) + publish gate | All E2E suites as jobs: `backend`, `web` (Playwright), `ios` (simulator), `android` (emulator) |
 | `publish.yml` | GitHub Release → stable; main push / manual → prerelease (`next`) | Publish to GitHub Packages, gated on the checks + e2e workflows |
 | `docs-check.yml` | Push/PR to main | Warns when architecture-relevant changes ship without a docs/ update |

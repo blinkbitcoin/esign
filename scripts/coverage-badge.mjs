@@ -11,6 +11,11 @@
 //   coverage.json  shields "endpoint" schema, for a future endpoint badge
 // CI (test.yml) renders on every run and publishes the result to the
 // `gh-pages` branch on pushes to main; README.md embeds it from there.
+//
+// `--status failing` / `--status pending` render an honest placeholder
+// instead of a number: CI publishes "failing" (red) when the coverage run on
+// main did not produce a result, and "pending" (yellow) seeds the branch
+// before the first run.
 import { makeBadge } from 'badge-maker';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -28,6 +33,8 @@ const WORKSPACES = [
 
 const OUT_DIR = join(root, 'coverage', 'badge');
 
+const PLACEHOLDERS = { failing: 'red', pending: 'yellow' };
+
 function colorFor(pct) {
   if (pct >= 100) return 'brightgreen';
   if (pct >= 90) return 'green';
@@ -41,32 +48,53 @@ function formatPercent(pct) {
   return `${fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed}%`;
 }
 
-let covered = 0;
-let total = 0;
-for (const ws of WORKSPACES) {
-  const file = join(root, ws, 'coverage', 'coverage-summary.json');
-  if (!existsSync(file)) {
+function parseStatus(argv) {
+  const i = argv.indexOf('--status');
+  if (i === -1) return null;
+  const status = argv[i + 1];
+  if (!(status in PLACEHOLDERS)) {
     console.error(
-      `coverage-badge: missing ${ws}/coverage/coverage-summary.json - run \`npm run test:coverage\` first`,
+      `coverage-badge: --status must be one of ${Object.keys(PLACEHOLDERS).join(', ')}`,
     );
     process.exit(1);
   }
-  const { lines } = JSON.parse(readFileSync(file, 'utf8')).total;
-  console.log(`${ws}: ${lines.covered}/${lines.total} lines (${lines.pct}%)`);
-  covered += lines.covered;
-  total += lines.total;
+  return status;
 }
 
-if (total === 0) {
-  console.error(
-    'coverage-badge: no lines measured at all - refusing to render',
-  );
-  process.exit(1);
+function measure() {
+  let covered = 0;
+  let total = 0;
+  for (const ws of WORKSPACES) {
+    const file = join(root, ws, 'coverage', 'coverage-summary.json');
+    if (!existsSync(file)) {
+      console.error(
+        `coverage-badge: missing ${ws}/coverage/coverage-summary.json - run \`npm run test:coverage\` first`,
+      );
+      process.exit(1);
+    }
+    const { lines } = JSON.parse(readFileSync(file, 'utf8')).total;
+    console.log(`${ws}: ${lines.covered}/${lines.total} lines (${lines.pct}%)`);
+    covered += lines.covered;
+    total += lines.total;
+  }
+  if (total === 0) {
+    console.error(
+      'coverage-badge: no lines measured at all - refusing to render',
+    );
+    process.exit(1);
+  }
+  const pct = (covered / total) * 100;
+  return {
+    message: formatPercent(pct),
+    color: colorFor(pct),
+    detail: `${covered}/${total} lines`,
+  };
 }
 
-const pct = (covered / total) * 100;
-const message = formatPercent(pct);
-const color = colorFor(pct);
+const status = parseStatus(process.argv.slice(2));
+const { message, color, detail } = status
+  ? { message: status, color: PLACEHOLDERS[status], detail: 'placeholder' }
+  : measure();
 
 mkdirSync(OUT_DIR, { recursive: true });
 writeFileSync(
@@ -78,6 +106,4 @@ writeFileSync(
   `${JSON.stringify({ schemaVersion: 1, label: 'coverage', message, color }, null, 2)}\n`,
 );
 
-console.log(
-  `coverage-badge: ${message} (${covered}/${total} lines) -> coverage/badge/`,
-);
+console.log(`coverage-badge: ${message} (${detail}) -> coverage/badge/`);
