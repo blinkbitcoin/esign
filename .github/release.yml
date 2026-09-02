@@ -1,0 +1,9 @@
+# Auto-generated GitHub Release notes (`gh release create --generate-notes`)
+# are the changelog: PR titles follow Conventional Commits. PRs carry no
+# labels, so there is one category; Dependabot's bumps are left out.
+changelog:
+  exclude:
+    authors: [dependabot, 'dependabot[bot]']
+  categories:
+    - title: Changes
+      labels: ['*']

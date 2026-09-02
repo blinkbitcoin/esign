@@ -1,6 +1,6 @@
 {
   "name": "@blinkbitcoin/esign-react",
-  "version": "0.1.0",
+  "version": "0.0.0-development",
   "description": "Plug-and-play e-signature signing flow component for React web apps, backed by the e-sign GraphQL service",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -54,7 +54,7 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
-    "@blinkbitcoin/esign-core": "^0.1.0"
+    "@blinkbitcoin/esign-core": "0.0.0-development"
   },
   "peerDependenciesMeta": {
     "@apollo/client": {

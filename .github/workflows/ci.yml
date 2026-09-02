@@ -10,11 +10,14 @@ name: CI
 # suite, the publish, and the registry smoke all passed for that commit.
 #
 #   - Stable (`latest` dist-tag): ONLY when a GitHub Release is published.
-#     The release tag (vX.Y.Z) must match every package.json version.
+#     The tag IS the version (vX.Y.Z -> X.Y.Z); nothing is committed to the
+#     repo, package.json carries a placeholder. `make release V=X.Y.Z`.
+#     A tag with a prerelease part (v1.0.0-rc.1) ships under `next`.
 #   - Prerelease (`next` dist-tag): every push to main (or a manual
-#     dispatch) ships <version>-pre.<run>.<sha>. The inter-package
-#     dependency on core is pinned to the exact prerelease version, since
-#     semver ranges never match prereleases.
+#     dispatch) ships <next-patch-after-latest-tag>-pre.<run>.<sha>.
+#   Either way the three packages get the same version and the platform
+#   packages pin core to exactly that version (the only range that also
+#   works for prereleases).
 #
 # Requires no extra secrets - GITHUB_TOKEN with packages:write is enough
 # for same-org publishing.
@@ -140,6 +143,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # tags: the prerelease base is derived from the latest v* tag
 
       - uses: actions/setup-node@v7
         with:
@@ -153,32 +158,43 @@ jobs:
 
       - name: Resolve version and dist-tag
         id: ver
+        env:
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ github.event.release.tag_name }}
+          RUN: ${{ github.run_number }}
         run: |
-          PACKAGES="packages/esign-core packages/esign-react-native packages/esign-react"
-          if [ "${{ github.event_name }}" = "release" ]; then
-            VERSION="${{ github.event.release.tag_name }}"
-            VERSION="${VERSION#v}"
-            for p in $PACKAGES; do
-              PKGV=$(node -p "require('./$p/package.json').version")
-              if [ "$PKGV" != "$VERSION" ]; then
-                echo "::error::$p is at $PKGV but the release tag says $VERSION - bump package versions before releasing"
-                exit 1
-              fi
-            done
-            echo "disttag=latest" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT" = "release" ]; then
+            # The tag is the version. Plain X.Y.Z -> latest; X.Y.Z-<pre> -> next.
+            if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+              echo "::error::release tag '$TAG' is not vX.Y.Z or vX.Y.Z-<prerelease>"
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+              echo "::error::release commit ${GITHUB_SHA::7} is not on main - use \`gh release create --target main\`"
+              exit 1
+            fi
+            VERSION="${TAG#v}"
+            case "$VERSION" in *-*) DISTTAG=next ;; *) DISTTAG=latest ;; esac
           else
-            BASE=$(node -p "require('./packages/esign-core/package.json').version")
-            VERSION="${BASE}-pre.${{ github.run_number }}.$(git rev-parse --short HEAD)"
-            for p in $PACKAGES; do
-              (cd "$p" && npm pkg set version="$VERSION")
-            done
-            # ^X.Y.Z never matches a prerelease - pin core exactly
-            (cd packages/esign-react-native && npm pkg set "dependencies.@blinkbitcoin/esign-core=$VERSION")
-            (cd packages/esign-react && npm pkg set "dependencies.@blinkbitcoin/esign-core=$VERSION")
-            echo "disttag=next" >> "$GITHUB_OUTPUT"
+            # Prerelease: next patch after the latest v* tag (so it sorts above
+            # that release), suffixed with the run number and commit.
+            LATEST=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || echo v0.0.0)
+            LATEST="${LATEST#v}"; LATEST="${LATEST%%-*}"
+            IFS=. read -r MAJ MIN PAT <<< "$LATEST"
+            VERSION="${MAJ}.${MIN}.$((PAT + 1))-pre.${RUN}.$(git rev-parse --short HEAD)"
+            DISTTAG=next
           fi
+          for p in packages/esign-core packages/esign-react-native packages/esign-react; do
+            (cd "$p" && npm pkg set version="$VERSION")
+          done
+          # The three version together: pin core exactly (a caret range never
+          # matches a prerelease, and an exact pin is right for stable too).
+          for p in packages/esign-react-native packages/esign-react; do
+            (cd "$p" && npm pkg set "dependencies.@blinkbitcoin/esign-core=$VERSION")
+          done
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Publishing version $VERSION"
+          echo "disttag=$DISTTAG" >> "$GITHUB_OUTPUT"
+          echo "Publishing $VERSION under dist-tag $DISTTAG"
 
       - name: Build (core first - the platform packages need its dist)
         run: npm run build

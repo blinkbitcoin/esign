@@ -1,6 +1,6 @@
 {
   "name": "@blinkbitcoin/esign-core",
-  "version": "0.1.0",
+  "version": "0.0.0-development",
   "description": "Platform-agnostic core (SigningSource abstraction, Apollo client factory, GraphQL operations) shared by the e-signature React and React Native packages",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
