@@ -202,6 +202,11 @@ jobs:
         working-directory: examples/react-native-demo
         run: npm start > "$RUNNER_TEMP/metro.log" 2>&1 &
 
+      # Built for the generic simulator destination: the build does not need
+      # a concrete device (the app is installed on the booted one later), and
+      # xcodebuild's device enumeration intermittently returns only
+      # placeholders on fresh runners ("Unable to find a device matching the
+      # provided destination specifier"), even though simctl lists the device.
       - name: Build iOS app for simulator
         if: steps.ios-app.outputs.cache-hit != 'true'
         run: |
@@ -211,7 +216,7 @@ jobs:
             -scheme ReactNativeSandbox \
             -configuration Debug \
             -sdk iphonesimulator \
-            -destination "platform=iOS Simulator,name=${SIM_DEVICE},OS=latest" \
+            -destination "generic/platform=iOS Simulator" \
             -derivedDataPath build \
             build
 
