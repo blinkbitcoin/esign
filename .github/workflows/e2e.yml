@@ -1,9 +1,9 @@
 name: Tests / E2E
 
+# pull_request only, no push trigger: a push to a PR branch used to start
+# both, in parallel, and the PR side is what gates the merge. main is
+# covered by the publish workflow's gates (workflow_call below).
 on:
-  push:
-    branches-ignore: [main] # main is covered by the publish workflow's gates
-    paths-ignore: ['docs/**', '**.md'] # docs-only pushes skip; PRs always run
   pull_request:
   workflow_call: # reused as a publish gate (see publish.yml)
 
@@ -128,28 +128,6 @@ jobs:
       - name: Install dependencies (workspace root)
         run: npm ci
 
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-          bundler-cache: true
-
-      - name: Cache CocoaPods
-        uses: actions/cache@v6
-        with:
-          path: |
-            examples/react-native-demo/ios/Pods
-            ~/Library/Caches/CocoaPods
-          key: pods-${{ runner.os }}-${{ hashFiles('examples/react-native-demo/ios/Podfile.lock') }}
-          restore-keys: pods-${{ runner.os }}-
-
-      - name: Install CocoaPods dependencies
-        run: |
-          cd examples/react-native-demo
-          bundle install
-          cd ios
-          bundle exec pod install
-
       - name: Cache Maestro CLI
         uses: actions/cache@v6
         with:
@@ -164,6 +142,78 @@ jobs:
             curl -Ls "https://get.maestro.mobile.dev" | bash
           fi
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      # Runner images rotate simulator generations (iPhone 15 -> 16 -> 17...);
+      # pick whatever iPhone the image actually ships instead of hardcoding.
+      # Booting starts here so it overlaps everything below (build or cache
+      # restore, Postgres, backend, Metro).
+      - name: Pick a simulator device
+        run: |
+          DEVICE_NAME=$(xcrun simctl list devices available -j \
+            | jq -r '[.devices[] | .[] | select(.isAvailable and (.name | startswith("iPhone")))] | .[0].name')
+          if [ -z "$DEVICE_NAME" ] || [ "$DEVICE_NAME" = "null" ]; then
+            echo "::error::No available iPhone simulator on this runner"
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "Using simulator: $DEVICE_NAME"
+          echo "SIM_DEVICE=$DEVICE_NAME" >> "$GITHUB_ENV"
+          xcrun simctl boot "$DEVICE_NAME" || true
+
+      # Debug builds load their JS from Metro, so the .app only depends on the
+      # native inputs: the ios/ project, the demo's manifest + deps (autolinked
+      # native modules come from the lockfile) and the CocoaPods lockfile.
+      # A JS-only push hits this cache and skips Ruby, Pods and Xcode entirely.
+      - name: Restore iOS app build
+        id: ios-app
+        uses: actions/cache@v6
+        with:
+          path: examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator/ReactNativeSandbox.app
+          key: ios-app-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('examples/react-native-demo/ios/**', 'examples/react-native-demo/app.json', 'examples/react-native-demo/package.json', 'examples/react-native-demo/Gemfile.lock', 'package-lock.json') }}
+
+      - name: Setup Ruby
+        if: steps.ios-app.outputs.cache-hit != 'true'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Cache CocoaPods
+        if: steps.ios-app.outputs.cache-hit != 'true'
+        uses: actions/cache@v6
+        with:
+          path: |
+            examples/react-native-demo/ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: pods-${{ runner.os }}-${{ hashFiles('examples/react-native-demo/ios/Podfile.lock') }}
+          restore-keys: pods-${{ runner.os }}-
+
+      - name: Install CocoaPods dependencies
+        if: steps.ios-app.outputs.cache-hit != 'true'
+        run: |
+          cd examples/react-native-demo
+          bundle install
+          cd ios
+          bundle exec pod install
+
+      # Metro starts in the background here so its boot overlaps the build;
+      # it is awaited (and the bundle prewarmed) right before Maestro runs.
+      - name: Start Metro bundler (background)
+        working-directory: examples/react-native-demo
+        run: npm start > "$RUNNER_TEMP/metro.log" 2>&1 &
+
+      - name: Build iOS app for simulator
+        if: steps.ios-app.outputs.cache-hit != 'true'
+        run: |
+          cd examples/react-native-demo/ios
+          xcodebuild \
+            -workspace ReactNativeSandbox.xcworkspace \
+            -scheme ReactNativeSandbox \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "platform=iOS Simulator,name=${SIM_DEVICE},OS=latest" \
+            -derivedDataPath build \
+            build
 
       # macOS runners have no Docker - run the test database via Homebrew
       # Postgres instead, matching docker-compose.test.yml (test/test@5433,
@@ -202,34 +252,6 @@ jobs:
           echo "ERROR: Backend failed to start"
           exit 1
 
-      # Runner images rotate simulator generations (iPhone 15 -> 16 -> 17...);
-      # pick whatever iPhone the image actually ships instead of hardcoding.
-      - name: Pick a simulator device
-        run: |
-          DEVICE_NAME=$(xcrun simctl list devices available -j \
-            | jq -r '[.devices[] | .[] | select(.isAvailable and (.name | startswith("iPhone")))] | .[0].name')
-          if [ -z "$DEVICE_NAME" ] || [ "$DEVICE_NAME" = "null" ]; then
-            echo "::error::No available iPhone simulator on this runner"
-            xcrun simctl list devices available
-            exit 1
-          fi
-          echo "Using simulator: $DEVICE_NAME"
-          echo "SIM_DEVICE=$DEVICE_NAME" >> "$GITHUB_ENV"
-          # Kick the boot off now so it overlaps the Xcode build below
-          xcrun simctl boot "$DEVICE_NAME" || true
-
-      - name: Build iOS app for simulator
-        run: |
-          cd examples/react-native-demo/ios
-          xcodebuild \
-            -workspace ReactNativeSandbox.xcworkspace \
-            -scheme ReactNativeSandbox \
-            -configuration Debug \
-            -sdk iphonesimulator \
-            -destination "platform=iOS Simulator,name=${SIM_DEVICE},OS=latest" \
-            -derivedDataPath build \
-            build
-
       - name: Wait for iOS Simulator (booting since device pick)
         run: xcrun simctl bootstatus "$SIM_DEVICE" -b
 
@@ -237,12 +259,10 @@ jobs:
         run: |
           xcrun simctl install booted examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator/ReactNativeSandbox.app
 
-      # Debug builds load their JS from Metro; prewarming the bundle keeps
-      # the first Maestro launch from racing a cold compile.
-      - name: Start Metro bundler
-        working-directory: examples/react-native-demo
+      # Prewarming the bundle keeps the first Maestro launch from racing a
+      # cold compile.
+      - name: Wait for Metro + prewarm bundle
         run: |
-          npm start &
           for i in {1..60}; do
             if curl -s http://localhost:8081/status | grep -q packager-status:running; then
               echo "Metro is ready"; break
@@ -259,11 +279,12 @@ jobs:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: '600000'
         run: |
           export PATH="$HOME/.maestro/bin:$PATH"
-          # One retry: Maestro's iOS driver misreads a slow terminate->relaunch
-          # cycle as an app crash (~10s terminations on CI simulators hit a
-          # random flow most runs; no real crash - DiagnosticReports stays empty)
+          # Each flow retries itself once (see the `retry` blocks in .maestro/):
+          # Maestro's iOS driver misreads a slow terminate->relaunch cycle as
+          # an app crash (no real crash - DiagnosticReports stays empty). The
+          # suite-level retry below is the last resort, not the expected path.
           npm run test:e2e || {
-            echo "::warning::Maestro suite failed - retrying once (known driver relaunch race)"
+            echo "::warning::Maestro suite failed after per-flow retries - rerunning the suite once"
             npm run test:e2e
           }
 
@@ -279,6 +300,7 @@ jobs:
           path: |
             ~/.maestro/tests/
             ~/Library/Logs/DiagnosticReports/
+            ${{ runner.temp }}/metro.log
           retention-days: 7
 
   android:
@@ -287,18 +309,30 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      # The stock runner has ~14GB free; node_modules + Gradle + the Android
-      # system image + Docker don't fit. Drop preinstalled toolchains we
-      # never use (several GB each).
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # Debug builds load their JS from Metro, so the APK only depends on the
+      # native inputs: the android/ project and the demo's manifest + deps
+      # (autolinked native modules come from the lockfile). A JS-only push
+      # hits this cache and skips Java, Gradle and the disk cleanup entirely.
+      - name: Restore Android APK build
+        id: android-apk
+        uses: actions/cache@v6
+        with:
+          path: examples/react-native-demo/android/app/build/outputs/apk/debug/app-debug.apk
+          key: android-apk-v1-${{ hashFiles('examples/react-native-demo/android/**', 'examples/react-native-demo/app.json', 'examples/react-native-demo/package.json', 'package-lock.json') }}
+
+      # The stock runner has ~14GB free; node_modules + the Android system
+      # image + Docker (+ Gradle on a cache miss) don't fit - a run that
+      # skipped this hit "Your device does not have enough disk space to run
+      # avd". Drop preinstalled toolchains we never use (several GB each).
       - name: Free disk space
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost
           sudo rm -rf "$AGENT_TOOLSDIRECTORY/CodeQL"
           sudo docker image prune -af
           df -h /
-
-      - name: Checkout code
-        uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -307,6 +341,7 @@ jobs:
           cache: 'npm'
 
       - name: Setup Java (for Gradle)
+        if: steps.android-apk.outputs.cache-hit != 'true'
         uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -338,6 +373,9 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          # actions/cache paths can't read the runner's own environment
+          # (only workflow-set env), so surface the SDK root for it
+          echo "ANDROID_SDK_DIR=$ANDROID_HOME" >> "$GITHUB_ENV"
 
       - name: Start test database
         run: docker compose -f docker-compose.test.yml up -d --wait
@@ -354,29 +392,33 @@ jobs:
             if curl -s http://localhost:4000/health > /dev/null; then
               echo "Backend is ready"; exit 0
             fi
-            echo "Waiting for backend... ($i/30)"; sleep 2
+            echo "Waiting for backend... ($i/30)"
+            sleep 2
           done
           echo "ERROR: Backend failed to start"; exit 1
 
       # The emulator reaches the backend as 10.0.2.2:4000 (host loopback
       # alias - see examples/react-native-demo/src/config.ts); Metro is
-      # reached via adb reverse below.
-      - name: Start Metro bundler
+      # reached via adb reverse in scripts/e2e-android-maestro.sh. Metro
+      # starts in the background so its boot overlaps the Gradle build; it
+      # is awaited (and the bundle prewarmed) right before the emulator runs.
+      - name: Start Metro bundler (background)
         working-directory: examples/react-native-demo
-        run: |
-          npm start &
-          for i in {1..60}; do
-            if curl -s http://localhost:8081/status | grep -q packager-status:running; then
-              echo "Metro is ready"; break
-            fi
-            echo "Waiting for Metro... ($i/60)"; sleep 2
-          done
-          curl -sf "http://localhost:8081/index.bundle?platform=android&dev=true" -o /dev/null
-          echo "Bundle prewarmed"
+        run: npm start > "$RUNNER_TEMP/metro.log" 2>&1 &
 
       - name: Build Android app (debug)
+        if: steps.android-apk.outputs.cache-hit != 'true'
         working-directory: examples/react-native-demo/android
         run: ./gradlew assembleDebug --no-daemon --build-cache
+
+      # The system image is ~1.2GB and the emulator-runner action re-downloads
+      # it on every run (~95s, twice when the AVD snapshot also misses).
+      # sdkmanager treats an already-installed current revision as a no-op.
+      - name: Cache Android system image
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.ANDROID_SDK_DIR }}/system-images/android-34
+          key: android-system-image-v1-android-34-google_apis-x86_64
 
       # AVD snapshot caching per the emulator-runner README: a cold run
       # generates the snapshot once; warm runs boot from it in seconds.
@@ -387,7 +429,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-34-x86_64-google_apis
+          key: avd-v3-34-x86_64-google_apis
 
       - name: Create AVD snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -399,7 +441,26 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
-          script: echo "Generated AVD snapshot for caching."
+          # Baked into the snapshot: the software-GPU emulator stalls Pixel
+          # Launcher during boot/snapshot restore and its ANR dialog ("Pixel
+          # Launcher isn't responding") then covers the app - Maestro's
+          # hierarchy only sees the dialog and every flow times out. Setting
+          # it right before Maestro is too late for an ANR already queued.
+          script: |
+            adb shell settings put global hide_error_dialogs 1
+            adb shell settings put secure anr_show_background 0
+            echo "Generated AVD snapshot for caching (error dialogs hidden)."
+
+      - name: Wait for Metro + prewarm bundle
+        run: |
+          for i in {1..60}; do
+            if curl -s http://localhost:8081/status | grep -q packager-status:running; then
+              echo "Metro is ready"; break
+            fi
+            echo "Waiting for Metro... ($i/60)"; sleep 2
+          done
+          curl -sf "http://localhost:8081/index.bundle?platform=android&dev=true" -o /dev/null
+          echo "Bundle prewarmed"
 
       - name: Run Maestro tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
@@ -407,22 +468,22 @@ jobs:
           api-level: 34
           arch: x86_64
           target: google_apis
+          # Stays on the default 2 cores: 4 on a 4-vCPU runner that also hosts
+          # Metro, the backend and Postgres starved the guest (launcher ANRs,
+          # gms services crashing) and the ANR dialog hid the app under test.
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: |
-            adb install examples/react-native-demo/android/app/build/outputs/apk/debug/app-debug.apk
-            # Metro + backend: the signing WebView loads localhost:4000 URLs
-            # minted by the mock provider - reverse both into the emulator
-            adb reverse tcp:8081 tcp:8081
-            adb reverse tcp:4000 tcp:4000
-            export PATH="$HOME/.maestro/bin:$PATH"
-            npm run test:e2e:android -w examples/react-native-demo
+          # One line only: the action runs each script line as its own `sh -c`
+          script: bash scripts/e2e-android-maestro.sh
 
       - name: Upload Maestro test results
         uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: maestro-results-android
-          path: ~/.maestro/tests/
+          path: |
+            ~/.maestro/tests/
+            ${{ runner.temp }}/android-logs/
+            ${{ runner.temp }}/metro.log
           retention-days: 7
