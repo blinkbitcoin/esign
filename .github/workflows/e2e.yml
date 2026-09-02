@@ -480,6 +480,13 @@ jobs:
 
       - name: Run Maestro tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          # Same reason as the iOS job: Maestro gives its instrumentation
+          # driver 15s by default to come up, and a cold runner can take
+          # longer to install + start it (every flow then fails in 0s with
+          # "Not able to reach the gRPC server"). The action passes job env
+          # through to `script`.
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: '600000'
         with:
           api-level: 34
           arch: x86_64
