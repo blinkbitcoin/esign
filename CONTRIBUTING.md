@@ -73,7 +73,7 @@ area names (`commitlint.config.mjs` is the source of truth):
 | `ci` | `.github/` |
 | `deps`, `deps-dev` | Dependency bumps (Dependabot uses these) |
 | `docs` | `docs/` when the type is not already `docs` |
-| `release` | Changesets and version bumps |
+| `release` | Release tooling (workflow, notes config) |
 
 Examples:
 
@@ -120,15 +120,18 @@ Escape hatches, for the rare cases where they are warranted:
    `docs/index.md` maps them).
 2. Diagrams: edit `docs/diagrams/src/*.mmd`, then `make diagrams` (CI fails
    on drift). Schema: edit `apps/api/src/typeDefs.ts`, then `make codegen`.
-3. Add a changeset for anything touching the published packages:
-   `npx changeset` (pick bump level, describe the change). The three
-   packages version together. Backend and demo changes do not need one.
-4. Open a PR with a Conventional Commits title — every workflow must be
-   green.
+3. Open a PR with a Conventional Commits title — every workflow must be
+   green. The title is also the line the release notes will show.
 
 ## Releases
 
-- **Prerelease** (`next` tag): automatic on every green push to `main`.
-- **Stable**: `npx changeset version` (bumps + changelog), commit, then
-  publish a GitHub Release with tag `vX.Y.Z` matching the new version —
-  the publish workflow verifies the match and ships to GitHub Packages.
+- **Prerelease** (`next` tag): automatic on every green push to `main`,
+  versioned `<next patch after the latest tag>-pre.<run>.<sha>`.
+- **Stable**: one step — `make release V=X.Y.Z` (wraps
+  `gh release create vX.Y.Z --target main --generate-notes`). **The tag is
+  the version**: CI stamps it into the three packages at publish time, so
+  nothing is committed and `package.json` stays at `0.0.0-development`.
+  The release notes, generated from PR titles (`.github/release.yml`), are
+  the changelog. A tag with a prerelease part (`v1.0.0-rc.1`) ships under
+  `next`. GitHub Packages never accepts the same version twice, so a failed
+  release means fixing forward and cutting a new tag.

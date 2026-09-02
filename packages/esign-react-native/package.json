@@ -1,6 +1,6 @@
 {
   "name": "@blinkbitcoin/esign-react-native",
-  "version": "0.1.0",
+  "version": "0.0.0-development",
   "description": "Plug-and-play e-signature signing flow component for React Native, backed by the e-sign GraphQL service",
   "source": "./src/index.ts",
   "main": "./lib/commonjs/index.js",
@@ -96,7 +96,7 @@
     ]
   },
   "dependencies": {
-    "@blinkbitcoin/esign-core": "^0.1.0"
+    "@blinkbitcoin/esign-core": "0.0.0-development"
   },
   "peerDependenciesMeta": {
     "@apollo/client": {

@@ -14,14 +14,16 @@ The three client packages publish to **GitHub Packages** under the
 Publishing has two channels (both gated on the full test fleet - unit
 coverage thresholds + all three E2E suites):
 
-- **Stable** (`latest`): publish a **GitHub Release** with tag `vX.Y.Z`.
-  The tag must match every package.json version (the workflow refuses a
-  mismatch) - bump versions first (GitHub Packages rejects re-publishing
-  an existing version).
+- **Stable** (`latest`): publish a **GitHub Release** with tag `vX.Y.Z`
+  (`make release V=X.Y.Z`). The tag is the version - CI stamps it into the
+  packages at publish time; nothing is committed. GitHub Packages rejects
+  re-publishing an existing version, so a failed release needs a new tag.
 - **Prerelease** (`next`): every push to `main` (or a manual
-  `ci.yml` dispatch) ships `X.Y.Z-pre.<run>.<sha>` with the core
-  dependency pinned exactly. Install with
-  `npm i @blinkbitcoin/esign-react-native@next`.
+  `ci.yml` dispatch) ships `<next patch after the latest tag>-pre.<run>.<sha>`.
+  Install with `npm i @blinkbitcoin/esign-react-native@next`.
+
+In both channels the platform packages pin `@blinkbitcoin/esign-core` to
+exactly their own version.
 
 ## Registry setup (consuming app)
 

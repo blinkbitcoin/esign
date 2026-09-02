@@ -48,11 +48,9 @@ build: ## Build the libraries (bob + tsup)
 codegen: ## Regenerate schema.graphql + client types from the backend SDL
 	npm run codegen
 
-changeset: ## Record a changeset for a package-facing change
-	npx changeset
-
-version: ## Apply pending changesets (version bumps + changelogs)
-	npx changeset version
+release: ## Cut a stable release: make release V=X.Y.Z (the tag is the version; CI publishes @latest)
+	@test -n "$(V)" || { echo "usage: make release V=X.Y.Z"; exit 1; }
+	gh release create "v$(V)" --target main --title "v$(V)" --generate-notes
 
 diagrams: ## Render docs/diagrams/dist/*.svg from src/*.mmd (pinned mermaid-cli) + reassemble the combined doc
 	for f in docs/diagrams/src/*.mmd; do \
@@ -142,6 +140,6 @@ help: ## List available targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*##' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*##"} {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: install hooks pods changeset version unit coverage coverage-badge typecheck lint format format-check check-code \
+.PHONY: install hooks pods release unit coverage coverage-badge typecheck lint format format-check check-code \
 	test build codegen start ios android backend web db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-mobile e2e-mobile-android test-live clean reset help
