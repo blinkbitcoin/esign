@@ -320,9 +320,14 @@ jobs:
           retention-days: 7
 
   android:
-    name: Android
+    name: Android (${{ matrix.attempt }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # TEMPORARY soak test - drop before merge
+    strategy:
+      fail-fast: false
+      matrix:
+        attempt: [1, 2, 3, 4, 5]
 
     steps:
       - name: Checkout code
