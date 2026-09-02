@@ -4,12 +4,14 @@ name: Checks / Closed PR
 # (iOS + Android E2E can take 20+ minutes). GitHub does not cancel them on
 # its own, so this cancels every queued or running run for the PR's head
 # commit. The push-to-main run is on a different commit and is untouched.
+# Also drops the PR branch's coverage badge from gh-pages (see test.yml).
 on:
   pull_request:
     types: [closed]
 
 permissions:
   actions: write
+  contents: write # gh-pages cleanup
 
 jobs:
   cancel:
@@ -31,3 +33,34 @@ jobs:
                 gh api -X POST "repos/$REPO/actions/runs/$id/cancel" >/dev/null
               done
           done
+
+  badge-cleanup:
+    name: Remove branch badge
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Fork PRs never published one (no write token in their runs)
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout gh-pages
+        id: checkout
+        uses: actions/checkout@v7
+        continue-on-error: true # no gh-pages yet: nothing to clean
+        with:
+          ref: gh-pages
+
+      - name: Delete badges/<branch>
+        if: steps.checkout.outcome == 'success'
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          [ -d "badges/$BRANCH" ] || { echo "no badge for $BRANCH"; exit 0; }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -rq "badges/$BRANCH"
+          git commit -qm "chore(ci): drop coverage badge for closed branch $BRANCH"
+          for attempt in 1 2 3 4 5; do
+            git push -q origin gh-pages && exit 0
+            git fetch -q origin gh-pages && git rebase -q origin/gh-pages
+            sleep $((attempt * 2))
+          done
+          echo "::error::could not push gh-pages after 5 attempts" && exit 1

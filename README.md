@@ -1,9 +1,7 @@
 # blink-esign
 
-[![Unit tests + code checks](https://github.com/blinkbitcoin/blink-esign/actions/workflows/test.yml/badge.svg?event=pull_request)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/test.yml)
-[![E2E tests](https://github.com/blinkbitcoin/blink-esign/actions/workflows/e2e.yml/badge.svg?event=pull_request)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/e2e.yml)
-[![Publish](https://github.com/blinkbitcoin/blink-esign/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/publish.yml)
-[![Coverage](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/coverage.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/publish.yml)
+[![CI](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml?query=branch%3Amain)
+[![Coverage](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/badges/main/coverage.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml?query=branch%3Amain)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
 <p align="center">
@@ -203,7 +201,7 @@ credentials are set).
 |--------|---------|
 | `make test` | Unit suites + lint + typecheck + format check |
 | `make unit` / `make coverage` | Test suites (100% coverage enforced on packages + backend; demos floored at current level) |
-| `make coverage-badge` | Render the coverage badge above from the last `make coverage` run (CI publishes it to `gh-pages` on every `main` push; `--status failing` or `--status pending` renders the placeholders) |
+| `make coverage-badge` | Render the coverage badge above from the last `make coverage` run (CI publishes one per branch to `gh-pages/badges/<branch>/`; `--status failing` or `--status pending` renders the placeholders) |
 | `make check-code` | Lint + typecheck + format check only |
 | `make build` | Build the library (react-native-builder-bob) |
 | `make e2e-backend` / `make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown |

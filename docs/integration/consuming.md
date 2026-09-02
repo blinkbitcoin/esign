@@ -19,7 +19,7 @@ coverage thresholds + all three E2E suites):
   mismatch) - bump versions first (GitHub Packages rejects re-publishing
   an existing version).
 - **Prerelease** (`next`): every push to `main` (or a manual
-  `publish.yml` dispatch) ships `X.Y.Z-pre.<run>.<sha>` with the core
+  `ci.yml` dispatch) ships `X.Y.Z-pre.<run>.<sha>` with the core
   dependency pinned exactly. Install with
   `npm i @blinkbitcoin/esign-react-native@next`.
 
