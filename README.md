@@ -87,6 +87,10 @@ const source = createWebFormsSource({
 
 Modes 1 and 2 import from the `/webform` subpath, which is **Apollo-free by
 construction** (a guard test walks the import graph to keep it that way).
+When installing from GitHub Packages add `--omit=peer`, otherwise npm also
+drops the unused Apollo peers into `node_modules` - the registry omits
+`peerDependenciesMeta` (details in
+[docs/integration/consuming.md](docs/integration/consuming.md)).
 Web Forms specifics - event model, real-DocuSign caveats:
 [docs/integration/webforms.md](docs/integration/webforms.md).
 

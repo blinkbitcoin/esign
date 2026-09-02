@@ -131,7 +131,14 @@ jobs:
           registry-url: https://npm.pkg.github.com
           scope: '@blinkbitcoin'
 
-      - name: Install the published packages (no Apollo)
+      # GitHub Packages strips `peerDependenciesMeta` from the metadata npm
+      # builds its tree from, so npm installs the optional Apollo peer as if
+      # it were required. Nothing in the tarball can change that (it has the
+      # field; pack-smoke.sh proves the tarball itself is right). So the
+      # contract asserted here is the one the registry can deliver:
+      #   1. a default install still never LOADS Apollo through /webform
+      #   2. `--omit=peer` yields the documented Apollo-free install
+      - name: Install the published packages (webform never loads Apollo)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.publish.outputs.version }}
@@ -139,19 +146,34 @@ jobs:
           mkdir smoke && cd smoke
           npm init -y > /dev/null
           npm install "@blinkbitcoin/esign-core@$VERSION" > /dev/null
-          # Forensics first: if the optional-peer contract regresses, explain it
           echo "--- npm $(npm -v) / node $(node -v)"
           echo "--- published manifest peer metadata:"
           node -p "JSON.stringify(require('@blinkbitcoin/esign-core/package.json').peerDependenciesMeta ?? 'MISSING')"
-          echo "--- why is @apollo/client present (if it is):"
-          npm why @apollo/client || echo "(not installed - as expected)"
+          echo "--- @apollo/client in the tree (expected: yes, registry drops peerDependenciesMeta):"
+          npm why @apollo/client || echo "(not installed)"
           node -e "
             const assert = require('node:assert');
             const webform = require('@blinkbitcoin/esign-core/webform');
             assert.equal(typeof webform.createWebFormsSource, 'function');
             assert.equal(typeof webform.createPublicUrlSource, 'function');
+            const loaded = Object.keys(require.cache).filter(f => /node_modules[\\/](@apollo|graphql)/.test(f));
+            assert.deepEqual(loaded, [], '/webform must not load Apollo or graphql');
+            console.log('registry smoke: /webform loads Apollo-free for', process.env.VERSION);
+          "
+
+      - name: Install with --omit=peer (the documented Apollo-free install)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.publish.outputs.version }}
+        run: |
+          mkdir smoke-lean && cd smoke-lean
+          npm init -y > /dev/null
+          npm install --omit=peer "@blinkbitcoin/esign-core@$VERSION" > /dev/null
+          node -e "
+            const assert = require('node:assert');
+            require('@blinkbitcoin/esign-core/webform');
             let apollo = false;
             try { require.resolve('@apollo/client'); apollo = true; } catch {}
-            assert.equal(apollo, false, 'webform install must not pull Apollo');
-            console.log('registry smoke passed for', process.env.VERSION);
+            assert.equal(apollo, false, '--omit=peer install must not contain Apollo');
+            console.log('registry smoke: --omit=peer install is Apollo-free');
           "
