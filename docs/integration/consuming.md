@@ -44,9 +44,18 @@ a guard test that walks the import graph): a Web Forms-only app installs **no
 GraphQL dependencies at all**.
 
 ```sh
-npm install @blinkbitcoin/esign-react-native react-native-webview @react-native-community/netinfo
+npm install --omit=peer @blinkbitcoin/esign-react-native react-native-webview @react-native-community/netinfo
 # NO @apollo/client, NO graphql - they are optional peers, only needed for proxy mode
 ```
+
+> **Why `--omit=peer`:** GitHub Packages strips `peerDependenciesMeta` from
+> the metadata npm resolves against, so a plain `npm install` treats the
+> *optional* Apollo peers as required and adds `@apollo/client` + `graphql`
+> to `node_modules` (unused: `/webform` never loads them, which the publish
+> workflow's registry smoke asserts on every release). `--omit=peer` skips
+> them; the peers you actually need are named explicitly in the command, so
+> they still install. Not needed when installing from a local tarball or a
+> registry that serves the field (npmjs).
 
 ```tsx
 import {
