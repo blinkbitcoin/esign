@@ -391,13 +391,15 @@ The library takes the backend URL from the host app via
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| `test.yml` | Push/PR (non-main) + publish gate | Unit tests + coverage thresholds + check-code |
+| `test.yml` | Push/PR (non-main) + publish gate | Unit tests + coverage thresholds + check-code; on main, the `badge` job publishes the measured coverage badge (packages + backend) to the `gh-pages` branch for the README, or a red `failing` placeholder when the run fails |
 | `e2e.yml` | Push/PR (non-main) + publish gate | All E2E suites as jobs: `backend`, `web` (Playwright), `ios` (simulator), `android` (emulator) |
 | `publish.yml` | GitHub Release → stable; main push / manual → prerelease (`next`) | Publish to GitHub Packages, gated on the checks + e2e workflows |
 | `docs-check.yml` | Push/PR to main | Warns when architecture-relevant changes ship without a docs/ update |
 
 All workflows run with `permissions: contents: read` (publish adds
-`packages: write`), have timeouts, and cancel superseded runs per ref.
+`packages: write`; the coverage-badge job gets `contents: write` for the
+ruleset-exempt `gh-pages` branch only), have timeouts, and cancel superseded
+runs per ref.
 `test.yml` also runs **actionlint** over the workflow files themselves;
 `.github/dependabot.yml` keeps the action versions current.
 

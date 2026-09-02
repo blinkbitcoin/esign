@@ -23,6 +23,9 @@ unit: ## Run all unit test suites (libraries, example apps, backend)
 coverage: ## Run test suites with coverage (100% enforced on packages + backend)
 	npm run test:coverage
 
+coverage-badge: ## Render the README coverage badge from the last `make coverage` run (packages + backend)
+	npm run coverage:badge
+
 typecheck: ## TypeScript across all workspaces
 	npm run typecheck
 
@@ -139,6 +142,6 @@ help: ## List available targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*##' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*##"} {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: install hooks pods changeset version unit coverage typecheck lint format format-check check-code \
+.PHONY: install hooks pods changeset version unit coverage coverage-badge typecheck lint format format-check check-code \
 	test build codegen start ios android backend web db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-mobile e2e-mobile-android test-live clean reset help

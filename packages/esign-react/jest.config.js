@@ -14,6 +14,8 @@ module.exports = {
     // Pure re-export barrel - no executable logic
     'src/index\\.ts$',
   ],
+  // json-summary feeds scripts/coverage-badge.mjs (the README badge)
+  coverageReporters: ['text', 'lcov', 'json-summary'],
   coverageThreshold: {
     global: { statements: 100, branches: 100, functions: 100, lines: 100 },
   },
