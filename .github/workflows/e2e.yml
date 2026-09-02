@@ -434,7 +434,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.ANDROID_SDK_DIR }}/system-images/android-34
-          key: android-system-image-v1-android-34-google_apis-x86_64
+          key: android-system-image-v1-android-34-default-x86_64
 
       # AVD snapshot caching per the emulator-runner README: a cold run
       # generates the snapshot once; warm runs boot from it in seconds.
@@ -445,7 +445,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-v3-34-x86_64-google_apis
+          key: avd-v4-34-x86_64-default
 
       - name: Create AVD snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -453,7 +453,7 @@ jobs:
         with:
           api-level: 34
           arch: x86_64
-          target: google_apis
+          target: default
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
@@ -483,10 +483,17 @@ jobs:
         with:
           api-level: 34
           arch: x86_64
-          target: google_apis
-          # Stays on the default 2 cores: 4 on a 4-vCPU runner that also hosts
-          # Metro, the backend and Postgres starved the guest (launcher ANRs,
-          # gms services crashing) and the ANR dialog hid the app under test.
+          # AOSP image on purpose, not google_apis: the demo app has no Play
+          # Services dependency (system WebView only), and the Google image's
+          # ~15 Google apps + gms saturated the 2-core software-GPU guest right
+          # after the snapshot restore (gms ANRs, YouTube/Gmail/Chrome being
+          # killed for binder traffic) - which is when Maestro installs its
+          # driver. Every flaky failure signature (driver gRPC UNAVAILABLE,
+          # app-launch never rendering, WebView asserts timing out) was that
+          # starvation. Stays on the default 2 cores: 4 on a 4-vCPU runner
+          # that also hosts Metro, the backend and Postgres starved the guest
+          # even worse.
+          target: default
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
