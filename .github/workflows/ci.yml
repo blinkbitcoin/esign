@@ -1,7 +1,13 @@
-name: Release / Packages
+name: CI
 
-# Publishes the three client packages to GitHub Packages (npm.pkg.github.com)
-# under the blinkbitcoin org. Two publish channels:
+# The one pipeline every branch runs, so a workflow badge filtered by branch
+# (`ci.yml/badge.svg?branch=main`, or `?branch=<any>`) is correct for that
+# branch. Unit and E2E are reusable workflows called as jobs; the coverage
+# badge job inside test.yml publishes per branch to gh-pages.
+#
+# Publishing (main pushes / releases / dispatch) lives at the tail of the
+# same run, so "CI passing on main" means: coverage thresholds, every E2E
+# suite, the publish, and the registry smoke all passed for that commit.
 #
 #   - Stable (`latest` dist-tag): ONLY when a GitHub Release is published.
 #     The release tag (vX.Y.Z) must match every package.json version.
@@ -10,33 +16,37 @@ name: Release / Packages
 #     dependency on core is pinned to the exact prerelease version, since
 #     semver ranges never match prereleases.
 #
-# Both channels are gated on the full test fleet: unit tests with enforced
-# coverage thresholds + every E2E suite, reused via workflow_call.
 # Requires no extra secrets - GITHUB_TOKEN with packages:write is enough
 # for same-org publishing.
 
 on:
-  release:
-    types: [published]
   push:
     branches: [main]
     paths-ignore: ['docs/**', '**.md'] # docs-only pushes ship nothing new
+  pull_request:
+  release:
+    types: [published]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+# PR refs: a newer push supersedes an in-flight run. main: never cancel a
+# running publish (GitHub still replaces a *pending* main run with a newer
+# one, which is fine - the last commit is what the badge should reflect).
 concurrency:
-  group: publish-${{ github.ref }}
-  cancel-in-progress: false
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   # Single-segment caller names: GitHub's run graph collapses labels with
-  # three or more "/" segments to "first / ... / last", so "Tests / Unit"
-  # here would render as "Tests / ... / Coverage". This keeps the reused
-  # jobs at two segments (Unit / Coverage, E2E / iOS).
-  checks:
+  # three or more "/" segments to "first / ... / last", so these render as
+  # "Unit / Coverage", "E2E / iOS".
+  unit:
     name: Unit
     uses: ./.github/workflows/test.yml
     # A called workflow cannot exceed its caller's permissions; test.yml's
-    # `badge` job pushes the coverage badge to the gh-pages branch on main.
+    # badge job pushes the per-branch coverage badge to gh-pages.
     permissions:
       contents: write
   e2e:
@@ -45,7 +55,13 @@ jobs:
 
   publish:
     name: Publish
-    needs: [checks, e2e]
+    needs: [unit, e2e]
+    # Ships only from main pushes, releases and manual dispatches; PR runs
+    # stop after the gates.
+    if: |
+      github.event_name == 'release' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

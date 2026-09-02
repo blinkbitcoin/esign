@@ -1,20 +1,12 @@
 name: Tests / E2E
 
-# pull_request only, no push trigger: a push to a PR branch used to start
-# both, in parallel, and the PR side is what gates the merge. main is
-# covered by the publish workflow's gates (workflow_call below).
+# Reusable only: ci.yml calls this for every branch (push to main, PRs,
+# releases). Concurrency is the caller's.
 on:
-  pull_request:
-  workflow_call: # reused as a publish gate (see publish.yml)
+  workflow_call:
 
 permissions:
   contents: read
-
-# A newer push to the same ref supersedes an in-flight run. Safe with the
-# publish gates: publish.yml serializes itself per ref.
-concurrency:
-  group: e2e-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   backend:

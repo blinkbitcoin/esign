@@ -16,15 +16,18 @@ environment variables, and troubleshooting:
 
 - `make test` — unit suites + lint + typecheck + format check. Coverage is
   **100% enforced** on the packages and backend; the demo apps have floors.
-  The README coverage badge is measured, not hardcoded: CI aggregates the
-  packages + backend line coverage and publishes it to the `gh-pages` branch
-  on every push to `main` (`make coverage-badge` renders it locally). A red
-  `failing` badge replaces it when the coverage run on `main` fails.
+  The README coverage badge is measured, not hardcoded: every CI run
+  aggregates the packages + backend line coverage and publishes it to
+  `gh-pages/badges/<branch>/` (`make coverage-badge` renders it locally);
+  the README embeds the `main` one. A red `failing` badge replaces it when
+  the coverage run fails.
 - Git hooks (see [below](#git-hooks)) format, lint, and check the commit
   message locally.
-- CI runs everything on each push/PR, plus all end-to-end suites
-  (backend, browser, iOS simulator, Android emulator), and re-checks the
-  commit convention on the PR's commits and title.
+- CI (`ci.yml`) is one pipeline for every branch: unit suites with
+  coverage thresholds, all end-to-end suites (backend, browser, iOS
+  simulator, Android emulator), and on `main` the publish + registry
+  smoke. A second workflow re-checks the commit convention on the PR's
+  commits and title.
 
 ## Commit messages
 

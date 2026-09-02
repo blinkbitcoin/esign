@@ -117,7 +117,7 @@ mobile↔backend boundary; the provider's envelope ID never leaves the backend.
   cancel-from-signing-page, session-timeout → restart → complete
 - **Backend E2E** (`apps/api/tests/e2e/`) exercises points 4 and 6 against
   real Postgres, including the full webhook signature/parsing path
-- **CI:** `.github/workflows/e2e-backend.yml`, `e2e-web.yml`, `e2e-mobile.yml`; `publish.yml` releases the packages to GitHub Packages
+- **CI:** `.github/workflows/e2e.yml` (backend, web, iOS, Android jobs, called by `ci.yml`); `ci.yml` releases the packages to GitHub Packages
 - **Playwright** (`examples/react-demo/e2e/`) drives the web demo in real
   Chromium against the same backend+DB stack — the Vite app (:5173) embeds
   the mock signing page (:4000) in a genuinely cross-origin iframe, so the

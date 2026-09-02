@@ -391,16 +391,21 @@ The library takes the backend URL from the host app via
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| `test.yml` | Push/PR (non-main) + publish gate | Unit tests + coverage thresholds + check-code; on main, the `badge` job publishes the measured coverage badge (packages + backend) to the `gh-pages` branch for the README, or a red `failing` placeholder when the run fails |
-| `e2e.yml` | Push/PR (non-main) + publish gate | All E2E suites as jobs: `backend`, `web` (Playwright), `ios` (simulator), `android` (emulator) |
-| `publish.yml` | GitHub Release → stable; main push / manual → prerelease (`next`) | Publish to GitHub Packages, gated on the checks + e2e workflows |
+| `ci.yml` | Push to main, PRs, GitHub Release, manual | The one pipeline every branch runs: `Unit` (calls `test.yml`) + `E2E` (calls `e2e.yml`), then on main pushes / releases / dispatch `Publish` (GitHub Packages: release → stable `latest`, main → prerelease `next`) + `Registry smoke`. Badge: `ci.yml/badge.svg?branch=<branch>` |
+| `test.yml` | `workflow_call` only | Unit tests + coverage thresholds + check-code, actionlint, package shape; the `badge` job publishes the measured coverage badge (packages + backend) to `gh-pages/badges/<branch>/`, or a red `failing` placeholder when the run fails |
+| `e2e.yml` | `workflow_call` only | All E2E suites as jobs: `backend`, `web` (Playwright), `ios` (simulator), `android` (emulator) |
+| `cancel-closed.yml` | PR closed/merged | Cancels the PR's still-running runs (the push-to-main run is unaffected) and removes its `gh-pages` badge directory |
 | `docs-check.yml` | Push/PR to main | Warns when architecture-relevant changes ship without a docs/ update |
-| `cancel-closed.yml` | PR closed/merged | Cancels the PR's still-running `pull_request`/`push` runs (the push-to-main run is unaffected) |
+| `commitlint.yml` | PRs | Conventional Commits on the PR's commits and title |
 
-All workflows run with `permissions: contents: read` (publish adds
-`packages: write`; the coverage-badge job gets `contents: write` for the
-ruleset-exempt `gh-pages` branch only), have timeouts, and cancel superseded
-runs per ref.
+Badges are per branch by construction: a workflow badge filtered with
+`?branch=X` and `gh-pages/badges/X/coverage.svg` both describe branch `X`
+and nothing else. The README shows `main`.
+
+All workflows run with `permissions: contents: read` (the publish job adds
+`packages: write`; the coverage-badge and closed-PR cleanup jobs get
+`contents: write` for the ruleset-exempt `gh-pages` branch only), have
+timeouts, and cancel superseded runs per ref (never a running `main` run).
 `test.yml` also runs **actionlint** over the workflow files themselves;
 `.github/dependabot.yml` keeps the action versions current.
 
