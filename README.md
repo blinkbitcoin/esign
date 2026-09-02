@@ -4,8 +4,6 @@
 [![E2E tests](https://github.com/blinkbitcoin/blink-esign/actions/workflows/e2e.yml/badge.svg?event=pull_request)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/e2e.yml)
 [![Publish](https://github.com/blinkbitcoin/blink-esign/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/publish.yml)
 [![Coverage](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/coverage.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/publish.yml)
-[![Node 22.22+ / 24.15+](https://img.shields.io/badge/node-22.22%2B%20%7C%2024.15%2B-339933?logo=node.js&logoColor=white)](package.json)
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](packages/esign-core/tsconfig.json)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 <p align="center">
