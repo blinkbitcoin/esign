@@ -135,3 +135,8 @@ Escape hatches, for the rare cases where they are warranted:
   the changelog. A tag with a prerelease part (`v1.0.0-rc.1`) ships under
   `next`. GitHub Packages never accepts the same version twice, so a failed
   release means fixing forward and cutting a new tag.
+  A release ships only once the commit's push-to-`main` run is green: the
+  release run waits for an in-flight main run and refuses a red one, and
+  `release-retry.yml` re-runs the blocked Publish automatically when main
+  turns green (re-run the flaky job with `gh run rerun <id> --failed`).
+  So `make release` is fire-and-forget.
