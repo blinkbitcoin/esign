@@ -20,6 +20,9 @@ adb reverse tcp:4000 tcp:4000
 adb shell settings put global hide_error_dialogs 1
 export PATH="$HOME/.maestro/bin:$PATH"
 
+# The default 256K main buffer wraps within a couple of minutes on the
+# emulator, losing the app-launch window from the post-mortem dump.
+adb logcat -G 64M
 adb logcat -c
 status=0
 npm run test:e2e:android -w examples/react-native-demo || status=$?
