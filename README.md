@@ -203,8 +203,8 @@ credentials are set).
 | Target | Purpose |
 |--------|---------|
 | `make test` | Unit suites + lint + typecheck + format check |
-| `make unit`<br>`make coverage` | Test suites; 100% coverage enforced on packages + backend, demos floored at current level |
-| `make coverage-badge` | Render the coverage badge above and the combined HTML report from the last `make coverage` run |
+| `make unit`<br>`make coverage` | Test suites (100% coverage on packages + backend; demos floored at current level) |
+| `make coverage-badge` | Render the coverage badge and HTML report from the last `make coverage` run |
 | `make check-code` | Lint + typecheck + format check only |
 | `make build` | Build the library (react-native-builder-bob) |
 | `make e2e-backend`<br>`make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown |
