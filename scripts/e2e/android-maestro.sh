@@ -22,13 +22,17 @@ adb reverse tcp:4000 tcp:4000
 # assertions. Hide ANR/crash dialogs; real crashes still land in logcat.
 adb shell settings put global hide_error_dialogs 1
 export PATH="$HOME/.maestro/bin:$PATH"
+# shellcheck source=scripts/e2e/maestro-bound.sh
+. "$(dirname "$0")/maestro-bound.sh"
 
 # The default 256K main buffer wraps within a couple of minutes on the
 # emulator, losing the app-launch window from the post-mortem dump.
 adb logcat -G 64M
 adb logcat -c
 status=0
-npm run test:e2e:android -w examples/react-native-demo || status=$?
+# Bounded (see maestro-bound.sh) so the logcat post-mortem below still runs
+# when Maestro hangs; a `::error::` line marks the timeout case.
+bounded_maestro test:e2e:android -w examples/react-native-demo || status=$?
 
 # Forensics: the failure screenshots show the launcher (the app process is
 # gone after a WebView teardown), so keep the device log for the post-mortem.
