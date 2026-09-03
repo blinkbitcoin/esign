@@ -1,6 +1,6 @@
 # Development Guide
 
-**Project:** blink-esign
+**Project:** esign
 **Updated:** 2026-07-02
 
 ## Prerequisites
@@ -23,7 +23,7 @@
 ```bash
 # Clone repository
 git clone <repository-url>
-cd blink-esign
+cd esign
 
 # Install all workspaces (library, demo app, backend - single root lockfile)
 npm ci

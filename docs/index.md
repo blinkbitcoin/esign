@@ -1,6 +1,6 @@
 # Project Documentation Index
 
-**Project:** blink-esign
+**Project:** esign
 **Updated:** 2026-09-01
 
 ---

@@ -1,8 +1,8 @@
-# blink-esign
+# esign
 
-[![Unit](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/badges/main/unit.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml?query=branch%3Amain)
-[![E2E](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/badges/main/e2e.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml?query=branch%3Amain)
-[![Coverage](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/badges/main/coverage.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml?query=branch%3Amain)
+[![Unit](https://github.com/blinkbitcoin/esign/raw/gh-pages/badges/main/unit.svg)](https://github.com/blinkbitcoin/esign/actions/workflows/ci.yml?query=branch%3Amain)
+[![E2E](https://github.com/blinkbitcoin/esign/raw/gh-pages/badges/main/e2e.svg)](https://github.com/blinkbitcoin/esign/actions/workflows/ci.yml?query=branch%3Amain)
+[![Coverage](https://github.com/blinkbitcoin/esign/raw/gh-pages/badges/main/coverage.svg)](https://github.com/blinkbitcoin/esign/actions/workflows/ci.yml?query=branch%3Amain)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
 <sub>E2E covers backend, web and Android; the iOS simulator suite is opt-in (macOS runners), see [CI/CD](docs/development-guide.md#ios-e2e-is-opt-in).</sub>
