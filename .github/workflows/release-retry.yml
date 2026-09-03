@@ -22,16 +22,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
       - name: Re-run failed release runs for this commit
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.event.workflow_run.head_sha }}
-        run: |
-          gh api "repos/$REPO/actions/workflows/ci.yml/runs?event=release&head_sha=$SHA&per_page=20" \
-            --jq '.workflow_runs[] | select(.conclusion == "failure") | "\(.id) \(.head_branch)"' \
-          | while read -r id tag; do
-              echo "main is green for ${SHA::7}: re-running failed jobs of release run $id ($tag)"
-              gh api -X POST "repos/$REPO/actions/runs/$id/rerun-failed-jobs" >/dev/null
-            done
-          echo "done"
+        run: bash scripts/release/rerun-blocked.sh
