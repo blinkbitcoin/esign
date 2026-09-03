@@ -37,23 +37,32 @@ Makefiles exist at three levels: the root (repo-wide flows), the group dirs
 (`apps/`, `packages/`, `examples/` - fan common targets out to auto-discovered
 children), and each workspace (thin delegates to its npm scripts). So
 `make -C packages coverage` runs both libraries, `cd apps/api && make dev`
-runs the service. Root targets: `make test` (unit + check-code), `make e2e-backend` (DB up → migrate
-→ E2E → teardown), `make db-up/migrate/backend`, `make ios/android/start`,
-`make pods`, `make build`, `make clean/reset`. The underlying npm scripts:
+runs the service. `make help` lists every root target with a description.
+The ones that matter most: `make test` (unit + check-code), `make coverage`,
+`make check-ci` (actionlint + shellcheck of `scripts/**`), `make codegen`,
+`make diagrams` / `make docs-check`, `make e2e-backend` (DB up → migrate →
+E2E → teardown), `make e2e-web[-webform|-publicurl]` (Playwright), `make
+e2e-android` / `make e2e-ios` (Maestro, needs a running stack; `make
+e2e-backend-up` starts the mock-provider backend), `make db-up/migrate/backend`,
+`make ios/android/start/web`, `make pods`, `make build`, `make release V=X.Y.Z`,
+`make clean/reset`. The underlying npm scripts:
 
 ```bash
 npm ci                       # Install all workspaces
-npm test                     # All test suites: library (Jest), demo (Jest), backend (Vitest)
-npm run test:coverage        # Coverage runs - 100% is the enforced baseline
+npm test                     # All test suites: core + RN + web libraries, both demos (Jest), backend (Vitest)
+npm run test:coverage        # Coverage runs - 100% is the enforced baseline on packages + backend
 npm run typecheck            # tsc across all workspaces
 npm run lint                 # ESLint (mobile code) + Biome lint (backend)
 npm run format               # Biome format (all workspaces)
-npm run build                # Build the library (react-native-builder-bob)
-npm start                    # Metro for the demo app
-npm run ios / android        # Run the demo app
+npm run build                # Build the three libraries (bob for RN, tsup for core + web)
+npm run check:packages       # publint + arethetypeswrong on the built packages
+npm run codegen              # Emit schema.graphql from typeDefs.ts + regenerate core's client types
+npm start                    # Metro for the RN demo app
+npm run ios / android        # Run the RN demo app
+npm run web                  # Vite dev server for the web demo
 npm run backend              # Backend dev server (tsx watch)
 npm run test:e2e:backend     # Backend E2E (needs: docker compose -f docker-compose.test.yml up -d)
-npm run test:e2e             # Maestro mobile E2E (needs backend + simulator)
+npm run test:e2e             # Maestro mobile E2E (needs backend + simulator/emulator)
 ```
 
 Single test file: `npm test -w @blinkbitcoin/esign-react-native -- ESignature` or
@@ -99,9 +108,10 @@ npm run migrate:test         # Same against the .env.test database
 - The platform-agnostic code (the `SigningSource` abstraction + sources, the
   Apollo client factory, the GraphQL operations + generated types) lives in
   **`@blinkbitcoin/esign-core`** (`packages/esign-core/`), depended on
-  and re-exported by both the RN and web packages. Each platform package now
+  and re-exported by both the RN and web packages. Each platform package
   contains only its `ESignature` component (+ web-only `docusignWebForms.ts`).
-  Codegen runs in core; the KEPT-IN-SYNC duplication is gone.
+  Codegen runs in core (`packages/esign-core/src/generated/`); never hand-edit
+  or duplicate the generated types in a platform package.
 
 ## iOS Setup (first time or after native dep changes)
 
@@ -130,19 +140,47 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   never by switching branches in the main clone: several agent sessions share
   that checkout, and a commit made there lands on whatever branch another
   session left checked out
-- Git hooks via lefthook (auto-installed by `npm install`): biome + eslint on
-  pre-commit, commitlint on commit-msg, typecheck on pre-push
+- Git hooks via lefthook (auto-installed by `npm install`): biome + eslint +
+  diagram re-render on pre-commit, commitlint on commit-msg, typecheck on
+  pre-push, `npm ci` on post-merge/post-checkout when the lockfile changed.
+  Escape hatches: `git commit --no-verify`, `LEFTHOOK=0 git push`
 - Commit messages and PR titles follow Conventional Commits with an allowed
-  scope list (`commitlint.config.mjs`; e.g. `feat(rn): ...`, `fix(api): ...`,
-  `docs: ...`). Details in `CONTRIBUTING.md`
+  scope list: `core`, `rn`, `react`, `api`, `demo`, `e2e`, `ci`, `deps`,
+  `deps-dev`, `docs`, `release` (`commitlint.config.mjs` is the source of
+  truth; e.g. `feat(rn): ...`, `fix(api): ...`, `ci(e2e): ...`, `docs: ...`).
+  Squash merges take the PR title, so name the PR like a commit. Details in
+  `CONTRIBUTING.md`
+- Change code and the relevant `docs/` page in the same change; the CI Docs
+  check (`make docs-check`) flags architecture-relevant diffs without one
+- Shell that CI or the Makefile runs lives in `scripts/{ci,e2e,release}/`,
+  never inline in a workflow; `make check-ci` runs actionlint + shellcheck
 - `graphql` is pinned to 16.x repo-wide (Apollo Server 5's peer range) - do
   not bump it to 17 until Apollo Server supports it
 
+## CI and releases
+
+- One pipeline per branch (`ci.yml`): Checks (`checks.yml`: Changes, Code,
+  Packages, Commits, Docs) → Unit (`test.yml`) → E2E (`e2e.yml`: Backend, Web,
+  Build Android → Android, Build iOS → iOS) → Badges, then Publish → Verify on
+  `main`. Docs-only PRs stop after Checks; `main` skips docs-only pushes.
+- iOS E2E is opt-in (macOS runners bill at 10x): PR label `e2e:ios` or repo
+  variable `E2E_IOS=true`; `E2E_IOS_RUNNER` overrides `runs-on`.
+- Native E2E builds are cached on the inputs `scripts/native-deps-hash.sh`
+  sees plus `android/**` / `ios/**`; bump the cache key's `v` suffix when an
+  input the script cannot see changes.
+- Releases: prerelease (`next`) on every green push to `main`; stable is
+  `make release V=X.Y.Z` - the tag is the version, CI stamps it at publish
+  time, `package.json` stays at `0.0.0-development`. Release notes come from
+  PR titles (`.github/release.yml`). A release ships only once the commit's
+  main run is green (`release-retry.yml` re-runs a blocked Publish).
+
 ## Architecture Patterns
 
-- **Provider pattern**: new e-sign providers implement the five-method
-  `ESignProvider` interface in one file + a factory case
+- **Provider pattern**: new e-sign providers implement the `ESignProvider`
+  port (`apps/api/src/providers/port.ts`) as an adapter under
+  `apps/api/src/providers/` + a case in the `src/providers/index.ts` factory
 - **Safe Area**: `react-native-safe-area-context` (demo app concern)
-- **Entry points**: `examples/react-native-demo/index.js` (app), `apps/api/src/index.ts`
-  (service bootstrap), `packages/esign-react-native/src/index.ts`
-  (library API)
+- **Entry points**: `examples/react-native-demo/index.js` (RN app),
+  `examples/react-demo/src/main.tsx` (web app), `apps/api/src/index.ts`
+  (service bootstrap), `packages/esign-{core,react-native,react}/src/index.ts`
+  (library APIs)
