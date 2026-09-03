@@ -321,7 +321,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: examples/react-native-demo/android/app/build/outputs/apk/debug/app-debug.apk
-          key: android-apk-v2-${{ steps.native-deps.outputs.hash }}-${{ hashFiles('examples/react-native-demo/android/**', 'examples/react-native-demo/app.json') }}
+          key: android-apk-v7-${{ steps.native-deps.outputs.hash }}-${{ hashFiles('examples/react-native-demo/android/**', 'examples/react-native-demo/app.json') }}
 
       - name: Setup Node.js
         if: steps.android-apk.outputs.cache-hit != 'true'
@@ -342,10 +342,13 @@ jobs:
         if: steps.android-apk.outputs.cache-hit != 'true'
         run: npm ci
 
+      # Only the emulator's ABI (android-34 x86_64 image, see the android job).
+      # gradle.properties lists all four for local/release builds; each ABI is
+      # a separate CMake configure+build of the app's native glue (~1 min).
       - name: Build Android app (debug)
         if: steps.android-apk.outputs.cache-hit != 'true'
         working-directory: examples/react-native-demo/android
-        run: ./gradlew assembleDebug --no-daemon --build-cache
+        run: ./gradlew assembleDebug --no-daemon --build-cache -PreactNativeArchitectures=x86_64
 
       # retention-days: 1 - only the emulator job of this run needs it.
       - name: Publish APK for the emulator job
