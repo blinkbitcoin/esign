@@ -203,15 +203,21 @@ credentials are set).
 | Target | Purpose |
 |--------|---------|
 | `make test` | Unit suites + lint + typecheck + format check |
-| `make unit` / `make coverage` | Test suites (100% coverage enforced on packages + backend; demos floored at current level) |
-| `make coverage-badge` | Render the coverage badge above and the combined HTML report (`coverage/report/index.html`) from the last `make coverage` run. CI publishes the badge per branch to `gh-pages/badges/<branch>/` and uploads the report as the `coverage-report` artifact of every run |
+| `make unit`<br>`make coverage` | Test suites; 100% coverage enforced on packages + backend, demos floored at current level |
+| `make coverage-badge` | Render the coverage badge above and the combined HTML report from the last `make coverage` run |
 | `make check-code` | Lint + typecheck + format check only |
 | `make build` | Build the library (react-native-builder-bob) |
-| `make e2e-backend` / `make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown |
-| `make e2e-ios` / `make e2e-android` | Maestro E2E against a running stack (`make e2e-backend-up` starts the backend; `make ios-build` builds the simulator app) |
+| `make e2e-backend`<br>`make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown |
+| `make e2e-ios`<br>`make e2e-android` | Maestro E2E against a running stack |
 | `make check-ci` | Lint the CI itself: actionlint on the workflows, shellcheck on `scripts/**` |
 | `make test-live` | Opt-in live DocuSign API verification (skips without credentials) |
 | `make pods` | iOS CocoaPods install |
+
+The HTML coverage report lands in `coverage/report/index.html`; CI publishes
+the badge per branch to `gh-pages/badges/<branch>/` and uploads the report as
+the `coverage-report` artifact of every run. For the Maestro suites,
+`make e2e-backend-up` starts the backend and `make ios-build` builds the
+simulator app.
 
 See [docs/development-guide.md](docs/development-guide.md) for full setup,
 environment variables, and troubleshooting, and [CONTRIBUTING.md](CONTRIBUTING.md)
