@@ -17,9 +17,9 @@ mode**, and for two of the three that is a single small package:
 
 | Mode | What it is | What your app installs | Backend required |
 |------|-----------|------------------------|------------------|
-| **1. Public URL** | A published public form URL embedded directly | One package via the Apollo-free `/webform` entry - **no Apollo, no GraphQL** | **None** |
-| **2. Web Forms instances** | Prefilled per-signer forms; your backend mints an instance URL with one API call | Same minimal `/webform` entry | One authenticated endpoint on *your* backend (or run this repo's service) |
-| **3. Proxy envelope** | Full envelope orchestration: templates, per-recipient sessions, restart on expiry, webhook status sync | The package + `@apollo/client` + `graphql` | This repo's backend service (`apps/api`) |
+| **1. Public URL** | A published public form URL<br>embedded directly | One package via the<br>Apollo-free `/webform` entry -<br>**no Apollo, no GraphQL** | **None** |
+| **2. Web Forms<br>instances** | Prefilled per-signer forms;<br>your backend mints an<br>instance URL with one API call | Same minimal `/webform` entry | One authenticated endpoint<br>on *your* backend (or run<br>this repo's service) |
+| **3. Proxy envelope** | Full envelope orchestration:<br>templates, per-recipient<br>sessions, restart on expiry,<br>webhook status sync | The package +<br>`@apollo/client` + `graphql` | This repo's backend<br>service (`apps/api`) |
 
 The GraphQL backend, Apollo wiring, and provider adapters in this repo exist
 for **mode 3 only**. If you need modes 1 or 2, none of that ships with you -
