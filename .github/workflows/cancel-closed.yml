@@ -19,20 +19,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
       - name: Cancel runs for the PR head commit
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          for status in queued in_progress; do
-            gh api "repos/$REPO/actions/runs?head_sha=$SHA&status=$status&per_page=100" \
-              --jq '.workflow_runs[] | select(.id != '"$GITHUB_RUN_ID"') | "\(.id) \(.name)"' \
-            | while read -r id name; do
-                echo "cancelling $id ($name)"
-                gh api -X POST "repos/$REPO/actions/runs/$id/cancel" >/dev/null
-              done
-          done
+        run: bash scripts/ci/cancel-runs.sh
 
   badge-cleanup:
     name: Remove branch badge
@@ -41,26 +36,11 @@ jobs:
     # Fork PRs never published one (no write token in their runs)
     if: github.event.pull_request.head.repo.full_name == github.repository
     steps:
-      - name: Checkout gh-pages
-        id: checkout
+      - name: Checkout code
         uses: actions/checkout@v7
-        continue-on-error: true # no gh-pages yet: nothing to clean
-        with:
-          ref: gh-pages
 
+      # Works in a gh-pages worktree; no gh-pages branch yet means nothing to clean.
       - name: Delete badges/<branch>
-        if: steps.checkout.outcome == 'success'
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
-        run: |
-          [ -d "badges/$BRANCH" ] || { echo "no badge for $BRANCH"; exit 0; }
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git rm -rq "badges/$BRANCH"
-          git commit -qm "chore(ci): drop coverage badge for closed branch $BRANCH"
-          for attempt in 1 2 3 4 5; do
-            git push -q origin gh-pages && exit 0
-            git fetch -q origin gh-pages && git rebase -q origin/gh-pages
-            sleep $((attempt * 2))
-          done
-          echo "::error::could not push gh-pages after 5 attempts" && exit 1
+        run: bash scripts/ci/badges-cleanup.sh

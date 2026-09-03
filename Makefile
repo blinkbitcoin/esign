@@ -61,6 +61,13 @@ release: ## Cut a stable release: make release V=X.Y.Z (the tag is the version; 
 	@test -n "$(V)" || { echo "usage: make release V=X.Y.Z"; exit 1; }
 	gh release create "v$(V)" --target main --title "v$(V)" --generate-notes
 
+version: ## Show what CI would publish for HEAD (prerelease), or for a tag: make version TAG=vX.Y.Z
+	@DRY_RUN=1 EVENT=$(if $(TAG),release,push) TAG=$(TAG) bash scripts/release/resolve-version.sh
+
+registry-smoke: ## Install a published version from GitHub Packages and assert the consumer contract: make registry-smoke V=X.Y.Z
+	@test -n "$(V)" || { echo "usage: make registry-smoke V=X.Y.Z"; exit 1; }
+	bash scripts/release/registry-smoke.sh "$(V)"
+
 diagrams: ## Render docs/diagrams/dist/*.svg from src/*.mmd (pinned mermaid-cli) + reassemble the combined doc
 	for f in docs/diagrams/src/*.mmd; do \
 		npx --yes @mermaid-js/mermaid-cli@11.16.0 -i "$$f" \
@@ -158,7 +165,7 @@ help: ## List available targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*##' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*##"} {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: install hooks pods release unit coverage coverage-badge typecheck lint format format-check check-code \
+.PHONY: install hooks pods release version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
 	shellcheck check-ci codegen-check test build codegen start ios android backend web db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl \
 	e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live clean reset help
