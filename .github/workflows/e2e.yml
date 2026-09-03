@@ -268,6 +268,9 @@ jobs:
         run: bash scripts/e2e/metro-wait.sh ios
 
       - name: Run Maestro tests (webform-tagged flows excluded - they need an ESIGN_MODE=webform Metro)
+        # Suite + one suite-level retry is normally a few minutes; a hung
+        # driver otherwise runs into the job's 60 (#41).
+        timeout-minutes: 15
         env:
           # CI simulators are slow to install+launch the XCUITest driver;
           # the default startup timeout regularly trips on cold runners.
@@ -464,13 +467,19 @@ jobs:
 
       - name: Run Maestro tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
+        # Normal is ~2 min (102-124s over the last 9 green jobs). Backstop
+        # above the 10 min suite bound inside android-maestro.sh; that inner
+        # bound is the one that keeps logcat, this one kills the script (#41).
+        timeout-minutes: 12
         env:
           # Same reason as the iOS job: Maestro gives its instrumentation
           # driver 15s by default to come up, and a cold runner can take
           # longer to install + start it (every flow then fails in 0s with
           # "Not able to reach the gRPC server"). The action passes job env
-          # through to `script`.
-          MAESTRO_DRIVER_STARTUP_TIMEOUT: '600000'
+          # through to `script`. 5 min: ~2.5x the slowest green step, and a
+          # starved driver then fails with Maestro's own message before the
+          # script's 10 min suite bound trips (#41).
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: '300000'
         with:
           api-level: 34
           arch: x86_64

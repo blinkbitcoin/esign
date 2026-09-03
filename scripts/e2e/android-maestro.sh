@@ -28,7 +28,19 @@ export PATH="$HOME/.maestro/bin:$PATH"
 adb logcat -G 64M
 adb logcat -c
 status=0
-npm run test:e2e:android -w examples/react-native-demo || status=$?
+# A starved emulator can leave Maestro waiting on its driver with no flow
+# output (#41). Bound the suite here so the logcat post-mortem below still
+# runs: the step's timeout-minutes is only the backstop, and would kill this
+# script before it dumps anything. coreutils timeout on CI; absent on macOS.
+SUITE_TIMEOUT="${MAESTRO_SUITE_TIMEOUT:-10m}"
+if command -v timeout >/dev/null; then
+  timeout -k 30s "$SUITE_TIMEOUT" npm run test:e2e:android -w examples/react-native-demo || status=$?
+  if [ "$status" -eq 124 ]; then
+    echo "::error::Maestro suite exceeded $SUITE_TIMEOUT without completing (#41) - see logcat below"
+  fi
+else
+  npm run test:e2e:android -w examples/react-native-demo || status=$?
+fi
 
 # Forensics: the failure screenshots show the launcher (the app process is
 # gone after a WebView teardown), so keep the device log for the post-mortem.
