@@ -1,7 +1,8 @@
 name: Tests / Unit
 
 # Reusable only: ci.yml calls this for every branch (push to main, PRs,
-# releases). Concurrency is the caller's.
+# releases), after the Checks stage (checks.yml: lint, typecheck, package
+# shape, commits, docs) has passed. Concurrency is the caller's.
 on:
   workflow_call:
 
@@ -28,32 +29,16 @@ jobs:
       - name: Install dependencies (workspace root)
         run: npm ci
 
-      - name: Dependency audit (known upstream issues allowlisted)
-        run: npx audit-ci --config audit-ci.jsonc
-
-      - name: Lint GitHub Actions workflows (actionlint)
-        run: |
-          docker run --rm -v "$PWD":/repo --workdir /repo rhysd/actionlint:latest -color
-
-      - name: Check generated diagrams are current
-        run: |
-          node scripts/assemble-diagrams.mjs
-          # shellcheck disable=SC2016 # backticks in the message are markdown, not expansion
-          git diff --exit-code -- docs/diagrams/README.md \
-            || (echo '::error::README.md is stale - edit src/*.mmd and run `make diagrams`' && exit 1)
-
-      - name: Lint + typecheck + format check
-        run: make check-code
-
       # Coverage thresholds are enforced per workspace: 100% on the three
       # packages and the backend, current-level floors on the demo apps.
       - name: Unit tests with coverage
         run: npm run test:coverage
 
-      # Badge + combined HTML report (packages + backend). The `badge` job
-      # below publishes the badge per branch; the report stays a run
-      # artifact - private, unlike GitHub Pages, which would expose the
-      # source embedded in it.
+      # Badge + combined HTML report (packages + backend). The `Badges` job in
+      # ci.yml publishes the badge per branch to gh-pages once E2E is done (it
+      # is not on the E2E critical path); the report stays a run artifact -
+      # private, unlike GitHub Pages, which would expose the source embedded
+      # in it.
       - name: Render coverage badge + HTML report
         run: npm run coverage:badge
 
@@ -72,115 +57,3 @@ jobs:
           path: coverage/report/
           retention-days: 30
           if-no-files-found: error
-
-  # Publishes the coverage badge to the `gh-pages` branch under
-  # badges/<branch>/coverage.svg, so README.md can embed main's the same
-  # way a workflow badge takes ?branch=main. gh-pages is the one branch
-  # the org ruleset exempts from the PR-approval requirement, so the default
-  # GITHUB_TOKEN can push there. cancel-closed.yml removes a PR's directory
-  # when it closes.
-  #
-  # Runs even when `unit` fails: a red "failing" badge then replaces the
-  # stale green one instead of the README silently keeping the last result.
-  # Skipped for fork PRs (no write token) and release tags (not a branch).
-  badge:
-    name: Coverage badge
-    needs: unit
-    if: |
-      always() && needs.unit.result != 'cancelled' &&
-      github.event_name != 'release' &&
-      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Download coverage badge
-        id: download
-        if: needs.unit.result == 'success'
-        uses: actions/download-artifact@v8
-        with:
-          name: coverage-badge
-          path: coverage/badge
-
-      - name: Setup Node.js
-        if: steps.download.outcome != 'success'
-        uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies (workspace root)
-        if: steps.download.outcome != 'success'
-        run: npm ci
-
-      - name: Render "failing" placeholder
-        if: steps.download.outcome != 'success'
-        run: npm run coverage:badge -- --status failing
-
-      - name: Publish to gh-pages
-        env:
-          SHA: ${{ github.sha }}
-          BRANCH: ${{ github.head_ref || github.ref_name }}
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          mv coverage/badge /tmp/badge
-          if git fetch -q origin gh-pages; then
-            git checkout -q gh-pages
-          else
-            git checkout -q --orphan gh-pages
-            git rm -rfq --cached .
-          fi
-          git clean -fdxq -e node_modules
-          mkdir -p "badges/$BRANCH"
-          cp /tmp/badge/coverage.svg "badges/$BRANCH/"
-          printf '%s\n' \
-            '# CI-owned branch' \
-            '' \
-            'badges/<branch>/coverage.svg - written by the Coverage badge job in' \
-            '.github/workflows/test.yml; badges/<branch>/{unit,e2e}.{svg,json} - by the' \
-            'Status badges job in ci.yml. Both run on every CI run; a PR'"'"'s directory is' \
-            'removed when it closes.' \
-            'Do not edit by hand.' > README.md
-          git add -A badges README.md
-          if git diff --cached --quiet; then echo "badge unchanged"; exit 0; fi
-          git commit -qm "chore(ci): coverage badge for $BRANCH @ ${SHA::7}"
-          # Other branches publish concurrently - rebase and retry the push
-          for attempt in 1 2 3 4 5; do
-            git push -q origin gh-pages && exit 0
-            git fetch -q origin gh-pages && git rebase -q origin/gh-pages
-            sleep $((attempt * 2))
-          done
-          echo "::error::could not push gh-pages after 5 attempts" && exit 1
-
-  packages:
-    name: Packages
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies (workspace root)
-        run: npm ci
-
-      - name: Build packages
-        run: npm run build
-
-      - name: Package shape (publint + arethetypeswrong)
-        run: npm run check:packages
-
-      - name: Pack + install smoke (webform Apollo-free boundary)
-        run: bash scripts/pack-smoke.sh

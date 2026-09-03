@@ -1,10 +1,13 @@
-name: Checks / Commits
+name: Checks / Commits (title edit)
 
-# Conventional Commits on the PR's commits and its title (squash merges take
-# the title as the commit on main). Rules: commitlint.config.mjs.
+# The gating commit + title lint is the Commits job in checks.yml, run by
+# ci.yml on every PR push. This only covers a PR title edit: ci.yml does not
+# run on `edited` (a title change must not re-run the whole pipeline), and a
+# re-run of the ci.yml job would still see the title from the original event
+# payload. Rules: commitlint.config.mjs.
 on:
   pull_request:
-    types: [opened, edited, synchronize, reopened]
+    types: [edited]
 
 permissions:
   contents: read
@@ -15,20 +18,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Lint
-    # Dependabot's messages are shaped by dependabot.yml's commit-message
-    # config; no need to re-lint its bot-authored commits. Keyed on the PR
-    # author, not github.actor: a human updating the branch would otherwise
-    # re-trigger the lint against Dependabot's commits.
-    if: github.event.pull_request.user.login != 'dependabot[bot]'
+  title:
+    name: Title
+    if: github.event.pull_request.user.login != 'dependabot[bot]' && github.event.changes.title
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0 # commitlint needs the base..head range
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -39,9 +36,6 @@ jobs:
 
       - name: Install dependencies (workspace root)
         run: npm ci --ignore-scripts
-
-      - name: Lint PR commits
-        run: npx commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}" --verbose
 
       - name: Lint PR title
         env:

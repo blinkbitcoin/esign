@@ -391,13 +391,13 @@ The library takes the backend URL from the host app via
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| `ci.yml` | Push to main, PRs, GitHub Release, manual | The one pipeline every branch runs: `Unit` (calls `test.yml`) + `E2E` (calls `e2e.yml`), then `Status badges` (Unit / E2E pass-fail badges for the branch to `gh-pages/badges/<branch>/`), and on main pushes / releases / dispatch `Publish` (GitHub Packages: release → stable `latest`, version = the tag; main → prerelease `next`) + `Verify` (installs the published packages from GitHub Packages into a clean project and asserts the consumer contract). Workflow badge, if needed: `ci.yml/badge.svg?branch=<branch>` |
-| `test.yml` | `workflow_call` only | Unit tests + coverage thresholds + check-code, actionlint, package shape; uploads the combined HTML coverage report (`coverage-report` artifact, 30 days); the `badge` job publishes the measured coverage badge (packages + backend) to `gh-pages/badges/<branch>/`, or a red `failing` placeholder when the run fails |
+| `ci.yml` | Push to main, PRs, GitHub Release, manual | The one pipeline every branch runs, staged so a failure never spends the next stage's minutes: `Checks` (calls `checks.yml`) → `Unit` (calls `test.yml`) → `E2E` (calls `e2e.yml`), then `Badges` (coverage + Unit / E2E pass-fail badges for the branch to `gh-pages/badges/<branch>/`, after E2E so it never delays it), and on main pushes / releases / dispatch `Publish` (GitHub Packages: release → stable `latest`, version = the tag; main → prerelease `next`) + `Verify` (installs the published packages from GitHub Packages into a clean project and asserts the consumer contract). Workflow badge, if needed: `ci.yml/badge.svg?branch=<branch>` |
+| `checks.yml` | `workflow_call` only | First stage, all static: `Code` (audit-ci, actionlint, diagram freshness, `make check-code` = lint + typecheck + format), `Packages` (build, publint + arethetypeswrong, pack smoke), `Commits` (Conventional Commits on the PR's commits and title; PRs only), `Docs` (warns when architecture-relevant files change without a docs/ update; fails for a diagram source without its SVG) |
+| `test.yml` | `workflow_call` only | Unit tests + coverage thresholds; uploads the coverage badge (1 day, consumed by `Badges`) and the combined HTML coverage report (`coverage-report` artifact, 30 days) |
 | `e2e.yml` | `workflow_call` only | All E2E suites as jobs: `backend`, `web` (Playwright), `android` (emulator), and `ios` (simulator) **only when opted in** (see below) |
 | `release-retry.yml` | CI completed on main | When the main run is green, re-runs the failed Publish of any release tagged on that commit (releases wait for / refuse a red main run) |
 | `cancel-closed.yml` | PR closed/merged | Cancels the PR's still-running runs (the push-to-main run is unaffected) and removes its `gh-pages` badge directory |
-| `docs-check.yml` | Push/PR to main | Warns when architecture-relevant changes ship without a docs/ update |
-| `commitlint.yml` | PRs | Conventional Commits on the PR's commits and title |
+| `commitlint.yml` | PR title edited | Re-lints the PR title only; the gating lint is the `Commits` job in `checks.yml` (a title edit must not re-run the whole pipeline) |
 
 Badges are per branch by construction: `gh-pages/badges/X/{unit,e2e,coverage}.svg`
 (and a workflow badge filtered with `?branch=X`) all describe branch `X`
@@ -422,10 +422,10 @@ to their label, try one PR with the `e2e:ios` label, then set `E2E_IOS=true`
 (`gh variable set E2E_IOS --body true`).
 
 All workflows run with `permissions: contents: read` (the publish job adds
-`packages: write`; the coverage-badge and closed-PR cleanup jobs get
+`packages: write`; the Badges and closed-PR cleanup jobs get
 `contents: write` for the ruleset-exempt `gh-pages` branch only), have
 timeouts, and cancel superseded runs per ref (never a running `main` run).
-`test.yml` also runs **actionlint** over the workflow files themselves;
+`checks.yml` also runs **actionlint** over the workflow files themselves;
 `.github/dependabot.yml` keeps the action versions current.
 
 ### Running CI Locally
