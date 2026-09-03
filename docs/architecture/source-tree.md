@@ -6,7 +6,7 @@
 ## Repository Structure
 
 ```
-blink-esign/
+esign/
 │
 ├── 🧩 SHARED CORE (platform-agnostic)
 │   │

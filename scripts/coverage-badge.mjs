@@ -148,7 +148,7 @@ function writeReport({ message, detail, rows }) {
     process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME || 'local';
   writeFileSync(
     join(REPORT_DIR, 'index.html'),
-    `<!doctype html><meta charset="utf-8"><title>blink-esign coverage ${esc(message)}</title>
+    `<!doctype html><meta charset="utf-8"><title>esign coverage ${esc(message)}</title>
 <style>body{font:14px/1.5 system-ui,sans-serif;margin:2rem auto;max-width:60rem;padding:0 1rem}table{border-collapse:collapse;width:100%}th,td{padding:.4rem .6rem;border-bottom:1px solid #ddd;text-align:left}th.n,td.n{text-align:right}.muted{color:#777}h1 small{font-weight:normal;color:#777}</style>
 <h1>Coverage ${esc(message)} <small>${esc(detail)} - ${esc(branch)} @ ${esc(sha)}</small></h1>
 <p>Line coverage aggregated over the workspaces that enforce 100% (the three publishable packages and the backend). Demo apps are excluded. Click a workspace for its file-level report.</p>
