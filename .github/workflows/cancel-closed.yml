@@ -4,7 +4,7 @@ name: Checks / Closed PR
 # (iOS + Android E2E can take 20+ minutes). GitHub does not cancel them on
 # its own, so this cancels every queued or running run for the PR's head
 # commit. The push-to-main run is on a different commit and is untouched.
-# Also drops the PR branch's coverage badge from gh-pages (see test.yml).
+# Also drops the PR branch's badges from gh-pages (see the Badges job in ci.yml).
 on:
   pull_request:
     types: [closed]

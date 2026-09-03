@@ -2,8 +2,15 @@ name: CI
 
 # The one pipeline every branch runs, so a workflow badge filtered by branch
 # (`ci.yml/badge.svg?branch=main`, or `?branch=<any>`) is correct for that
-# branch. Unit and E2E are reusable workflows called as jobs; the coverage
-# badge job inside test.yml publishes per branch to gh-pages.
+# branch. Staged so a failure never spends the next stage's minutes:
+#
+#   Checks (lint, typecheck, package shape, commits, docs)   ~1-2 min
+#     -> Unit (tests + coverage thresholds)                  ~2 min
+#       -> E2E (backend, web, Android; iOS opt-in)           ~5-8 min
+#         -> Publish -> Verify (main / release / dispatch)
+#
+# Checks, Unit and E2E are reusable workflows called as jobs; the Badges job
+# at the end publishes the coverage + status badges per branch to gh-pages.
 #
 # Publishing (main pushes / releases / dispatch) lives at the tail of the
 # same run, so "CI passing on main" means: coverage thresholds, every E2E
@@ -64,33 +71,38 @@ jobs:
   # Single-segment caller names: GitHub's run graph collapses labels with
   # three or more "/" segments to "first / ... / last", so these render as
   # "Unit / Coverage", "E2E / iOS".
+  checks:
+    name: Checks
+    uses: ./.github/workflows/checks.yml
   unit:
     name: Unit
+    needs: [checks]
     uses: ./.github/workflows/test.yml
-    # A called workflow cannot exceed its caller's permissions; test.yml's
-    # badge job pushes the per-branch coverage badge to gh-pages.
-    permissions:
-      contents: write
   e2e:
     name: E2E
+    needs: [unit]
     uses: ./.github/workflows/e2e.yml
     with:
       ios: ${{ vars.E2E_IOS == 'true' || contains(github.event.pull_request.labels.*.name, 'e2e:ios') }}
       ios-runner: ${{ vars.E2E_IOS_RUNNER || 'macos-latest' }}
 
-  # Unit / E2E status badges for this branch, next to the coverage badge:
-  # gh-pages/badges/<branch>/{unit,e2e}.svg. A workflow badge can only
-  # describe the whole pipeline, so the per-group result is rendered from
-  # the job results instead. Same publish rules as the coverage badge job in
-  # test.yml: always runs (a red "failing" replaces a stale green), skipped
-  # for fork PRs (no write token) and release tags (not a branch). Both jobs
-  # push gh-pages concurrently; each rebases and retries.
-  status-badges:
-    name: Status badges
-    needs: [unit, e2e]
+  # Badges for this branch under gh-pages/badges/<branch>/: the measured
+  # coverage badge (artifact from Unit / Coverage, or a red "failing"
+  # placeholder when that job did not succeed) plus Unit / E2E pass-fail
+  # badges rendered from the job results (a workflow badge can only describe
+  # the whole pipeline). Runs after E2E so it never delays it; a stage that
+  # never ran because an earlier one failed renders as "skipped". Always
+  # runs so a red badge replaces a stale green one; skipped for fork PRs (no
+  # write token) and release tags (not a branch). gh-pages is the one branch
+  # the org ruleset exempts from the PR-approval requirement, so the default
+  # GITHUB_TOKEN can push there; cancel-closed.yml removes a PR's directory
+  # when it closes.
+  badges:
+    name: Badges
+    needs: [checks, unit, e2e]
     if: |
       always() &&
-      needs.unit.result != 'cancelled' && needs.e2e.result != 'cancelled' &&
+      needs.checks.result != 'cancelled' && needs.unit.result != 'cancelled' && needs.e2e.result != 'cancelled' &&
       github.event_name != 'release' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
@@ -110,6 +122,18 @@ jobs:
 
       - name: Install dependencies (workspace root)
         run: npm ci
+
+      - name: Download coverage badge
+        id: download
+        if: needs.unit.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: coverage-badge
+          path: coverage/badge
+
+      - name: Render "failing" coverage placeholder
+        if: steps.download.outcome != 'success'
+        run: npm run coverage:badge -- --status failing
 
       - name: Render Unit + E2E status badges
         env:
@@ -135,10 +159,18 @@ jobs:
           fi
           git clean -fdxq -e node_modules
           mkdir -p "badges/$BRANCH"
-          cp /tmp/badge/unit.svg /tmp/badge/unit.json /tmp/badge/e2e.svg /tmp/badge/e2e.json "badges/$BRANCH/"
-          git add -A badges
+          cp /tmp/badge/coverage.svg /tmp/badge/unit.svg /tmp/badge/unit.json /tmp/badge/e2e.svg /tmp/badge/e2e.json "badges/$BRANCH/"
+          printf '%s\n' \
+            '# CI-owned branch' \
+            '' \
+            'badges/<branch>/{coverage,unit,e2e}.svg (+ unit/e2e .json) - written by the' \
+            'Badges job in .github/workflows/ci.yml on every CI run; a PR'"'"'s directory is' \
+            'removed when it closes.' \
+            'Do not edit by hand.' > README.md
+          git add -A badges README.md
           if git diff --cached --quiet; then echo "badges unchanged"; exit 0; fi
-          git commit -qm "chore(ci): status badges for $BRANCH @ ${SHA::7}"
+          git commit -qm "chore(ci): badges for $BRANCH @ ${SHA::7}"
+          # Other branches publish concurrently - rebase and retry the push
           for attempt in 1 2 3 4 5; do
             git push -q origin gh-pages && exit 0
             git fetch -q origin gh-pages && git rebase -q origin/gh-pages
