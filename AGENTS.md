@@ -54,6 +54,10 @@ Underlying npm scripts:
   `ESignature` is provider-agnostic - the `src/signing/` module owns acquisition
   + event protocol, so adding a provider never touches the component.
 - `graphql` stays on 16.x repo-wide (Apollo Server 5 peer range)
+- Do all branch work in a git worktree (`git worktree add ../esign-<topic> -b <branch> origin/main`),
+  never by switching branches in the main clone: several agent sessions share
+  that checkout, and a commit made there lands on whatever branch another
+  session left checked out
 - Run `npm test` and `npm run typecheck` before committing
 
 ## Testing

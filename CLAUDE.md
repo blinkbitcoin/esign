@@ -126,6 +126,10 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
 - TypeScript for all new files; functional components with hooks
 - Prefer `StyleSheet.create()` for styles
 - ESLint 9 flat config (`@react-native` via FlatCompat) for mobile linting; Biome for formatting
+- Do all branch work in a git worktree (`git worktree add ../esign-<topic> -b <branch> origin/main`),
+  never by switching branches in the main clone: several agent sessions share
+  that checkout, and a commit made there lands on whatever branch another
+  session left checked out
 - Git hooks via lefthook (auto-installed by `npm install`): biome + eslint on
   pre-commit, commitlint on commit-msg, typecheck on pre-push
 - Commit messages and PR titles follow Conventional Commits with an allowed
