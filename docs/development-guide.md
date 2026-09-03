@@ -393,7 +393,7 @@ The library takes the backend URL from the host app via
 |----------|---------|---------|
 | `ci.yml` | Push to main, PRs, GitHub Release, manual | The one pipeline every branch runs: `Unit` (calls `test.yml`) + `E2E` (calls `e2e.yml`), then `Status badges` (Unit / E2E pass-fail badges for the branch to `gh-pages/badges/<branch>/`), and on main pushes / releases / dispatch `Publish` (GitHub Packages: release → stable `latest`, version = the tag; main → prerelease `next`) + `Registry smoke`. Workflow badge, if needed: `ci.yml/badge.svg?branch=<branch>` |
 | `test.yml` | `workflow_call` only | Unit tests + coverage thresholds + check-code, actionlint, package shape; uploads the combined HTML coverage report (`coverage-report` artifact, 30 days); the `badge` job publishes the measured coverage badge (packages + backend) to `gh-pages/badges/<branch>/`, or a red `failing` placeholder when the run fails |
-| `e2e.yml` | `workflow_call` only | All E2E suites as jobs: `backend`, `web` (Playwright), `ios` (simulator), `android` (emulator) |
+| `e2e.yml` | `workflow_call` only | All E2E suites as jobs: `backend`, `web` (Playwright), `android` (emulator), and `ios` (simulator) **only when opted in** (see below) |
 | `release-retry.yml` | CI completed on main | When the main run is green, re-runs the failed Publish of any release tagged on that commit (releases wait for / refuse a red main run) |
 | `cancel-closed.yml` | PR closed/merged | Cancels the PR's still-running runs (the push-to-main run is unaffected) and removes its `gh-pages` badge directory |
 | `docs-check.yml` | Push/PR to main | Warns when architecture-relevant changes ship without a docs/ update |
@@ -402,6 +402,24 @@ The library takes the backend URL from the host app via
 Badges are per branch by construction: `gh-pages/badges/X/{unit,e2e,coverage}.svg`
 (and a workflow badge filtered with `?branch=X`) all describe branch `X`
 and nothing else. The README shows `main`.
+
+### iOS E2E is opt-in
+
+The iOS job needs a macOS runner, and GitHub-hosted macOS is billed at 10x
+Linux (one ~15 min run is ~150 Linux minutes; on every push it exhausted the
+org's shared Actions budget). `ci.yml` therefore passes `ios: false` to
+`e2e.yml` unless one of these says otherwise; a skipped job costs nothing and
+the `E2E` badge describes what actually ran (backend, web, Android).
+
+| Switch | Effect |
+|--------|--------|
+| Repo variable `E2E_IOS=true` | iOS runs on every run. Flip once self-hosted Apple silicon runners are registered. |
+| PR label `e2e:ios` | iOS runs for that PR only (labeling triggers a run). |
+| Repo variable `E2E_IOS_RUNNER` | `runs-on` for the iOS job, default `macos-latest`. Set to the self-hosted label(s), e.g. `["self-hosted","macOS","arm64"]`, and GitHub-hosted macOS is never used. |
+
+Re-enable recipe, no workflow edit: register the runners, set `E2E_IOS_RUNNER`
+to their label, try one PR with the `e2e:ios` label, then set `E2E_IOS=true`
+(`gh variable set E2E_IOS --body true`).
 
 All workflows run with `permissions: contents: read` (the publish job adds
 `packages: write`; the coverage-badge and closed-PR cleanup jobs get

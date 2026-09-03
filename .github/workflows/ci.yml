@@ -25,12 +25,26 @@ name: CI
 #
 # Requires no extra secrets - GITHUB_TOKEN with packages:write is enough
 # for same-org publishing.
+#
+# iOS E2E is opt-in (macOS runners are billed 10x; the GitHub-hosted one
+# exhausted the org's shared Actions budget). "CI passing" therefore covers
+# backend, web and Android E2E, plus iOS only when it was switched on:
+#   - repo variable E2E_IOS=true         -> every run (flip once self-hosted
+#                                           Apple silicon runners are ready)
+#   - PR label `e2e:ios`                 -> that PR only (labeling triggers
+#                                           a run)
+#   - repo variable E2E_IOS_RUNNER       -> runs-on label(s) for the iOS job,
+#                                           default macos-latest; set it to the
+#                                           self-hosted label, e.g.
+#                                           ["self-hosted","macOS","arm64"]
+# No workflow edit is needed to turn iOS back on.
 
 on:
   push:
     branches: [main]
     paths-ignore: ['docs/**', '**.md'] # docs-only pushes ship nothing new
   pull_request:
+    types: [opened, synchronize, reopened, labeled] # labeled: the `e2e:ios` opt-in
   release:
     types: [published]
   workflow_dispatch:
@@ -59,6 +73,9 @@ jobs:
   e2e:
     name: E2E
     uses: ./.github/workflows/e2e.yml
+    with:
+      ios: ${{ vars.E2E_IOS == 'true' || contains(github.event.pull_request.labels.*.name, 'e2e:ios') }}
+      ios-runner: ${{ vars.E2E_IOS_RUNNER || 'macos-latest' }}
 
   # Unit / E2E status badges for this branch, next to the coverage badge:
   # gh-pages/badges/<branch>/{unit,e2e}.svg. A workflow badge can only
