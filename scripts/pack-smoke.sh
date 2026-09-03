@@ -3,7 +3,6 @@
 # asserts the consumer contract: the /webform entries resolve and never load
 # Apollo. Run from the repo root (CI: Tests / Unit / Packages job).
 set -euo pipefail
-ROOT="$(pwd)"
 SMOKE="$(mktemp -d)"
 trap 'rm -rf "$SMOKE"' EXIT
 

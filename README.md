@@ -208,7 +208,8 @@ credentials are set).
 | `make check-code` | Lint + typecheck + format check only |
 | `make build` | Build the library (react-native-builder-bob) |
 | `make e2e-backend` / `make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown |
-| `make e2e-mobile` / `make e2e-mobile-android` | Maestro E2E against a running stack |
+| `make e2e-ios` / `make e2e-android` | Maestro E2E against a running stack (`make e2e-backend-up` starts the backend; `make ios-build` builds the simulator app) |
+| `make check-ci` | Lint the CI itself: actionlint on the workflows, shellcheck on `scripts/**` |
 | `make test-live` | Opt-in live DocuSign API verification (skips without credentials) |
 | `make pods` | iOS CocoaPods install |
 

@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Runs the Android Maestro suite inside the CI emulator session and keeps
-# device forensics when it fails. Lives in a file because
-# reactivecircus/android-emulator-runner executes each line of its `script`
-# input as a separate `sh -c`, so multi-line shell (if/for, variables) does
-# not survive there.
+# Maestro E2E on a running Android emulator: installs the debug APK, wires
+# Metro (8081) and the backend (4000) into the emulator via adb reverse (the
+# signing WebView loads localhost:4000 URLs minted by the mock provider), runs
+# the suite and keeps device forensics (logcat) when it fails.
+# Needs: emulator up, debug APK built, Metro + backend running (metro-start.sh,
+# backend-up.sh). CI: the `script:` input of reactivecircus/android-emulator-
+# runner, which executes each line as its own `sh -c` - hence a file, not
+# inline shell. Local: make e2e-android.
 set -uo pipefail
 
 APK=examples/react-native-demo/android/app/build/outputs/apk/debug/app-debug.apk

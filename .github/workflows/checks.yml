@@ -80,6 +80,11 @@ jobs:
         run: |
           docker run --rm -v "$PWD":/repo --workdir /repo rhysd/actionlint:latest -color
 
+      # The workflows call scripts/** instead of carrying inline shell, so the
+      # scripts need the lint actionlint gave the inline blocks.
+      - name: Lint repo shell scripts (shellcheck)
+        run: make shellcheck
+
       - name: Check generated diagrams are current
         run: |
           node scripts/assemble-diagrams.mjs

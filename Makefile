@@ -40,6 +40,15 @@ format-check: ## Check formatting without writing
 
 check-code: lint typecheck format-check ## Lint + typecheck + format check
 
+shellcheck: ## shellcheck every repo shell script (scripts/**)
+	shellcheck -x scripts/*.sh scripts/*/*.sh
+
+check-ci: shellcheck ## Lint the CI itself: actionlint (workflows) + shellcheck (scripts)
+	actionlint
+
+codegen-check: ## Fail if schema.graphql / generated client code are stale (what CI runs)
+	bash scripts/ci/codegen-check.sh
+
 test: unit check-code ## Unit tests + code checks
 
 build: ## Build the libraries (bob + tsup)
@@ -90,8 +99,9 @@ migrate: ## Apply Knex migrations to the dev database
 
 # ---------- E2E ----------
 
-test-db-up: ## Start the E2E Postgres (tmpfs, port 5433)
+test-db-up: ## Start the E2E Postgres (tmpfs, port 5433) and wait for it
 	docker compose -f docker-compose.test.yml up -d --wait
+	bash scripts/e2e/db-wait.sh
 
 test-db-down: ## Stop the E2E Postgres
 	docker compose -f docker-compose.test.yml down
@@ -116,12 +126,20 @@ e2e-web-publicurl: test-db-up ## Playwright browser E2E for the web demo in publ
 	npm run test:e2e:publicurl -w examples/react-demo
 	$(MAKE) test-db-down
 
-e2e-mobile: ## Maestro mobile E2E, iOS (needs backend running + simulator with app installed)
-	npm run test:e2e
+e2e-backend-up: ## Start the backend (mock provider) in the background for mobile E2E, wait for /health
+	bash scripts/e2e/backend-up.sh
 
-e2e-mobile-android: ## Maestro mobile E2E, Android (needs backend + emulator with app installed)
-	adb reverse tcp:8081 tcp:8081 && adb reverse tcp:4000 tcp:4000
-	npm run test:e2e:android -w examples/react-native-demo
+e2e-backend-down: ## Stop the backend started by e2e-backend-up
+	bash scripts/e2e/backend-down.sh
+
+ios-build: ## Debug build of the RN demo for the simulator (what CI's Build iOS job runs; needs `make pods`)
+	bash scripts/e2e/ios-build.sh
+
+e2e-ios: ## Maestro E2E, iOS (needs: booted simulator with the app installed, Metro + backend running)
+	bash scripts/e2e/ios-maestro.sh
+
+e2e-android: ## Maestro E2E, Android (needs: emulator, debug APK built, Metro + backend running)
+	bash scripts/e2e/android-maestro.sh
 
 test-live: ## Live verification against real DocuSign (skips unless DOCUSIGN_* set in apps/api/.env)
 	npm run test:live -w apps/api
@@ -141,5 +159,6 @@ help: ## List available targets
 		awk 'BEGIN {FS = ":.*##"} {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: install hooks pods release unit coverage coverage-badge typecheck lint format format-check check-code \
-	test build codegen start ios android backend web db-up db-down migrate \
-	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-mobile e2e-mobile-android test-live clean reset help
+	shellcheck check-ci codegen-check test build codegen start ios android backend web db-up db-down migrate \
+	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl \
+	e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live clean reset help

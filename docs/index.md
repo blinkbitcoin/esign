@@ -95,7 +95,7 @@ npm test
 make e2e-backend
 
 # Mobile E2E tests (requires Maestro + running stack)
-make e2e-mobile             # or: make e2e-mobile-android
+make e2e-ios                # or: make e2e-android
 ```
 
 ---
