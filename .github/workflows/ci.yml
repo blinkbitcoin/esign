@@ -9,6 +9,10 @@ name: CI
 #       -> E2E (backend, web, Android; iOS opt-in)           ~5-8 min
 #         -> Publish -> Verify (main / release / dispatch)
 #
+# A docs-only PR (docs/, *.md, LICENSE, templates - classified by the Changes
+# job in checks.yml) stops after Checks; main already skips docs-only pushes
+# via paths-ignore below, so PR and main follow the same rule.
+#
 # Checks, Unit and E2E are reusable workflows called as jobs; the Badges job
 # at the end publishes the coverage + status badges per branch to gh-pages.
 #
@@ -77,6 +81,8 @@ jobs:
   unit:
     name: Unit
     needs: [checks]
+    # An empty output (Checks failed before classifying) still means "run".
+    if: needs.checks.outputs.docs-only != 'true'
     uses: ./.github/workflows/test.yml
   e2e:
     name: E2E
@@ -131,8 +137,10 @@ jobs:
           name: coverage-badge
           path: coverage/badge
 
+      # Only a real failure gets the red placeholder; a skipped Unit (docs-only
+      # PR) leaves the branch's coverage badge as it was.
       - name: Render "failing" coverage placeholder
-        if: steps.download.outcome != 'success'
+        if: needs.unit.result == 'failure'
         run: npm run coverage:badge -- --status failing
 
       - name: Render Unit + E2E status badges
@@ -159,7 +167,8 @@ jobs:
           fi
           git clean -fdxq -e node_modules
           mkdir -p "badges/$BRANCH"
-          cp /tmp/badge/coverage.svg /tmp/badge/unit.svg /tmp/badge/unit.json /tmp/badge/e2e.svg /tmp/badge/e2e.json "badges/$BRANCH/"
+          [ -f /tmp/badge/coverage.svg ] && cp /tmp/badge/coverage.svg "badges/$BRANCH/"
+          cp /tmp/badge/unit.svg /tmp/badge/unit.json /tmp/badge/e2e.svg /tmp/badge/e2e.json "badges/$BRANCH/"
           printf '%s\n' \
             '# CI-owned branch' \
             '' \
