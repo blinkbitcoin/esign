@@ -22,25 +22,17 @@ adb reverse tcp:4000 tcp:4000
 # assertions. Hide ANR/crash dialogs; real crashes still land in logcat.
 adb shell settings put global hide_error_dialogs 1
 export PATH="$HOME/.maestro/bin:$PATH"
+# shellcheck source=scripts/e2e/maestro-bound.sh
+. "$(dirname "$0")/maestro-bound.sh"
 
 # The default 256K main buffer wraps within a couple of minutes on the
 # emulator, losing the app-launch window from the post-mortem dump.
 adb logcat -G 64M
 adb logcat -c
 status=0
-# A starved emulator can leave Maestro waiting on its driver with no flow
-# output (#41). Bound the suite here so the logcat post-mortem below still
-# runs: the step's timeout-minutes is only the backstop, and would kill this
-# script before it dumps anything. coreutils timeout on CI; absent on macOS.
-SUITE_TIMEOUT="${MAESTRO_SUITE_TIMEOUT:-10m}"
-if command -v timeout >/dev/null; then
-  timeout -k 30s "$SUITE_TIMEOUT" npm run test:e2e:android -w examples/react-native-demo || status=$?
-  if [ "$status" -eq 124 ]; then
-    echo "::error::Maestro suite exceeded $SUITE_TIMEOUT without completing (#41) - see logcat below"
-  fi
-else
-  npm run test:e2e:android -w examples/react-native-demo || status=$?
-fi
+# Bounded (see maestro-bound.sh) so the logcat post-mortem below still runs
+# when Maestro hangs; a `::error::` line marks the timeout case.
+bounded_maestro test:e2e:android -w examples/react-native-demo || status=$?
 
 # Forensics: the failure screenshots show the launcher (the app process is
 # gone after a WebView teardown), so keep the device log for the post-mortem.

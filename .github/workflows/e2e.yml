@@ -268,8 +268,9 @@ jobs:
         run: bash scripts/e2e/metro-wait.sh ios
 
       - name: Run Maestro tests (webform-tagged flows excluded - they need an ESIGN_MODE=webform Metro)
-        # Suite + one suite-level retry is normally a few minutes; a hung
-        # driver otherwise runs into the job's 60 (#41).
+        # Suite + one suite-level retry is normally a few minutes. Backstop
+        # above the 10 min per-attempt bound inside maestro-bound.sh, which
+        # also skips the retry after a hang (#41).
         timeout-minutes: 15
         env:
           # CI simulators are slow to install+launch the XCUITest driver;
@@ -468,7 +469,7 @@ jobs:
       - name: Run Maestro tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         # Normal is ~2 min (102-124s over the last 9 green jobs). Backstop
-        # above the 10 min suite bound inside android-maestro.sh; that inner
+        # above the 10 min suite bound inside maestro-bound.sh; that inner
         # bound is the one that keeps logcat, this one kills the script (#41).
         timeout-minutes: 12
         env:
