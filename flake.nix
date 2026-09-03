@@ -40,6 +40,10 @@
           gnumake
           jq
           alejandra
+
+          # CI-as-code lint (make check-ci): the workflows and scripts/**
+          shellcheck
+          actionlint
         ]
         ++ lib.optionals stdenv.isDarwin [
           watchman

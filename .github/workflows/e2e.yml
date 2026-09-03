@@ -8,6 +8,10 @@ name: Tests / E2E
 # used to run on every push. The caller decides (repo variable / PR label,
 # see ci.yml); a skipped job costs nothing and still counts as success for
 # the caller's `needs.e2e.result`.
+#
+# Shell lives in scripts/e2e/*.sh (the E2E stack, runnable on a laptop: see
+# `make help`) and scripts/ci/*.sh (runner-only plumbing); steps here are
+# one-liners. `make shellcheck` lints them.
 on:
   workflow_call:
     inputs:
@@ -44,27 +48,10 @@ jobs:
         run: npm ci
 
       - name: Check schema artifact and generated client code are current
-        run: |
-          npm run codegen
-          # shellcheck disable=SC2016 # backticks in the message are markdown, not expansion
-          git diff --exit-code -- apps/api/schema.graphql 'packages/*/src/generated' \
-            || (echo '::error::schema.graphql or generated client code is stale - run `make codegen` and commit' && exit 1)
+        run: make codegen-check
 
       - name: Start test database
-        run: docker compose -f docker-compose.test.yml up -d --wait
-
-      - name: Wait for database to be ready
-        run: |
-          for i in {1..30}; do
-            if docker compose -f docker-compose.test.yml exec -T postgres-test pg_isready -U test -d esign_test; then
-              echo "Database is ready"
-              exit 0
-            fi
-            echo "Waiting for database... ($i/30)"
-            sleep 2
-          done
-          echo "ERROR: Database failed to become ready after 60 seconds"
-          exit 1
+        run: make test-db-up
 
       - name: Run database migrations
         run: npm run migrate:test
@@ -76,7 +63,7 @@ jobs:
 
       - name: Stop test database
         if: always()
-        run: docker compose -f docker-compose.test.yml down
+        run: make test-db-down
 
   web:
     name: Web
@@ -105,7 +92,7 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Start test database
-        run: docker compose -f docker-compose.test.yml up -d --wait
+        run: make test-db-up
 
       - name: Run migrations (test database)
         run: npm run migrate:test -w apps/api
@@ -115,7 +102,7 @@ jobs:
 
       - name: Stop test database
         if: always()
-        run: docker compose -f docker-compose.test.yml down
+        run: make test-db-down
 
   # The native build has its own job so the simulator job's setup (Postgres,
   # backend, Metro, simulator boot) overlaps it instead of following it, and
@@ -142,9 +129,7 @@ jobs:
       # cannot see changes.
       - name: Compute native dependency hash
         id: native-deps
-        run: |
-          HASH=$(bash scripts/native-deps-hash.sh)
-          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+        run: echo "hash=$(bash scripts/native-deps-hash.sh)" >> "$GITHUB_OUTPUT"
 
       - name: Restore iOS app build
         id: ios-app
@@ -184,29 +169,12 @@ jobs:
 
       - name: Install CocoaPods dependencies
         if: steps.ios-app.outputs.cache-hit != 'true'
-        run: |
-          cd examples/react-native-demo
-          bundle install
-          cd ios
-          bundle exec pod install
+        run: make pods
 
-      # Built for the generic simulator destination: the build does not need
-      # a concrete device (the app is installed on the booted one later), and
-      # xcodebuild's device enumeration intermittently returns only
-      # placeholders on fresh runners ("Unable to find a device matching the
-      # provided destination specifier"), even though simctl lists the device.
+      # Generic simulator destination, see scripts/e2e/ios-build.sh.
       - name: Build iOS app for simulator
         if: steps.ios-app.outputs.cache-hit != 'true'
-        run: |
-          cd examples/react-native-demo/ios
-          xcodebuild \
-            -workspace ReactNativeSandbox.xcworkspace \
-            -scheme ReactNativeSandbox \
-            -configuration Debug \
-            -sdk iphonesimulator \
-            -destination "generic/platform=iOS Simulator" \
-            -derivedDataPath build \
-            build
+        run: make ios-build
 
       # Tar keeps executable bits and symlinks; upload-artifact's own zip
       # does not, and simctl refuses the result. retention-days: 1 - only
@@ -249,80 +217,39 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.maestro
-          key: maestro-${{ runner.os }}-2.6.1
+          key: maestro-${{ runner.os }}-2.6.1 # keep in sync with scripts/ci/maestro-install.sh
 
-      - name: Install Maestro CLI
-        env:
-          MAESTRO_VERSION: 2.6.1 # version the E2E suites are proven against
-        run: |
-          if [ ! -x "$HOME/.maestro/bin/maestro" ]; then
-            curl -Ls "https://get.maestro.mobile.dev" | bash
-          fi
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Install Maestro CLI (version pinned in scripts/ci/maestro-install.sh)
+        run: bash scripts/ci/maestro-install.sh
 
       # Runner images rotate simulator generations (iPhone 15 -> 16 -> 17...);
       # pick whatever iPhone the image actually ships instead of hardcoding.
       # Booting starts here so it overlaps everything below (build or cache
       # restore, Postgres, backend, Metro).
       - name: Pick a simulator device
-        run: |
-          DEVICE_NAME=$(xcrun simctl list devices available -j \
-            | jq -r '[.devices[] | .[] | select(.isAvailable and (.name | startswith("iPhone")))] | .[0].name')
-          if [ -z "$DEVICE_NAME" ] || [ "$DEVICE_NAME" = "null" ]; then
-            echo "::error::No available iPhone simulator on this runner"
-            xcrun simctl list devices available
-            exit 1
-          fi
-          echo "Using simulator: $DEVICE_NAME"
-          echo "SIM_DEVICE=$DEVICE_NAME" >> "$GITHUB_ENV"
-          xcrun simctl boot "$DEVICE_NAME" || true
+        run: bash scripts/e2e/ios-simulator.sh pick
 
       # Metro starts in the background here so its boot overlaps Postgres and
       # the backend; it is awaited (and the bundle prewarmed) right before
       # Maestro runs.
       - name: Start Metro bundler (background)
-        working-directory: examples/react-native-demo
-        run: npm start > "$RUNNER_TEMP/metro.log" 2>&1 &
+        run: bash scripts/e2e/metro-start.sh
 
       # macOS runners have no Docker - run the test database via Homebrew
       # Postgres instead, matching docker-compose.test.yml (test/test@5433,
       # tmpfs-equivalent: the runner is ephemeral anyway).
       - name: Start test database (Homebrew Postgres, port 5433)
-        run: |
-          brew install postgresql@16
-          PGBIN="$(brew --prefix postgresql@16)/bin"
-          echo "test" > "$RUNNER_TEMP/pgpass"
-          "$PGBIN/initdb" -D "$RUNNER_TEMP/pgdata" -U test --pwfile="$RUNNER_TEMP/pgpass"
-          "$PGBIN/pg_ctl" -D "$RUNNER_TEMP/pgdata" -o "-p 5433" -l "$RUNNER_TEMP/pg.log" start
-          for i in {1..15}; do
-            if "$PGBIN/pg_isready" -h localhost -p 5433 -U test; then break; fi
-            echo "Waiting for database... ($i/15)"; sleep 2
-          done
-          "$PGBIN/createdb" -h localhost -p 5433 -U test esign_test
-          "$PGBIN/pg_isready" -h localhost -p 5433 -U test -d esign_test
+        run: bash scripts/ci/postgres-brew.sh
 
       - name: Run database migrations
         run: npm run migrate:test
         working-directory: apps/api
 
       - name: Start backend with mock provider
-        run: |
-          cd apps/api
-          ESIGN_PROVIDER=mock npx dotenv-cli -e .env.test -- npm run dev &
-          # Wait for backend to be ready
-          for i in {1..30}; do
-            if curl -s http://localhost:4000/health > /dev/null; then
-              echo "Backend is ready"
-              exit 0
-            fi
-            echo "Waiting for backend... ($i/30)"
-            sleep 2
-          done
-          echo "ERROR: Backend failed to start"
-          exit 1
+        run: make e2e-backend-up
 
       - name: Wait for iOS Simulator (booting since device pick)
-        run: xcrun simctl bootstatus "$SIM_DEVICE" -b
+        run: bash scripts/e2e/ios-simulator.sh wait
 
       # The .app comes from build-ios as a tar (upload-artifact zips and drops
       # executable bits + symlinks, which breaks simctl install).
@@ -333,44 +260,23 @@ jobs:
           path: ${{ runner.temp }}
 
       - name: Install app on simulator
-        run: |
-          APP_DIR=examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator
-          mkdir -p "$APP_DIR"
-          tar -C "$APP_DIR" -xf "$RUNNER_TEMP/ReactNativeSandbox.app.tar"
-          xcrun simctl install booted "$APP_DIR/ReactNativeSandbox.app"
+        run: bash scripts/e2e/ios-simulator.sh install "$RUNNER_TEMP/ReactNativeSandbox.app.tar"
 
       # Prewarming the bundle keeps the first Maestro launch from racing a
       # cold compile.
       - name: Wait for Metro + prewarm bundle
-        run: |
-          for i in {1..60}; do
-            if curl -s http://localhost:8081/status | grep -q packager-status:running; then
-              echo "Metro is ready"; break
-            fi
-            echo "Waiting for Metro... ($i/60)"; sleep 2
-          done
-          curl -sf "http://localhost:8081/index.bundle?platform=ios&dev=true" -o /dev/null
-          echo "Bundle prewarmed"
+        run: bash scripts/e2e/metro-wait.sh ios
 
       - name: Run Maestro tests (webform-tagged flows excluded - they need an ESIGN_MODE=webform Metro)
         env:
           # CI simulators are slow to install+launch the XCUITest driver;
           # the default startup timeout regularly trips on cold runners.
           MAESTRO_DRIVER_STARTUP_TIMEOUT: '600000'
-        run: |
-          export PATH="$HOME/.maestro/bin:$PATH"
-          # Each flow retries itself once (see the `retry` blocks in .maestro/):
-          # Maestro's iOS driver misreads a slow terminate->relaunch cycle as
-          # an app crash (no real crash - DiagnosticReports stays empty). The
-          # suite-level retry below is the last resort, not the expected path.
-          npm run test:e2e || {
-            echo "::warning::Maestro suite failed after per-flow retries - rerunning the suite once"
-            npm run test:e2e
-          }
+        run: make e2e-ios # per-flow + one suite-level retry, see scripts/e2e/ios-maestro.sh
 
       - name: Stop backend
         if: always()
-        run: pkill -f "npm run dev" || true
+        run: make e2e-backend-down
 
       - name: Upload Maestro test results + crash reports
         uses: actions/upload-artifact@v7
@@ -381,6 +287,7 @@ jobs:
             ~/.maestro/tests/
             ~/Library/Logs/DiagnosticReports/
             ${{ runner.temp }}/metro.log
+            ${{ runner.temp }}/backend.log
           retention-days: 7
 
   # Same split as build-ios: the emulator job's setup overlaps this, and a
@@ -403,9 +310,7 @@ jobs:
       # entirely. Bump the v-suffix if an input the script cannot see changes.
       - name: Compute native dependency hash
         id: native-deps
-        run: |
-          HASH=$(bash scripts/native-deps-hash.sh)
-          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+        run: echo "hash=$(bash scripts/native-deps-hash.sh)" >> "$GITHUB_OUTPUT"
 
       - name: Restore Android APK build
         id: android-apk
@@ -464,11 +369,7 @@ jobs:
       # skipped this hit "Your device does not have enough disk space to run
       # avd". Drop preinstalled toolchains we never use (several GB each).
       - name: Free disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY/CodeQL"
-          sudo docker image prune -af
-          df -h /
+        run: bash scripts/ci/free-disk.sh
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -483,58 +384,35 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.maestro
-          key: maestro-${{ runner.os }}-2.6.1
+          key: maestro-${{ runner.os }}-2.6.1 # keep in sync with scripts/ci/maestro-install.sh
 
-      - name: Install Maestro CLI
-        env:
-          MAESTRO_VERSION: 2.6.1 # keep in sync with the iOS job
-        run: |
-          if [ ! -x "$HOME/.maestro/bin/maestro" ]; then
-            curl -Ls "https://get.maestro.mobile.dev" | bash
-          fi
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Install Maestro CLI (version pinned in scripts/ci/maestro-install.sh)
+        run: bash scripts/ci/maestro-install.sh
 
       # Hardware acceleration for the emulator (GitHub-hosted Linux runners
       # expose KVM but the device node needs opening up)
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          # actions/cache paths can't read the runner's own environment
-          # (only workflow-set env), so surface the SDK root for it
-          echo "ANDROID_SDK_DIR=$ANDROID_HOME" >> "$GITHUB_ENV"
+      - name: Enable KVM (also exports ANDROID_SDK_DIR for the cache paths below)
+        run: bash scripts/ci/enable-kvm.sh
 
       - name: Start test database
-        run: docker compose -f docker-compose.test.yml up -d --wait
+        run: make test-db-up
 
       - name: Run database migrations
         run: npm run migrate:test
         working-directory: apps/api
 
       - name: Start backend with mock provider
-        run: |
-          cd apps/api
-          ESIGN_PROVIDER=mock npx dotenv-cli -e .env.test -- npm run dev &
-          for i in {1..30}; do
-            if curl -s http://localhost:4000/health > /dev/null; then
-              echo "Backend is ready"; exit 0
-            fi
-            echo "Waiting for backend... ($i/30)"
-            sleep 2
-          done
-          echo "ERROR: Backend failed to start"; exit 1
+        run: make e2e-backend-up
 
       # The emulator reaches the backend as 10.0.2.2:4000 (host loopback
       # alias - see examples/react-native-demo/src/config.ts); Metro is
-      # reached via adb reverse in scripts/e2e-android-maestro.sh. Metro
+      # reached via adb reverse in scripts/e2e/android-maestro.sh. Metro
       # starts in the background so its boot overlaps the emulator caches; it
       # is awaited (and the bundle prewarmed) right before the emulator runs.
       - name: Start Metro bundler (background)
-        working-directory: examples/react-native-demo
-        run: npm start > "$RUNNER_TEMP/metro.log" 2>&1 &
+        run: bash scripts/e2e/metro-start.sh
 
-      # Same path scripts/e2e-android-maestro.sh installs from.
+      # Same path scripts/e2e/android-maestro.sh installs from.
       - name: Fetch APK built by build-android
         uses: actions/download-artifact@v8
         with:
@@ -582,15 +460,7 @@ jobs:
             echo "Generated AVD snapshot for caching (error dialogs hidden)."
 
       - name: Wait for Metro + prewarm bundle
-        run: |
-          for i in {1..60}; do
-            if curl -s http://localhost:8081/status | grep -q packager-status:running; then
-              echo "Metro is ready"; break
-            fi
-            echo "Waiting for Metro... ($i/60)"; sleep 2
-          done
-          curl -sf "http://localhost:8081/index.bundle?platform=android&dev=true" -o /dev/null
-          echo "Bundle prewarmed"
+        run: bash scripts/e2e/metro-wait.sh android
 
       - name: Run Maestro tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
@@ -619,7 +489,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           # One line only: the action runs each script line as its own `sh -c`
-          script: bash scripts/e2e-android-maestro.sh
+          script: bash scripts/e2e/android-maestro.sh
 
       - name: Upload Maestro test results
         uses: actions/upload-artifact@v7
@@ -630,4 +500,5 @@ jobs:
             ~/.maestro/tests/
             ${{ runner.temp }}/android-logs/
             ${{ runner.temp }}/metro.log
+            ${{ runner.temp }}/backend.log
           retention-days: 7
