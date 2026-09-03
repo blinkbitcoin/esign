@@ -42,9 +42,11 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
-          # Default query suite, same as GitHub's Default setup. Add
-          # `queries: security-extended` later if the baseline stays clean;
-          # it brings more low-precision alerts.
+          # Default security suite plus the maintainability/reliability
+          # queries (what GitHub's separate "Code quality" product runs).
+          # Trial: drop this line to go back to security-only if the quality
+          # findings turn out to be noise next to eslint + typecheck.
+          queries: security-and-quality
 
       - name: Analyze
         uses: github/codeql-action/analyze@v4
