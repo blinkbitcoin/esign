@@ -7,7 +7,8 @@ name: CI
 #
 # Publishing (main pushes / releases / dispatch) lives at the tail of the
 # same run, so "CI passing on main" means: coverage thresholds, every E2E
-# suite, the publish, and the registry smoke all passed for that commit.
+# suite, the publish, and the verify of what was published all passed for
+# that commit.
 #
 #   - Stable (`latest` dist-tag): ONLY when a GitHub Release is published.
 #     The tag IS the version (vX.Y.Z -> X.Y.Z); nothing is committed to the
@@ -272,7 +273,7 @@ jobs:
   # Consumes what was ACTUALLY published: installs the exact version from
   # GitHub Packages into a clean project and asserts the consumer contract.
   registry-smoke:
-    name: Registry smoke
+    name: Verify
     needs: [publish]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -313,7 +314,7 @@ jobs:
             assert.equal(typeof webform.createPublicUrlSource, 'function');
             const loaded = Object.keys(require.cache).filter(f => /node_modules[\\/](@apollo|graphql)/.test(f));
             assert.deepEqual(loaded, [], '/webform must not load Apollo or graphql');
-            console.log('registry smoke: /webform loads Apollo-free for', process.env.VERSION);
+            console.log('verify: /webform loads Apollo-free for', process.env.VERSION);
           "
 
       - name: Install with --omit=peer (the documented Apollo-free install)
@@ -330,5 +331,5 @@ jobs:
             let apollo = false;
             try { require.resolve('@apollo/client'); apollo = true; } catch {}
             assert.equal(apollo, false, '--omit=peer install must not contain Apollo');
-            console.log('registry smoke: --omit=peer install is Apollo-free');
+            console.log('verify: --omit=peer install is Apollo-free');
           "
