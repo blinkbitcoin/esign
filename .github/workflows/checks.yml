@@ -6,6 +6,10 @@ name: Checks
 # emulator minutes. Concurrency is the caller's.
 on:
   workflow_call:
+    outputs:
+      docs-only:
+        description: "'true' when every changed file is documentation (PRs only; never true for push / release / dispatch)"
+        value: ${{ jobs.changes.outputs.docs-only }}
 
 # Must not exceed the caller's (ci.yml grants contents: read). The PR title
 # and SHAs come from the event payload, so no pull-requests scope is needed.
@@ -13,6 +17,44 @@ permissions:
   contents: read
 
 jobs:
+  # Classifies the change so ci.yml can stop after Checks for docs-only PRs
+  # (Unit and E2E skip; a skipped job counts as passing for required checks,
+  # unlike a workflow that never ran). Only PRs are classified: main pushes
+  # already skip docs via paths-ignore in ci.yml, releases and dispatches
+  # always run everything. "Docs" is docs/, *.md, LICENSE and the issue / PR
+  # templates - nothing else: workflow files change the thing under test,
+  # package.json and scripts feed the build. A docs/diagrams/src/*.mmd change
+  # still gets the diagram-freshness check from Code (Checks always run).
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      docs-only: ${{ steps.classify.outputs.docs-only }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # base...head diff
+
+      - name: Classify changed files
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT_NAME" != pull_request ]; then
+            echo "docs-only=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          FILES=$(git diff --name-only "$BASE_SHA"...HEAD)
+          if [ -z "$FILES" ]; then
+            echo "docs-only=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          NON_DOCS=$(printf '%s\n' "$FILES" | grep -Ev '^docs/|\.md$|^LICENSE$|^\.github/(ISSUE_TEMPLATE|PULL_REQUEST_TEMPLATE)' || true)
+          if [ -z "$NON_DOCS" ]; then RESULT=true; else RESULT=false; fi
+          echo "docs-only=$RESULT" | tee -a "$GITHUB_OUTPUT"
+          printf 'changed files:\n%s\n' "$FILES"
+
   code:
     name: Code
     runs-on: ubuntu-latest
