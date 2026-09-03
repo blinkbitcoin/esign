@@ -3,8 +3,8 @@ name: Release / Retry
 # Makes `make release` fire-and-forget. ci.yml's Publish job refuses to ship
 # a release while the commit's push-to-main run is red (see the gate there).
 # When CI on main completes green, find any release tagged on that commit
-# whose release run failed and re-run its failed jobs (Publish + Registry
-# smoke only - the gates already passed inside that run).
+# whose release run failed and re-run its failed jobs (Publish + Verify
+# only - the gates already passed inside that run).
 on:
   workflow_run:
     workflows: [CI]

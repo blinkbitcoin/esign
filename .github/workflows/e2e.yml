@@ -2,8 +2,23 @@ name: Tests / E2E
 
 # Reusable only: ci.yml calls this for every branch (push to main, PRs,
 # releases). Concurrency is the caller's.
+#
+# The iOS job is opt-in. It needs a macOS runner, and GitHub-hosted macOS is
+# billed at 10x Linux: one ~15 min iOS run costs ~150 Linux minutes, and it
+# used to run on every push. The caller decides (repo variable / PR label,
+# see ci.yml); a skipped job costs nothing and still counts as success for
+# the caller's `needs.e2e.result`.
 on:
   workflow_call:
+    inputs:
+      ios:
+        description: Run the iOS simulator suite (needs a macOS runner)
+        type: boolean
+        default: false
+      ios-runner:
+        description: runs-on label(s) for the iOS job (string or JSON array)
+        type: string
+        default: macos-latest
 
 permissions:
   contents: read
@@ -104,7 +119,11 @@ jobs:
 
   ios:
     name: iOS
-    runs-on: macos-latest
+    # Off unless the caller asks (see the header). Once self-hosted Apple
+    # silicon runners exist, `ios-runner` points at them and GitHub-hosted
+    # macOS is never touched again.
+    if: inputs.ios
+    runs-on: ${{ inputs.ios-runner }}
     timeout-minutes: 60
 
     steps:

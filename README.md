@@ -5,6 +5,8 @@
 [![Coverage](https://github.com/blinkbitcoin/blink-esign/raw/gh-pages/badges/main/coverage.svg)](https://github.com/blinkbitcoin/blink-esign/actions/workflows/ci.yml?query=branch%3Amain)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
+<sub>E2E covers backend, web and Android; the iOS simulator suite is opt-in (macOS runners), see [CI/CD](docs/development-guide.md#ios-e2e-is-opt-in).</sub>
+
 <p align="center">
   <img src="docs/assets/readme-hero.svg" alt="Your React Native or React web app renders one ESignature component. A SigningSource picks one of three modes: public URL (no backend), Web Forms instance (one backend endpoint), or proxy envelope (this repo's GraphQL backend). The backend-backed modes talk to DocuSign through the optional apps/api service." width="960">
 </p>
