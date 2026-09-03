@@ -117,6 +117,111 @@ jobs:
         if: always()
         run: docker compose -f docker-compose.test.yml down
 
+  # The native build has its own job so the simulator job's setup (Postgres,
+  # backend, Metro, simulator boot) overlaps it instead of following it, and
+  # so a re-run of a failed simulator job reuses the .app from the earlier
+  # attempt instead of rebuilding.
+  build-ios:
+    name: Build iOS
+    # Gated like `ios` (see the header): no macOS runner unless the caller asks.
+    if: inputs.ios
+    runs-on: ${{ inputs.ios-runner }}
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # Debug builds load their JS from Metro, so the .app only depends on the
+      # native inputs: the ios/ project (incl. Podfile.lock), app.json, the
+      # Ruby lockfile, and the lockfile-resolved versions of the demo's runtime
+      # deps + @react-native* dev deps (scripts/native-deps-hash.sh - what
+      # autolinking and codegen read). Everything else in package-lock.json is
+      # JS-only, so a jest/eslint/backend bump still hits this cache and skips
+      # Ruby, Pods and Xcode entirely. Bump the v-suffix if an input the script
+      # cannot see changes.
+      - name: Compute native dependency hash
+        id: native-deps
+        run: |
+          HASH=$(bash scripts/native-deps-hash.sh)
+          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+
+      - name: Restore iOS app build
+        id: ios-app
+        uses: actions/cache@v6
+        with:
+          path: examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator/ReactNativeSandbox.app
+          key: ios-app-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-deps.outputs.hash }}-${{ hashFiles('examples/react-native-demo/ios/**', 'examples/react-native-demo/app.json', 'examples/react-native-demo/Gemfile.lock') }}
+
+      # Pods need node_modules (the Podfile resolves react-native from it).
+      - name: Setup Node.js
+        if: steps.ios-app.outputs.cache-hit != 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies (workspace root)
+        if: steps.ios-app.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Setup Ruby
+        if: steps.ios-app.outputs.cache-hit != 'true'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Cache CocoaPods
+        if: steps.ios-app.outputs.cache-hit != 'true'
+        uses: actions/cache@v6
+        with:
+          path: |
+            examples/react-native-demo/ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: pods-${{ runner.os }}-${{ hashFiles('examples/react-native-demo/ios/Podfile.lock') }}
+          restore-keys: pods-${{ runner.os }}-
+
+      - name: Install CocoaPods dependencies
+        if: steps.ios-app.outputs.cache-hit != 'true'
+        run: |
+          cd examples/react-native-demo
+          bundle install
+          cd ios
+          bundle exec pod install
+
+      # Built for the generic simulator destination: the build does not need
+      # a concrete device (the app is installed on the booted one later), and
+      # xcodebuild's device enumeration intermittently returns only
+      # placeholders on fresh runners ("Unable to find a device matching the
+      # provided destination specifier"), even though simctl lists the device.
+      - name: Build iOS app for simulator
+        if: steps.ios-app.outputs.cache-hit != 'true'
+        run: |
+          cd examples/react-native-demo/ios
+          xcodebuild \
+            -workspace ReactNativeSandbox.xcworkspace \
+            -scheme ReactNativeSandbox \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath build \
+            build
+
+      # Tar keeps executable bits and symlinks; upload-artifact's own zip
+      # does not, and simctl refuses the result. retention-days: 1 - only
+      # the simulator job of this run needs it.
+      - name: Publish .app for the simulator job
+        run: tar -C examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator -cf "$RUNNER_TEMP/ReactNativeSandbox.app.tar" ReactNativeSandbox.app
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios-app
+          path: ${{ runner.temp }}/ReactNativeSandbox.app.tar
+          retention-days: 1
+          overwrite: true # a full re-run re-uploads the same name
+          if-no-files-found: error
+
   ios:
     name: iOS
     # Off unless the caller asks (see the header). Once self-hosted Apple
@@ -125,6 +230,7 @@ jobs:
     if: inputs.ios
     runs-on: ${{ inputs.ios-runner }}
     timeout-minutes: 60
+    needs: [build-ios]
 
     steps:
       - name: Checkout code
@@ -171,75 +277,12 @@ jobs:
           echo "SIM_DEVICE=$DEVICE_NAME" >> "$GITHUB_ENV"
           xcrun simctl boot "$DEVICE_NAME" || true
 
-      # Debug builds load their JS from Metro, so the .app only depends on the
-      # native inputs: the ios/ project (incl. Podfile.lock), app.json, the
-      # Ruby lockfile, and the lockfile-resolved versions of the demo's runtime
-      # deps + @react-native* dev deps (scripts/native-deps-hash.sh - what
-      # autolinking and codegen read). Everything else in package-lock.json is
-      # JS-only, so a jest/eslint/backend bump still hits this cache and skips
-      # Ruby, Pods and Xcode entirely. Bump the v-suffix if an input the script
-      # cannot see changes.
-      - name: Compute native dependency hash
-        id: native-deps
-        run: |
-          HASH=$(bash scripts/native-deps-hash.sh)
-          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
-
-      - name: Restore iOS app build
-        id: ios-app
-        uses: actions/cache@v6
-        with:
-          path: examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator/ReactNativeSandbox.app
-          key: ios-app-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-deps.outputs.hash }}-${{ hashFiles('examples/react-native-demo/ios/**', 'examples/react-native-demo/app.json', 'examples/react-native-demo/Gemfile.lock') }}
-
-      - name: Setup Ruby
-        if: steps.ios-app.outputs.cache-hit != 'true'
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-          bundler-cache: true
-
-      - name: Cache CocoaPods
-        if: steps.ios-app.outputs.cache-hit != 'true'
-        uses: actions/cache@v6
-        with:
-          path: |
-            examples/react-native-demo/ios/Pods
-            ~/Library/Caches/CocoaPods
-          key: pods-${{ runner.os }}-${{ hashFiles('examples/react-native-demo/ios/Podfile.lock') }}
-          restore-keys: pods-${{ runner.os }}-
-
-      - name: Install CocoaPods dependencies
-        if: steps.ios-app.outputs.cache-hit != 'true'
-        run: |
-          cd examples/react-native-demo
-          bundle install
-          cd ios
-          bundle exec pod install
-
-      # Metro starts in the background here so its boot overlaps the build;
-      # it is awaited (and the bundle prewarmed) right before Maestro runs.
+      # Metro starts in the background here so its boot overlaps Postgres and
+      # the backend; it is awaited (and the bundle prewarmed) right before
+      # Maestro runs.
       - name: Start Metro bundler (background)
         working-directory: examples/react-native-demo
         run: npm start > "$RUNNER_TEMP/metro.log" 2>&1 &
-
-      # Built for the generic simulator destination: the build does not need
-      # a concrete device (the app is installed on the booted one later), and
-      # xcodebuild's device enumeration intermittently returns only
-      # placeholders on fresh runners ("Unable to find a device matching the
-      # provided destination specifier"), even though simctl lists the device.
-      - name: Build iOS app for simulator
-        if: steps.ios-app.outputs.cache-hit != 'true'
-        run: |
-          cd examples/react-native-demo/ios
-          xcodebuild \
-            -workspace ReactNativeSandbox.xcworkspace \
-            -scheme ReactNativeSandbox \
-            -configuration Debug \
-            -sdk iphonesimulator \
-            -destination "generic/platform=iOS Simulator" \
-            -derivedDataPath build \
-            build
 
       # macOS runners have no Docker - run the test database via Homebrew
       # Postgres instead, matching docker-compose.test.yml (test/test@5433,
@@ -281,9 +324,20 @@ jobs:
       - name: Wait for iOS Simulator (booting since device pick)
         run: xcrun simctl bootstatus "$SIM_DEVICE" -b
 
+      # The .app comes from build-ios as a tar (upload-artifact zips and drops
+      # executable bits + symlinks, which breaks simctl install).
+      - name: Fetch .app built by build-ios
+        uses: actions/download-artifact@v8
+        with:
+          name: ios-app
+          path: ${{ runner.temp }}
+
       - name: Install app on simulator
         run: |
-          xcrun simctl install booted examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator/ReactNativeSandbox.app
+          APP_DIR=examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator
+          mkdir -p "$APP_DIR"
+          tar -C "$APP_DIR" -xf "$RUNNER_TEMP/ReactNativeSandbox.app.tar"
+          xcrun simctl install booted "$APP_DIR/ReactNativeSandbox.app"
 
       # Prewarming the bundle keeps the first Maestro launch from racing a
       # cold compile.
@@ -329,10 +383,12 @@ jobs:
             ${{ runner.temp }}/metro.log
           retention-days: 7
 
-  android:
-    name: Android
+  # Same split as build-ios: the emulator job's setup overlaps this, and a
+  # re-run of a failed emulator job reuses the APK from the earlier attempt.
+  build-android:
+    name: Build Android
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -343,9 +399,8 @@ jobs:
       # versions of the demo's runtime deps + @react-native* dev deps
       # (scripts/native-deps-hash.sh - what autolinking and codegen read).
       # Everything else in package-lock.json is JS-only, so a jest/eslint/
-      # backend bump still hits this cache and skips Java, Gradle and the disk
-      # cleanup entirely. Bump the v-suffix if an input the script cannot see
-      # changes.
+      # backend bump still hits this cache and skips Java and Gradle
+      # entirely. Bump the v-suffix if an input the script cannot see changes.
       - name: Compute native dependency hash
         id: native-deps
         run: |
@@ -359,8 +414,53 @@ jobs:
           path: examples/react-native-demo/android/app/build/outputs/apk/debug/app-debug.apk
           key: android-apk-v2-${{ steps.native-deps.outputs.hash }}-${{ hashFiles('examples/react-native-demo/android/**', 'examples/react-native-demo/app.json') }}
 
+      - name: Setup Node.js
+        if: steps.android-apk.outputs.cache-hit != 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Setup Java (for Gradle)
+        if: steps.android-apk.outputs.cache-hit != 'true'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Install dependencies (workspace root)
+        if: steps.android-apk.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Build Android app (debug)
+        if: steps.android-apk.outputs.cache-hit != 'true'
+        working-directory: examples/react-native-demo/android
+        run: ./gradlew assembleDebug --no-daemon --build-cache
+
+      # retention-days: 1 - only the emulator job of this run needs it.
+      - name: Publish APK for the emulator job
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-apk
+          path: examples/react-native-demo/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 1
+          compression-level: 0 # an APK is already a zip
+          overwrite: true # a full re-run re-uploads the same name
+          if-no-files-found: error
+
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: [build-android]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
       # The stock runner has ~14GB free; node_modules + the Android system
-      # image + Docker (+ Gradle on a cache miss) don't fit - a run that
+      # image + Docker don't fit - a run that
       # skipped this hit "Your device does not have enough disk space to run
       # avd". Drop preinstalled toolchains we never use (several GB each).
       - name: Free disk space
@@ -375,14 +475,6 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-
-      - name: Setup Java (for Gradle)
-        if: steps.android-apk.outputs.cache-hit != 'true'
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: gradle
 
       - name: Install dependencies (workspace root)
         run: npm ci
@@ -436,16 +528,18 @@ jobs:
       # The emulator reaches the backend as 10.0.2.2:4000 (host loopback
       # alias - see examples/react-native-demo/src/config.ts); Metro is
       # reached via adb reverse in scripts/e2e-android-maestro.sh. Metro
-      # starts in the background so its boot overlaps the Gradle build; it
+      # starts in the background so its boot overlaps the emulator caches; it
       # is awaited (and the bundle prewarmed) right before the emulator runs.
       - name: Start Metro bundler (background)
         working-directory: examples/react-native-demo
         run: npm start > "$RUNNER_TEMP/metro.log" 2>&1 &
 
-      - name: Build Android app (debug)
-        if: steps.android-apk.outputs.cache-hit != 'true'
-        working-directory: examples/react-native-demo/android
-        run: ./gradlew assembleDebug --no-daemon --build-cache
+      # Same path scripts/e2e-android-maestro.sh installs from.
+      - name: Fetch APK built by build-android
+        uses: actions/download-artifact@v8
+        with:
+          name: android-apk
+          path: examples/react-native-demo/android/app/build/outputs/apk/debug
 
       # The system image is ~1.2GB and the emulator-runner action re-downloads
       # it on every run (~95s, twice when the AVD snapshot also misses).
