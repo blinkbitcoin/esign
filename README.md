@@ -152,13 +152,13 @@ Ordered by how likely you are to need each part:
 
 | Path | What lives there |
 |------|------------------|
-| [`packages/esign-react-native/`](packages/esign-react-native/README.md) | The React Native library you install: the `ESignature` component and the signing sources. |
-| [`packages/esign-react/`](packages/esign-react/README.md) | The React web library: the same component and sources for browser apps, embedding with an iframe instead of a WebView. |
-| [`packages/esign-core/`](packages/esign-core/README.md) | The shared core both libraries build on: the `SigningSource` abstraction and event interpreters, plus the GraphQL client pieces used by mode 3. It arrives automatically as a dependency - you never install it directly. |
-| [`apps/api/`](apps/api/README.md) | The backend service for mode 3: a GraphQL API that creates envelopes through provider adapters (DocuSign and a mock), persists status in PostgreSQL, and receives provider webhooks. Not needed for modes 1 and 2. |
-| [`examples/react-native-demo/`](examples/react-native-demo/README.md) | A complete React Native app hosting the component. Used for manual testing, and the mobile end-to-end suites drive it. |
-| [`examples/react-demo/`](examples/react-demo/README.md) | The same for the browser: a small React app hosting the web component, driven by the browser end-to-end suites. |
-| `docs/` | Documentation of how everything currently works - start at [docs/index.md](docs/index.md). |
+| [`packages/esign-react-native/`](packages/esign-react-native/README.md) | The React Native library you install:<br>the `ESignature` component and the signing sources. |
+| [`packages/esign-react/`](packages/esign-react/README.md) | The React web library: the same component and sources for<br>browser apps, embedding with an iframe instead of a WebView. |
+| [`packages/esign-core/`](packages/esign-core/README.md) | The shared core both libraries build on: the `SigningSource`<br>abstraction and event interpreters, plus the GraphQL client<br>pieces used by mode 3. It arrives automatically as a<br>dependency - you never install it directly. |
+| [`apps/api/`](apps/api/README.md) | The backend service for mode 3: a GraphQL API that creates<br>envelopes through provider adapters (DocuSign and a mock),<br>persists status in PostgreSQL, and receives provider<br>webhooks. Not needed for modes 1 and 2. |
+| [`examples/react-native-demo/`](examples/react-native-demo/README.md) | A complete React Native app hosting the component. Used for<br>manual testing, and the mobile end-to-end suites drive it. |
+| [`examples/react-demo/`](examples/react-demo/README.md) | The same for the browser: a small React app hosting the web<br>component, driven by the browser end-to-end suites. |
+| `docs/` | Documentation of how everything currently works -<br>start at [docs/index.md](docs/index.md). |
 
 ## Development
 
@@ -203,15 +203,22 @@ credentials are set).
 | Target | Purpose |
 |--------|---------|
 | `make test` | Unit suites + lint + typecheck + format check |
-| `make unit` / `make coverage` | Test suites (100% coverage enforced on packages + backend; demos floored at current level) |
-| `make coverage-badge` | Render the coverage badge above and the combined HTML report (`coverage/report/index.html`) from the last `make coverage` run. CI publishes the badge per branch to `gh-pages/badges/<branch>/` and uploads the report as the `coverage-report` artifact of every run |
+| `make unit`<br>`make coverage` | Test suites (100% coverage on packages + backend) |
+| `make coverage-badge` | Coverage badge + HTML report from the last `make coverage` run |
 | `make check-code` | Lint + typecheck + format check only |
 | `make build` | Build the library (react-native-builder-bob) |
-| `make e2e-backend` / `make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown |
-| `make e2e-ios` / `make e2e-android` | Maestro E2E against a running stack (`make e2e-backend-up` starts the backend; `make ios-build` builds the simulator app) |
+| `make e2e-backend`<br>`make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown |
+| `make e2e-ios`<br>`make e2e-android` | Maestro E2E against a running stack |
 | `make check-ci` | Lint the CI itself: actionlint on the workflows, shellcheck on `scripts/**` |
 | `make test-live` | Opt-in live DocuSign API verification (skips without credentials) |
 | `make pods` | iOS CocoaPods install |
+
+Demo coverage is floored at its current level rather than 100%. The HTML
+report lands in `coverage/report/index.html`; CI publishes
+the badge per branch to `gh-pages/badges/<branch>/` and uploads the report as
+the `coverage-report` artifact of every run. For the Maestro suites,
+`make e2e-backend-up` starts the backend and `make ios-build` builds the
+simulator app.
 
 See [docs/development-guide.md](docs/development-guide.md) for full setup,
 environment variables, and troubleshooting, and [CONTRIBUTING.md](CONTRIBUTING.md)
