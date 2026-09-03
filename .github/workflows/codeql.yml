@@ -1,0 +1,52 @@
+name: CodeQL
+
+# Advanced-setup CodeQL: the same default query suite GitHub's "Default setup"
+# would run, as a workflow, because the Code Security toggle on the repo's
+# Advanced Security page is gated at the org level. Free on a public repo.
+# Informational: not a required check in the main ruleset, so a runner hiccup
+# cannot block a merge. Alerts land under Security -> Code scanning.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', '**.md']
+  pull_request:
+    branches: [main]
+    paths-ignore: ['docs/**', '**.md']
+  schedule:
+    - cron: '17 6 * * 1' # weekly, so new queries re-scan an idle main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read # workflow metadata for the upload
+      security-events: write # upload SARIF results
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # No build step: JS/TS is extracted from source, no autobuild needed.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+          # Default query suite, same as GitHub's Default setup. Add
+          # `queries: security-extended` later if the baseline stays clean;
+          # it brings more low-precision alerts.
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:javascript-typescript
