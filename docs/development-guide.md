@@ -430,9 +430,25 @@ timeouts, and cancel superseded runs per ref (never a running `main` run).
 
 ### Running CI Locally
 
+The workflows are thin: triggers, `needs`, caches and one-line `run:` steps.
+The logic lives in `scripts/ci/` (runner plumbing), `scripts/e2e/` (the E2E
+stack) and `scripts/release/` (publish), exposed through `make` wherever a
+human would run it - so a CI failure can be reproduced without pushing:
+
 ```bash
-# Backend E2E (mimics CI)
-docker-compose -f docker-compose.test.yml up -d --wait
-cd apps/api && npm run test:e2e
-docker-compose -f docker-compose.test.yml down
+# The whole Checks stage
+make check-code check-ci codegen-check diagrams-check docs-check
+npm run check:packages && bash scripts/pack-smoke.sh   # Checks / Packages
+
+# Unit
+make coverage
+
+# E2E
+make e2e-backend        # Backend
+make e2e-web            # Web (Playwright)
+make e2e-android        # Android: emulator running, APK built, Metro + backend up (see `make help`)
+make e2e-ios            # iOS: simulator booted with the app installed, Metro + backend up
+
+# Release plumbing
+make version            # what a push to main would publish; make version TAG=vX.Y.Z for a release
 ```

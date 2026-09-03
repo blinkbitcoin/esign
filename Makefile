@@ -57,6 +57,12 @@ build: ## Build the libraries (bob + tsup)
 codegen: ## Regenerate schema.graphql + client types from the backend SDL
 	npm run codegen
 
+diagrams-check: ## Fail if docs/diagrams/README.md is stale relative to src/*.mmd (what CI runs)
+	bash scripts/ci/diagrams-check.sh
+
+docs-check: ## Warn when architecture-relevant changes (vs origin/main) ship without a docs/ update; fail on stale diagram SVGs
+	bash scripts/ci/docs-freshness.sh
+
 release: ## Cut a stable release: make release V=X.Y.Z (the tag is the version; CI publishes @latest)
 	@test -n "$(V)" || { echo "usage: make release V=X.Y.Z"; exit 1; }
 	gh release create "v$(V)" --target main --title "v$(V)" --generate-notes
@@ -166,6 +172,6 @@ help: ## List available targets
 		awk 'BEGIN {FS = ":.*##"} {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: install hooks pods release version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
-	shellcheck check-ci codegen-check test build codegen start ios android backend web db-up db-down migrate \
+	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check start ios android backend web db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl \
 	e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live clean reset help
