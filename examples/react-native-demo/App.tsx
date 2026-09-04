@@ -108,9 +108,32 @@ export const buildSource = (): SigningSource => {
   });
 };
 
-// Two ways to host the flow: the library's default UI (the E2E target) or
-// the app's own UI over the useESignature hook (src/HookSigning.tsx)
-type UiMode = 'default' | 'hook';
+// Three ways to host the flow: the library's default UI (the E2E target),
+// the same UI recolored to the host's brand, or the app's own UI over the
+// useESignature hook (src/HookSigning.tsx). The toolbar cycles through them.
+type UiMode = 'default' | 'themed' | 'hook';
+const NEXT_MODE: Record<UiMode, UiMode> = {
+  default: 'themed',
+  themed: 'hook',
+  hook: 'default',
+};
+const MODE_LABEL: Record<UiMode, string> = {
+  default: 'Use themed UI',
+  themed: 'Use hook UI',
+  hook: 'Use default UI',
+};
+
+// Blink's palette (blink-mobile app/rne-theme): orange primary, pill buttons
+export const BLINK_THEME = {
+  primaryColor: '#fc5805',
+  primaryTextColor: '#FFFFFF',
+  mutedTextColor: '#9292A0',
+  successColor: '#00A700',
+  warningColor: '#ffad0d',
+};
+export const BLINK_STYLES = {
+  button: { borderRadius: 50, paddingHorizontal: 32 },
+};
 
 function AppContent() {
   const safeAreaInsets = useSafeAreaInsets();
@@ -134,14 +157,12 @@ function AppContent() {
     <View style={[styles.container, { paddingTop: safeAreaInsets.top }]}>
       <View style={styles.toolbar}>
         <TouchableOpacity
-          onPress={() => setUiMode(m => (m === 'default' ? 'hook' : 'default'))}
+          onPress={() => setUiMode(m => NEXT_MODE[m])}
           testID="ui-mode-button"
           accessibilityRole="button"
-          accessibilityLabel="Toggle signing UI"
+          accessibilityLabel="Switch signing UI"
         >
-          <Text style={styles.toolbarText}>
-            {uiMode === 'default' ? 'Use hook UI' : 'Use default UI'}
-          </Text>
+          <Text style={styles.toolbarText}>{MODE_LABEL[uiMode]}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setSessionKey(k => k + 1)}
@@ -152,9 +173,17 @@ function AppContent() {
           <Text style={styles.toolbarText}>Start over</Text>
         </TouchableOpacity>
       </View>
-      {uiMode === 'hook' ? (
-        <HookSigning key={sessionKey} {...signingProps} />
-      ) : (
+      {uiMode === 'hook' && <HookSigning key={sessionKey} {...signingProps} />}
+      {uiMode === 'themed' && (
+        <ESignature
+          key={sessionKey}
+          {...signingProps}
+          label="Sign the agreement"
+          theme={BLINK_THEME}
+          styles={BLINK_STYLES}
+        />
+      )}
+      {uiMode === 'default' && (
         <ESignature key={sessionKey} {...signingProps} />
       )}
     </View>
