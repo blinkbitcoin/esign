@@ -48,7 +48,7 @@ export type GetAuthToken = () =>
 // Exported for direct testing.
 export const createAuthContextSetter =
   (getAuthToken?: GetAuthToken): SetContextLink.ContextSetter =>
-  async ({ headers }) => {
+  async ({ headers }, _operation) => {
     const token = getAuthToken ? await getAuthToken() : null;
     return {
       headers: {
