@@ -4,9 +4,10 @@ name: CI
 # (`ci.yml/badge.svg?branch=main`, or `?branch=<any>`) is correct for that
 # branch. Staged so a failure never spends the next stage's minutes:
 #
-#   Checks (lint, typecheck, package shape, commits, docs)   ~1-2 min
+#   Checks (lint, typecheck, commits, docs)                  ~1-2 min
 #     -> Unit (tests + coverage thresholds)                  ~2 min
-#       -> E2E (backend, web, Android; iOS opt-in)           ~5-8 min
+#       -> E2E (build packages -> web; backend; Android;     ~5-8 min
+#               iOS opt-in)
 #         -> Publish -> Verify (main / release / dispatch)
 #
 # A docs-only PR (docs/, *.md, LICENSE, templates - classified by the Changes
@@ -17,9 +18,10 @@ name: CI
 # at the end publishes the coverage + status badges per branch to gh-pages.
 #
 # Publishing (main pushes / releases / dispatch) lives at the tail of the
-# same run, so "CI passing on main" means: coverage thresholds, every E2E
-# suite, the publish, and the verify of what was published all passed for
-# that commit.
+# same run and ships the tarballs E2E / Build Packages built and Web tested,
+# so "CI passing on main" means: coverage thresholds, every E2E suite, the
+# publish of those exact tarballs, and the verify of what was published all
+# passed for that commit.
 #
 #   - Stable (`latest` dist-tag): ONLY when a GitHub Release is published.
 #     The tag IS the version (vX.Y.Z -> X.Y.Z); nothing is committed to the
