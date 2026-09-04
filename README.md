@@ -146,6 +146,21 @@ for real Web Forms embedding on web - see its
 Packages publish to GitHub Packages under the `blinkbitcoin` org - registry
 setup: [docs/integration/consuming.md](docs/integration/consuming.md).
 
+### The UI: component or hook
+
+Independent of the signing mode above, pick how much of the screen the
+library draws. Same state machine in every column; the host takes over
+more from left to right.
+
+| Default | Themed | Headless |
+|---|---|---|
+| ![Drop in the component](docs/assets/esign-path-1-default.svg) | ![Recolor and relabel it](docs/assets/esign-path-2-themed.svg) | ![Bring your own UI](docs/assets/esign-path-3-headless.svg) |
+| `<ESignature source={source} … />` | `theme` · `styles` · `labels` on `ESignature` | `useESignature` + your own `WebView` / `iframe` |
+
+Details and code for each path: the package READMEs
+([RN](packages/esign-react-native/README.md#integration-paths),
+[web](packages/esign-react/README.md#integration-paths)).
+
 ## Repository Layout
 
 Ordered by how likely you are to need each part:
@@ -213,8 +228,8 @@ credentials are set).
 | `make test-live` | Opt-in live DocuSign API verification (skips without credentials) |
 | `make pods` | iOS CocoaPods install |
 
-Demo coverage is floored at its current level rather than 100%. The HTML
-report lands in `coverage/report/index.html`; CI publishes
+Coverage is 100% everywhere, the demo apps included. The HTML report
+lands in `coverage/report/index.html`; CI publishes
 the badge per branch to `gh-pages/badges/<branch>/` and uploads the report as
 the `coverage-report` artifact of every run. For the Maestro suites,
 `make e2e-backend-up` starts the backend and `make ios-build` builds the

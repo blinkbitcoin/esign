@@ -5,6 +5,7 @@ flowchart TB
 
         subgraph Content["AppContent"]
             ES[ESignature source=SigningSource]
+            HOOK["useESignature (state machine)"]
 
             subgraph States["Component states"]
                 IDLE[idle: Sign button]
@@ -19,7 +20,8 @@ flowchart TB
 
     AP --> SAP
     SAP --> Content
-    ES --> States
+    ES --> HOOK
+    HOOK --> States
 
     IDLE -->|tap| LOAD
     IDLE -->|no connectivity| OFF

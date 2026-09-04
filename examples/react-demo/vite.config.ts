@@ -50,7 +50,12 @@ export default defineConfig(({ command }) => {
         exclude: ['src/main.tsx', 'src/**/*.test.*'],
         // Demo app: unit-coverage floor at current level; the real coverage is
         // the Playwright E2E suites.
-        thresholds: { statements: 82, branches: 66, functions: 88, lines: 81 },
+        thresholds: {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
       },
     },
   };

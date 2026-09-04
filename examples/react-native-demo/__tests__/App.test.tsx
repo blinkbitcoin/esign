@@ -7,6 +7,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { Alert } from 'react-native';
 import * as RN from 'react-native';
 import App, {
+  BLINK_THEME,
   getRecipientData,
   handleSigningComplete,
   handleSigningError,
@@ -37,6 +38,36 @@ test('"Start over" remounts the ESignature component', async () => {
   expect(
     renderer!.root.findAllByProps({ testID: 'sign-document-button' }).length,
   ).toBeGreaterThan(0);
+});
+
+test('the toolbar cycles default → themed → hook → default', async () => {
+  let renderer: ReactTestRenderer.ReactTestRenderer;
+  await ReactTestRenderer.act(() => {
+    renderer = ReactTestRenderer.create(<App />);
+  });
+  const count = (testID: string) =>
+    renderer!.root.findAllByProps({ testID }).length;
+  const toggle = renderer!.root.findByProps({ testID: 'ui-mode-button' });
+  const press = () =>
+    ReactTestRenderer.act(() => {
+      toggle.props.onPress();
+    });
+
+  expect(JSON.stringify(renderer!.toJSON())).toContain('Sign Document');
+
+  await press(); // themed: same component, Blink colors + Esaú's label
+  expect(count('sign-document-button')).toBeGreaterThan(0);
+  const json = JSON.stringify(renderer!.toJSON());
+  expect(json).toContain('Sign the agreement');
+  expect(json).toContain(BLINK_THEME.primaryColor);
+
+  await press(); // hook: host-owned screen
+  expect(count('hook-sign-button')).toBeGreaterThan(0);
+  expect(count('sign-document-button')).toBe(0);
+
+  await press(); // back to default
+  expect(count('sign-document-button')).toBeGreaterThan(0);
+  expect(JSON.stringify(renderer!.toJSON())).toContain('Sign Document');
 });
 
 test('renders with light-content status bar in dark mode', async () => {

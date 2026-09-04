@@ -23,6 +23,7 @@ import {
 
 import { apolloClient } from './src/apollo';
 import { ESIGN_MODE, WEBFORM_INSTANCE_URL } from './src/config';
+import { HookSigning } from './src/HookSigning';
 import {
   ESignature,
   createProxySigningSource,
@@ -107,6 +108,33 @@ export const buildSource = (): SigningSource => {
   });
 };
 
+// Three ways to host the flow: the library's default UI (the E2E target),
+// the same UI recolored to the host's brand, or the app's own UI over the
+// useESignature hook (src/HookSigning.tsx). The toolbar cycles through them.
+type UiMode = 'default' | 'themed' | 'hook';
+const NEXT_MODE: Record<UiMode, UiMode> = {
+  default: 'themed',
+  themed: 'hook',
+  hook: 'default',
+};
+const MODE_LABEL: Record<UiMode, string> = {
+  default: 'Use themed UI',
+  themed: 'Use hook UI',
+  hook: 'Use default UI',
+};
+
+// Blink's palette (blink-mobile app/rne-theme): orange primary, pill buttons
+export const BLINK_THEME = {
+  primaryColor: '#fc5805',
+  primaryTextColor: '#FFFFFF',
+  mutedTextColor: '#9292A0',
+  successColor: '#00A700',
+  warningColor: '#ffad0d',
+};
+export const BLINK_STYLES = {
+  button: { borderRadius: 50, paddingHorizontal: 32 },
+};
+
 function AppContent() {
   const safeAreaInsets = useSafeAreaInsets();
   const source = buildSource();
@@ -115,10 +143,27 @@ function AppContent() {
   // app: on iOS a relaunch (terminate + simctl launch) races the XCUITest
   // driver for a few seconds and reloads the dev bundle from Metro.
   const [sessionKey, setSessionKey] = useState(0);
+  const [uiMode, setUiMode] = useState<UiMode>('default');
+
+  const signingProps = {
+    source,
+    onComplete: handleSigningComplete,
+    onError: handleSigningError,
+    onCancel: handleSigningCancel,
+    successDelayMs: 4000,
+  };
 
   return (
     <View style={[styles.container, { paddingTop: safeAreaInsets.top }]}>
       <View style={styles.toolbar}>
+        <TouchableOpacity
+          onPress={() => setUiMode(m => NEXT_MODE[m])}
+          testID="ui-mode-button"
+          accessibilityRole="button"
+          accessibilityLabel="Switch signing UI"
+        >
+          <Text style={styles.toolbarText}>{MODE_LABEL[uiMode]}</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setSessionKey(k => k + 1)}
           testID="reset-button"
@@ -128,14 +173,19 @@ function AppContent() {
           <Text style={styles.toolbarText}>Start over</Text>
         </TouchableOpacity>
       </View>
-      <ESignature
-        key={sessionKey}
-        source={source}
-        onComplete={handleSigningComplete}
-        onError={handleSigningError}
-        onCancel={handleSigningCancel}
-        successDelayMs={4000}
-      />
+      {uiMode === 'hook' && <HookSigning key={sessionKey} {...signingProps} />}
+      {uiMode === 'themed' && (
+        <ESignature
+          key={sessionKey}
+          {...signingProps}
+          label="Sign the agreement"
+          theme={BLINK_THEME}
+          styles={BLINK_STYLES}
+        />
+      )}
+      {uiMode === 'default' && (
+        <ESignature key={sessionKey} {...signingProps} />
+      )}
     </View>
   );
 }
@@ -145,7 +195,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   toolbar: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 8,
   },

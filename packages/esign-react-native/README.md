@@ -79,11 +79,80 @@ const source = createWebFormsSource({
 const source = createPublicUrlSource({ url, allowedOrigin: 'https://apps.docusign.com' });
 ```
 
+### Integration paths
+
+Same state machine in every column; the host takes over more of the screen
+from left to right.
+
+| Default | Themed | Headless |
+|---|---|---|
+| ![Drop in the component](../../docs/assets/esign-path-1-default.svg) | ![Recolor and relabel it](../../docs/assets/esign-path-2-themed.svg) | ![Bring your own UI](../../docs/assets/esign-path-3-headless.svg) |
+| `<ESignature source={source} … />` | `theme` · `styles` · `labels` | `useESignature` + your own `WebView` |
+
+### Theming
+
+The default screens ship with the iOS-blue look. "Can we change the blue
+button?" is a one-liner: pass `theme`. `styles` overrides individual
+elements, `labels` overrides copy. Precedence is base look < `theme` <
+`styles`; everything is optional and the default look/copy is unchanged when
+nothing is passed. `label` still works (it is the default for
+`labels.title` and `labels.sign`).
+
+```tsx
+<ESignature
+  source={source}
+  theme={{ primaryColor: '#F7931A', primaryTextColor: '#000' }}
+  styles={{ button: { borderRadius: 4 }, title: { fontSize: 24 } }}
+  labels={{ title: 'Sign your loan agreement', sign: 'Sign now', success: 'All done!' }}
+  onComplete={...} onError={...} onCancel={...}
+/>
+```
+
+`ESignatureTheme` keys: `primaryColor`, `primaryTextColor`, `mutedTextColor`,
+`successColor`, `errorColor`, `warningColor`. `ESignatureStyles` keys are
+listed in `ESignatureStyleKey` (`container`, `title`, `button`,
+`buttonText`, `webview`, …). `ESignatureLabels` covers every string the
+built-in screens render.
+
+### Headless usage
+
+When the built-in screens don't fit, `useESignature` runs the same state
+machine (offline check, session-expiry restart, success delay) and renders
+nothing - the host renders its own buttons and spreads `webViewProps` onto
+its own `WebView`. `ESignature` is just one consumer of this hook.
+
+```tsx
+import { useESignature } from '@blinkbitcoin/esign-react-native';
+import { WebView } from 'react-native-webview';
+
+const {
+  status, error, isSessionExpired, isCheckingConnection,
+  sign, cancel, retry, restart, checkConnection,
+  webViewProps, // null unless signing with a URL
+} = useESignature({ source, onComplete, onError, onCancel });
+
+if (status === 'signing' && webViewProps) {
+  return <WebView {...webViewProps} style={{ flex: 1 }} />;
+}
+if (status === 'error') {
+  return <MyButton onPress={isSessionExpired ? restart : retry} title="Try again" />;
+}
+if (status === 'offline') {
+  return <MyButton onPress={checkConnection} disabled={isCheckingConnection} title="Check connection" />;
+}
+return <MyButton onPress={sign} title="Sign" />;
+```
+
+The hook still needs `react-native-webview` and
+`@react-native-community/netinfo` installed (peers), and is also exported
+from the Apollo-free `/webform` subpath.
+
 ## Public API
 
 | Export | What it is |
 |--------|------------|
-| `ESignature` | The signing flow component (state machine: idle → loading → signing → success, plus error/offline). Takes a `source` prop. |
+| `ESignature` | The signing flow component (state machine: idle → loading → signing → success, plus error/offline). Takes a `source` prop, plus `theme` / `styles` / `labels` for the built-in screens. |
+| `useESignature(options)` | The headless state machine behind `ESignature`: `status`, `error`, `isSessionExpired`, `isCheckingConnection`, `sign` / `cancel` / `retry` / `restart` / `checkConnection`, and `webViewProps` to spread onto your own `WebView`. Same options as the component minus the look props. |
 | `createProxySigningSource` / `createWebFormsSource` / `createPublicUrlSource` | The three signing modes (`SigningSource`). Only the proxy is restartable. |
 | `createESignApolloClient({ uri, getAuthToken })` | Apollo Client factory — host owns endpoint + token retrieval (proxy mode only) |
 | `SigningSource`, `SigningSession`, `SigningEvent`, `isRestartable` | The abstraction, for writing a custom mode |
@@ -105,7 +174,7 @@ Component behaviors worth knowing:
 ## Development (in this monorepo)
 
 ```sh
-make test        # 36 Jest tests, 100% coverage (enforced threshold)
+make test        # 74 Jest tests, 100% coverage (enforced threshold)
 make codegen     # regenerate types from ../../apps/api/schema.graphql
 make build       # react-native-builder-bob (CJS + ESM + types)
 ```

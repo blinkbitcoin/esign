@@ -1,21 +1,21 @@
 /**
- * ESignature component tests - source-driven (provider-agnostic).
+ * ESignature component tests - the default UI over useESignature.
  *
- * The component is tested against fake SigningSources rather than Apollo mocks:
- * acquisition + event protocol live in the source, so the component's state
- * machine can be exercised directly. Per-source behavior is covered in
- * src/signing/__tests__.
+ * The state machine itself is covered in useESignature.test.tsx; here we
+ * check that each status renders its screen, that the buttons are wired to
+ * the hook's actions, and that theme / styles / labels reach the markup.
  */
 
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { WebView } from 'react-native-webview';
 
 import { ESignature, getErrorMessage } from '../ESignature';
-import { getApolloErrorCode } from '../index';
+import { getApolloErrorCode, useESignature } from '../index';
 import { interpretProxyEvent } from '@blinkbitcoin/esign-core';
 import {
   simulateWebViewMessage,
-  simulateRawWebViewMessage,
   resetWebViewMock,
 } from '../../__mocks__/react-native-webview';
 import NetInfo, {
@@ -24,8 +24,7 @@ import NetInfo, {
 } from '../../__mocks__/@react-native-community/netinfo';
 
 import type { SigningSource, SigningSession } from '@blinkbitcoin/esign-core';
-
-// react-native-webview is mocked via moduleNameMapper in jest.config.js
+import type { UseESignatureOptions } from '../types';
 
 const okSession: SigningSession = {
   url: 'https://sign/1',
@@ -38,13 +37,12 @@ const makeSource = (overrides: Partial<SigningSource> = {}): SigningSource => ({
   ...overrides,
 });
 
-const makeRestartable = (overrides = {}) => ({
+const makeRestartable = () => ({
   start: jest.fn().mockResolvedValue(okSession),
   interpret: interpretProxyEvent,
   restart: jest
     .fn()
     .mockResolvedValue({ url: 'https://sign/2', envelopeId: 'env-1' }),
-  ...overrides,
 });
 
 const defaultProps = {
@@ -71,7 +69,6 @@ const nodesByTestId = (
   id: string,
 ) => renderer.root.findAll(n => n.props?.testID === id);
 
-// testIDs are forwarded to several nodes by the RN preset; "exists" = any match.
 const has = (
   renderer: ReactTestRenderer.ReactTestRenderer,
   id: string,
@@ -84,6 +81,15 @@ const press = (renderer: ReactTestRenderer.ReactTestRenderer, id: string) => {
   node!.props.onPress();
 };
 
+const text = (renderer: ReactTestRenderer.ReactTestRenderer) =>
+  JSON.stringify(renderer.toJSON());
+
+// Flattened style of the first node with this testID that carries a style
+const styleOf = (renderer: ReactTestRenderer.ReactTestRenderer, id: string) =>
+  StyleSheet.flatten(
+    nodesByTestId(renderer, id).find(n => n.props.style)!.props.style,
+  );
+
 beforeEach(() => {
   jest.clearAllMocks();
   resetWebViewMock();
@@ -93,7 +99,8 @@ beforeEach(() => {
 describe('rendering by status', () => {
   it('idle shows the default label and buttons', () => {
     const r = render(<ESignature {...defaultProps} source={makeSource()} />);
-    expect(JSON.stringify(r.toJSON())).toContain('Sign Document');
+    expect(text(r)).toContain('Sign Document');
+    expect(text(r)).toContain('Review and sign your document');
     expect(has(r, 'sign-document-button')).toBe(true);
     expect(has(r, 'cancel-button')).toBe(true);
   });
@@ -106,7 +113,7 @@ describe('rendering by status', () => {
         label="Sign Onboarding"
       />,
     );
-    expect(JSON.stringify(r.toJSON())).toContain('Sign Onboarding');
+    expect(text(r)).toContain('Sign Onboarding');
   });
 
   it('loading shows the spinner', () => {
@@ -118,6 +125,7 @@ describe('rendering by status', () => {
       />,
     );
     expect(has(r, 'loading-indicator')).toBe(true);
+    expect(text(r)).toContain('Preparing document...');
   });
 
   it('signing renders the WebView when a URL is present', () => {
@@ -130,6 +138,9 @@ describe('rendering by status', () => {
       />,
     );
     expect(has(r, 'signing-webview')).toBe(true);
+    expect(r.root.findByType(WebView).props.source).toEqual({
+      uri: 'https://sign/x',
+    });
   });
 
   it('signing without a URL shows the fallback copy', () => {
@@ -140,7 +151,7 @@ describe('rendering by status', () => {
         __testInitialStatus="signing"
       />,
     );
-    expect(JSON.stringify(r.toJSON())).toContain('Signing in Progress');
+    expect(text(r)).toContain('Signing in Progress');
   });
 
   it('success shows the completion screen', () => {
@@ -152,6 +163,7 @@ describe('rendering by status', () => {
       />,
     );
     expect(has(r, 'success-screen')).toBe(true);
+    expect(text(r)).toContain('Signing Complete!');
   });
 
   it('offline shows the connection screen', () => {
@@ -163,9 +175,10 @@ describe('rendering by status', () => {
       />,
     );
     expect(has(r, 'offline-text')).toBe(true);
+    expect(has(r, 'check-connection-button')).toBe(true);
   });
 
-  it('a plain error shows the retry button', () => {
+  it('a plain error shows the retry button and the fallback message', () => {
     const r = render(
       <ESignature
         {...defaultProps}
@@ -174,322 +187,85 @@ describe('rendering by status', () => {
       />,
     );
     expect(has(r, 'retry-button')).toBe(true);
+    expect(text(r)).toContain('An error occurred');
   });
 });
 
-describe('handleSign (acquisition)', () => {
-  it('goes offline without calling the source when connectivity fails', async () => {
-    setMockNetworkState(false);
-    const source = makeSource();
-    const onError = jest.fn();
-    const r = render(
-      <ESignature {...defaultProps} onError={onError} source={source} />,
-    );
-
-    await ReactTestRenderer.act(async () => {
-      press(r, 'sign-document-button');
-      await flush();
-    });
-
-    expect(has(r, 'offline-text')).toBe(true);
-    expect(source.start).not.toHaveBeenCalled();
-    expect(onError).not.toHaveBeenCalled(); // offline is a state, not an error
-  });
-
-  it('ignores a start() that resolves after unmount (no state update, no callbacks)', async () => {
-    let resolveStart!: (session: SigningSession) => void;
-    const source = makeSource({
-      start: jest.fn().mockReturnValue(
-        new Promise<SigningSession>(resolve => {
-          resolveStart = resolve;
-        }),
-      ),
-    });
-    const r = render(<ESignature {...defaultProps} source={source} />);
-
-    await ReactTestRenderer.act(async () => {
-      press(r, 'sign-document-button');
-      await flush();
-    });
-    ReactTestRenderer.act(() => r.unmount());
-
-    await ReactTestRenderer.act(async () => {
-      resolveStart(okSession);
-      await flush();
-    });
-    expect(defaultProps.onError).not.toHaveBeenCalled();
-    expect(defaultProps.onComplete).not.toHaveBeenCalled();
-  });
-
-  it('ignores a start() that rejects after unmount (onError not fired)', async () => {
-    let rejectStart!: (e: unknown) => void;
-    const source = makeSource({
-      start: jest.fn().mockReturnValue(
-        new Promise<SigningSession>((_resolve, reject) => {
-          rejectStart = reject;
-        }),
-      ),
-    });
-    const r = render(<ESignature {...defaultProps} source={source} />);
-
-    await ReactTestRenderer.act(async () => {
-      press(r, 'sign-document-button');
-      await flush();
-    });
-    ReactTestRenderer.act(() => r.unmount());
-
-    await ReactTestRenderer.act(async () => {
-      rejectStart({ code: 'PROVIDER_UNAVAILABLE' });
-      await flush();
-    });
-    expect(defaultProps.onError).not.toHaveBeenCalled();
-  });
-
-  it('enters signing under React.StrictMode (guard re-arms after double-mount)', async () => {
-    const source = makeSource();
-    const r = render(
-      <React.StrictMode>
-        <ESignature {...defaultProps} source={source} />
-      </React.StrictMode>,
-    );
-    await ReactTestRenderer.act(async () => {
-      press(r, 'sign-document-button');
-      await flush();
-    });
-    expect(has(r, 'signing-webview')).toBe(true);
-  });
-
-  it('starts the source and enters signing on success', async () => {
+describe('wiring to the hook', () => {
+  it('sign button starts the source and renders the WebView', async () => {
     const source = makeSource();
     const r = render(<ESignature {...defaultProps} source={source} />);
-
     await ReactTestRenderer.act(async () => {
       press(r, 'sign-document-button');
       await flush();
     });
-
     expect(source.start).toHaveBeenCalledTimes(1);
     expect(has(r, 'signing-webview')).toBe(true);
   });
 
-  it('shows an error and calls onError when start rejects with a coded error', async () => {
-    const source = makeSource({
-      start: jest.fn().mockRejectedValue({ code: 'PROVIDER_UNAVAILABLE' }),
-    });
-    const onError = jest.fn();
-    const r = render(
-      <ESignature {...defaultProps} onError={onError} source={source} />,
-    );
-
+  it('sign button goes offline when connectivity fails', async () => {
+    setMockNetworkState(false);
+    const r = render(<ESignature {...defaultProps} source={makeSource()} />);
     await ReactTestRenderer.act(async () => {
       press(r, 'sign-document-button');
       await flush();
     });
-
-    expect(has(r, 'error-message')).toBe(true);
-    expect(onError).toHaveBeenCalledWith({
-      code: 'PROVIDER_UNAVAILABLE',
-      message:
-        'Signing service temporarily unavailable. Please try again later.',
-    });
+    expect(has(r, 'offline-text')).toBe(true);
   });
 
-  it('falls back to UNKNOWN_ERROR when the rejection has no code', async () => {
-    const source = makeSource({
-      start: jest.fn().mockRejectedValue(new Error('x')),
-    });
-    const onError = jest.fn();
+  it('cancel from idle calls onCancel', () => {
+    const onCancel = jest.fn();
     const r = render(
-      <ESignature {...defaultProps} onError={onError} source={source} />,
+      <ESignature
+        {...defaultProps}
+        onCancel={onCancel}
+        source={makeSource()}
+      />,
     );
-
-    await ReactTestRenderer.act(async () => {
-      press(r, 'sign-document-button');
-      await flush();
-    });
-
-    expect(onError).toHaveBeenCalledWith(
-      expect.objectContaining({ code: 'UNKNOWN_ERROR' }),
-    );
+    ReactTestRenderer.act(() => press(r, 'cancel-button'));
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
-});
 
-describe('WebView events (via source.interpret)', () => {
-  const renderSigning = (props = {}) =>
-    render(
+  it('WebView messages reach the hook: complete → success screen', () => {
+    jest.useFakeTimers();
+    const r = render(
       <ESignature
         {...defaultProps}
         source={makeSource()}
         __testInitialStatus="signing"
         __testSession={okSession}
-        {...props}
       />,
     );
-
-  it('complete → success, then onComplete with the session envelopeId after the delay', () => {
-    jest.useFakeTimers();
-    const onComplete = jest.fn();
-    const r = renderSigning({ onComplete });
-
     ReactTestRenderer.act(() =>
       simulateWebViewMessage({ event: 'signing_complete' }),
     );
     expect(has(r, 'success-screen')).toBe(true);
-
-    ReactTestRenderer.act(() => jest.advanceTimersByTime(1500));
-    expect(onComplete).toHaveBeenCalledWith({
-      envelopeId: 'env-1',
-      status: 'completed',
-    });
+    ReactTestRenderer.act(() => r.unmount());
     jest.useRealTimers();
   });
 
-  it('complete prefers an envelopeId carried in the event', () => {
-    jest.useFakeTimers();
-    const onComplete = jest.fn();
-    render(
+  it('exception → error screen with the message; retry returns to idle', () => {
+    const r = render(
       <ESignature
         {...defaultProps}
-        onComplete={onComplete}
-        source={makeSource({
-          interpret: () => ({ type: 'complete', envelopeId: 'from-event' }),
-        })}
+        source={makeSource()}
         __testInitialStatus="signing"
         __testSession={okSession}
       />,
     );
-    ReactTestRenderer.act(() => simulateWebViewMessage({ anything: true }));
-    ReactTestRenderer.act(() => jest.advanceTimersByTime(1500));
-    expect(onComplete).toHaveBeenCalledWith({
-      envelopeId: 'from-event',
-      status: 'completed',
-    });
-    jest.useRealTimers();
-  });
-
-  it('complete with no envelopeId anywhere reports undefined', () => {
-    jest.useFakeTimers();
-    const onComplete = jest.fn();
-    render(
-      <ESignature
-        {...defaultProps}
-        onComplete={onComplete}
-        source={makeSource()}
-        __testInitialStatus="signing"
-        __testSigningUrl="https://sign/x"
-      />,
-    );
-    ReactTestRenderer.act(() =>
-      simulateWebViewMessage({ event: 'signing_complete' }),
-    );
-    ReactTestRenderer.act(() => jest.advanceTimersByTime(1500));
-    expect(onComplete).toHaveBeenCalledWith({
-      envelopeId: undefined,
-      status: 'completed',
-    });
-    jest.useRealTimers();
-  });
-
-  it.each(['cancel', 'decline'])('%s → idle and onCancel', event => {
-    const onCancel = jest.fn();
-    const r = renderSigning({ onCancel });
-    ReactTestRenderer.act(() => simulateWebViewMessage({ event }));
-    expect(has(r, 'sign-document-button')).toBe(true);
-    expect(onCancel).toHaveBeenCalledTimes(1);
-  });
-
-  it('session_timeout → error with a restart affordance (session preserved)', () => {
-    const onError = jest.fn();
-    const r = renderSigning({ onError });
-    ReactTestRenderer.act(() =>
-      simulateWebViewMessage({ event: 'session_timeout' }),
-    );
-    expect(has(r, 'restart-button')).toBe(true);
-    expect(onError).toHaveBeenCalledWith({
-      code: 'SESSION_EXPIRED',
-      message: 'Session expired, tap to restart',
-    });
-  });
-
-  it('exception → error with the raw message', () => {
-    const onError = jest.fn();
-    const r = renderSigning({ onError });
     ReactTestRenderer.act(() =>
       simulateWebViewMessage({
         event: 'exception',
         message: 'signing blew up',
       }),
     );
-    expect(JSON.stringify(r.toJSON())).toContain('signing blew up');
-    expect(onError).toHaveBeenCalledWith({
-      code: 'SIGNING_ERROR',
-      message: 'signing blew up',
-    });
+    expect(text(r)).toContain('signing blew up');
+    expect(has(r, 'retry-button')).toBe(true);
+    ReactTestRenderer.act(() => press(r, 'retry-button'));
+    expect(has(r, 'sign-document-button')).toBe(true);
   });
 
-  it('error event with no message falls back to a generic message', () => {
-    const onError = jest.fn();
-    render(
-      <ESignature
-        {...defaultProps}
-        onError={onError}
-        source={makeSource({
-          interpret: () => ({ type: 'error', code: 'WEIRD' }),
-        })}
-        __testInitialStatus="signing"
-        __testSession={okSession}
-      />,
-    );
-    ReactTestRenderer.act(() => simulateWebViewMessage({ x: 1 }));
-    expect(onError).toHaveBeenCalledWith({
-      code: 'WEIRD',
-      message: 'An error occurred. Please try again.',
-    });
-  });
-
-  it('error event with no code falls back to SIGNING_ERROR', () => {
-    const onError = jest.fn();
-    render(
-      <ESignature
-        {...defaultProps}
-        onError={onError}
-        source={makeSource({
-          interpret: () => ({ type: 'error', message: 'boom' }),
-        })}
-        __testInitialStatus="signing"
-        __testSession={okSession}
-      />,
-    );
-    ReactTestRenderer.act(() => simulateWebViewMessage({ x: 1 }));
-    expect(onError).toHaveBeenCalledWith({
-      code: 'SIGNING_ERROR',
-      message: 'boom',
-    });
-  });
-
-  it('unrecognized events are ignored (interpret returns null)', () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const onError = jest.fn();
-    const r = renderSigning({ onError });
-    ReactTestRenderer.act(() => simulateWebViewMessage({ event: 'noise' }));
-    expect(has(r, 'signing-webview')).toBe(true);
-    expect(onError).not.toHaveBeenCalled();
-    warn.mockRestore();
-  });
-
-  it('invalid JSON is ignored', () => {
-    const err = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const onError = jest.fn();
-    const r = renderSigning({ onError });
-    ReactTestRenderer.act(() => simulateRawWebViewMessage('not json'));
-    expect(has(r, 'signing-webview')).toBe(true);
-    expect(onError).not.toHaveBeenCalled();
-    err.mockRestore();
-  });
-});
-
-describe('restart / retry', () => {
-  it('restarts via a restartable source and re-enters signing', async () => {
+  it('session_timeout → restart button, which restarts the source', async () => {
     const source = makeRestartable();
     const r = render(
       <ESignature
@@ -502,6 +278,8 @@ describe('restart / retry', () => {
     ReactTestRenderer.act(() =>
       simulateWebViewMessage({ event: 'session_timeout' }),
     );
+    expect(has(r, 'restart-button')).toBe(true);
+    expect(text(r)).toContain('Restart');
     await ReactTestRenderer.act(async () => {
       press(r, 'restart-button');
       await flush();
@@ -510,86 +288,7 @@ describe('restart / retry', () => {
     expect(has(r, 'signing-webview')).toBe(true);
   });
 
-  it('retry from a generic error returns to idle', () => {
-    const r = render(
-      <ESignature
-        {...defaultProps}
-        source={makeSource()}
-        __testInitialStatus="signing"
-        __testSession={okSession}
-      />,
-    );
-    ReactTestRenderer.act(() =>
-      simulateWebViewMessage({ event: 'exception', message: 'x' }),
-    );
-    ReactTestRenderer.act(() => press(r, 'retry-button'));
-    expect(has(r, 'sign-document-button')).toBe(true);
-  });
-
-  it('restart on a non-restartable source falls back to retry (idle)', () => {
-    // Public/WebForms sources aren't restartable; a session_timeout still
-    // shows the restart button, but pressing it resets to idle.
-    const r = render(
-      <ESignature
-        {...defaultProps}
-        source={makeSource()}
-        __testInitialStatus="signing"
-        __testSession={okSession}
-      />,
-    );
-    ReactTestRenderer.act(() =>
-      simulateWebViewMessage({ event: 'session_timeout' }),
-    );
-    ReactTestRenderer.act(() => press(r, 'restart-button'));
-    expect(has(r, 'sign-document-button')).toBe(true);
-  });
-
-  it('shows an error when restart rejects', async () => {
-    const source = makeRestartable({
-      restart: jest.fn().mockRejectedValue({ code: 'RESTART_FAILED' }),
-    });
-    const onError = jest.fn();
-    const r = render(
-      <ESignature
-        {...defaultProps}
-        onError={onError}
-        source={source}
-        __testInitialStatus="signing"
-        __testSession={okSession}
-      />,
-    );
-    ReactTestRenderer.act(() =>
-      simulateWebViewMessage({ event: 'session_timeout' }),
-    );
-    await ReactTestRenderer.act(async () => {
-      press(r, 'restart-button');
-      await flush();
-    });
-    expect(onError).toHaveBeenCalledWith(
-      expect.objectContaining({ code: 'RESTART_FAILED' }),
-    );
-  });
-});
-
-describe('offline recovery', () => {
-  it('re-checking while online returns to idle', async () => {
-    const r = render(
-      <ESignature
-        {...defaultProps}
-        source={makeSource()}
-        __testInitialStatus="offline"
-      />,
-    );
-    setMockNetworkState(true);
-    await ReactTestRenderer.act(async () => {
-      press(r, 'check-connection-button');
-      await flush();
-    });
-    expect(has(r, 'sign-document-button')).toBe(true);
-  });
-
-  it('re-checking while still offline stays offline', async () => {
-    setMockNetworkState(false);
+  it('check-connection returns to idle when online', async () => {
     const r = render(
       <ESignature
         {...defaultProps}
@@ -601,7 +300,7 @@ describe('offline recovery', () => {
       press(r, 'check-connection-button');
       await flush();
     });
-    expect(has(r, 'offline-text')).toBe(true);
+    expect(has(r, 'sign-document-button')).toBe(true);
   });
 
   it('shows a transient "Checking..." disabled state while verifying', async () => {
@@ -621,7 +320,8 @@ describe('offline recovery', () => {
     );
 
     ReactTestRenderer.act(() => press(r, 'check-connection-button'));
-    expect(JSON.stringify(r.toJSON())).toContain('Checking...');
+    expect(text(r)).toContain('Checking...');
+    expect(styleOf(r, 'check-connection-button').opacity).toBe(0.6);
 
     await ReactTestRenderer.act(async () => {
       resolveFetch({ isConnected: true, isInternetReachable: true });
@@ -631,46 +331,115 @@ describe('offline recovery', () => {
   });
 });
 
-describe('cancel from idle', () => {
-  it('calls onCancel', () => {
-    const onCancel = jest.fn();
+describe('theming', () => {
+  it('defaults to the iOS blue primary button', () => {
+    const r = render(<ESignature {...defaultProps} source={makeSource()} />);
+    expect(styleOf(r, 'sign-document-button').backgroundColor).toBe('#007AFF');
+  });
+
+  it('theme.primaryColor recolors the sign button, the cancel text, and the spinner', () => {
+    const theme = { primaryColor: '#F7931A', primaryTextColor: '#000' };
+    const r = render(
+      <ESignature {...defaultProps} source={makeSource()} theme={theme} />,
+    );
+    expect(styleOf(r, 'sign-document-button').backgroundColor).toBe('#F7931A');
+    const cancelText = nodesByTestId(r, 'cancel-button')[0].findByType(Text);
+    expect(StyleSheet.flatten(cancelText.props.style).color).toBe('#F7931A');
+    const signText = nodesByTestId(r, 'sign-document-button')[0].findByType(
+      Text,
+    );
+    expect(StyleSheet.flatten(signText.props.style).color).toBe('#000');
+
+    const loading = render(
+      <ESignature
+        {...defaultProps}
+        source={makeSource()}
+        theme={theme}
+        __testInitialStatus="loading"
+      />,
+    );
+    expect(nodesByTestId(loading, 'loading-indicator')[0].props.color).toBe(
+      '#F7931A',
+    );
+  });
+
+  it('styles.button wins over the theme', () => {
     const r = render(
       <ESignature
         {...defaultProps}
-        onCancel={onCancel}
         source={makeSource()}
+        theme={{ primaryColor: '#F7931A' }}
+        styles={{ button: { backgroundColor: '#123456', borderRadius: 0 } }}
       />,
     );
-    ReactTestRenderer.act(() => press(r, 'cancel-button'));
-    expect(onCancel).toHaveBeenCalledTimes(1);
+    const style = styleOf(r, 'sign-document-button');
+    expect(style.backgroundColor).toBe('#123456');
+    expect(style.borderRadius).toBe(0);
+  });
+
+  it('labels override the built-in copy, with label as the sign fallback', () => {
+    const r = render(
+      <ESignature
+        {...defaultProps}
+        source={makeSource()}
+        label="Sign the agreement"
+        labels={{ subtitle: 'Bitte unterschreiben', cancel: 'Abbrechen' }}
+      />,
+    );
+    expect(text(r)).toContain('Sign the agreement');
+    expect(text(r)).toContain('Bitte unterschreiben');
+    expect(text(r)).toContain('Abbrechen');
+    expect(text(r)).not.toContain('Review and sign your document');
   });
 });
 
-describe('lifecycle', () => {
-  it('clears the pending success timeout on unmount', () => {
+describe('hook-only usage', () => {
+  // A host that ignores the default UI and renders its own buttons + WebView
+  const CustomSigning = (options: UseESignatureOptions) => {
+    const { status, sign, webViewProps } = useESignature(options);
+    if (webViewProps) {
+      return <WebView {...webViewProps} testID="custom-webview" />;
+    }
+    return (
+      <View>
+        <Text testID="custom-status">{status}</Text>
+        <TouchableOpacity testID="custom-sign" onPress={sign}>
+          <Text>Go</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  it('drives idle → signing → complete → onComplete with no ESignature', async () => {
     jest.useFakeTimers();
     const onComplete = jest.fn();
     const r = render(
-      <ESignature
+      <CustomSigning
         {...defaultProps}
         onComplete={onComplete}
         source={makeSource()}
-        __testInitialStatus="signing"
-        __testSession={okSession}
+        successDelayMs={10}
       />,
     );
+    expect(has(r, 'sign-document-button')).toBe(false);
+    expect(text(r)).toContain('idle');
+
+    await ReactTestRenderer.act(async () => {
+      press(r, 'custom-sign');
+      await Promise.resolve();
+    });
+    expect(has(r, 'custom-webview')).toBe(true);
+
     ReactTestRenderer.act(() =>
       simulateWebViewMessage({ event: 'signing_complete' }),
     );
-    ReactTestRenderer.act(() => r.unmount());
-    ReactTestRenderer.act(() => jest.advanceTimersByTime(1500));
-    expect(onComplete).not.toHaveBeenCalled();
+    expect(text(r)).toContain('success');
+    ReactTestRenderer.act(() => jest.advanceTimersByTime(10));
+    expect(onComplete).toHaveBeenCalledWith({
+      envelopeId: 'env-1',
+      status: 'completed',
+    });
     jest.useRealTimers();
-  });
-
-  it('unmounts cleanly when no success timeout is pending', () => {
-    const r = render(<ESignature {...defaultProps} source={makeSource()} />);
-    expect(() => ReactTestRenderer.act(() => r.unmount())).not.toThrow();
   });
 });
 

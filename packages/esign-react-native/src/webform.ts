@@ -8,11 +8,19 @@
 //   import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/webform';
 
 export { ESignature, getErrorMessage } from './ESignature';
+export { useESignature } from './useESignature';
 export type {
   ESignatureProps,
   ESignatureStatus,
   ESignatureError,
   ESignatureResult,
+  ESignatureTheme,
+  ESignatureStyles,
+  ESignatureStyleKey,
+  ESignatureLabels,
+  ESignatureWebViewProps,
+  UseESignatureOptions,
+  UseESignatureResult,
   RecipientData,
 } from './types';
 

@@ -32,8 +32,10 @@ esign/
 │       ├── src/
 │       │   ├── index.ts           # Public API (full; re-exports core) ⭐
 │       │   ├── webform.ts         # Apollo-free entry (./webform subpath) ⭐
-│       │   ├── ESignature.tsx     # Signing flow component (source-driven) ⭐
-│       │   ├── types.ts           # Props/status/error types
+│       │   ├── useESignature.ts   # Headless signing state machine (hook) ⭐
+│       │   ├── ESignature.tsx     # Default UI over the hook (source-driven) ⭐
+│       │   ├── theme.ts           # Base styles/copy + theme/styles/labels resolvers
+│       │   ├── types.ts           # Props/hook/theme/status/error types
 │       │   └── __tests__/         # incl. webform-entry Apollo-free guard
 │       │
 │       ├── __mocks__/             # webview + netinfo mocks (shared with demo)
@@ -44,7 +46,9 @@ esign/
 │   └── packages/esign-react/
 │       ├── src/                   # Same public API as the RN package:
 │       │   ├── index.ts           #   ESignature (iframe) over the core
-│       │   ├── ESignature.tsx
+│       │   ├── useESignature.ts   #   Headless hook (embed: iframe | mount)
+│       │   ├── ESignature.tsx     #   Default UI over the hook
+│       │   ├── theme.ts           #   Base styles/copy + theme/styles/labels resolvers
 │       │   ├── docusignWebForms.ts# DocuSign.js SDK source (web-only)
 │       │   └── types.ts
 │       ├── tsup.config.ts         # ESM + CJS + d.ts build

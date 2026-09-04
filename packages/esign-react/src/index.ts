@@ -17,11 +17,19 @@
 // @blinkbitcoin/esign-core (shared with the RN package) and are re-exported.
 
 export { ESignature, getErrorMessage, getApolloErrorCode } from './ESignature';
+export { useESignature } from './useESignature';
 export type {
   ESignatureProps,
   ESignatureStatus,
   ESignatureError,
   ESignatureResult,
+  ESignatureTheme,
+  ESignatureStyles,
+  ESignatureStyleKey,
+  ESignatureLabels,
+  ESignatureEmbed,
+  UseESignatureOptions,
+  UseESignatureResult,
   RecipientData,
 } from './types';
 

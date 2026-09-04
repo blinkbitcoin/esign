@@ -17,5 +17,11 @@ export const WEBFORM_INSTANCE_URL = `${backendOrigin}/webform/instance`;
 // Signing mode, toggled at bundle time by ESIGN_MODE ('proxy' | 'webform').
 // proxy   → backend creates an envelope (GraphQL)
 // webform → DocuSign Web Forms instance minted via POST /webform/instance
-export const ESIGN_MODE: 'proxy' | 'webform' =
-  process.env.ESIGN_MODE === 'webform' ? 'webform' : 'proxy';
+export type EsignMode = 'proxy' | 'webform';
+
+// ESIGN_MODE is inlined at bundle time (babel.config.js), so the value below
+// is a literal in the bundle; the resolver is exported to keep it testable.
+export const resolveEsignMode = (value: string | undefined): EsignMode =>
+  value === 'webform' ? 'webform' : 'proxy';
+
+export const ESIGN_MODE: EsignMode = resolveEsignMode(process.env.ESIGN_MODE);

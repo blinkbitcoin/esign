@@ -1,0 +1,144 @@
+/**
+ * theme resolvers - how a host's theme / styles / labels layer onto the
+ * default ESignature look. Precedence: base < theme < styles[key].
+ */
+
+import { StyleSheet } from 'react-native';
+import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
+
+import {
+  DEFAULT_LABELS,
+  baseStyles,
+  resolveLabels,
+  resolveStyles,
+} from '../theme';
+
+import type {
+  ESignatureLabels,
+  ESignatureStyleKey,
+  ESignatureTheme,
+} from '../types';
+
+const flat = (style: StyleProp<ViewStyle | TextStyle>): TextStyle =>
+  StyleSheet.flatten(style) as TextStyle;
+
+const STYLE_KEYS: ESignatureStyleKey[] = [
+  'container',
+  'webviewContainer',
+  'webview',
+  'title',
+  'subtitle',
+  'button',
+  'buttonText',
+  'buttonDisabled',
+  'cancelButton',
+  'cancelButtonText',
+  'loadingText',
+  'successText',
+  'errorText',
+  'errorMessage',
+  'offlineText',
+  'offlineIcon',
+];
+
+const FULL_THEME: Required<ESignatureTheme> = {
+  primaryColor: '#111111',
+  primaryTextColor: '#222222',
+  mutedTextColor: '#333333',
+  successColor: '#444444',
+  errorColor: '#555555',
+  warningColor: '#666666',
+};
+
+describe('resolveStyles', () => {
+  it('with no theme or styles resolves to the base styles for every key', () => {
+    const resolved = resolveStyles();
+    for (const key of STYLE_KEYS) {
+      expect(flat(resolved[key])).toEqual(flat(baseStyles[key]));
+    }
+  });
+
+  it('keeps the default iOS blue on the primary and cancel buttons', () => {
+    const resolved = resolveStyles();
+    expect(flat(resolved.button).backgroundColor).toBe('#007AFF');
+    expect(flat(resolved.cancelButtonText).color).toBe('#007AFF');
+  });
+
+  it.each([
+    ['button', 'backgroundColor', FULL_THEME.primaryColor],
+    ['cancelButtonText', 'color', FULL_THEME.primaryColor],
+    ['buttonText', 'color', FULL_THEME.primaryTextColor],
+    ['subtitle', 'color', FULL_THEME.mutedTextColor],
+    ['loadingText', 'color', FULL_THEME.mutedTextColor],
+    ['errorMessage', 'color', FULL_THEME.mutedTextColor],
+    ['offlineText', 'color', FULL_THEME.mutedTextColor],
+    ['successText', 'color', FULL_THEME.successColor],
+    ['errorText', 'color', FULL_THEME.errorColor],
+    ['offlineIcon', 'color', FULL_THEME.warningColor],
+  ] as const)('theme colors %s.%s', (key, prop, expected) => {
+    const resolved = resolveStyles(FULL_THEME);
+    expect(flat(resolved[key])[prop]).toBe(expected);
+  });
+
+  it('a partial theme leaves the other colors at their defaults', () => {
+    const resolved = resolveStyles({ primaryColor: '#F7931A' });
+    expect(flat(resolved.button).backgroundColor).toBe('#F7931A');
+    expect(flat(resolved.buttonText).color).toBe('#fff');
+    expect(flat(resolved.successText).color).toBe('#1E7E34');
+  });
+
+  it('per-element styles win over the theme and apply to every key', () => {
+    const overrides = Object.fromEntries(
+      STYLE_KEYS.map(key => [key, { marginTop: 42 }]),
+    );
+    const resolved = resolveStyles(FULL_THEME, {
+      ...overrides,
+      button: { backgroundColor: '#ABCDEF', marginTop: 42 },
+    });
+    expect(flat(resolved.button).backgroundColor).toBe('#ABCDEF');
+    for (const key of STYLE_KEYS) {
+      expect(flat(resolved[key]).marginTop).toBe(42);
+    }
+  });
+});
+
+describe('resolveLabels', () => {
+  it('uses the defaults with label as title and sign', () => {
+    expect(resolveLabels('Sign Document')).toEqual({
+      ...DEFAULT_LABELS,
+      title: 'Sign Document',
+      sign: 'Sign Document',
+    });
+  });
+
+  it('every key can be overridden', () => {
+    const all: Required<ESignatureLabels> = {
+      title: 't',
+      subtitle: 'st',
+      sign: 's',
+      cancel: 'c',
+      loading: 'l',
+      signingTitle: 'sit',
+      signingSubtitle: 'sis',
+      success: 'su',
+      errorTitle: 'et',
+      errorFallback: 'ef',
+      retry: 'r',
+      restart: 'rs',
+      offline: 'o',
+      checkConnection: 'cc',
+      checking: 'ch',
+    };
+    expect(resolveLabels('ignored', all)).toEqual(all);
+  });
+
+  it('an explicit undefined keeps the default rather than blanking it', () => {
+    const resolved = resolveLabels('Sign', {
+      cancel: undefined,
+      retry: 'Again',
+    });
+    expect(resolved.cancel).toBe('Cancel');
+    expect(resolved.retry).toBe('Again');
+    expect(resolved.title).toBe('Sign');
+  });
+});

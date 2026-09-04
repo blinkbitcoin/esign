@@ -2,7 +2,7 @@
 
 **Parts:** `packages/esign-react-native` (the product, over `packages/esign-core`) + `examples/react-native-demo` (integration host)
 **Type:** Publishable React Native library with demo app
-**Updated:** 2026-09-01
+**Updated:** 2026-09-04
 
 ## Technology Stack
 
@@ -23,10 +23,14 @@
 ## Architecture Pattern
 
 **Provider-agnostic component over a `SigningSource` strategy** (the
-abstraction lives in `@blinkbitcoin/esign-core`). The component never
-talks to Apollo/DocuSign directly - a source owns URL acquisition and the
-event protocol; the component owns the state machine, WebView embedding,
-offline handling, and UX.
+abstraction lives in `@blinkbitcoin/esign-core`). Nothing here talks to
+Apollo/DocuSign directly - a source owns URL acquisition and the event
+protocol. The **`useESignature` hook owns the state machine** (status
+transitions, offline handling, session-expiry restart, the success delay)
+and hands back the WebView props for the active session; the
+**`ESignature` component is the default UI** over that hook (theme /
+styles / labels for the built-in screens). A host that wants its own
+screens uses the hook directly.
 
 ```
 App.tsx (host)
@@ -34,10 +38,11 @@ App.tsx (host)
 │     createProxySigningSource    (GraphQL envelope; Apollo; restartable)
 │     createWebFormsSource        (DocuSign Web Forms; backend mints URL)
 │     createPublicUrlSource       (published public form URL; no backend)
-└── ESignature Component (source-driven)
-    ├── State Machine (idle → loading → signing → success/error/offline)
-    ├── source.start()/restart() for URL acquisition
-    └── WebView → postMessage → source.interpret() → normalized events
+└── ESignature Component (default UI; theme / styles / labels)
+    └── useESignature hook (headless; also usable on its own)
+        ├── State Machine (idle → loading → signing → success/error/offline)
+        ├── source.start()/restart() for URL acquisition
+        └── webViewProps → WebView → postMessage → source.interpret() → normalized events
 ```
 
 The state machine end to end, including offline handling and session
@@ -59,20 +64,39 @@ packages/esign-core/src/       # platform-agnostic (shared with web)
 packages/esign-react-native/src/
 ├── index.ts             # Public API (re-exports core; needs Apollo peers)
 ├── webform.ts           # Apollo-free entry (./webform subpath, guard-tested)
-├── ESignature.tsx       # Component with state machine (WebView)
-├── types.ts             # Props, status, and error types
-└── __tests__/           # incl. webform-entry Apollo-free guard
+├── useESignature.ts     # Headless state machine (status, actions, webViewProps)
+├── ESignature.tsx       # Default UI over the hook (WebView + built-in screens)
+├── theme.ts             # Base styles/copy + theme / styles / labels resolvers
+├── types.ts             # Props, hook options/result, theme, status, and error types
+└── __tests__/           # hook, component, theme; webform-entry Apollo-free guard
 ```
 
 **Props Interface:**
 ```typescript
-interface ESignatureProps {
+interface UseESignatureOptions {
   source: SigningSource;   // createProxySigningSource / createWebFormsSource / createPublicUrlSource
-  label?: string;          // idle title + button, default "Sign Document"
   onComplete: (result: { envelopeId?: string; status: string }) => void;
   onError: (error: { code: string; message: string }) => void;
   onCancel: () => void;
   successDelayMs?: number; // success screen duration before onComplete
+}
+
+interface ESignatureProps extends UseESignatureOptions {
+  label?: string;            // idle title + button, default "Sign Document"
+  theme?: ESignatureTheme;   // primaryColor, primaryTextColor, mutedTextColor, successColor, errorColor, warningColor
+  styles?: ESignatureStyles; // per-element overrides keyed by ESignatureStyleKey (win over theme)
+  labels?: ESignatureLabels; // copy overrides; title/sign default to `label`
+}
+
+// What the hook returns (everything the default UI renders comes from here)
+interface UseESignatureResult {
+  status: ESignatureStatus;              // idle | loading | signing | success | error | offline
+  error: ESignatureError | null;
+  signingUrl: string | null;
+  isSessionExpired: boolean;             // offer restart, not retry
+  isCheckingConnection: boolean;
+  sign / cancel / retry / restart / checkConnection;
+  webViewProps: ESignatureWebViewProps | null; // spread onto a WebView while signing
 }
 ```
 
@@ -112,7 +136,13 @@ See [../integration/consuming.md](../integration/consuming.md).
 ## Testing Strategy
 
 ### Unit Tests
-- Component tested against fake `SigningSource`s (no Apollo mocks needed)
+- Hook tests (`useESignature.test.tsx`): the state machine against fake
+  `SigningSource`s (no Apollo mocks needed) - transitions, offline,
+  session-expiry restart, success delay, unmount safety, `webViewProps`
+- Component tests (`ESignature.test.tsx`): the default UI renders the right
+  screen/testIDs per status and wires the hook's actions to its buttons
+- Theme tests (`theme.test.tsx`): `theme` / `styles` / `labels` precedence
+  and that the default look/copy is unchanged when nothing is passed
 - Per-source behavior tested in core (`signing/__tests__/`)
 - Apollo-free guard: import-graph walk from each `webform` entry
 
@@ -204,9 +234,11 @@ Not shipped, but part of the component contract
 
 ## Design Elements
 
-- **Styling:** `StyleSheet.create()` per component; no shared theme module
+- **Styling:** base `StyleSheet` + default copy in `theme.ts`; hosts
+  override via the `theme` (colors), `styles` (per element), and `labels`
+  (copy) props on `ESignature` - precedence base < theme < styles
 - **Accessibility:** every interactive element has `accessibilityRole` +
   `accessibilityLabel`; status colors chosen for WCAG AA contrast
   (success `#1E7E34`, error `#C82333`, warning `#F0AD4E`)
 - **Safe areas:** `react-native-safe-area-context` (`useSafeAreaInsets`)
-- **Primary action color:** iOS blue `#007AFF`
+- **Primary action color:** iOS blue `#007AFF` (`theme.primaryColor` to change)

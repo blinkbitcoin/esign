@@ -27,6 +27,6 @@ module.exports = {
   // Demo app: unit-coverage floor at current level; the real coverage is
   // the Maestro E2E suites.
   coverageThreshold: {
-    global: { statements: 82, branches: 63, functions: 90, lines: 81 },
+    global: { statements: 100, branches: 100, functions: 100, lines: 100 },
   },
 };

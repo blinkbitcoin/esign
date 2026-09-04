@@ -15,12 +15,20 @@
 // @blinkbitcoin/esign-core and are re-exported here for convenience.
 
 export { ESignature, getErrorMessage } from './ESignature';
+export { useESignature } from './useESignature';
 export { getApolloErrorCode } from '@blinkbitcoin/esign-core';
 export type {
   ESignatureProps,
   ESignatureStatus,
   ESignatureError,
   ESignatureResult,
+  ESignatureTheme,
+  ESignatureStyles,
+  ESignatureStyleKey,
+  ESignatureLabels,
+  ESignatureWebViewProps,
+  UseESignatureOptions,
+  UseESignatureResult,
   RecipientData,
 } from './types';
 

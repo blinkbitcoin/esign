@@ -20,8 +20,8 @@ libraries, and one demo app per platform for manual and E2E testing.
 ├── apps/api/                    # 🖥️ THE SERVICE (Express 5 + Apollo 5 + Knex/Postgres)
 ├── packages/
 │   ├── esign-core/              # 📦 shared core: SigningSource abstraction, Apollo factory, GraphQL codegen
-│   ├── esign-react-native/      # 📦 THE PRODUCT - RN (`ESignature` over a WebView)
-│   └── esign-react/             # 📦 THE PRODUCT - web (`ESignature` over an iframe)
+│   ├── esign-react-native/      # 📦 THE PRODUCT - RN (`ESignature` + `useESignature` over a WebView)
+│   └── esign-react/             # 📦 THE PRODUCT - web (`ESignature` + `useESignature` over an iframe)
 ├── examples/
 │   ├── react-native-demo/       # 📱 RN integration demo (Maestro E2E)
 │   └── react-demo/              # 🌐 Web integration demo (Vite, Playwright E2E)

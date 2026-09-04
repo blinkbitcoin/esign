@@ -50,7 +50,7 @@ e2e-backend-up` starts the mock-provider backend), `make db-up/migrate/backend`,
 ```bash
 npm ci                       # Install all workspaces
 npm test                     # All test suites: core + RN + web libraries, both demos (Jest), backend (Vitest)
-npm run test:coverage        # Coverage runs - 100% is the enforced baseline on packages + backend
+npm run test:coverage        # Coverage runs - 100% is the enforced baseline on every workspace
 npm run typecheck            # tsc across all workspaces
 npm run lint                 # ESLint (mobile code) + Biome lint (backend)
 npm run format               # Biome format (all workspaces)
@@ -109,7 +109,9 @@ npm run migrate:test         # Same against the .env.test database
   Apollo client factory, the GraphQL operations + generated types) lives in
   **`@blinkbitcoin/esign-core`** (`packages/esign-core/`), depended on
   and re-exported by both the RN and web packages. Each platform package
-  contains only its `ESignature` component (+ web-only `docusignWebForms.ts`).
+  contains its `ESignature` component (the default UI), the headless
+  `useESignature` hook (the state machine), and `theme.ts` (+ web-only
+  `docusignWebForms.ts`).
   Codegen runs in core (`packages/esign-core/src/generated/`); never hand-edit
   or duplicate the generated types in a platform package.
 

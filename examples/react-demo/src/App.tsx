@@ -15,6 +15,7 @@ import {
 
 import { apolloClient, getAuthToken } from './apollo';
 import { ESIGN_MODE, WEBFORM_INSTANCE_URL, PUBLIC_FORM_URL } from './config';
+import { HookSigning } from './HookSigning';
 
 export const DEMO_RECIPIENT = { name: 'Test User', email: 'test@example.com' };
 
@@ -84,8 +85,13 @@ export const makeOutcomeHandlers = (setOutcome: (o: Outcome) => void) => ({
   onCancel: () => setOutcome({ kind: 'cancelled' }),
 });
 
+// Two ways to host the flow: the library's default UI (the E2E target) or
+// the app's own UI over the useESignature hook (HookSigning.tsx)
+type UiMode = 'default' | 'hook';
+
 export const App: React.FC = () => {
   const [outcome, setOutcome] = useState<Outcome>(null);
+  const [uiMode, setUiMode] = useState<UiMode>('default');
   const handlers = makeOutcomeHandlers(setOutcome);
 
   // Source for the configured mode (proxy envelope or DocuSign Web Forms).
@@ -102,7 +108,22 @@ export const App: React.FC = () => {
         }}
       >
         <h1>@blinkbitcoin/esign-react demo ({ESIGN_MODE})</h1>
-        <ESignature source={source} {...handlers} />
+        <p>
+          <button
+            type="button"
+            data-testid="ui-mode-button"
+            onClick={() =>
+              setUiMode(m => (m === 'default' ? 'hook' : 'default'))
+            }
+          >
+            {uiMode === 'default' ? 'Use hook UI' : 'Use default UI'}
+          </button>
+        </p>
+        {uiMode === 'hook' ? (
+          <HookSigning source={source} {...handlers} />
+        ) : (
+          <ESignature source={source} {...handlers} />
+        )}
         {outcome && (
           <p data-testid="outcome" role="status">
             {outcomeText(outcome)}

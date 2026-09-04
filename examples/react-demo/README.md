@@ -23,12 +23,13 @@ passthrough treats as the userId.
 |------|-------|
 | `src/App.tsx` | Minimal host wiring + outcome reporting around the component |
 | `src/apollo.ts` | `createESignApolloClient({ uri, getAuthToken })` — the host owns both |
+| `src/HookSigning.tsx` | Hook-driven custom signing UI (`useESignature` + the host's own buttons and iframe); toggled from the toolbar, default UI stays the E2E target |
 | `vite.config.ts` | Resolves the library to source while serving (dev, vitest) and to its built `dist` when building - the E2E suites build + preview, so they test what a consumer installs |
 
 ## Testing
 
 ```sh
-make test          # Vitest (jsdom) unit tests (5); coverage floors enforced - E2E is the real coverage
+make test          # Vitest (jsdom) unit tests (22); 100% coverage enforced - E2E drives the real iframe
 make e2e           # Playwright browser E2E in real Chromium (proxy mode;
                    #   needs the test DB and the libraries built - or run
                    #   `make e2e-web` at the repo root, which does both)

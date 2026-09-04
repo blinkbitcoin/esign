@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 748" width="400" height="748" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" role="img" aria-label="Recolor and relabel it">
+<rect width="400" height="748" fill="#FFFFFF"/>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="#1C2230"/></marker>
+<marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="#B8BFC9"/></marker>
+</defs>
+<text x="20" y="30" font-size="11" font-weight="600" letter-spacing="0.08em" fill="#5B6472">2 · THEMED</text>
+<text x="20" y="54" font-size="17" font-weight="700" fill="#1C2230">Recolor and relabel it</text>
+<text x="20" y="74" font-size="12" fill="#5B6472">Same screens, your colors and copy.</text>
+<g transform="translate(110 96)">
+<rect x="0" y="0" width="180" height="300" rx="22" fill="#1C2230"/>
+<rect x="7" y="7" width="166" height="286" rx="16" fill="#FFFFFF"/>
+<rect x="66" y="12" width="48" height="6" rx="3" fill="#1C2230"/>
+<g text-anchor="middle">
+<text x="90" y="128" font-size="11" font-weight="700" fill="#1C2230">Sign your loan agreement</text>
+<text x="90" y="146" font-size="9" fill="#666666">Review and sign your document</text>
+<rect x="35" y="160" width="110" height="28" rx="3" fill="#F7931A"/>
+<text x="90" y="178" font-size="10" font-weight="700" fill="#1C2230">Sign now</text>
+<text x="90" y="212" font-size="10" fill="#F7931A">Cancel</text></g>
+</g>
+<rect x="20" y="420" width="360" height="42" rx="4" fill="#FEF4E8" stroke="#F7931A" stroke-width="1.5"/>
+<text x="32" y="438" font-size="12.5" font-weight="600" fill="#1C2230">Host app</text>
+<text x="32" y="453" font-size="10.5" fill="#5B6472">passes theme · styles · labels</text>
+<line x1="200" y1="464" x2="200" y2="478" stroke="#1C2230" stroke-width="1" marker-end="url(#a)"/>
+<rect x="20" y="480" width="360" height="42" rx="4" fill="#E6F2FF" stroke="#007AFF" stroke-width="1.5"/>
+<rect x="20" y="480" width="6" height="42" rx="2" fill="#F7931A"/>
+<text x="36" y="498" font-size="12.5" font-weight="600" fill="#1C2230">ESignature</text>
+<text x="36" y="513" font-size="10.5" fill="#5B6472">same screens, host colors and copy</text>
+<line x1="200" y1="524" x2="200" y2="538" stroke="#1C2230" stroke-width="1" marker-end="url(#a)"/>
+<rect x="20" y="540" width="360" height="42" rx="4" fill="#E6F2FF" stroke="#007AFF" stroke-width="1.5"/>
+<text x="32" y="558" font-size="12.5" font-weight="600" fill="#1C2230">useESignature</text>
+<text x="32" y="573" font-size="10.5" fill="#5B6472">state machine: offline, restart, success delay</text>
+<line x1="200" y1="584" x2="200" y2="598" stroke="#1C2230" stroke-width="1" marker-end="url(#a)"/>
+<rect x="20" y="600" width="360" height="42" rx="4" fill="#E6F2FF" stroke="#007AFF" stroke-width="1.5"/>
+<text x="32" y="618" font-size="12.5" font-weight="600" fill="#1C2230">WebView / iframe</text>
+<text x="32" y="633" font-size="10.5" fill="#5B6472">placed by ESignature</text>
+<line x1="200" y1="644" x2="200" y2="658" stroke="#1C2230" stroke-width="1" marker-end="url(#a)"/>
+<rect x="20" y="660" width="360" height="42" rx="4" fill="#E6F2FF" stroke="#007AFF" stroke-width="1.5"/>
+<text x="32" y="678" font-size="12.5" font-weight="600" fill="#1C2230">SigningSource</text>
+<text x="32" y="693" font-size="10.5" fill="#5B6472">proxy · Web Forms · public URL</text>
+
+<line x1="20" y1="708" x2="380" y2="708" stroke="#E3E6EB" stroke-width="1"/>
+<g transform="translate(20 732)" font-size="10.5" fill="#5B6472">
+<rect x="0" y="-9" width="14" height="10" rx="2" fill="#E6F2FF" stroke="#007AFF" stroke-width="1.5"/><text x="20" y="0">library owns</text>
+<rect x="100" y="-9" width="14" height="10" rx="2" fill="#FEF4E8" stroke="#F7931A" stroke-width="1.5"/><text x="120" y="0">host owns</text>
+</g>
+</svg>
