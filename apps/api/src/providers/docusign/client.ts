@@ -105,6 +105,8 @@ const createJwtAssertion = (integrationKey: string, privateKey: string, userId: 
   const encodedPayload = base64UrlEncode(JSON.stringify(payload));
   const signingInput = `${encodedHeader}.${encodedPayload}`;
 
+  // JWT-grant signature (RS256), not a password hash: the payload carries the
+  // OAuth host as the `aud` claim, which is why static analysis flags it.
   const sign = createSign('RSA-SHA256');
   sign.update(signingInput);
   const signature = sign

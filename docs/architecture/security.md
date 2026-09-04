@@ -44,7 +44,10 @@ existence oracle). `providerEnvelopeId` is never returned to clients.
 
 ## Transport & abuse controls (`src/app.ts`)
 
-- **helmet** baseline headers on all responses (nosniff, HSTS, etc.)
+- **helmet** baseline headers on all responses (nosniff, HSTS, etc.) including
+  a fail-closed default CSP (`default-src 'none'; frame-ancestors 'none'`);
+  the signing pages replace it per response (below), and outside production
+  `GET /graphql` drops it so Apollo's landing page can load
 - **Rate limiting**: 100 req/min on `/graphql`, 120 req/min on `/webhook/esign`, 60 req/min on `/webform/instance`
 - **CORS**: allow-list from `CORS_ALLOWED_ORIGINS` (comma-separated); no
   cross-origin access by default
