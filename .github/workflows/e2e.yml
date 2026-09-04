@@ -136,7 +136,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator/ReactNativeSandbox.app
-          key: ios-app-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-deps.outputs.hash }}-${{ hashFiles('examples/react-native-demo/ios/**', 'examples/react-native-demo/app.json', 'examples/react-native-demo/Gemfile.lock') }}
+          key: ios-app-v8-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-deps.outputs.hash }}-${{ hashFiles('examples/react-native-demo/ios/**', 'examples/react-native-demo/app.json', 'examples/react-native-demo/Gemfile.lock') }}
 
       # Pods need node_modules (the Podfile resolves react-native from it).
       - name: Setup Node.js
