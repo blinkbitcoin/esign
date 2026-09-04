@@ -23,8 +23,10 @@ SETUP_LOG="$TMP/pg-setup.log"
 wait_for_db() {
   # The background install has no PGBIN until brew is done; poll pg_isready
   # from wherever it lands. Up to 5 min: the whole install is ~1 min warm.
+  # HOMEBREW_PREFIX is exported on the runner images; `brew --prefix` itself
+  # costs ~20 s of Ruby startup on a busy runner, so only fall back to it.
   local pgbin="" candidate
-  candidate="$(brew --prefix)/opt/postgresql@16/bin"
+  candidate="${HOMEBREW_PREFIX:-$(brew --prefix)}/opt/postgresql@16/bin"
   for i in {1..150}; do
     if [ -z "$pgbin" ] && [ -x "$candidate/pg_isready" ]; then pgbin="$candidate"; fi
     if [ -n "$pgbin" ] && "$pgbin/pg_isready" -q -h localhost -p 5433 -U test -d esign_test; then
