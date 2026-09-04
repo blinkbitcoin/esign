@@ -109,7 +109,9 @@ npm run migrate:test         # Same against the .env.test database
   Apollo client factory, the GraphQL operations + generated types) lives in
   **`@blinkbitcoin/esign-core`** (`packages/esign-core/`), depended on
   and re-exported by both the RN and web packages. Each platform package
-  contains only its `ESignature` component (+ web-only `docusignWebForms.ts`).
+  contains its `ESignature` component (the default UI), the headless
+  `useESignature` hook (the state machine), and `theme.ts` (+ web-only
+  `docusignWebForms.ts`).
   Codegen runs in core (`packages/esign-core/src/generated/`); never hand-edit
   or duplicate the generated types in a platform package.
 

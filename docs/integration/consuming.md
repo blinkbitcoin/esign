@@ -64,6 +64,7 @@ npm install --omit=peer @blinkbitcoin/esign-react-native react-native-webview @r
 ```tsx
 import {
   ESignature,
+  useESignature,          // headless alternative: same state machine, your own UI
   createWebFormsSource,   // API-embedded: your backend mints the instance URL
   createPublicUrlSource,  // OR: a published public form URL, no backend
 } from '@blinkbitcoin/esign-react-native/webform';

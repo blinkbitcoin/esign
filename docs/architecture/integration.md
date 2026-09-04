@@ -50,7 +50,9 @@ every client spot needing updates (ErrorCodes map, getErrorMessage copy).
 ### 3. Mobile WebView ↔ Signing Page: postMessage Events
 
 - **From:** the provider's embedded signing page (URL returned by the backend)
-- **To:** `ESignature.handleWebViewMessage` via `window.ReactNativeWebView.postMessage`
+- **To:** the `useESignature` hook's WebView `onMessage` handler (exposed via
+  `webViewProps`; the default `ESignature` spreads it onto its WebView) via
+  `window.ReactNativeWebView.postMessage`
 - **Protocol:** JSON `{ "event": "<name>", ... }` with events:
   `signing_complete`, `cancel`, `decline`, `session_timeout`, `exception`
 - These event names are provider-neutral; a provider whose page emits

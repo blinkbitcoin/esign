@@ -58,6 +58,71 @@ const source = createWebFormsSource({
 const source = createPublicUrlSource({ url, allowedOrigin: 'https://apps.docusign.com' });
 ```
 
+### Theming
+
+The default screens ship with the iOS-blue look. "Can we change the blue
+button?" is a one-liner: pass `theme`. `styles` overrides individual
+elements (`React.CSSProperties`), `labels` overrides copy. Precedence is
+base look < `theme` < `styles`; everything is optional and the default
+look/copy is unchanged when nothing is passed. `label` still works (it is
+the default for `labels.title` and `labels.sign`).
+
+```tsx
+<ESignature
+  source={source}
+  theme={{ primaryColor: '#F7931A', primaryTextColor: '#000' }}
+  styles={{ button: { borderRadius: 4 }, title: { fontSize: 24 } }}
+  labels={{ title: 'Sign your loan agreement', sign: 'Sign now', success: 'All done!' }}
+  onComplete={...} onError={...} onCancel={...}
+/>
+```
+
+`ESignatureTheme` keys: `primaryColor`, `primaryTextColor`, `mutedTextColor`,
+`successColor`, `errorColor`, `warningColor`. `ESignatureStyles` keys are
+listed in `ESignatureStyleKey` (`container`, `title`, `button`, `iframe`,
+…). `ESignatureLabels` covers every string the built-in screens render.
+
+### Headless usage
+
+When the built-in screens don't fit, `useESignature` runs the same state
+machine (offline check, session-expiry restart, success delay) and renders
+nothing - the host renders its own buttons and its own embed. `ESignature`
+is just one consumer of this hook.
+
+`embed` describes how to embed the active session and is `null` while no
+session is active:
+
+```ts
+type ESignatureEmbed =
+  | { kind: 'iframe'; iframeProps: { src: string; title: string } } // plain sources
+  | { kind: 'mount'; ref: React.RefCallback<HTMLDivElement> }        // DocuSign.js sources (createDocuSignWebFormsSource)
+  | null;
+```
+
+```tsx
+import { useESignature } from '@blinkbitcoin/esign-react';
+
+const {
+  status, error, isSessionExpired,
+  sign, cancel, retry, restart, checkConnection,
+  embed,
+} = useESignature({ source, onComplete, onError, onCancel });
+
+if (status === 'signing' && embed?.kind === 'iframe') {
+  return <iframe {...embed.iframeProps} style={{ width: '100%', height: 600, border: 0 }} />;
+}
+if (status === 'signing' && embed?.kind === 'mount') {
+  return <div ref={embed.ref} style={{ height: 600 }} />; // DocuSign.js mounts its own iframe here
+}
+if (status === 'error') {
+  return <button onClick={isSessionExpired ? restart : retry}>Try again</button>;
+}
+if (status === 'offline') {
+  return <button onClick={checkConnection}>Check connection</button>;
+}
+return <button onClick={sign}>Sign</button>;
+```
+
 ## Web-Specific Notes
 
 - **`allowedOrigin`** now lives on the **source** (recommended in production):
@@ -71,7 +136,9 @@ const source = createPublicUrlSource({ url, allowedOrigin: 'https://apps.docusig
 
 ## Public API
 
-Identical surface to the RN package: `ESignature`, the three
+Identical surface to the RN package: `ESignature` (with `theme` / `styles`
+/ `labels`), the headless `useESignature` hook (same result shape, with
+`embed` in place of `webViewProps`), the three
 `create*SigningSource` factories + the `SigningSource` abstraction,
 `createESignApolloClient`, `ErrorCode`/`ErrorCodes` (generated from the
 service schema), `getErrorMessage`, the GraphQL operations and their
@@ -80,7 +147,7 @@ generated types.
 ## Development (in this monorepo)
 
 ```sh
-make test        # 43 Jest (jsdom + Testing Library) tests, 100% coverage (enforced threshold)
+make test        # 89 Jest (jsdom + Testing Library) tests, 100% coverage (enforced threshold)
 make codegen     # regenerate types from ../../apps/api/schema.graphql
 make build       # tsup (ESM + CJS + types)
 ```
