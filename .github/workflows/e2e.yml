@@ -307,6 +307,14 @@ jobs:
           node-version: '24'
           cache: 'npm'
 
+      # macOS runners have no Docker - run the test database via Homebrew
+      # Postgres instead, matching docker-compose.test.yml (test/test@5433,
+      # tmpfs-equivalent: the runner is ephemeral anyway). The ~1 min install
+      # runs in the background from here so it overlaps npm ci, Maestro, the
+      # simulator pick and Metro; "Wait for test database" below joins it.
+      - name: Start test database (Homebrew Postgres, port 5433, background)
+        run: bash scripts/ci/postgres-brew.sh background
+
       - name: Install dependencies (workspace root)
         run: npm ci --prefer-offline --no-audit
 
@@ -326,17 +334,14 @@ jobs:
       - name: Pick a simulator device
         run: bash scripts/e2e/ios-simulator.sh pick
 
-      # Metro starts in the background here so its boot overlaps Postgres and
-      # the backend; it is awaited (and the bundle prewarmed) right before
+      # Metro starts in the background here so its boot overlaps the Postgres
+      # install and the backend; it is awaited (and the bundle prewarmed) right before
       # Maestro runs.
       - name: Start Metro bundler (background)
         run: bash scripts/e2e/metro-start.sh
 
-      # macOS runners have no Docker - run the test database via Homebrew
-      # Postgres instead, matching docker-compose.test.yml (test/test@5433,
-      # tmpfs-equivalent: the runner is ephemeral anyway).
-      - name: Start test database (Homebrew Postgres, port 5433)
-        run: bash scripts/ci/postgres-brew.sh
+      - name: Wait for test database (installing since checkout)
+        run: bash scripts/ci/postgres-brew.sh wait
 
       - name: Run database migrations
         run: npm run migrate:test
