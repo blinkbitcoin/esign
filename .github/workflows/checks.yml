@@ -70,10 +70,16 @@ jobs:
       # The only audit in the pipeline: every npm ci runs --no-audit because
       # npm's built-in audit call (advisories/bulk) has been seen hanging for
       # the full 5-minute fetch-timeout in every job of a run (#52). Bounded
-      # here; a dead advisory endpoint fails PRs soft and main hard.
+      # here by timeout-minutes, not by ci.yml's 60s fetch-timeout: that cap is
+      # for npm ci's cold path, and the one request this step makes is exactly
+      # the one that stalls, so it gets (nearly) the whole step budget - a
+      # stall must outlast 4.5 min to fail. audit-ci does not retry a timeout.
+      # A dead advisory endpoint fails PRs soft and main hard.
       - name: Dependency audit (known upstream issues allowlisted)
         timeout-minutes: 5
         continue-on-error: ${{ github.event_name == 'pull_request' }}
+        env:
+          NPM_CONFIG_FETCH_TIMEOUT: '270000'
         run: npx audit-ci --config audit-ci.jsonc
 
       - name: Lint GitHub Actions workflows (actionlint)
