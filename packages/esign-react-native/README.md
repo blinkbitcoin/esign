@@ -79,6 +79,16 @@ const source = createWebFormsSource({
 const source = createPublicUrlSource({ url, allowedOrigin: 'https://apps.docusign.com' });
 ```
 
+### Integration paths
+
+Same state machine in every column; the host takes over more of the screen
+from left to right.
+
+| Default | Themed | Headless |
+|---|---|---|
+| ![Drop in the component](../../docs/images/esign-path-1-default.svg) | ![Recolor and relabel it](../../docs/images/esign-path-2-themed.svg) | ![Bring your own UI](../../docs/images/esign-path-3-headless.svg) |
+| `<ESignature source={source} … />` | `theme` · `styles` · `labels` | `useESignature` + your own `WebView` |
+
 ### Theming
 
 The default screens ship with the iOS-blue look. "Can we change the blue
