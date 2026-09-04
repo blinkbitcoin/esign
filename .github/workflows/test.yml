@@ -27,7 +27,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies (workspace root)
-        run: npm ci --prefer-offline
+        run: npm ci --prefer-offline --no-audit
 
       # Coverage thresholds are enforced per workspace: 100% on the three
       # packages and the backend, current-level floors on the demo apps.
