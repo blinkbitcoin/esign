@@ -24,6 +24,11 @@ on:
         type: string
         default: macos-latest
 
+# A registry request that hangs costs one minute per attempt instead of
+# npm's default five (#52). Warm installs make no request at all.
+env:
+  NPM_CONFIG_FETCH_TIMEOUT: '60000'
+
 permissions:
   contents: read
 

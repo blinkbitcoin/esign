@@ -13,6 +13,11 @@ on:
 
 # Must not exceed the caller's (ci.yml grants contents: read). The PR title
 # and SHAs come from the event payload, so no pull-requests scope is needed.
+# A registry request that hangs costs one minute per attempt instead of
+# npm's default five (#52). Warm installs make no request at all.
+env:
+  NPM_CONFIG_FETCH_TIMEOUT: '60000'
+
 permissions:
   contents: read
 
