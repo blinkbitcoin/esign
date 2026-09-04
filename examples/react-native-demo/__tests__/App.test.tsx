@@ -39,6 +39,31 @@ test('"Start over" remounts the ESignature component', async () => {
   ).toBeGreaterThan(0);
 });
 
+test('"Use hook UI" swaps the default component for the hook-driven screen', async () => {
+  let renderer: ReactTestRenderer.ReactTestRenderer;
+  await ReactTestRenderer.act(() => {
+    renderer = ReactTestRenderer.create(<App />);
+  });
+
+  const toggle = renderer!.root.findByProps({ testID: 'ui-mode-button' });
+  await ReactTestRenderer.act(() => {
+    toggle.props.onPress();
+  });
+  expect(
+    renderer!.root.findAllByProps({ testID: 'hook-sign-button' }).length,
+  ).toBeGreaterThan(0);
+  expect(
+    renderer!.root.findAllByProps({ testID: 'sign-document-button' }).length,
+  ).toBe(0);
+
+  await ReactTestRenderer.act(() => {
+    toggle.props.onPress();
+  });
+  expect(
+    renderer!.root.findAllByProps({ testID: 'sign-document-button' }).length,
+  ).toBeGreaterThan(0);
+});
+
 test('renders with light-content status bar in dark mode', async () => {
   const colorSchemeSpy = jest
     .spyOn(RN, 'useColorScheme')

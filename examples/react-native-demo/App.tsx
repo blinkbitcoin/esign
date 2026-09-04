@@ -23,6 +23,7 @@ import {
 
 import { apolloClient } from './src/apollo';
 import { ESIGN_MODE, WEBFORM_INSTANCE_URL } from './src/config';
+import { HookSigning } from './src/HookSigning';
 import {
   ESignature,
   createProxySigningSource,
@@ -107,6 +108,10 @@ export const buildSource = (): SigningSource => {
   });
 };
 
+// Two ways to host the flow: the library's default UI (the E2E target) or
+// the app's own UI over the useESignature hook (src/HookSigning.tsx)
+type UiMode = 'default' | 'hook';
+
 function AppContent() {
   const safeAreaInsets = useSafeAreaInsets();
   const source = buildSource();
@@ -115,10 +120,29 @@ function AppContent() {
   // app: on iOS a relaunch (terminate + simctl launch) races the XCUITest
   // driver for a few seconds and reloads the dev bundle from Metro.
   const [sessionKey, setSessionKey] = useState(0);
+  const [uiMode, setUiMode] = useState<UiMode>('default');
+
+  const signingProps = {
+    source,
+    onComplete: handleSigningComplete,
+    onError: handleSigningError,
+    onCancel: handleSigningCancel,
+    successDelayMs: 4000,
+  };
 
   return (
     <View style={[styles.container, { paddingTop: safeAreaInsets.top }]}>
       <View style={styles.toolbar}>
+        <TouchableOpacity
+          onPress={() => setUiMode(m => (m === 'default' ? 'hook' : 'default'))}
+          testID="ui-mode-button"
+          accessibilityRole="button"
+          accessibilityLabel="Toggle signing UI"
+        >
+          <Text style={styles.toolbarText}>
+            {uiMode === 'default' ? 'Use hook UI' : 'Use default UI'}
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setSessionKey(k => k + 1)}
           testID="reset-button"
@@ -128,14 +152,11 @@ function AppContent() {
           <Text style={styles.toolbarText}>Start over</Text>
         </TouchableOpacity>
       </View>
-      <ESignature
-        key={sessionKey}
-        source={source}
-        onComplete={handleSigningComplete}
-        onError={handleSigningError}
-        onCancel={handleSigningCancel}
-        successDelayMs={4000}
-      />
+      {uiMode === 'hook' ? (
+        <HookSigning key={sessionKey} {...signingProps} />
+      ) : (
+        <ESignature key={sessionKey} {...signingProps} />
+      )}
     </View>
   );
 }
@@ -145,7 +166,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   toolbar: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 8,
   },

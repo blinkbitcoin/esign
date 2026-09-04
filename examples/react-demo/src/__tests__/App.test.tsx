@@ -13,6 +13,15 @@ describe('demo App', () => {
     );
   });
 
+  it('"Use hook UI" swaps the default component for the hook-driven screen', () => {
+    render(<App />);
+    fireEvent.click(screen.getByTestId('ui-mode-button'));
+    expect(screen.getByTestId('hook-sign-button')).toBeTruthy();
+    expect(screen.queryByTestId('sign-document-button')).toBeNull();
+    fireEvent.click(screen.getByTestId('ui-mode-button'));
+    expect(screen.getByTestId('sign-document-button')).toBeTruthy();
+  });
+
   it('reports cancellation through the outcome panel', () => {
     render(<App />);
     fireEvent.click(screen.getByTestId('cancel-button'));
