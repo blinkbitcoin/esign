@@ -3,11 +3,11 @@ name: Tests / E2E
 # Reusable only: ci.yml calls this for every branch (push to main, PRs,
 # releases). Concurrency is the caller's.
 #
-# The iOS job is opt-in. It needs a macOS runner, and GitHub-hosted macOS is
-# billed at 10x Linux: one ~15 min iOS run costs ~150 Linux minutes, and it
-# used to run on every push. The caller decides (repo variable / PR label,
-# see ci.yml); a skipped job costs nothing and still counts as success for
-# the caller's `needs.e2e.result`.
+# The iOS job runs by default. It needs a macOS runner; GitHub-hosted macOS is
+# free on a public repo but bills at 10x Linux on a private one (one ~15 min
+# iOS run is ~150 Linux minutes), so the caller can switch it off (repo
+# variable / PR label, see ci.yml). A skipped job costs nothing and still
+# counts as success for the caller's `needs.e2e.result`.
 #
 # Shell lives in scripts/e2e/*.sh (the E2E stack, runnable on a laptop: see
 # `make help`) and scripts/ci/*.sh (runner-only plumbing); steps here are
@@ -18,7 +18,7 @@ on:
       ios:
         description: Run the iOS simulator suite (needs a macOS runner)
         type: boolean
-        default: false
+        default: true
       ios-runner:
         description: runs-on label(s) for the iOS job (string or JSON array)
         type: string

@@ -403,23 +403,20 @@ Badges are per branch by construction: `gh-pages/badges/X/{unit,e2e,coverage}.sv
 (and a workflow badge filtered with `?branch=X`) all describe branch `X`
 and nothing else. The README shows `main`.
 
-### iOS E2E is opt-in
+### iOS E2E and the macOS runner
 
-The iOS job needs a macOS runner, and GitHub-hosted macOS is billed at 10x
-Linux (one ~15 min run is ~150 Linux minutes; on every push it exhausted the
-org's shared Actions budget). `ci.yml` therefore passes `ios: false` to
-`e2e.yml` unless one of these says otherwise; a skipped job costs nothing and
-the `E2E` badge describes what actually ran (backend, web, Android).
+The iOS job runs on every run. It needs a macOS runner, which GitHub hosts for
+free on a public repo; on a private repo macOS bills at 10x Linux (one ~15 min
+run is ~150 Linux minutes), which is why the job was opt-in before the repo
+went public. `ci.yml` passes `ios: true` to `e2e.yml` unless one of these says
+otherwise; a skipped job costs nothing and the `E2E` badge describes what
+actually ran.
 
 | Switch | Effect |
 |--------|--------|
-| Repo variable `E2E_IOS=true` | iOS runs on every run. Flip once self-hosted Apple silicon runners are registered. |
-| PR label `e2e:ios` | iOS runs for that PR only (labeling triggers a run). |
-| Repo variable `E2E_IOS_RUNNER` | `runs-on` for the iOS job, default `macos-latest`. Set to the self-hosted label(s), e.g. `["self-hosted","macOS","arm64"]`, and GitHub-hosted macOS is never used. |
-
-Re-enable recipe, no workflow edit: register the runners, set `E2E_IOS_RUNNER`
-to their label, try one PR with the `e2e:ios` label, then set `E2E_IOS=true`
-(`gh variable set E2E_IOS --body true`).
+| Repo variable `E2E_IOS=false` | Pauses iOS on every run (`gh variable set E2E_IOS --body false`; delete the variable to resume). |
+| PR label `e2e:ios` | Forces iOS for that PR while paused (labeling triggers a run). |
+| Repo variable `E2E_IOS_RUNNER` | `runs-on` for the iOS job, default `macos-latest`. Set to self-hosted label(s), e.g. `["self-hosted","macOS","arm64"]`, and GitHub-hosted macOS is never used. |
 
 All workflows run with `permissions: contents: read` (the publish job adds
 `packages: write`; the Badges and closed-PR cleanup jobs get
