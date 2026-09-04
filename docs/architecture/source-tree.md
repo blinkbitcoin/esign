@@ -56,7 +56,7 @@ esign/
 │       ├── index.html / src/main.tsx
 │       ├── src/App.tsx            # Host wiring around the web component
 │       ├── src/apollo.ts          # createESignApolloClient({uri, getAuthToken})
-│       └── vite.config.ts         # Vite + vitest; aliases lib to source
+│       └── vite.config.ts         # Vite + vitest; lib from source when serving, dist when building
 │
 ├── 📱 EXAMPLE APP (integration / E2E host)
 │   │

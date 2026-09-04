@@ -84,8 +84,9 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
 
 ## CI
 
-One pipeline per branch (`ci.yml`): Checks → Unit → E2E → Badges, then
-Publish + Verify on `main`. Docs-only PRs stop after Checks. The iOS E2E
+One pipeline per branch (`ci.yml`): Checks → Unit → E2E (incl. the one build
+of the packages, which Web tests) → Badges, then Publish (ships that build) +
+Verify on `main`. Docs-only PRs stop after Checks. The iOS E2E
 suite is opt-in (PR label `e2e:ios`, or repo variable `E2E_IOS=true`) because
 macOS runners are billed at 10x. Native E2E builds are cached on the inputs
 `scripts/native-deps-hash.sh` sees; bump the key's `v` suffix when an input it

@@ -27,11 +27,12 @@ environment variables, and troubleshooting:
   results (`scripts/status-badge.mjs`).
 - Git hooks (see [below](#git-hooks)) format, lint, and check the commit
   message locally.
-- CI (`ci.yml`) is one pipeline for every branch: unit suites with
-  coverage thresholds, all end-to-end suites (backend, browser, iOS
-  simulator, Android emulator), and on `main` the publish + registry
-  smoke. A second workflow re-checks the commit convention on the PR's
-  commits and title.
+- CI (`ci.yml`) is one pipeline for every branch: static checks, unit
+  suites with coverage thresholds, then one build of the packages next to
+  all end-to-end suites (backend, browser - over that build - iOS
+  simulator, Android emulator), and on `main` the publish of those exact
+  tarballs + registry smoke. A second workflow re-checks the commit
+  convention on the PR's commits and title.
 
 ## Commit messages
 
@@ -129,7 +130,7 @@ Escape hatches, for the rare cases where they are warranted:
   versioned `<next patch after the latest tag>-pre.<run>.<sha>`.
 - **Stable**: one step — `make release V=X.Y.Z` (wraps
   `gh release create vX.Y.Z --target main --generate-notes`). **The tag is
-  the version**: CI stamps it into the three packages at publish time, so
+  the version**: CI stamps it into the three packages before building them, so
   nothing is committed and `package.json` stays at `0.0.0-development`.
   The release notes, generated from PR titles (`.github/release.yml`), are
   the changelog. A tag with a prerelease part (`v1.0.0-rc.1`) ships under
