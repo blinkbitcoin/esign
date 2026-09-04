@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Packs the three packages and installs them into a clean project, then
 # asserts the consumer contract: the /webform entries resolve and never load
-# Apollo. Run from the repo root (CI: Tests / Unit / Packages job).
+# Apollo. Run from the repo root after `npm run build` (CI: E2E / Build Packages).
 set -euo pipefail
 SMOKE="$(mktemp -d)"
 trap 'rm -rf "$SMOKE"' EXIT

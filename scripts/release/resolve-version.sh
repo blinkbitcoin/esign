@@ -9,7 +9,8 @@
 # Env: EVENT (github.event_name), TAG (release tag), RUN (run number),
 #      GITHUB_SHA. DRY_RUN=1 prints without touching package.json.
 # Outputs version= and disttag= to $GITHUB_OUTPUT (stdout when unset).
-# CI: Publish job. Local: make version [TAG=vX.Y.Z]
+# CI: E2E / Build Packages (Publish ships the tarballs it packs). Local:
+# make version [TAG=vX.Y.Z]
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 EVENT="${EVENT:-push}"; RUN="${RUN:-0}"; SHA="${GITHUB_SHA:-$(git rev-parse HEAD)}"
