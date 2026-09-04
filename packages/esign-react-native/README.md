@@ -86,7 +86,7 @@ from left to right.
 
 | Default | Themed | Headless |
 |---|---|---|
-| ![Drop in the component](../../docs/images/esign-path-1-default.svg) | ![Recolor and relabel it](../../docs/images/esign-path-2-themed.svg) | ![Bring your own UI](../../docs/images/esign-path-3-headless.svg) |
+| ![Drop in the component](../../docs/assets/esign-path-1-default.svg) | ![Recolor and relabel it](../../docs/assets/esign-path-2-themed.svg) | ![Bring your own UI](../../docs/assets/esign-path-3-headless.svg) |
 | `<ESignature source={source} … />` | `theme` · `styles` · `labels` | `useESignature` + your own `WebView` |
 
 ### Theming
