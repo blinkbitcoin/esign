@@ -13,8 +13,8 @@ done
 cd "$SMOKE"
 npm init -y >/dev/null
 # Install core first so the platform packages resolve it from the local tarball
-npm install --no-save ./blinkbitcoin-esign-core-*.tgz >/dev/null
-npm install --no-save ./blinkbitcoin-esign-react-native-*.tgz ./blinkbitcoin-esign-react-*.tgz >/dev/null 2>&1 || true
+npm install --no-save --prefer-offline ./blinkbitcoin-esign-core-*.tgz >/dev/null
+npm install --no-save --prefer-offline ./blinkbitcoin-esign-react-native-*.tgz ./blinkbitcoin-esign-react-*.tgz >/dev/null 2>&1 || true
 
 node - <<'NODE'
 const assert = require('node:assert');

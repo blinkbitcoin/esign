@@ -35,7 +35,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies (workspace root)
-        run: npm ci --ignore-scripts
+        run: npm ci --ignore-scripts --prefer-offline
 
       - name: Lint PR title
         env:
