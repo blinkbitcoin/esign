@@ -180,12 +180,11 @@ jobs:
       packages: write
       actions: read # look up the commit's main run
     outputs:
-      version: ${{ steps.ver.outputs.version }}
+      version: ${{ needs.e2e.outputs.version }}
 
     steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0 # tags: the prerelease base is derived from the latest v* tag
+      - name: Checkout code (for scripts/release)
+        uses: actions/checkout@v7
 
       # A release run re-runs the whole gate itself, but the README badges
       # and "is main green" mean the push-to-main run for that commit. Do not
@@ -198,41 +197,40 @@ jobs:
           REPO: ${{ github.repository }}
         run: bash scripts/release/require-green-main.sh
 
+      # registry-url + scope write the .npmrc that routes @blinkbitcoin to
+      # GitHub Packages; npm publish <tarball> reads the name from the tarball.
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
           registry-url: https://npm.pkg.github.com
           scope: '@blinkbitcoin'
 
-      - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit
-
-      - name: Resolve version and dist-tag
-        id: ver
-        env:
-          EVENT: ${{ github.event_name }}
-          TAG: ${{ github.event.release.tag_name }}
-          RUN: ${{ github.run_number }}
-        run: bash scripts/release/resolve-version.sh # tag = version on release; -pre.<run>.<sha> otherwise
-
-      - name: Build (core first - the platform packages need its dist)
-        run: npm run build
+      # Nothing is installed or built here: these are the tarballs E2E /
+      # Build Packages stamped, built and packed, and Web tested. The globs
+      # need the digit: esign-react-* would also match esign-react-native.
+      - name: Fetch the tarballs built by E2E / Build Packages
+        uses: actions/download-artifact@v8
+        with:
+          name: packages-tarballs
+          path: ${{ runner.temp }}/tarballs
 
       - name: Publish @blinkbitcoin/esign-core
-        run: npm publish -w packages/esign-core --tag ${{ steps.ver.outputs.disttag }}
+        run: npm publish "$RUNNER_TEMP"/tarballs/blinkbitcoin-esign-core-[0-9]*.tgz --tag "$DISTTAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISTTAG: ${{ needs.e2e.outputs.disttag }}
 
       - name: Publish @blinkbitcoin/esign-react-native
-        run: npm publish -w packages/esign-react-native --tag ${{ steps.ver.outputs.disttag }}
+        run: npm publish "$RUNNER_TEMP"/tarballs/blinkbitcoin-esign-react-native-[0-9]*.tgz --tag "$DISTTAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISTTAG: ${{ needs.e2e.outputs.disttag }}
 
       - name: Publish @blinkbitcoin/esign-react
-        run: npm publish -w packages/esign-react --tag ${{ steps.ver.outputs.disttag }}
+        run: npm publish "$RUNNER_TEMP"/tarballs/blinkbitcoin-esign-react-[0-9]*.tgz --tag "$DISTTAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISTTAG: ${{ needs.e2e.outputs.disttag }}
 
   # Consumes what was ACTUALLY published: installs the exact version from
   # GitHub Packages into a clean project and asserts the consumer contract.
