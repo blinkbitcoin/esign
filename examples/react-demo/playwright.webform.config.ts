@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 // Browser E2E for the DocuSign Web Forms mode. Same real stack as the proxy
 // E2E, but the demo runs in webform mode (VITE_ESIGN_MODE=webform) on a
-// separate port (5174) so it can't collide with the proxy Vite. The backend
+// separate port (5174) so it can't collide with the proxy demo. The backend
 // mock provider mints a mock-webform instance that emits the REAL DocuSign
 // event vocabulary, so a green run proves the Web Forms wiring + protocol.
 //
@@ -27,8 +27,9 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
+      // Production bundle over the libraries' built dist (see vite.config.ts).
       command:
-        'VITE_ESIGN_MODE=webform npm run dev -- --port 5174 --strictPort',
+        'VITE_ESIGN_MODE=webform npm run build -- --outDir dist/webform && npm run preview -- --outDir dist/webform --port 5174 --strictPort',
       url: 'http://localhost:5174',
       reuseExistingServer: false,
       timeout: 30_000,
