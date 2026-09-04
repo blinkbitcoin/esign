@@ -13,6 +13,11 @@ on:
 
 # Must not exceed the caller's (ci.yml grants contents: read). The PR title
 # and SHAs come from the event payload, so no pull-requests scope is needed.
+# A registry request that hangs costs one minute per attempt instead of
+# npm's default five (#52). Warm installs make no request at all.
+env:
+  NPM_CONFIG_FETCH_TIMEOUT: '60000'
+
 permissions:
   contents: read
 
@@ -60,9 +65,15 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies (workspace root)
-        run: npm ci --prefer-offline
+        run: npm ci --prefer-offline --no-audit
 
+      # The only audit in the pipeline: every npm ci runs --no-audit because
+      # npm's built-in audit call (advisories/bulk) has been seen hanging for
+      # the full 5-minute fetch-timeout in every job of a run (#52). Bounded
+      # here; a dead advisory endpoint fails PRs soft and main hard.
       - name: Dependency audit (known upstream issues allowlisted)
+        timeout-minutes: 5
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
         run: npx audit-ci --config audit-ci.jsonc
 
       - name: Lint GitHub Actions workflows (actionlint)
@@ -96,7 +107,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies (workspace root)
-        run: npm ci --prefer-offline
+        run: npm ci --prefer-offline --no-audit
 
       - name: Build packages
         run: npm run build
@@ -134,7 +145,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies (workspace root)
-        run: npm ci --ignore-scripts --prefer-offline
+        run: npm ci --ignore-scripts --prefer-offline --no-audit
 
       - name: Lint PR commits
         run: npx commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}" --verbose
