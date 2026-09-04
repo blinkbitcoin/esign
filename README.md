@@ -228,8 +228,8 @@ credentials are set).
 | `make test-live` | Opt-in live DocuSign API verification (skips without credentials) |
 | `make pods` | iOS CocoaPods install |
 
-Demo coverage is floored at its current level rather than 100%. The HTML
-report lands in `coverage/report/index.html`; CI publishes
+Coverage is 100% everywhere, the demo apps included. The HTML report
+lands in `coverage/report/index.html`; CI publishes
 the badge per branch to `gh-pages/badges/<branch>/` and uploads the report as
 the `coverage-report` artifact of every run. For the Maestro suites,
 `make e2e-backend-up` starts the backend and `make ios-build` builds the

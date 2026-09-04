@@ -29,7 +29,7 @@ passthrough treats as the userId.
 ## Testing
 
 ```sh
-make test          # Vitest (jsdom) unit tests (14); coverage floors enforced - E2E is the real coverage
+make test          # Vitest (jsdom) unit tests (22); 100% coverage enforced - E2E drives the real iframe
 make e2e           # Playwright browser E2E in real Chromium (proxy mode;
                    #   needs the test DB and the libraries built - or run
                    #   `make e2e-web` at the repo root, which does both)

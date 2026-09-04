@@ -15,7 +15,7 @@ environment variables, and troubleshooting:
 ## Quality gates
 
 - `make test` — unit suites + lint + typecheck + format check. Coverage is
-  **100% enforced** on the packages and backend; the demo apps have floors.
+  **100% enforced** on the packages, the backend, and both demo apps.
   The README coverage badge is measured, not hardcoded: every CI run
   aggregates the packages + backend line coverage and publishes it to
   `gh-pages/badges/<branch>/`; the README embeds the `main` one. A red

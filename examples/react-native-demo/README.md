@@ -34,7 +34,7 @@ machine's LAN IP.
 ## Testing
 
 ```sh
-make test          # Jest unit tests (22); coverage floors enforced - E2E is the real coverage
+make test          # Jest unit tests (29); 100% coverage enforced - E2E drives the real WebView
 make e2e           # Maestro, iOS (needs backend running + app installed on a simulator)
 make e2e-android   # Maestro, Android (adb reverse handles Metro + backend ports)
 ```

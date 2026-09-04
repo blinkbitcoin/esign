@@ -6,6 +6,7 @@ import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
 import { interpretProxyEvent } from '@blinkbitcoin/esign-core';
 import { simulateWebViewMessage } from '../../../packages/esign-react-native/__mocks__/react-native-webview';
+import NetInfo from '../../../packages/esign-react-native/__mocks__/@react-native-community/netinfo';
 
 import { HookSigning } from '../src/HookSigning';
 
@@ -38,11 +39,14 @@ const render = (element: React.ReactElement) => {
 const has = (r: ReactTestRenderer.ReactTestRenderer, testID: string) =>
   r.root.findAllByProps({ testID }).length > 0;
 
-const press = (r: ReactTestRenderer.ReactTestRenderer, testID: string) =>
+// Block body on purpose: returning the handler's promise would turn a sync
+// act() into an async one and skip the synchronous flush.
+const press = (r: ReactTestRenderer.ReactTestRenderer, testID: string) => {
   r.root
     .findAllByProps({ testID })
     .find(n => n.props.onPress)!
     .props.onPress();
+};
 
 const flush = () =>
   new Promise<void>(resolve => setTimeout(() => resolve(), 0));
@@ -140,6 +144,30 @@ test('reconnect from offline returns to idle', async () => {
   );
   await ReactTestRenderer.act(async () => {
     press(r, 'hook-check-connection-button');
+    await flush();
+  });
+  expect(has(r, 'hook-sign-button')).toBe(true);
+});
+
+test('shows "Checking…" while the reconnect check is in flight', async () => {
+  let resolveFetch!: (v: unknown) => void;
+  (NetInfo.fetch as jest.Mock).mockImplementationOnce(
+    () =>
+      new Promise(res => {
+        resolveFetch = res;
+      }),
+  );
+  const r = render(
+    <HookSigning
+      {...callbacks}
+      source={makeSource()}
+      __testInitialStatus="offline"
+    />,
+  );
+  ReactTestRenderer.act(() => press(r, 'hook-check-connection-button'));
+  expect(JSON.stringify(r.toJSON())).toContain('Checking…');
+  await ReactTestRenderer.act(async () => {
+    resolveFetch({ isConnected: true, isInternetReachable: true });
     await flush();
   });
   expect(has(r, 'hook-sign-button')).toBe(true);
