@@ -60,7 +60,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies (workspace root)
-        run: npm ci
+        run: npm ci --prefer-offline
 
       - name: Dependency audit (known upstream issues allowlisted)
         run: npx audit-ci --config audit-ci.jsonc
@@ -96,7 +96,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies (workspace root)
-        run: npm ci
+        run: npm ci --prefer-offline
 
       - name: Build packages
         run: npm run build
@@ -134,7 +134,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies (workspace root)
-        run: npm ci --ignore-scripts
+        run: npm ci --ignore-scripts --prefer-offline
 
       - name: Lint PR commits
         run: npx commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}" --verbose
