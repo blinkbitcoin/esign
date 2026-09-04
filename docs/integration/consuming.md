@@ -16,7 +16,7 @@ coverage thresholds + all three E2E suites):
 
 - **Stable** (`latest`): publish a **GitHub Release** with tag `vX.Y.Z`
   (`make release V=X.Y.Z`). The tag is the version - CI stamps it into the
-  packages at publish time; nothing is committed. It ships once the
+  packages before building them; nothing is committed. It ships once the
   commit's push-to-`main` run is green (a red one blocks it; the publish is
   retried automatically when main turns green). GitHub Packages rejects
   re-publishing an existing version, so a failed release needs a new tag.

@@ -1,9 +1,11 @@
 name: Checks
 
 # Reusable only: ci.yml calls this as the first stage of every run. Everything
-# here is static and cheap (~1-2 min); Unit waits for all of it and E2E waits
-# for Unit, so a lint error or a bad commit message never spends unit-test or
-# emulator minutes. Concurrency is the caller's.
+# here is static and cheap (~1-2 min) - nothing is built; the packages are
+# built once, in E2E / Build Packages, after Unit has passed. Unit waits for
+# all of it and E2E waits for Unit, so a lint error or a bad commit message
+# never spends unit-test, build or emulator minutes. Concurrency is the
+# caller's.
 on:
   workflow_call:
     outputs:
@@ -96,33 +98,6 @@ jobs:
 
       - name: Lint + typecheck + format check
         run: make check-code
-
-  packages:
-    name: Packages
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies (workspace root)
-        run: npm ci --prefer-offline --no-audit
-
-      - name: Build packages
-        run: npm run build
-
-      - name: Package shape (publint + arethetypeswrong)
-        run: npm run check:packages
-
-      - name: Pack + install smoke (webform Apollo-free boundary)
-        run: bash scripts/pack-smoke.sh
 
   # Conventional Commits on the PR's commits and its title (squash merges take
   # the title as the commit on main). Rules: commitlint.config.mjs. PRs only;

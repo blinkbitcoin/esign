@@ -124,17 +124,17 @@ e2e-backend: test-db-up ## Backend E2E suite against real Postgres (then tears D
 	npm run test:e2e -w apps/api
 	$(MAKE) test-db-down
 
-e2e-web: test-db-up ## Playwright browser E2E for the web demo (proxy mode; then tears DB down)
+e2e-web: test-db-up build ## Playwright browser E2E for the web demo (proxy mode; then tears DB down) - builds the libraries first (the demo bundles their dist)
 	npm run migrate:test -w apps/api
 	npm run test:e2e -w examples/react-demo
 	$(MAKE) test-db-down
 
-e2e-web-webform: test-db-up ## Playwright browser E2E for the web demo in DocuSign Web Forms mode
+e2e-web-webform: test-db-up build ## Playwright browser E2E for the web demo in DocuSign Web Forms mode - builds the libraries first (the demo bundles their dist)
 	npm run migrate:test -w apps/api
 	npm run test:e2e:webform -w examples/react-demo
 	$(MAKE) test-db-down
 
-e2e-web-publicurl: test-db-up ## Playwright browser E2E for the web demo in public-URL mode
+e2e-web-publicurl: test-db-up build ## Playwright browser E2E for the web demo in public-URL mode - builds the libraries first (the demo bundles their dist)
 	npm run migrate:test -w apps/api
 	npm run test:e2e:publicurl -w examples/react-demo
 	$(MAKE) test-db-down

@@ -4,7 +4,8 @@ import { defineConfig } from '@playwright/test';
 // backend minting call - the demo embeds a static published-form URL directly.
 // For the deterministic run the URL points at the backend's mock-webform page
 // (real DocuSign sessionEnd vocabulary); a live run uses a real published form.
-// Runs on port 5175 so it can't collide with the proxy/webform demos.
+// Runs on port 5175 so it can't collide with the proxy/webform demos. Like
+// the other suites it builds the demo (dist/publicurl) and previews it.
 export default defineConfig({
   testDir: 'e2e',
   testMatch: '**/publicurl.spec.ts',
@@ -23,8 +24,9 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
+      // Production bundle over the libraries' built dist (see vite.config.ts).
       command:
-        'VITE_ESIGN_MODE=publicurl npm run dev -- --port 5175 --strictPort',
+        'VITE_ESIGN_MODE=publicurl npm run build -- --outDir dist/publicurl && npm run preview -- --outDir dist/publicurl --port 5175 --strictPort',
       url: 'http://localhost:5175',
       reuseExistingServer: false,
       timeout: 30_000,

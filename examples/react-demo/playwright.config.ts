@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
-// Browser E2E for the web demo: drives the real Vite app (:5173) embedding
+// Browser E2E for the web demo: drives the built demo (vite preview, :5173,
+// over the libraries' dist - what a consumer installs) embedding
 // the backend's real mock signing page (:4000) in a genuinely cross-origin
 // iframe - exercising the window.postMessage path jsdom can only fake.
 //
@@ -24,7 +25,9 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
-      command: 'npm run dev -- --port 5173 --strictPort',
+      // Production bundle over the libraries' built dist (see vite.config.ts).
+      command:
+        'npm run build -- --outDir dist/proxy && npm run preview -- --outDir dist/proxy --port 5173 --strictPort',
       url: 'http://localhost:5173',
       reuseExistingServer: true,
       timeout: 30_000,

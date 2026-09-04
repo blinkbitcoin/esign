@@ -23,6 +23,13 @@ on:
         description: runs-on label(s) for the iOS job (string or JSON array)
         type: string
         default: macos-latest
+    outputs:
+      version:
+        description: The version stamped into the packages built by Build Packages (what Publish ships)
+        value: ${{ jobs.build-packages.outputs.version }}
+      disttag:
+        description: The npm dist-tag that version publishes under (latest / next)
+        value: ${{ jobs.build-packages.outputs.disttag }}
 
 # A registry request that hangs costs one minute per attempt instead of
 # npm's default five (#52). Warm installs make no request at all.
@@ -70,10 +77,87 @@ jobs:
         if: always()
         run: make test-db-down
 
+  # The one build of the deliverable. Web bundles the demo against the dist
+  # uploaded here (what a web consumer installs), and Publish ships the
+  # tarballs packed here - so what was tested is what ships, byte for byte.
+  # Sits in this stage, beside the native builds, so nothing is built before
+  # Unit has passed. The RN packages need no such handoff: they ship src and
+  # export a `react-native` condition pointing at it, so Metro in the
+  # Android / iOS jobs already resolves exactly what an RN consumer gets.
+  build-packages:
+    name: Build Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      disttag: ${{ steps.ver.outputs.disttag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # tags: the prerelease base is derived from the latest v* tag
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies (workspace root)
+        run: npm ci --prefer-offline --no-audit
+
+      # Stamped before the build so the tarballs carry the version they ship
+      # under. On a PR this is a -pre.<run>.<sha> that is never published.
+      - name: Resolve version and stamp it into the packages
+        id: ver
+        env:
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ github.event.release.tag_name }}
+          RUN: ${{ github.run_number }}
+        run: bash scripts/release/resolve-version.sh # tag = version on release; -pre.<run>.<sha> otherwise
+
+      - name: Build packages (core first - the platform packages need its dist)
+        run: npm run build
+
+      - name: Package shape (publint + arethetypeswrong)
+        run: npm run check:packages
+
+      - name: Pack + install smoke (webform Apollo-free boundary)
+        run: bash scripts/pack-smoke.sh
+
+      - name: Pack the publishable tarballs
+        run: mkdir -p "$RUNNER_TEMP/tarballs" && npm pack -w packages/esign-core -w packages/esign-react-native -w packages/esign-react --pack-destination "$RUNNER_TEMP/tarballs"
+
+      - name: Publish dist for the Web job
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages-dist
+          path: |
+            packages/esign-core/dist
+            packages/esign-react/dist
+            packages/esign-react-native/lib
+          retention-days: 1 # only the Web job of this run needs it
+          overwrite: true # a full re-run re-uploads the same name
+          if-no-files-found: error
+
+      # 7 days, not 1: a release whose main run was not yet green has its
+      # Publish re-run later by release-retry.yml, from this same artifact.
+      - name: Publish tarballs for the Publish job
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages-tarballs
+          path: ${{ runner.temp }}/tarballs/*.tgz
+          retention-days: 7
+          overwrite: true
+          if-no-files-found: error
+
   web:
     name: Web
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: [build-packages]
 
     steps:
       - uses: actions/checkout@v7
@@ -85,6 +169,14 @@ jobs:
 
       - name: Install dependencies (workspace root)
         run: npm ci --prefer-offline --no-audit
+
+      # The demo's `vite build` resolves the libraries to this dist (see
+      # examples/react-demo/vite.config.ts) and refuses to build without it.
+      - name: Fetch the packages' dist built by build-packages
+        uses: actions/download-artifact@v8
+        with:
+          name: packages-dist
+          path: packages
 
       - name: Cache Playwright browsers
         uses: actions/cache@v6
@@ -102,7 +194,7 @@ jobs:
       - name: Run migrations (test database)
         run: npm run migrate:test -w apps/api
 
-      - name: Run browser E2E (Playwright starts backend + Vite)
+      - name: Run browser E2E (Playwright starts the backend, builds + previews the demo)
         run: npm run test:e2e -w examples/react-demo
 
       - name: Stop test database

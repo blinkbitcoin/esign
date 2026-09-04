@@ -23,18 +23,20 @@ passthrough treats as the userId.
 |------|-------|
 | `src/App.tsx` | Minimal host wiring + outcome reporting around the component |
 | `src/apollo.ts` | `createESignApolloClient({ uri, getAuthToken })` — the host owns both |
-| `vite.config.ts` | Workspace alias resolving the library straight to source |
+| `vite.config.ts` | Resolves the library to source while serving (dev, vitest) and to its built `dist` when building - the E2E suites build + preview, so they test what a consumer installs |
 
 ## Testing
 
 ```sh
 make test          # Vitest (jsdom) unit tests (5); coverage floors enforced - E2E is the real coverage
 make e2e           # Playwright browser E2E in real Chromium (proxy mode;
-                   #   needs the test DB - or run `make e2e-web` at repo root)
+                   #   needs the test DB and the libraries built - or run
+                   #   `make e2e-web` at the repo root, which does both)
                    # Web Forms / public-URL variants: make e2e-web-webform /
                    #   e2e-web-publicurl at the repo root
 make build         # production build sanity check
 ```
 
 The browser E2E is the only place the iframe postMessage path runs against a
-genuinely cross-origin signing page (app :5173, page :4000).
+genuinely cross-origin signing page (built app via `vite preview` :5173,
+page :4000).

@@ -25,7 +25,7 @@ coverage: ## Unit tests with coverage (floors enforced; E2E is the real coverage
 typecheck: ## tsc --noEmit
 	npm run typecheck
 
-e2e: ## Playwright browser E2E (needs the test DB: make test-db-up at repo root)
+e2e: ## Playwright browser E2E (needs the test DB and the libraries' dist: make e2e-web at repo root does both)
 	npm run test:e2e
 
 help: ## List targets
