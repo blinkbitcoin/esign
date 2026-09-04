@@ -6,8 +6,8 @@ name: CI
 #
 #   Checks (lint, typecheck, commits, docs)                  ~1-2 min
 #     -> Unit (tests + coverage thresholds)                  ~2 min
-#       -> E2E (build packages -> web; backend; Android;     ~5-8 min
-#               iOS opt-in)
+#       -> E2E (build packages -> web; backend; Android;     ~12-15 min
+#               iOS)
 #         -> Publish -> Verify (main / release / dispatch)
 #
 # A docs-only PR (docs/, *.md, LICENSE, templates - classified by the Changes
@@ -40,25 +40,26 @@ name: CI
 # Requires no extra secrets - GITHUB_TOKEN with packages:write is enough
 # for same-org publishing.
 #
-# iOS E2E is opt-in (macOS runners are billed 10x; the GitHub-hosted one
-# exhausted the org's shared Actions budget). "CI passing" therefore covers
-# backend, web and Android E2E, plus iOS only when it was switched on:
-#   - repo variable E2E_IOS=true         -> every run (flip once self-hosted
-#                                           Apple silicon runners are ready)
-#   - PR label `e2e:ios`                 -> that PR only (labeling triggers
-#                                           a run)
+# iOS E2E runs by default: the repo is public, so GitHub-hosted macOS minutes
+# are free (they bill at 10x on private repos, which is why the job used to be
+# opt-in). "CI passing" covers backend, web, Android and iOS. Switches, no
+# workflow edit needed:
+#   - repo variable E2E_IOS=false        -> pause iOS on every run (e.g. the
+#                                           macOS runners misbehave, or the
+#                                           repo goes private again)
+#   - PR label `e2e:ios`                 -> force iOS for that PR while paused
+#                                           (labeling triggers a run)
 #   - repo variable E2E_IOS_RUNNER       -> runs-on label(s) for the iOS job,
-#                                           default macos-latest; set it to the
+#                                           default macos-latest; set it to a
 #                                           self-hosted label, e.g.
 #                                           ["self-hosted","macOS","arm64"]
-# No workflow edit is needed to turn iOS back on.
 
 on:
   push:
     branches: [main]
     paths-ignore: ['docs/**', '**.md'] # docs-only pushes ship nothing new
   pull_request:
-    types: [opened, synchronize, reopened, labeled] # labeled: the `e2e:ios` opt-in
+    types: [opened, synchronize, reopened, labeled] # labeled: the `e2e:ios` override
   release:
     types: [published]
   workflow_dispatch:
@@ -96,7 +97,7 @@ jobs:
     needs: [unit]
     uses: ./.github/workflows/e2e.yml
     with:
-      ios: ${{ vars.E2E_IOS == 'true' || contains(github.event.pull_request.labels.*.name, 'e2e:ios') }}
+      ios: ${{ vars.E2E_IOS != 'false' || contains(github.event.pull_request.labels.*.name, 'e2e:ios') }}
       ios-runner: ${{ vars.E2E_IOS_RUNNER || 'macos-latest' }}
 
   # Badges for this branch under gh-pages/badges/<branch>/: the measured

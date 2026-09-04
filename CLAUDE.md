@@ -166,8 +166,9 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   libraries: Web bundles the demo against its dist and Publish ships its
   tarballs unchanged. Docs-only PRs stop after Checks; `main` skips docs-only
   pushes.
-- iOS E2E is opt-in (macOS runners bill at 10x): PR label `e2e:ios` or repo
-  variable `E2E_IOS=true`; `E2E_IOS_RUNNER` overrides `runs-on`.
+- iOS E2E runs by default (public repo: GitHub-hosted macOS is free). Pause it
+  with repo variable `E2E_IOS=false`; PR label `e2e:ios` forces it for one PR
+  while paused; `E2E_IOS_RUNNER` overrides `runs-on`.
 - Native E2E builds are cached on the inputs `scripts/native-deps-hash.sh`
   sees plus `android/**` / `ios/**`; bump the cache key's `v` suffix when an
   input the script cannot see changes.
