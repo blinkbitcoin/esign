@@ -52,9 +52,18 @@ export const createApp = async (): Promise<express.Express> => {
     app.set('trust proxy', 1);
   }
 
-  // Baseline security headers. CSP is set per-route: the JSON API needs none,
-  // the HTML signing pages need a tailored (nonce-based) policy.
-  app.use(helmet({ contentSecurityPolicy: false }));
+  // Baseline security headers. The default CSP is fail-closed (nothing may
+  // load, nothing may frame us): correct for the JSON API and for any route
+  // that forgets to set its own. The HTML signing pages replace it per
+  // response with their nonce-based policy (see signingPageCsp below).
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: false,
+        directives: { 'default-src': ["'none'"], 'frame-ancestors': ["'none'"] },
+      },
+    })
+  );
 
   // Create Apollo Server instance
   const server = new ApolloServer<GraphQLContext>({
@@ -198,6 +207,17 @@ export const createApp = async (): Promise<express.Express> => {
       }
     }
   );
+
+  // Outside production, GET /graphql serves Apollo's landing page (embedded
+  // sandbox loaded from Apollo's CDN), which the fail-closed default CSP would
+  // block. Lift it for that one dev-only HTML response; production never
+  // serves a landing page and keeps the strict header.
+  if (!isProduction()) {
+    app.get('/graphql', (_req, res, next) => {
+      res.removeHeader('Content-Security-Policy');
+      next();
+    });
+  }
 
   // GraphQL endpoint with middleware
   app.use(

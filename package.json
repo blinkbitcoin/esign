@@ -43,5 +43,10 @@
   "engines": {
     "node": "^22.22.2 || >= 24.15.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "overrides": {
+    "eslint-plugin-ft-flow": {
+      "eslint": "$eslint"
+    }
+  }
 }

@@ -5,7 +5,7 @@
 // it loads instantly on GitHub instead of booting eight mermaid iframes.
 // Run `make diagrams` after editing a source. CI fails on drift (see
 // test.yml); a missing SVG fails the assembly here.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 

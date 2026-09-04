@@ -273,6 +273,9 @@ describe('Express App Endpoints', () => {
     it('sets baseline security headers (helmet) on API responses', async () => {
       const response = await request(app).get('/health');
       expect(response.headers['x-content-type-options']).toBe('nosniff');
+      expect(response.headers['content-security-policy']).toBe(
+        "default-src 'none';frame-ancestors 'none'"
+      );
     });
 
     it('emits rate-limit headers on /graphql', async () => {
@@ -287,6 +290,13 @@ describe('Express App Endpoints', () => {
       const nonce = csp.match(/script-src 'nonce-([^']+)'/)?.[1];
       expect(nonce).toBeTruthy();
       expect(response.text).toContain(`nonce="${nonce}"`);
+      // The per-route policy replaces the fail-closed default, not merges with it
+      expect(csp).not.toContain("frame-ancestors 'none'");
+    });
+
+    it('lifts the default CSP only for the dev GraphQL landing page', async () => {
+      const response = await request(app).get('/graphql');
+      expect(response.headers['content-security-policy']).toBeUndefined();
     });
 
     it('bridge page also carries a nonce CSP', async () => {
@@ -317,6 +327,17 @@ describe('createApp - environment-specific configuration', () => {
       .post('/graphql')
       .send({ query: '{ __schema { queryType { name } } }' });
     expect(introspection.body.errors).toBeDefined();
+  });
+
+  it('in production: keeps the fail-closed CSP on GET /graphql (no landing page)', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    process.env.NODE_ENV = 'production';
+    const prodApp = await createApp();
+
+    const response = await request(prodApp).get('/graphql');
+    expect(response.headers['content-security-policy']).toBe(
+      "default-src 'none';frame-ancestors 'none'"
+    );
   });
 
   it('reflects an allow-listed CORS origin and rejects others', async () => {

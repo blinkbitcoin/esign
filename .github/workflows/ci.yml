@@ -61,6 +61,11 @@ on:
     types: [published]
   workflow_dispatch:
 
+# A registry request that hangs costs one minute per attempt instead of
+# npm's default five (#52). Warm installs make no request at all.
+env:
+  NPM_CONFIG_FETCH_TIMEOUT: '60000'
+
 permissions:
   contents: read
 
@@ -127,7 +132,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies (workspace root)
-        run: npm ci --prefer-offline
+        run: npm ci --prefer-offline --no-audit
 
       - name: Download coverage badge
         id: download
@@ -199,7 +204,7 @@ jobs:
           scope: '@blinkbitcoin'
 
       - name: Install dependencies
-        run: npm ci --prefer-offline
+        run: npm ci --prefer-offline --no-audit
 
       - name: Resolve version and dist-tag
         id: ver

@@ -24,6 +24,11 @@ on:
         type: string
         default: macos-latest
 
+# A registry request that hangs costs one minute per attempt instead of
+# npm's default five (#52). Warm installs make no request at all.
+env:
+  NPM_CONFIG_FETCH_TIMEOUT: '60000'
+
 permissions:
   contents: read
 
@@ -45,7 +50,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies (workspace root)
-        run: npm ci --prefer-offline
+        run: npm ci --prefer-offline --no-audit
 
       - name: Check schema artifact and generated client code are current
         run: make codegen-check
@@ -79,7 +84,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies (workspace root)
-        run: npm ci --prefer-offline
+        run: npm ci --prefer-offline --no-audit
 
       - name: Cache Playwright browsers
         uses: actions/cache@v6
@@ -148,7 +153,7 @@ jobs:
 
       - name: Install dependencies (workspace root)
         if: steps.ios-app.outputs.cache-hit != 'true'
-        run: npm ci --prefer-offline
+        run: npm ci --prefer-offline --no-audit
 
       - name: Setup Ruby
         if: steps.ios-app.outputs.cache-hit != 'true'
@@ -211,7 +216,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies (workspace root)
-        run: npm ci --prefer-offline
+        run: npm ci --prefer-offline --no-audit
 
       - name: Cache Maestro CLI
         uses: actions/cache@v6
@@ -354,7 +359,7 @@ jobs:
 
       - name: Install dependencies (workspace root)
         if: steps.android-apk.outputs.cache-hit != 'true'
-        run: npm ci --prefer-offline
+        run: npm ci --prefer-offline --no-audit
 
       # Only the emulator's ABI (android-34 x86_64 image, see the android job).
       # gradle.properties lists all four for local/release builds; each ABI is
@@ -399,7 +404,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies (workspace root)
-        run: npm ci --prefer-offline
+        run: npm ci --prefer-offline --no-audit
 
       - name: Cache Maestro CLI
         uses: actions/cache@v6
