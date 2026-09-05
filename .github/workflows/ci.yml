@@ -23,22 +23,28 @@ name: CI
 # publish of those exact tarballs, and the verify of what was published all
 # passed for that commit.
 #
-#   - Stable (`latest` dist-tag): ONLY when a GitHub Release is published.
-#     The tag IS the version (vX.Y.Z -> X.Y.Z); nothing is committed to the
-#     repo, package.json carries a placeholder. `make release V=X.Y.Z`.
-#     A tag with a prerelease part (v1.0.0-rc.1) ships under `next`.
+#   - Stable (`latest` dist-tag): ONLY for a vX.Y.Z tag. The tag IS the
+#     version (vX.Y.Z -> X.Y.Z); the three publishable package.json files
+#     carry a placeholder that is stamped at build time. release-please.yml
+#     owns the tag: merging its "chore(release): X.Y.Z" PR (`make release`)
+#     creates the tag + GitHub Release and dispatches this workflow at the
+#     tag with `release_tag` (a dispatch is needed because a release created
+#     by the workflow token never fires the `release:` trigger). The
+#     `release:` trigger is kept for hand-cut tags (`make release-rc`); a tag
+#     with a prerelease part (v1.0.0-rc.1) ships under `next`.
 #     Ships only once the commit's own push-to-main run is green: the gate
 #     below waits for an in-flight main run and fails on a red one, and
 #     release-retry.yml re-runs the failed Publish as soon as main goes
-#     green - so `make release` is fire-and-forget.
+#     green - so a release is fire-and-forget.
 #   - Prerelease (`next` dist-tag): every push to main (or a manual
-#     dispatch) ships <next-patch-after-latest-tag>-pre.<run>.<sha>.
+#     dispatch without `release_tag`) ships
+#     <next-patch-after-latest-tag>-pre.<run>.<sha>.
 #   Either way the three packages get the same version and the platform
 #   packages pin core to exactly that version (the only range that also
 #   works for prereleases).
 #
 # Requires no extra secrets - GITHUB_TOKEN with packages:write is enough
-# for same-org publishing.
+# for same-org publishing, and release-please.yml needs only the same token.
 #
 # iOS E2E runs by default: the repo is public, so GitHub-hosted macOS minutes
 # are free (they bill at 10x on private repos, which is why the job used to be
@@ -61,8 +67,14 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, labeled] # labeled: the `e2e:ios` override
   release:
-    types: [published]
+    types: [published] # hand-cut tags only (make release-rc); see release-please.yml
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Ship this vX.Y.Z tag under `latest` (set by release-please.yml; run at the tag ref). Empty = prerelease from HEAD.'
+        type: string
+        required: false
+        default: ''
 
 # A registry request that hangs costs one minute per attempt instead of
 # npm's default five (#52). Warm installs make no request at all.
@@ -99,6 +111,7 @@ jobs:
     with:
       ios: ${{ vars.E2E_IOS != 'false' || contains(github.event.pull_request.labels.*.name, 'e2e:ios') }}
       ios-runner: ${{ vars.E2E_IOS_RUNNER || 'macos-latest' }}
+      release-tag: ${{ inputs.release_tag || '' }}
 
   # Badges for this branch under gh-pages/badges/<branch>/: the measured
   # coverage badge (artifact from Unit / Coverage, or a red "failing"
@@ -192,7 +205,7 @@ jobs:
       # ship over a red one: wait while it is still running, fail if it
       # failed. release-retry.yml re-runs this job once main turns green.
       - name: Require a green main run for the release commit
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || inputs.release_tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}

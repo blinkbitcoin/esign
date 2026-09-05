@@ -23,6 +23,10 @@ on:
         description: runs-on label(s) for the iOS job (string or JSON array)
         type: string
         default: macos-latest
+      release-tag:
+        description: vX.Y.Z tag this run releases (release-please dispatch); empty = not a release
+        type: string
+        default: ''
     outputs:
       version:
         description: The version stamped into the packages built by Build Packages (what Publish ships)
@@ -110,11 +114,13 @@ jobs:
 
       # Stamped before the build so the tarballs carry the version they ship
       # under. On a PR this is a -pre.<run>.<sha> that is never published.
+      # A dispatch carrying `release_tag` (release-please.yml, run at the tag
+      # ref) is a release: the tag is the version.
       - name: Resolve version and stamp it into the packages
         id: ver
         env:
-          EVENT: ${{ github.event_name }}
-          TAG: ${{ github.event.release.tag_name }}
+          EVENT: ${{ inputs.release-tag != '' && 'release' || github.event_name }}
+          TAG: ${{ inputs.release-tag || github.event.release.tag_name }}
           RUN: ${{ github.run_number }}
         run: bash scripts/release/resolve-version.sh # tag = version on release; -pre.<run>.<sha> otherwise
 

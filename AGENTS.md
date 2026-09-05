@@ -48,7 +48,7 @@ one-line description. The ones you will reach for:
 | `make db-up migrate backend` | Dev Postgres, migrations, backend dev server |
 | `make e2e-backend` / `make e2e-web` | Backend E2E against real Postgres / Playwright browser E2E |
 | `make start` / `make ios` / `make android` / `make web` | Demo apps |
-| `make release V=X.Y.Z` | Cut a stable release (the tag is the version; nothing is committed) |
+| `make release` | Merge the open release PR that release-please maintains (tags, publishes; `docs/releasing.md`) |
 
 Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
 `npm run build`, ...) are listed in CLAUDE.md.
