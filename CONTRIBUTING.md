@@ -74,7 +74,7 @@ area names (`commitlint.config.mjs` is the source of truth):
 | `ci` | `.github/` |
 | `deps`, `deps-dev` | Dependency bumps (Dependabot uses these) |
 | `docs` | `docs/` when the type is not already `docs` |
-| `release` | Release tooling (workflow, notes config) |
+| `release` | Release tooling (release-please config and workflow); release-please's own PRs are `chore(release): X.Y.Z` |
 
 Examples:
 
@@ -122,22 +122,31 @@ Escape hatches, for the rare cases where they are warranted:
 2. Diagrams: edit `docs/diagrams/src/*.mmd`, then `make diagrams` (CI fails
    on drift). Schema: edit `apps/api/src/typeDefs.ts`, then `make codegen`.
 3. Open a PR with a Conventional Commits title — every workflow must be
-   green. The title is also the line the release notes will show.
+   green. The title is the line `CHANGELOG.md` will show, and its type
+   decides the version bump (`feat` → minor, `fix` → patch, `ci` / `docs` /
+   `chore` → none), so a fix that only touches CI or the demos is `ci:` or
+   `chore(demo):`, not `fix(ci):`.
 
 ## Releases
 
+Full walkthrough with a worked example: [docs/releasing.md](docs/releasing.md).
+
 - **Prerelease** (`next` tag): automatic on every green push to `main`,
   versioned `<next patch after the latest tag>-pre.<run>.<sha>`.
-- **Stable**: one step — `make release V=X.Y.Z` (wraps
-  `gh release create vX.Y.Z --target main --generate-notes`). **The tag is
-  the version**: CI stamps it into the three packages before building them, so
-  nothing is committed and `package.json` stays at `0.0.0-development`.
-  The release notes, generated from PR titles (`.github/release.yml`), are
-  the changelog. A tag with a prerelease part (`v1.0.0-rc.1`) ships under
-  `next`. GitHub Packages never accepts the same version twice, so a failed
-  release means fixing forward and cutting a new tag.
+- **Stable**: merge the `chore(release): X.Y.Z` pull request. release-please
+  opens it once a `feat` / `fix` / `perf` / `revert` commit reaches `main`
+  and keeps it current: the inferred version, the `CHANGELOG.md` entry
+  grouped by type (CI, docs and chores are left out), the root
+  `package.json` version. Approve it and `make release` (or the Merge
+  button). Merging tags `vX.Y.Z`, publishes the GitHub Release with that
+  entry as its body, and starts the release run. **The tag is the version**:
+  CI stamps it into the three packages before building them, so their
+  `package.json` stays at `0.0.0-development`. GitHub Packages never
+  accepts the same version twice, so a failed release means fixing forward.
   A release ships only once the commit's push-to-`main` run is green: the
   release run waits for an in-flight main run and refuses a red one, and
   `release-retry.yml` re-runs the blocked Publish automatically when main
   turns green (re-run the flaky job with `gh run rerun <id> --failed`).
-  So `make release` is fire-and-forget.
+  So merging the release PR is fire-and-forget.
+- **Release candidate**: `make release-rc V=X.Y.Z-rc.1` hand-cuts a
+  prerelease-suffixed tag that ships under `next`.

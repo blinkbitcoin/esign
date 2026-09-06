@@ -1,0 +1,54 @@
+name: Release Please
+
+# Owns the version, CHANGELOG.md, the vX.Y.Z tag and the GitHub Release.
+# On every push to main it reads the Conventional Commits since the last
+# release (the squashed PR titles commitlint enforces), infers the bump
+# (feat -> minor, fix -> patch, `!` / BREAKING CHANGE -> minor while < 1.0)
+# and keeps ONE open pull request, "chore(release): X.Y.Z", up to date with
+# the grouped changelog entry and the root package.json version. Nothing
+# happens until a human merges that PR; merging it is the whole release
+# step (`make release`). ci/docs/chore commits alone never open one.
+#
+# Merging the release PR lands on main, this workflow runs again, sees the
+# merged release PR, creates the tag + GitHub Release (body = the changelog
+# section), and then starts the release run of ci.yml at that tag. The
+# explicit dispatch is needed because GitHub never triggers workflows from
+# events the workflow token itself created - a release made here would not
+# fire ci.yml's `release:` trigger. ci.yml treats a dispatch with
+# `release_tag` exactly like a `release` event (tag = version, `latest`),
+# including the green-main gate and release-retry.yml. No extra secrets.
+#
+# The same token rule means CI does not run on the release PR itself. It
+# only touches CHANGELOG.md, the manifest and the root package.json /
+# package-lock.json; the tagged run executes the full pipeline before
+# anything ships.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write # tag + release + the release branch
+  pull-requests: write # the release PR
+  actions: write # dispatch ci.yml at the tag
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Release PR / Tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Update the release PR, or tag the merged one
+        id: release
+        uses: googleapis/release-please-action@v5
+
+      - name: Start the release run of ci.yml at the new tag
+        if: steps.release.outputs.release_created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ steps.release.outputs.tag_name }}
+        run: gh workflow run ci.yml --repo "$REPO" --ref "$TAG" -f "release_tag=$TAG"

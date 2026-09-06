@@ -65,6 +65,7 @@ Organized by namespace - pick by what you're doing:
 | Doc | Covers |
 |-----|--------|
 | [development-guide.md](./development-guide.md) | Working on this repo: setup, commands, quality gates, CI |
+| [releasing.md](./releasing.md) | How a merged PR becomes a version: release-please, the release PR, the changelog, what merging it does |
 | [diagrams/](./diagrams/README.md) | All eight diagrams (render directly on GitHub) |
 
 ---
