@@ -114,6 +114,8 @@
     "url": "git+https://github.com/blinkbitcoin/esign.git",
     "directory": "packages/esign-react-native"
   },
+  "homepage": "https://github.com/blinkbitcoin/esign#readme",
+  "bugs": { "url": "https://github.com/blinkbitcoin/esign/issues" },
   "sideEffects": false,
   "type": "commonjs",
   "engines": {
