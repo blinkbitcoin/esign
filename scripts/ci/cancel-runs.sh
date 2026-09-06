@@ -2,7 +2,7 @@
 # Cancels every queued or running workflow run for a commit (a closed PR's
 # head), except the run executing this script. The push-to-main run is on a
 # different commit and untouched.
-# Env: GH_TOKEN, REPO (owner/name), SHA, GITHUB_RUN_ID. CI: cancel-closed.yml.
+# Env: GH_TOKEN, REPO (owner/name), SHA, GITHUB_RUN_ID. CI: pull-request.yml (closed).
 set -euo pipefail
 : "${GH_TOKEN:?}" "${REPO:?}" "${SHA:?}"
 SELF="${GITHUB_RUN_ID:-0}"

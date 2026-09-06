@@ -2,7 +2,7 @@
 # Release gate: a release run re-runs the whole pipeline itself, but the
 # README badges and "is main green" mean the push-to-main run for that
 # commit. Waits while that run is in flight, fails when it is red or missing.
-# release-retry.sh re-runs the failed Publish once main turns green.
+# release.yml's retry job re-runs the failed Publish once main turns green.
 # Env: GH_TOKEN, REPO (owner/name), GITHUB_SHA, GITHUB_RUN_ID. CI only.
 set -euo pipefail
 : "${GH_TOKEN:?}" "${REPO:?}" "${GITHUB_SHA:?}"

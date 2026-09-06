@@ -1,0 +1,66 @@
+flowchart LR
+    subgraph Events["Events"]
+        direction TB
+        PUSH([push to main])
+        PR([pull request opened /<br/>synchronize / reopened / labeled])
+        DISPATCH([workflow_dispatch<br/>release_tag=vX.Y.Z])
+        HANDTAG([GitHub Release published<br/>make release-rc])
+        PRC([pull request closed])
+        PRE([pull request title edited])
+    end
+
+    subgraph CI["CI (ci.yml) - one run per branch / tag"]
+        direction TB
+        CHECKS["Checks<br/>Changes · Code · Commits · Docs"]
+        UNIT["Unit<br/>Coverage"]
+        subgraph E2E["E2E"]
+            direction LR
+            BP["Build Packages<br/>version stamp · build · pack"] --> WEB["Web"]
+            BACKEND["Backend"]
+            BA["Build Android"] --> ANDROID["Android"]
+            BI["Build iOS"] --> IOS["iOS"]
+        end
+        BADGES["Badges"]
+        PUBLISH["Publish<br/>main → next · tag → latest<br/>waits for a green main run"]
+        VERIFY["Verify<br/>install from GitHub Packages"]
+        CHECKS --> UNIT --> E2E
+        E2E --> BADGES
+        E2E --> PUBLISH --> VERIFY
+    end
+
+    subgraph Release["Release (release.yml)"]
+        direction TB
+        RP["Release PR / Tag<br/>release-please"]
+        RETRY["Re-run blocked releases"]
+    end
+
+    subgraph PRW["Pull Request (pull-request.yml)"]
+        direction TB
+        CANCEL["Cancel in-flight runs"]
+        CLEAN["Remove branch badge"]
+        TITLE["Title<br/>commitlint"]
+    end
+
+    subgraph Out["Outputs"]
+        direction TB
+        RELPR["chore(release): X.Y.Z PR<br/>a human approves + merges it"]
+        TAG["tag vX.Y.Z + GitHub Release<br/>body = CHANGELOG entry"]
+        NPM[("GitHub Packages<br/>@blinkbitcoin/esign-*")]
+        GHP[("gh-pages branch<br/>badges/&lt;branch&gt;/ → README")]
+    end
+
+    PUSH & PR & DISPATCH & HANDTAG --> CHECKS
+    PUSH --> RP
+    RP -->|nothing merged yet| RELPR
+    RP -->|release PR merged| TAG
+    TAG -->|gh workflow run ci.yml --ref vX.Y.Z| DISPATCH
+    PUSH -.->|CI completed green| RETRY
+    RETRY -.->|rerun failed Publish| PUBLISH
+    PRC --> CANCEL & CLEAN
+    PRE --> TITLE
+    BADGES --> GHP
+    CLEAN --> GHP
+    PUBLISH --> NPM
+
+    CODEQL["CodeQL (codeql.yml)<br/>push · PR · weekly"]
+    DEPBOT["Dependabot Updates<br/>weekly"]

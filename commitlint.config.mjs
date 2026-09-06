@@ -1,6 +1,6 @@
 // Conventional Commits (https://www.conventionalcommits.org) - enforced on
 // every commit by the lefthook commit-msg hook and, in CI, on the PR's commits
-// and title (.github/workflows/commitlint.yml). Squash merges take the PR
+// and title (.github/workflows/pull-request.yml on a title edit). Squash merges take the PR
 // title, so that is the line that reaches main. See CONTRIBUTING.md.
 export default {
   extends: ['@commitlint/config-conventional'],

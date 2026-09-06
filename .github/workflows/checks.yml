@@ -101,7 +101,7 @@ jobs:
 
   # Conventional Commits on the PR's commits and its title (squash merges take
   # the title as the commit on main). Rules: commitlint.config.mjs. PRs only;
-  # a title-only edit is re-checked by commitlint.yml (a re-run of this job
+  # a title-only edit is re-checked by pull-request.yml (a re-run of this job
   # would still see the title from the original event payload).
   commits:
     name: Commits

@@ -1,0 +1,99 @@
+name: Pull Request
+
+# Reactions to a pull request's own lifecycle events. The pipeline itself
+# (ci.yml) runs on opened / synchronize / reopened / labeled; this file owns
+# the two events that must NOT re-run the pipeline. One job per event; the
+# other is skipped.
+#
+# Closed (merged or not)
+#   The PR's pull_request / push runs may still be in flight (iOS + Android
+#   E2E can take 20+ minutes). GitHub does not cancel them on its own, so
+#   cancel every queued or running run for the PR's head commit. The
+#   push-to-main run is on a different commit and is untouched. Also drop
+#   the branch's badges from gh-pages (see the Badges job in ci.yml).
+#
+# Title edited
+#   The gating commit + title lint is the Commits job in checks.yml, run by
+#   ci.yml on every PR push. A title edit alone must not re-run the whole
+#   pipeline, and a re-run of that job would still see the title from the
+#   original event payload - so the title is re-linted here.
+#   Rules: commitlint.config.mjs.
+on:
+  pull_request:
+    types: [closed, edited]
+
+# A registry request that hangs costs one minute per attempt instead of
+# npm's default five (#52). Warm installs make no request at all.
+env:
+  NPM_CONFIG_FETCH_TIMEOUT: '60000'
+
+permissions:
+  contents: read
+
+jobs:
+  cancel:
+    name: Cancel in-flight runs
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Cancel runs for the PR head commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash scripts/ci/cancel-runs.sh
+
+  badge-cleanup:
+    name: Remove branch badge
+    # Fork PRs never published one (no write token in their runs)
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # gh-pages cleanup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # Works in a gh-pages worktree; no gh-pages branch yet means nothing to clean.
+      - name: Delete badges/<branch>
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: bash scripts/ci/badges-cleanup.sh
+
+  title:
+    name: Title
+    if: github.event.action == 'edited' && github.event.changes.title && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    concurrency:
+      group: pr-title-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies (workspace root)
+        run: npm ci --ignore-scripts --prefer-offline --no-audit
+
+      - name: Lint PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | npx commitlint --verbose

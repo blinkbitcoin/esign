@@ -57,7 +57,9 @@ opened after [#60](https://github.com/blinkbitcoin/esign/pull/60) merged
 (the dry-run output is on the PR that introduced release-please):
 
 - **Title:** `chore(release): 0.2.0`
-- **Branch:** `release-please--branches--main`
+- **Branch:** `release-please--branches--main--components--esign-monorepo`
+  (the suffix is the root package name; release-please's branch naming is
+  fixed, not configurable)
 - **Files:** `CHANGELOG.md` (new entry prepended), `package.json` and
   `package-lock.json` (root version `0.1.0` → `0.2.0`),
   `.release-please-manifest.json` (`"." : "0.2.0"`)
@@ -84,7 +86,7 @@ Compare with the hand-cut v0.2.0 notes, which listed 26 PRs in one bucket,
 
 The PR is a normal branch. To add a paragraph of context (what the feature
 means for an integrator, a migration note), edit `CHANGELOG.md` on the
-`release-please--branches--main` branch and push; release-please keeps
+release branch and push; release-please keeps
 hand edits inside the current entry. Or merge as-is and edit the GitHub
 Release body afterwards; `CHANGELOG.md` and the release body are separate
 copies from that point.
@@ -97,7 +99,7 @@ changes the bump class).
 
 1. The squash merge `chore(release): X.Y.Z` lands on `main`. `ci.yml` runs
    for it like any push (it publishes a `-pre` build under `next`).
-2. `release-please.yml` runs on the same push, finds the merged release PR,
+2. `release.yml` runs on the same push, finds the merged release PR,
    creates the `vX.Y.Z` tag and the GitHub Release (body = the changelog
    entry), and dispatches `ci.yml` at that tag with `release_tag=vX.Y.Z`.
    The explicit dispatch exists because GitHub never triggers workflows
@@ -109,7 +111,7 @@ changes the bump class).
    under `latest`. Verify installs what was published and asserts the
    consumer contract.
 4. If the main run was red (a flaky E2E job), re-run its failed job
-   (`gh run rerun <id> --failed`); `release-retry.yml` re-runs the blocked
+   (`gh run rerun <id> --failed`); `release.yml`'s retry job re-runs the blocked
    Publish as soon as main is green. Nothing to re-tag.
 
 CI does not run on the release PR itself (same token rule). It only changes
@@ -130,14 +132,29 @@ the next stable release is still computed from the last `vX.Y.Z`.
   forward, merge, and the next release PR bumps again. A run that failed
   *before* Publish can simply be re-run.
 - **No release PR appears.** Nothing releasable has merged since the last
-  tag (only `ci:` / `docs:` / `chore:`), or the `Release Please` workflow
-  run on `main` failed. The one setup dependency: the repository must allow
-  GitHub Actions to create pull requests (Settings → Actions → General →
-  "Allow GitHub Actions to create and approve pull requests"; an
-  organisation setting can override it).
+  tag (only `ci:` / `docs:` / `chore:`), or the `Release` workflow
+  run on `main` failed. Check the two setup dependencies below.
 - **The version is wrong.** Push a commit with a `Release-As: X.Y.Z` footer,
   or fix the mis-typed commit title's effect by choosing the right type next
   time; the PR follows `main`.
+
+## Setup
+
+Two repository-level settings release-please depends on:
+
+- **The org ruleset must exclude the release branch.** The bot pushes its
+  own branch `release-please--**` with the workflow token; a ruleset that
+  requires a pull request for every branch refuses that push with
+  `Error updating ref heads/release-please--...` in the `Release` run.
+  Exclude `release-please--**` from the ruleset's target branches (only an
+  org admin can; `main` stays protected, the release PR still merges
+  through it). The branch name prefix is hard-coded in release-please.
+- **GitHub Actions may create pull requests.** Settings → Actions →
+  General → "Allow GitHub Actions to create and approve pull requests"
+  (an organisation setting can override it).
+
+GitHub Pages is off by design: the README badges are read from the
+`gh-pages` branch directly, so no site build is needed.
 
 ## Configuration
 
@@ -146,7 +163,8 @@ the next stable release is still computed from the last `vX.Y.Z`.
   policy, PR title pattern (`release` is a commitlint scope), and which
   commit types appear in the changelog.
 - `.release-please-manifest.json`: the last released version per component.
-- `.github/workflows/release-please.yml`: the workflow described above.
+- `.github/workflows/release.yml`: the workflow described above (release
+  PR / tag job on push, retry job on a completed CI run).
 - `scripts/release/resolve-version.sh`: unchanged; a release run is
   `EVENT=release TAG=vX.Y.Z`, whether it came from a `release` event or a
   `release_tag` dispatch.
