@@ -127,17 +127,18 @@ jobs:
   # the whole pipeline). Runs after E2E so it never delays it; a stage that
   # never ran because an earlier one failed renders as "skipped". Always
   # runs so a red badge replaces a stale green one; skipped for fork PRs (no
-  # write token) and release tags (not a branch). gh-pages is the one branch
-  # the org ruleset exempts from the PR-approval requirement, so the default
-  # GITHUB_TOKEN can push there; pull-request.yml removes a PR's directory
-  # when it closes.
+  # write token) and release runs (not a branch - a hand-cut `release:` event
+  # or a workflow_dispatch at a tag with `release_tag` set). gh-pages is the
+  # one branch the org ruleset exempts from the PR-approval requirement, so
+  # the default GITHUB_TOKEN can push there; pull-request.yml removes a PR's
+  # directory when it closes.
   badges:
     name: Badges
     needs: [checks, unit, e2e]
     if: |
       always() &&
       needs.checks.result != 'cancelled' && needs.unit.result != 'cancelled' && needs.e2e.result != 'cancelled' &&
-      github.event_name != 'release' &&
+      github.event_name != 'release' && inputs.release_tag == '' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 10
