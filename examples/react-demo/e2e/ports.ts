@@ -72,6 +72,20 @@ export const API_ORIGIN = `http://localhost:${PORTS.api}`;
 const viteOrigin = (mode: Mode): string =>
   `http://localhost:${PORTS.vite[mode]}`;
 
+// What CI changes about running the servers. In CI, a listener already on
+// a port is a foreign leftover from a previous job, never this suite's own
+// server - it must never be adopted, so CI always starts its own and fails
+// if the port is taken; locally, reusing a dev server already running on the
+// worktree's ports is the whole point. Retries: once in CI only, so a flaky
+// runner doesn't fail the suite while a real failure still fails fast
+// locally instead of being masked by a retry.
+export const ciPolicy = (env: Record<string, string | undefined>) => ({
+  reuseExistingServer: !env.CI,
+  retries: env.CI ? 1 : 0,
+});
+const { reuseExistingServer, retries } = ciPolicy(process.env);
+export { retries };
+
 // Playwright webServer entries. The backend gets its port and the demo
 // origins it must allow (CORS); the demo gets the backend origin.
 export const backendServer = () => ({
@@ -82,7 +96,7 @@ export const backendServer = () => ({
   ].join(' '),
   cwd: '../..',
   url: `${API_ORIGIN}/health`,
-  reuseExistingServer: true,
+  reuseExistingServer,
   timeout: 30_000,
 });
 
@@ -99,7 +113,7 @@ export const viteDevServer = (mode: Mode) => ({
 export const vitePreviewServer = (mode: Mode) => ({
   command: `VITE_API_ORIGIN=${API_ORIGIN} npm run build -- --outDir dist/${mode} && npm run preview -- --outDir dist/${mode} --port ${PORTS.vite[mode]} --strictPort`,
   url: viteOrigin(mode),
-  reuseExistingServer: true,
+  reuseExistingServer,
   timeout: 30_000,
 });
 
