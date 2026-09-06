@@ -2,7 +2,7 @@
 # Publishes this branch's badges to gh-pages/badges/<branch>/: coverage.svg
 # (when coverage/badge has one) plus unit/e2e .svg/.json rendered by
 # status-badge.mjs. README.md embeds main's the way a workflow badge takes
-# ?branch=main. cancel-closed.yml removes a PR's directory when it closes.
+# ?branch=main. pull-request.yml removes a PR's directory when it closes.
 # Env: BRANCH, SHA. Expects the badges in coverage/badge/. CI: Badges job.
 set -euo pipefail
 cd "$(dirname "$0")/../.."

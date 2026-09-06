@@ -25,7 +25,7 @@ name: CI
 #
 #   - Stable (`latest` dist-tag): ONLY for a vX.Y.Z tag. The tag IS the
 #     version (vX.Y.Z -> X.Y.Z); the three publishable package.json files
-#     carry a placeholder that is stamped at build time. release-please.yml
+#     carry a placeholder that is stamped at build time. release.yml
 #     owns the tag: merging its "chore(release): X.Y.Z" PR (`make release`)
 #     creates the tag + GitHub Release and dispatches this workflow at the
 #     tag with `release_tag` (a dispatch is needed because a release created
@@ -34,7 +34,7 @@ name: CI
 #     with a prerelease part (v1.0.0-rc.1) ships under `next`.
 #     Ships only once the commit's own push-to-main run is green: the gate
 #     below waits for an in-flight main run and fails on a red one, and
-#     release-retry.yml re-runs the failed Publish as soon as main goes
+#     release.yml's retry job re-runs the failed Publish as soon as main goes
 #     green - so a release is fire-and-forget.
 #   - Prerelease (`next` dist-tag): every push to main (or a manual
 #     dispatch without `release_tag`) ships
@@ -44,7 +44,9 @@ name: CI
 #   works for prereleases).
 #
 # Requires no extra secrets - GITHUB_TOKEN with packages:write is enough
-# for same-org publishing, and release-please.yml needs only the same token.
+# for same-org publishing, and release.yml needs only the same token.
+#
+# The whole pipeline in one picture: docs/diagrams/README.md#ci--release-pipeline
 #
 # iOS E2E runs by default: the repo is public, so GitHub-hosted macOS minutes
 # are free (they bill at 10x on private repos, which is why the job used to be
@@ -67,11 +69,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, labeled] # labeled: the `e2e:ios` override
   release:
-    types: [published] # hand-cut tags only (make release-rc); see release-please.yml
+    types: [published] # hand-cut tags only (make release-rc); see release.yml
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Ship this vX.Y.Z tag under `latest` (set by release-please.yml; run at the tag ref). Empty = prerelease from HEAD.'
+        description: 'Ship this vX.Y.Z tag under `latest` (set by release.yml; run at the tag ref). Empty = prerelease from HEAD.'
         type: string
         required: false
         default: ''
@@ -122,7 +124,7 @@ jobs:
   # runs so a red badge replaces a stale green one; skipped for fork PRs (no
   # write token) and release tags (not a branch). gh-pages is the one branch
   # the org ruleset exempts from the PR-approval requirement, so the default
-  # GITHUB_TOKEN can push there; cancel-closed.yml removes a PR's directory
+  # GITHUB_TOKEN can push there; pull-request.yml removes a PR's directory
   # when it closes.
   badges:
     name: Badges
@@ -203,7 +205,7 @@ jobs:
       # A release run re-runs the whole gate itself, but the README badges
       # and "is main green" mean the push-to-main run for that commit. Do not
       # ship over a red one: wait while it is still running, fail if it
-      # failed. release-retry.yml re-runs this job once main turns green.
+      # failed. release.yml's retry job re-runs this job once main turns green.
       - name: Require a green main run for the release commit
         if: github.event_name == 'release' || inputs.release_tag != ''
         env:

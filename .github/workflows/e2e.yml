@@ -114,7 +114,7 @@ jobs:
 
       # Stamped before the build so the tarballs carry the version they ship
       # under. On a PR this is a -pre.<run>.<sha> that is never published.
-      # A dispatch carrying `release_tag` (release-please.yml, run at the tag
+      # A dispatch carrying `release_tag` (release.yml, run at the tag
       # ref) is a release: the tag is the version.
       - name: Resolve version and stamp it into the packages
         id: ver
@@ -149,7 +149,7 @@ jobs:
           if-no-files-found: error
 
       # 7 days, not 1: a release whose main run was not yet green has its
-      # Publish re-run later by release-retry.yml, from this same artifact.
+      # Publish re-run later by release.yml's retry job, from this same artifact.
       - name: Publish tarballs for the Publish job
         uses: actions/upload-artifact@v7
         with:

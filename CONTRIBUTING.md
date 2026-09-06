@@ -145,7 +145,7 @@ Full walkthrough with a worked example: [docs/releasing.md](docs/releasing.md).
   accepts the same version twice, so a failed release means fixing forward.
   A release ships only once the commit's push-to-`main` run is green: the
   release run waits for an in-flight main run and refuses a red one, and
-  `release-retry.yml` re-runs the blocked Publish automatically when main
+  the `Release` workflow's retry job re-runs the blocked Publish automatically when main
   turns green (re-run the flaky job with `gh run rerun <id> --failed`).
   So merging the release PR is fire-and-forget.
 - **Release candidate**: `make release-rc V=X.Y.Z-rc.1` hand-cuts a

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Removes gh-pages/badges/<branch>/ for a closed PR. No gh-pages branch yet:
-# nothing to clean. Env: BRANCH. CI: cancel-closed.yml.
+# nothing to clean. Env: BRANCH. CI: pull-request.yml (closed).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 # shellcheck source=scripts/ci/gh-pages-lib.sh
