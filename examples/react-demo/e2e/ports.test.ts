@@ -10,6 +10,7 @@ import {
   backendServer,
   baseURL,
   blockFor,
+  ciPolicy,
   fnv1a,
   portsForBlock,
   viteDevServer,
@@ -72,6 +73,19 @@ describe('portsForBlock', () => {
       }
     }
     expect(seen.size).toBe(BLOCKS * (1 + MODES.length));
+  });
+});
+
+describe('ciPolicy', () => {
+  it('reuses a running server and never retries locally', () => {
+    expect(ciPolicy({})).toEqual({ reuseExistingServer: true, retries: 0 });
+  });
+
+  it('never adopts a foreign listener and retries once in CI', () => {
+    expect(ciPolicy({ CI: 'true' })).toEqual({
+      reuseExistingServer: false,
+      retries: 1,
+    });
   });
 });
 

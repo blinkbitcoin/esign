@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 
-import { backendServer, baseURL, viteDevServer } from './e2e/ports';
+import { backendServer, baseURL, retries, viteDevServer } from './e2e/ports';
 
 // Browser E2E for the public-URL Web Forms mode (createPublicUrlSource): no
 // backend minting call - the demo embeds a static published-form URL directly.
@@ -12,7 +12,7 @@ export default defineConfig({
   testDir: 'e2e',
   testMatch: '**/publicurl.spec.ts',
   timeout: 30_000,
-  retries: 0,
+  retries,
   use: {
     baseURL: baseURL('publicurl'),
   },
