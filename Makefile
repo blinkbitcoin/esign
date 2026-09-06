@@ -64,7 +64,7 @@ docs-check: ## Warn when architecture-relevant changes (vs origin/main) ship wit
 	bash scripts/ci/docs-freshness.sh
 
 release: ## Merge the open release PR (release-please opens it after a feat/fix lands on main); needs one approval first
-	@pr=$$(gh pr list --state open --label 'autorelease: pending' --json number,title -q '.[0] | "\(.number) \(.title)"'); \
+	@pr=$$(gh pr list --state open --label 'autorelease: pending' --json number,title -q '.[0] // empty | "\(.number) \(.title)"'); \
 	test -n "$$pr" || { echo "no open release PR: one appears after a feat/fix/perf commit reaches main (docs/releasing.md)"; exit 1; }; \
 	echo "merging #$$pr"; gh pr merge "$${pr%% *}" --squash
 
