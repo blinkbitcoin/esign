@@ -72,6 +72,8 @@
     "url": "git+https://github.com/blinkbitcoin/esign.git",
     "directory": "packages/esign-react"
   },
+  "homepage": "https://github.com/blinkbitcoin/esign#readme",
+  "bugs": { "url": "https://github.com/blinkbitcoin/esign/issues" },
   "type": "commonjs",
   "engines": {
     "node": ">= 18"
