@@ -5,7 +5,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 for i in {1..30}; do
-  if docker compose -f docker-compose.test.yml exec -T postgres-test pg_isready -U test -d esign_test; then
+  # -h forces a TCP check (the Unix socket is ready before the listener is).
+  if docker compose -f docker-compose.test.yml exec -T postgres-test \
+    pg_isready -h 127.0.0.1 -p 5432 -U test -d esign_test; then
     echo "Database is ready"; exit 0
   fi
   echo "Waiting for database... ($i/30)"; sleep 2
