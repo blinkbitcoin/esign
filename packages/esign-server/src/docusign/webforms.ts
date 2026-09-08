@@ -5,9 +5,9 @@
 
 import { createDocuSignClient, type DocuSignClient } from './client';
 import { assertDocuSignConfig, type DocuSignConfig } from './config';
-import { withRetry, type RetryConfig } from './http';
-import { assertWebFormPrefill } from './prefill';
-import type { WebFormInstanceOptions, WebFormInstanceResult } from './types';
+import { withRetry, type RetryConfig } from '../http';
+import { assertWebFormPrefill } from '../prefill';
+import type { WebFormInstanceOptions, WebFormInstanceResult } from '../types';
 
 export interface CreateWebFormInstanceParams extends WebFormInstanceOptions {
   // Either a client the host keeps (token cache lives there) ...

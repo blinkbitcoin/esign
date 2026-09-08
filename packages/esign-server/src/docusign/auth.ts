@@ -3,8 +3,8 @@
 
 import { createSign } from 'node:crypto';
 import { assertDocuSignConfig, type DocuSignConfig } from './config';
-import { HttpError } from './http';
-import type { FetchLike } from './types';
+import { HttpError } from '../http';
+import type { FetchLike } from '../types';
 
 // Late-bound global fetch (tests replace global.fetch)
 export const defaultFetch: FetchLike = (input, init) =>

@@ -17,7 +17,7 @@ import type {
 import {
   createWebFormInstance,
   type CreateWebFormInstanceParams,
-} from './webforms';
+} from './docusign/webforms';
 
 // An HTTP outcome, independent of the framework that sends it
 export interface HttpResult {

@@ -2,7 +2,7 @@
 // serverless / route handler mounts directly. The decision logic they share
 // with the Express router is exercised through them.
 
-import { createDocuSignClient } from '../client';
+import { createDocuSignClient } from '../docusign/client';
 import { createEnvelopeService } from '../envelopes';
 import {
   createWebFormInstanceHandler,
