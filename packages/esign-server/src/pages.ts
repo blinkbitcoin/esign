@@ -13,6 +13,10 @@
 //   postMessage protocol. DocuSign's embedded signing never postMessages.
 
 import { escapeHtml, jsonForScript, sanitizeId } from './html';
+import {
+  POST_SESSION_END_SCRIPT,
+  POST_SIGNING_EVENT_SCRIPT,
+} from './bridgeScript';
 import { formatPrefillValue } from './prefill';
 import type { WebFormPrefill } from './types';
 
@@ -48,17 +52,6 @@ export const mapDocuSignReturnEvent = (
       return 'exception';
   }
 };
-
-// Posts an event to whichever host is embedding the page
-const POST_HELPER = `
-    function postSigningEvent(event) {
-      var payload = JSON.stringify({ event: event });
-      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-        window.ReactNativeWebView.postMessage(payload); // React Native WebView
-      } else if (window.parent && window.parent !== window) {
-        window.parent.postMessage(payload, '*'); // web iframe
-      }
-    }`;
 
 // The mock provider's signing page: interactive, so manual testing and
 // Maestro E2E exercise the real WebView/iframe -> postMessage path.
@@ -96,7 +89,7 @@ export const renderMockSigningPage = (
   <button class="plain" data-event="cancel">Cancel</button>
   <button class="plain" data-event="decline">Decline to Sign</button>
   <button class="plain" data-event="session_timeout">Simulate Session Timeout</button>
-  <script${nonceAttr}>${POST_HELPER}
+  <script${nonceAttr}>${POST_SIGNING_EVENT_SCRIPT}
     document.querySelectorAll('button[data-event]').forEach(function (el) {
       el.addEventListener('click', function () {
         postSigningEvent(el.getAttribute('data-event'));
@@ -107,20 +100,6 @@ export const renderMockSigningPage = (
 </html>
 `;
 };
-
-// Posts a DocuSign.js-shaped sessionEnd event ({ event: 'sessionEnd', type }) -
-// the real shape DocuSign.js dispatches (verified 2026-07: sessionEnd with a
-// type discriminator). Kept distinct from POST_HELPER so the Web Forms mock
-// exercises the REAL event vocabulary (interpretDocuSignEvent), not the proxy's.
-const POST_HELPER_TYPE = `
-    function postSigningEvent(type) {
-      var payload = JSON.stringify({ event: 'sessionEnd', type: type });
-      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-        window.ReactNativeWebView.postMessage(payload); // React Native WebView
-      } else if (window.parent && window.parent !== window) {
-        window.parent.postMessage(payload, '*'); // web iframe
-      }
-    }`;
 
 // A field on the mock Web Forms page
 export interface MockWebFormField {
@@ -230,7 +209,7 @@ export const renderMockWebFormPage = (
   <button class="plain" data-event="cancel">Cancel</button>
   <button class="plain" data-event="decline">Decline to Sign</button>
   <button class="plain" data-event="sessionTimeout">Simulate Session Timeout</button>
-  <script${nonceAttr}>${POST_HELPER_TYPE}
+  <script${nonceAttr}>${POST_SESSION_END_SCRIPT}
     document.querySelectorAll('button[data-event]').forEach(function (el) {
       el.addEventListener('click', function () {
         postSigningEvent(el.getAttribute('data-event'));
@@ -263,7 +242,7 @@ export const renderSigningReturnBridge = (
 </head>
 <body>
   <p>Returning to the app&hellip;</p>
-  <script${nonceAttr}>${POST_HELPER}
+  <script${nonceAttr}>${POST_SIGNING_EVENT_SCRIPT}
     postSigningEvent(${jsonForScript(event)});
   </script>
 </body>
