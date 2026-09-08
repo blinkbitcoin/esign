@@ -7,9 +7,10 @@
 
 | Part | Root | Type | Role |
 |------|------|------|------|
-| `library` | `packages/esign-react-native/` | Publishable RN library | The product: signing UI component + Apollo client factory |
-| `backend` | `examples/full-service-demo/` | Express + Apollo API | The main service: envelope orchestration, persistence, webhooks |
-| `demo` | `examples/react-native-demo/` | RN app | Integration demo hosting the library (manual + Maestro E2E) |
+| `library` | `packages/esign-react-native/`, `packages/esign-react/` | Publishable client libraries | The product: signing UI component + `useESignature` over `esign-core` |
+| `server` | `packages/esign-server/` | Publishable Node library | The product's server half: DocuSign client, `createWebFormInstance`, envelope domain over the provider + store ports, Fetch handlers, `/express`, `/knex` |
+| `service` | `examples/full-service-demo/` | Express + Apollo host | Reference host of the full shape: envelope orchestration, persistence, webhooks; the E2E backend |
+| `demo` | `examples/react-native-demo/`, `examples/react-demo/` | RN app, Vite app | Integration demos hosting the libraries (manual + Maestro / Playwright E2E) |
 
 [![System Architecture](../diagrams/dist/system-architecture.svg)](../diagrams/src/system-architecture.mmd)
 
