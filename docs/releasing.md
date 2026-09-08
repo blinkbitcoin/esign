@@ -105,11 +105,13 @@ changes the bump class).
    The explicit dispatch exists because GitHub never triggers workflows
    from events the workflow token created; a release made by the bot would
    not fire the `release:` trigger.
-3. That release run stamps `X.Y.Z` into the four packages, builds, runs
-   Checks, Unit and every E2E suite, then the Publish job waits for the
-   commit's push-to-`main` run to be green (fails on a red one) and publishes
-   under `latest`. Verify installs what was published and asserts the
-   consumer contract.
+3. That release run stamps `X.Y.Z` into the four packages, builds them and
+   the service image, runs Checks, Unit and every E2E suite, then the
+   Publish job waits for the commit's push-to-`main` run to be green (fails
+   on a red one) and publishes under `latest`: the four packages to GitHub
+   Packages and the image to GHCR as `ghcr.io/blinkbitcoin/esign-api:X.Y.Z`
+   (+ `:latest`). Verify installs the published packages, pulls the
+   published image and asserts the consumer contract on both.
 4. If the main run was red (a flaky E2E job), re-run its failed job
    (`gh run rerun <id> --failed`); `release.yml`'s retry job re-runs the blocked
    Publish as soon as main is green. Nothing to re-tag.
@@ -122,7 +124,7 @@ tagged run executes the full pipeline before anything ships.
 
 `make release-rc V=X.Y.Z-rc.1` creates a `vX.Y.Z-rc.1` tag and prerelease
 by hand. It goes through the `release:` trigger and ships under `next`
-(`npm i @blinkbitcoin/esign-react@next`). release-please ignores such tags;
+(`npm i @blinkbitcoin/esign-react@next`, `ghcr.io/blinkbitcoin/esign-api:next`). release-please ignores such tags;
 the next stable release is still computed from the last `vX.Y.Z`.
 
 ## When something goes wrong
@@ -130,7 +132,9 @@ the next stable release is still computed from the last `vX.Y.Z`.
 - **The release run failed after tagging.** GitHub Packages never accepts a
   version twice, so a partially published version cannot be re-shipped: fix
   forward, merge, and the next release PR bumps again. A run that failed
-  *before* Publish can simply be re-run.
+  *before* Publish can simply be re-run. (Container tags on GHCR can be
+  overwritten, so a failure after the packages but before the image is
+  also fix-forward: the next version ships both.)
 - **No release PR appears.** Nothing releasable has merged since the last
   tag (only `ci:` / `docs:` / `chore:`), or the `Release` workflow
   run on `main` failed. Check the two setup dependencies below.

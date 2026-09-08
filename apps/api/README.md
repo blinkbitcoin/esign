@@ -68,6 +68,17 @@ docker run --rm --env-file apps/api/.env esign-api npm run migrate   # once per 
 docker run --rm -p 4000:4000 --env-file apps/api/.env esign-api      # serve
 ```
 
+CI builds and smokes the same image on every branch (E2E / Docker) and
+publishes it to GHCR next to the npm packages, under the same version and
+dist-tag: `ghcr.io/blinkbitcoin/esign-api:<version>`, `:latest` for a
+release, `:next` for every green push to `main` ([releasing.md](../../docs/releasing.md)).
+Deploying is then a pull instead of a build:
+
+```sh
+docker pull ghcr.io/blinkbitcoin/esign-api:latest
+docker run --rm -p 4000:4000 --env-file .env ghcr.io/blinkbitcoin/esign-api:latest
+```
+
 Configuration is the same `.env` as local (`.env.example`); with
 `ESIGN_PROVIDER=docusign` the JWT credentials and `DOCUSIGN_HMAC_KEY` are
 required at boot (fail-closed). The image runs as the unprivileged `node`

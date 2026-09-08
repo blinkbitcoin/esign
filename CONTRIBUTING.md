@@ -30,8 +30,9 @@ environment variables, and troubleshooting:
 - CI (`ci.yml`) is one pipeline for every branch: static checks, unit
   suites with coverage thresholds, then one build of the packages next to
   all end-to-end suites (backend, browser - over that build - iOS
-  simulator, Android emulator), and on `main` the publish of those exact
-  tarballs + registry smoke. A second workflow re-checks the commit
+  simulator, Android emulator) and a build + smoke of the service image, and
+  on `main` the publish of those exact tarballs and image (GitHub Packages,
+  GHCR) + registry smoke of both. A second workflow re-checks the commit
   convention on the PR's commits and title.
 
 ## Commit messages
