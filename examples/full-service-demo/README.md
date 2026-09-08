@@ -1,4 +1,4 @@
-# apps/api — E-Sign Service
+# examples/full-service-demo — E-Sign Service
 
 Express 5 + Apollo Server 5 GraphQL API that orchestrates e-signature
 envelopes against a provider (DocuSign, or a local mock), persists them via
@@ -11,7 +11,7 @@ packages are its client SDKs.
 
 ```sh
 # From repo root, once per machine:
-direnv allow . && direnv allow apps/api   # env + nix dev shell
+direnv allow . && direnv allow examples/full-service-demo   # env + nix dev shell
 
 # From this directory:
 make db-up          # dev Postgres (docker, port 5432)
@@ -58,14 +58,14 @@ make e2e            # 14 E2E tests against real Postgres
 
 ## Deploy
 
-The service ships as a container (`apps/api/Dockerfile`, built from the repo
+The service ships as a container (`examples/full-service-demo/Dockerfile`, built from the repo
 root so the workspace lockfile and `packages/esign-server` are inputs):
 
 ```sh
 make docker-build                     # → esign-api (node 24 alpine, production deps only)
 make docker-smoke                     # boots it with the mock provider, checks /health
-docker run --rm --env-file apps/api/.env esign-api node dist/migrate.js   # once per database
-docker run --rm -p 4000:4000 --env-file apps/api/.env esign-api      # serve
+docker run --rm --env-file examples/full-service-demo/.env esign-api node dist/migrate.js   # once per database
+docker run --rm -p 4000:4000 --env-file examples/full-service-demo/.env esign-api      # serve
 ```
 
 CI builds and smokes the same image on every branch (E2E / Docker) and

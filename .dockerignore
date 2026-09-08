@@ -1,4 +1,4 @@
-# Build context for apps/api/Dockerfile (built from the repo root)
+# Build context for examples/full-service-demo/Dockerfile (built from the repo root)
 **/node_modules
 **/dist
 **/lib

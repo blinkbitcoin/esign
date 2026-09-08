@@ -74,11 +74,11 @@ jobs:
 
       - name: Run database migrations
         run: npm run migrate:test
-        working-directory: apps/api
+        working-directory: examples/full-service-demo
 
       - name: Run E2E tests
         run: npm run test:e2e
-        working-directory: apps/api
+        working-directory: examples/full-service-demo
 
       - name: Stop test database
         if: always()
@@ -163,7 +163,7 @@ jobs:
           overwrite: true
           if-no-files-found: error
 
-  # The one build of the service image (apps/api/Dockerfile): stamped with
+  # The one build of the service image (examples/full-service-demo/Dockerfile): stamped with
   # the same version Build Packages resolves, smoked (mock provider, /health)
   # and saved as an artifact, so Publish ships the exact image that passed
   # here. Sits in this stage for the same reason Build Packages does: nothing
@@ -246,7 +246,7 @@ jobs:
         run: make test-db-up
 
       - name: Run migrations (test database)
-        run: npm run migrate:test -w apps/api
+        run: npm run migrate:test -w examples/full-service-demo
 
       - name: Run browser E2E (Playwright starts the backend, builds + previews the demo)
         run: npm run test:e2e -w examples/react-demo
@@ -399,7 +399,7 @@ jobs:
 
       - name: Run database migrations
         run: npm run migrate:test
-        working-directory: apps/api
+        working-directory: examples/full-service-demo
 
       - name: Start backend with mock provider
         run: make e2e-backend-up
@@ -576,7 +576,7 @@ jobs:
 
       - name: Run database migrations
         run: npm run migrate:test
-        working-directory: apps/api
+        working-directory: examples/full-service-demo
 
       - name: Start backend with mock provider
         run: make e2e-backend-up

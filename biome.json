@@ -22,7 +22,6 @@
     "useEditorconfig": true,
     "includes": [
       "**",
-      "!apps/api/**",
       "!**/ios/**",
       "!**/android/**",
       "!**/coverage/**",

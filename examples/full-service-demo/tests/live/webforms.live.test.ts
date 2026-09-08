@@ -1,7 +1,7 @@
 // LIVE verification against the real DocuSign Web Forms API (demo account).
 //
 // Opt-in: runs only via `npm run test:live` AND only when the DocuSign env
-// vars below are set (typically from apps/api/.env); otherwise every test is
+// vars below are set (typically from examples/full-service-demo/.env); otherwise every test is
 // skipped. Never part of `npm test` / CI - it needs credentials and network.
 //
 // This automates items 1 (JWT auth) and 4 (createInstance contract) of the

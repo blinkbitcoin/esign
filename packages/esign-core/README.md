@@ -38,7 +38,7 @@ the platform components never change.
 
 ```sh
 make test        # 75 Jest tests, 100% coverage (enforced threshold)
-make codegen     # regenerate types from ../../apps/api/schema.graphql
+make codegen     # regenerate types from ../../examples/full-service-demo/schema.graphql
 make build       # tsup (ESM + CJS + types, both entries)
 ```
 

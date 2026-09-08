@@ -8,7 +8,7 @@
 | Part | Root | Type | Role |
 |------|------|------|------|
 | `library` | `packages/esign-react-native/` | Publishable RN library | The product: signing UI component + Apollo client factory |
-| `backend` | `apps/api/` | Express + Apollo API | The main service: envelope orchestration, persistence, webhooks |
+| `backend` | `examples/full-service-demo/` | Express + Apollo API | The main service: envelope orchestration, persistence, webhooks |
 | `demo` | `examples/react-native-demo/` | RN app | Integration demo hosting the library (manual + Maestro E2E) |
 
 [![System Architecture](../diagrams/dist/system-architecture.svg)](../diagrams/src/system-architecture.mmd)
@@ -18,7 +18,7 @@
 ### 1. Library → Backend: GraphQL over HTTP
 
 - **From:** `packages/esign-react-native/src/client.ts` (Apollo Client 4, `createESignApolloClient` factory)
-- **To:** `apps/api/src/app.ts` `/graphql` (Apollo Server 5)
+- **To:** `examples/full-service-demo/src/app.ts` `/graphql` (Apollo Server 5)
 - **URL resolution:** host app's concern - the demo resolves it in `examples/react-native-demo/src/config.ts` — iOS simulator `localhost:4000`,
   Android emulator `10.0.2.2:4000` (host alias), physical devices need the
   host LAN IP
@@ -26,13 +26,13 @@
   backend resolves it in `src/auth.ts` (HS256 JWT when `JWT_SECRET` set,
   dev passthrough otherwise)
 - **Operations:** `createEnvelope`, `getSigningUrl` mutations
-  (`packages/esign-react-native/src/operations.ts` ↔ `apps/api/src/schema.ts`)
+  (`packages/esign-react-native/src/operations.ts` ↔ `examples/full-service-demo/src/schema.ts`)
 
 ### 2. Shared Error-Code Contract (schema-borne, generated)
 
 The GraphQL `extensions.code` values form the wire contract between parts.
 The contract's source of truth is the `ErrorCode` enum in
-`apps/api/schema.graphql` (emitted from `src/typeDefs.ts` via
+`examples/full-service-demo/schema.graphql` (emitted from `src/typeDefs.ts` via
 `npm run schema:emit`); each client package runs GraphQL Codegen against it
 (`make codegen`) and a parity test asserts its `ErrorCodes` map matches the
 generated enum. Drift fails tests locally and a dedicated CI step:
@@ -44,7 +44,7 @@ generated enum. Drift fails tests locally and a dedicated CI step:
 `SIGNING_ERROR`).
 
 Changing a code is a **breaking cross-part change**: edit the schema enum +
-`apps/api/src/errors.ts`, run `make codegen`, and the parity tests point at
+`examples/full-service-demo/src/errors.ts`, run `make codegen`, and the parity tests point at
 every client spot needing updates (ErrorCodes map, getErrorMessage copy).
 
 ### 3. Mobile WebView ↔ Signing Page: postMessage Events
@@ -68,7 +68,7 @@ every client spot needing updates (ErrorCodes map, getErrorMessage copy).
 ### 4. Provider → Backend: Webhook Callbacks
 
 - **From:** e-sign provider (DocuSign Connect, or the mock mirroring it)
-- **To:** `POST /webhook/esign` (`apps/api/src/app.ts`)
+- **To:** `POST /webhook/esign` (`examples/full-service-demo/src/app.ts`)
 - **Verification/parsing:** delegated to the configured provider
   (`ESignProvider.verifyWebhook` / `parseWebhookEvent`); DocuSign uses
   HMAC-SHA256 over the raw body in `X-DocuSign-Signature-1`
@@ -77,7 +77,7 @@ every client spot needing updates (ErrorCodes map, getErrorMessage copy).
 
 ### 5. Backend → DocuSign: REST API
 
-- **From:** `apps/api/src/providers/docusign/` (the only file that talks to DocuSign)
+- **From:** `examples/full-service-demo/src/providers/docusign/` (the only file that talks to DocuSign)
 - **To:** DocuSign eSignature REST API v2.1 (`DOCUSIGN_BASE_URL`) and OAuth
   (`DOCUSIGN_OAUTH_URL`, JWT Grant with RS256 assertion)
 - **Resilience:** exponential-backoff retry (3 attempts) on network/5xx/429;
@@ -85,7 +85,7 @@ every client spot needing updates (ErrorCodes map, getErrorMessage copy).
 
 ### 6. Backend → PostgreSQL
 
-- **From:** repository modules via shared Knex instance (`apps/api/src/db.ts`)
+- **From:** repository modules via shared Knex instance (`examples/full-service-demo/src/db.ts`)
 - **Schema:** `Envelope` + `AuditLog` (see
   [data-models.md](data-models.md))
 
@@ -117,7 +117,7 @@ mobile↔backend boundary; the provider's envelope ID never leaves the backend.
   database, interacting with the real mock signing page inside the WebView —
   exercising integration points 1, 3, and 6. Flows: happy path,
   cancel-from-signing-page, session-timeout → restart → complete
-- **Backend E2E** (`apps/api/tests/e2e/`) exercises points 4 and 6 against
+- **Backend E2E** (`examples/full-service-demo/tests/e2e/`) exercises points 4 and 6 against
   real Postgres, including the full webhook signature/parsing path
 - **CI:** `.github/workflows/e2e.yml` (build-packages, docker, backend, web, iOS, Android jobs, called by `ci.yml`); `ci.yml` releases the tarballs `build-packages` made to GitHub Packages and the service image `docker` smoked to GHCR
 - **Playwright** (`examples/react-demo/e2e/`) drives the web demo in real
@@ -134,5 +134,5 @@ mobile↔backend boundary; the provider's envelope ID never leaves the backend.
 | Dependency | Library/Demo | Backend | Must stay compatible |
 |------------|--------|---------|----------------------|
 | `graphql` | 16.x (unified) | 16.x | Yes — hoisted to ONE copy repo-wide; Apollo Server 5 pins 16.x, so do not bump to 17 until it supports it |
-| Error codes | `packages/esign-react-native/src/client.ts` | `apps/api/src/errors.ts` | Yes — wire contract |
+| Error codes | `packages/esign-react-native/src/client.ts` | `examples/full-service-demo/src/errors.ts` | Yes — wire contract |
 | WebView events | `ESignature.tsx` | mock signing page | Yes — signing protocol |

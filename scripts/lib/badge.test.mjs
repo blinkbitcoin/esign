@@ -88,7 +88,7 @@ describe('aggregate', () => {
         },
       },
       {
-        ws: 'apps/api',
+        ws: 'examples/full-service-demo',
         reportDir: 'coverage',
         summary: {
           lines: { covered: 10, total: 10, pct: 100 },
@@ -111,7 +111,7 @@ describe('aggregate', () => {
         functions: { covered: 90, total: 100, pct: 90 },
       },
       {
-        ws: 'apps/api',
+        ws: 'examples/full-service-demo',
         reportDir: 'coverage',
         lines: { covered: 10, total: 10, pct: 100 },
         statements: { covered: 10, total: 10, pct: 100 },
@@ -134,7 +134,7 @@ describe('aggregate', () => {
         },
       },
       {
-        ws: 'apps/api',
+        ws: 'examples/full-service-demo',
         reportDir: 'coverage',
         summary: {
           lines: { covered: 5, total: 5, pct: 100 },
@@ -235,7 +235,7 @@ describe('renderReportHtml', () => {
           functions: { covered: 100, total: 100, pct: 100 },
         },
         {
-          ws: 'apps/api',
+          ws: 'examples/full-service-demo',
           lines: { covered: 90, total: 100, pct: 90 },
           statements: { covered: 90, total: 100, pct: 90 },
           branches: { covered: 90, total: 100, pct: 90 },
@@ -253,7 +253,7 @@ describe('renderReportHtml', () => {
         '<td class="n">100%</td><td class="n muted">100/100</td></tr>',
     );
     expect(html).toContain(
-      '<tr><td><a href="apps/api/index.html">apps/api</a></td>',
+      '<tr><td><a href="examples/full-service-demo/index.html">examples/full-service-demo</a></td>',
     );
   });
 
@@ -287,7 +287,7 @@ describe('WORKSPACES', () => {
       'packages/esign-server',
       'packages/esign-react-native',
       'packages/esign-react',
-      'apps/api',
+      'examples/full-service-demo',
       'scripts',
     ]);
   });

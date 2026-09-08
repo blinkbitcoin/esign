@@ -10,7 +10,7 @@ the demo app exists for manual and E2E testing.
 
 | Workspace | Path | Role |
 |-----------|------|------|
-| `backend` | `apps/api/` | Express 5 + Apollo Server 5 GraphQL API, Knex/PostgreSQL, provider adapters (DocuSign/mock), webhooks |
+| `backend` | `examples/full-service-demo/` | Express 5 + Apollo Server 5 GraphQL API, Knex/PostgreSQL, provider adapters (DocuSign/mock), webhooks |
 | `@blinkbitcoin/esign-core` | `packages/esign-core/` | Platform-agnostic core: `SigningSource` abstraction + sources, Apollo factory, GraphQL operations + codegen (no React/DOM) |
 | `@blinkbitcoin/esign-server` | `packages/esign-server/` | Node-only server half: DocuSign client (JWT grant, envelopes, Web Forms) + `createWebFormInstance` (the one call for locked prefill) + the envelope domain (`createEnvelopeService` over the `ESignProvider` and `EnvelopeStore` ports); the backend is built on it, hosts with their own backend import it |
 | `@blinkbitcoin/esign-react-native` | `packages/esign-react-native/` | Publishable RN library: `ESignature` component (WebView) over core |
@@ -22,7 +22,7 @@ the demo app exists for manual and E2E testing.
 - **Language**: TypeScript everywhere (TS 6.0)
 - **Node**: ^22.22.2 || >= 24.15.0 (floor set by jsdom 30)
 - **Env management**: direnv (house convention) - `.envrc` at root (`use
-  flake` + workspace bins on PATH) and in `apps/api/` (loads `.env`); the
+  flake` + workspace bins on PATH) and in `examples/full-service-demo/` (loads `.env`); the
   backend also self-loads `.env` via dotenv as a non-direnv fallback
 - **Toolchain**: pinned by `flake.nix` (node 24, jdk 17, ruby 3.3, watchman);
   entered automatically via direnv, or `nix develop`. CI uses plain
@@ -36,9 +36,9 @@ the demo app exists for manual and E2E testing.
 ## Commands (repo root)
 
 Makefiles exist at three levels: the root (repo-wide flows), the group dirs
-(`apps/`, `packages/`, `examples/` - fan common targets out to auto-discovered
+(`packages/`, `examples/` - fan common targets out to auto-discovered
 children), and each workspace (thin delegates to its npm scripts). So
-`make -C packages coverage` runs both libraries, `cd apps/api && make dev`
+`make -C packages coverage` runs both libraries, `cd examples/full-service-demo && make dev`
 runs the service. `make help` lists every root target with a description.
 The ones that matter most: `make test` (unit + check-code), `make coverage`,
 `make check-ci` (actionlint + shellcheck of `scripts/**`), `make codegen`,
@@ -47,7 +47,7 @@ E2E → teardown), `make e2e-web[-webform|-publicurl]` (Playwright), `make
 e2e-android` / `make e2e-ios` (Maestro, needs a running stack; `make
 e2e-backend-up` starts the mock-provider backend), `make db-up/migrate/backend`,
 `make ios/android/start/web`, `make pods`, `make build`, `make docker-build` /
-`make docker-smoke` (the service image, `apps/api/Dockerfile`), `make release`,
+`make docker-smoke` (the service image, `examples/full-service-demo/Dockerfile`), `make release`,
 `make clean/reset`. The underlying npm scripts:
 
 ```bash
@@ -69,12 +69,12 @@ npm run test:e2e             # Maestro mobile E2E (needs backend + simulator/emu
 ```
 
 Single test file: `npm test -w @blinkbitcoin/esign-react-native -- ESignature` or
-`npm test -w apps/api -- tests/webhook.test.ts`.
+`npm test -w examples/full-service-demo -- tests/webhook.test.ts`.
 
 ## Backend specifics
 
 ```bash
-cd apps/api
+cd examples/full-service-demo
 npm run migrate              # The package's migrations (src/migrate.ts via tsx)
 npm run migrate:test         # Same against the .env.test database
 ```
@@ -96,7 +96,7 @@ npm run migrate:test         # Same against the .env.test database
   tests and `tsx` dev (`tsconfig.json` paths + vitest aliases); `npm run
   build` (`tsconfig.build.json`) needs the package's dist, so build the
   packages first (`npm run build` at the root).
-- The wire contract is the `ErrorCode` enum in `apps/api/schema.graphql`
+- The wire contract is the `ErrorCode` enum in `examples/full-service-demo/schema.graphql`
   (the SDL lives in `packages/esign-server/src/graphql.ts`, re-exported by
   `src/typeDefs.ts`). After schema changes run `make codegen`;
   drift fails backend tests, client parity tests, and a CI step.
@@ -202,10 +202,10 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
 ## Architecture Patterns
 
 - **Provider pattern**: new e-sign providers implement the `ESignProvider`
-  port (`apps/api/src/providers/port.ts`) as an adapter under
-  `apps/api/src/providers/` + a case in the `src/providers/index.ts` factory
+  port (`examples/full-service-demo/src/providers/port.ts`) as an adapter under
+  `examples/full-service-demo/src/providers/` + a case in the `src/providers/index.ts` factory
 - **Safe Area**: `react-native-safe-area-context` (demo app concern)
 - **Entry points**: `examples/react-native-demo/index.js` (RN app),
-  `examples/react-demo/src/main.tsx` (web app), `apps/api/src/index.ts`
+  `examples/react-demo/src/main.tsx` (web app), `examples/full-service-demo/src/index.ts`
   (service bootstrap), `packages/esign-{core,react-native,react}/src/index.ts`
   (library APIs)

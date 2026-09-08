@@ -132,7 +132,7 @@ Metadata is sanitized at write time against an allow-list
 
 Data access is not done inline in resolvers. The domain
 (`createEnvelopeService` in `@blinkbitcoin/esign-server`) talks to an
-`EnvelopeStore` port; `apps/api/src/store.ts` implements it with Knex, and
+`EnvelopeStore` port; `examples/full-service-demo/src/store.ts` implements it with Knex, and
 the package ships an in-memory implementation for tests and for hosts that
 keep envelope state elsewhere.
 
@@ -196,7 +196,7 @@ await db.migrate.rollback({ migrationSource: createESignMigrationSource() });
 In this repo:
 
 ```bash
-cd apps/api
+cd examples/full-service-demo
 npm run migrate          # tsx src/migrate.ts against DATABASE_URL (.env)
 npm run migrate:test     # the same against .env.test
 # in the image: docker run --rm --env-file .env esign-api node dist/migrate.js
@@ -207,7 +207,7 @@ npm run migrate:test     # the same against .env.test
 ## Test Data Factory
 
 ```typescript
-// apps/api/tests/e2e/factories.ts (Knex-based, actual signatures)
+// examples/full-service-demo/tests/e2e/factories.ts (Knex-based, actual signatures)
 
 export const createTestEnvelope = async (overrides = {}): Promise<Envelope> => {
   const [envelope] = await knex<Envelope>('Envelope')
