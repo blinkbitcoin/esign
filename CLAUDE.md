@@ -4,19 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-E-signature integration monorepo (npm workspaces). The **backend service** is
-the main deliverable together with the **publishable React Native library**;
-the demo app exists for manual and E2E testing.
+E-signature integration monorepo (npm workspaces). The deliverables are the
+**four publishable packages** (two client libraries, their core, and the
+server package). The examples are reference hosts: two client demos and
+three server shapes, used for manual testing and every E2E suite.
 
 | Workspace | Path | Role |
 |-----------|------|------|
-| `backend` | `examples/full-service-demo/` | Express 5 + Apollo Server 5 GraphQL API, Knex/PostgreSQL, provider adapters (DocuSign/mock), webhooks |
 | `@blinkbitcoin/esign-core` | `packages/esign-core/` | Platform-agnostic core: `SigningSource` abstraction + sources, Apollo factory, GraphQL operations + codegen (no React/DOM) |
 | `@blinkbitcoin/esign-server` | `packages/esign-server/` | Node-only server half: DocuSign client (JWT grant, envelopes, Web Forms) + `createWebFormInstance` (the one call for locked prefill) + the envelope domain (`createEnvelopeService` over the `ESignProvider` and `EnvelopeStore` ports); the backend is built on it, hosts with their own backend import it |
 | `@blinkbitcoin/esign-react-native` | `packages/esign-react-native/` | Publishable RN library: `ESignature` component (WebView) over core |
 | `@blinkbitcoin/esign-react` | `packages/esign-react/` | Publishable React **web** library: `ESignature` (iframe) + DocuSign.js source over core |
 | `esign-react-native-example` | `examples/react-native-demo/` | RN 0.86 demo app hosting the RN library (Maestro E2E target) |
 | `esign-react-example` | `examples/react-demo/` | Vite web demo hosting the web library (`make web`) |
+| `esign-full-service-example` | `examples/full-service-demo/` | The whole service on the server package: Express router + Apollo + Knex/PostgreSQL + webhooks; the backend every E2E suite runs against, ships as the `esign-api` image |
+| `esign-mint-only-example` | `examples/mint-only-demo/` | An existing GraphQL API adds one mutation that mints a locked Web Forms instance (the Blink API shape) |
+| `esign-serverless-handler-example` | `examples/serverless-handler-demo/` | The package's Fetch handlers (mint + webhook) behind a route handler; plain Node adapter |
 | `tooling` | `scripts/` | CI/release scripts; `lib/*.mjs` unit-tested at 100% (Vitest) |
 
 - **Language**: TypeScript everywhere (TS 6.0)

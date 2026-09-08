@@ -101,7 +101,27 @@ esign/
 │       ├── metro.config.js        # watchFolders -> workspace root
 │       └── Gemfile / .bundle/     # CocoaPods tooling
 │
-├── 🖥️ BACKEND (Express + Apollo)
+├── 🖥️ SERVER EXAMPLE 2 - one mutation on an existing API (the Blink shape)
+│   │
+│   └── examples/mint-only-demo/
+│       ├── src/
+│       │   ├── quote.ts           # The host's own data → prefill of the read-only fields
+│       │   ├── mint.ts            # The one package call (createWebFormInstance; mock swap)
+│       │   ├── schema.ts          # The host's schema with investSigningUrl added
+│       │   ├── server.ts          # Apollo Server + the host's session in the context
+│       │   └── index.ts           # Bootstrap (PORT, default 4100)
+│       └── tests/                 # Vitest, 100% enforced
+│
+├── 🖥️ SERVER EXAMPLE 3 - the Fetch handlers behind a route
+│   │
+│   └── examples/serverless-handler-demo/
+│       ├── src/
+│       │   ├── handlers.ts        # createWebFormInstanceHandler + createWebhookHandler from env
+│       │   ├── node.ts            # IncomingMessage ⇄ Request/Response adapter + route table
+│       │   └── index.ts           # Bootstrap (PORT, default 4200)
+│       └── tests/                 # Vitest, 100% enforced
+│
+├── 🖥️ SERVER EXAMPLE 1 - the whole service (Express + Apollo + Postgres)
 │   │
 │   └── examples/full-service-demo/
 │       ├── package.json           # Backend dependencies

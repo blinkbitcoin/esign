@@ -1,7 +1,7 @@
 // Renders the README coverage badge from measured numbers instead of a
 // hardcoded shields.io URL. Aggregates line coverage across the workspaces
-// that enforce 100% (the four publishable packages, the backend, and the
-// tooling scripts) by reading the `json-summary` reporter output each of
+// that enforce 100% (the four publishable packages, the three server
+// examples, and the tooling scripts) by reading the `json-summary` reporter output each of
 // them emits under
 // `<workspace>/coverage/coverage-summary.json`. The demo apps are excluded
 // on purpose: they carry floors, not 100%, and their real coverage is E2E.

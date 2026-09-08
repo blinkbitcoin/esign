@@ -16,6 +16,8 @@ export const WORKSPACES = [
   { ws: 'packages/esign-react-native', reportDir: 'coverage/lcov-report' },
   { ws: 'packages/esign-react', reportDir: 'coverage/lcov-report' },
   { ws: 'examples/full-service-demo', reportDir: 'coverage' },
+  { ws: 'examples/mint-only-demo', reportDir: 'coverage' },
+  { ws: 'examples/serverless-handler-demo', reportDir: 'coverage' },
   { ws: 'scripts', reportDir: 'coverage' },
 ];
 
@@ -112,7 +114,7 @@ export function renderReportHtml({ message, detail, branch, sha, rows }) {
   return `<!doctype html><meta charset="utf-8"><title>esign coverage ${escapeHtml(message)}</title>
 <style>body{font:14px/1.5 system-ui,sans-serif;margin:2rem auto;max-width:60rem;padding:0 1rem}table{border-collapse:collapse;width:100%}th,td{padding:.4rem .6rem;border-bottom:1px solid #ddd;text-align:left}th.n,td.n{text-align:right}.muted{color:#777}h1 small{font-weight:normal;color:#777}</style>
 <h1>Coverage ${escapeHtml(message)} <small>${escapeHtml(detail)} - ${escapeHtml(branch)} @ ${escapeHtml(sha)}</small></h1>
-<p>Line coverage aggregated over the workspaces that enforce 100% (the four publishable packages, the backend, and the tooling scripts). Demo apps are excluded. Click a workspace for its file-level report.</p>
+<p>Line coverage aggregated over the workspaces that enforce 100% (the four publishable packages, the three server examples, and the tooling scripts). Demo apps are excluded. Click a workspace for its file-level report.</p>
 <table><thead><tr><th>Workspace</th><th class="n" colspan="2">Lines</th><th class="n" colspan="2">Statements</th><th class="n" colspan="2">Branches</th><th class="n" colspan="2">Functions</th></tr></thead>
 <tbody>${body}</tbody></table>
 `;

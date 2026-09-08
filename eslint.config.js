@@ -15,6 +15,8 @@ module.exports = [
     ignores: [
       '**/node_modules/**',
       'examples/full-service-demo/**',
+      'examples/mint-only-demo/**',
+      'examples/serverless-handler-demo/**',
       '**/coverage/**',
       '**/ios/**',
       '**/android/**',

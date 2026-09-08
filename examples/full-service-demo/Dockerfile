@@ -20,6 +20,9 @@ COPY packages/esign-react/package.json packages/esign-react/
 COPY packages/esign-react-native/package.json packages/esign-react-native/
 COPY examples/react-demo/package.json examples/react-demo/
 COPY examples/react-native-demo/package.json examples/react-native-demo/
+COPY examples/mint-only-demo/package.json examples/mint-only-demo/
+COPY examples/serverless-handler-demo/package.json examples/serverless-handler-demo/
+COPY scripts/package.json scripts/
 RUN npm ci --ignore-scripts --no-audit --no-fund
 
 FROM deps AS build
@@ -38,6 +41,9 @@ COPY packages/esign-react/package.json packages/esign-react/
 COPY packages/esign-react-native/package.json packages/esign-react-native/
 COPY examples/react-demo/package.json examples/react-demo/
 COPY examples/react-native-demo/package.json examples/react-native-demo/
+COPY examples/mint-only-demo/package.json examples/mint-only-demo/
+COPY examples/serverless-handler-demo/package.json examples/serverless-handler-demo/
+COPY scripts/package.json scripts/
 # Runtime dependencies of the service and the server package only
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund -w examples/full-service-demo -w packages/esign-server \
   && npm cache clean --force
