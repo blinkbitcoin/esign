@@ -15,16 +15,15 @@ import express, {
   Router,
 } from 'express';
 import type { EnvelopeService } from './envelopes';
-import { consoleLogger, type Logger } from './log';
+import { mintWebFormInstanceHttp, processWebhookHttp } from './handlers';
+import type { Logger } from './log';
 import {
+  mockWebFormFields,
   renderMockSigningPage,
   renderMockWebFormPage,
   renderSigningReturnBridge,
-  mockWebFormFields,
 } from './pages';
-import { parseWebFormPrefill } from './prefill';
-import { type ESignProvider, supportsWebForms } from './provider';
-import { getErrorCode } from './errors';
+import type { ESignProvider } from './provider';
 import type { WebFormPrefill } from './types';
 
 export interface ESignRouterMiddleware {
@@ -78,7 +77,7 @@ const sendSigningPage = (
 
 export const createESignRouter = (options: ESignRouterOptions): Router => {
   const { envelopes, provider, authenticate } = options;
-  const logger = options.logger ?? consoleLogger;
+  const logger = options.logger;
   const bodyLimit = options.bodyLimit ?? '64kb';
   const middleware = options.middleware ?? {};
   const router = Router();
@@ -129,37 +128,16 @@ export const createESignRouter = (options: ESignRouterOptions): Router => {
     ...(middleware.webform ?? []),
     express.json({ limit: bodyLimit }),
     async (req, res) => {
-      const userId = await authenticate(req);
-      if (!userId) {
-        res.status(401).json({ error: 'Unauthorized' });
-        return;
-      }
-      if (!supportsWebForms(provider)) {
-        res.status(400).json({
-          error: 'Web Forms not supported by the configured provider',
-        });
-        return;
-      }
-      // req.body is undefined for a bodyless request, an object otherwise.
-      // Only the documented value shapes go to the provider (400 otherwise).
-      const parsed = parseWebFormPrefill(
-        (req.body as { prefill?: unknown } | undefined)?.prefill,
-      );
-      if (!parsed.ok) {
-        res.status(400).json({ error: `Invalid prefill: ${parsed.error}` });
-        return;
-      }
-      try {
-        res
-          .status(200)
-          .json(await provider.createWebFormInstance(userId, parsed.prefill));
-      } catch (error) {
-        logger.error(
-          'Web Forms instance creation failed:',
-          getErrorCode(error),
-        );
-        res.status(502).json({ error: 'Could not create signing session' });
-      }
+      const result = await mintWebFormInstanceHttp({
+        userId: await authenticate(req),
+        body: req.body,
+        mint: provider.createWebFormInstance
+          ? (userId, prefill) =>
+              provider.createWebFormInstance!(userId, prefill)
+          : undefined,
+        logger,
+      });
+      res.status(result.status).json(result.body);
     },
   );
 
@@ -170,30 +148,16 @@ export const createESignRouter = (options: ESignRouterOptions): Router => {
     ...(middleware.webhook ?? []),
     express.text({ type: 'application/json', limit: bodyLimit }),
     async (req, res) => {
-      const rawBody = typeof req.body === 'string' ? req.body : '';
-      if (!provider.verifyWebhook(req.headers, rawBody, req.ip)) {
-        res.status(401).json({ error: 'Unauthorized' });
-        return;
-      }
-      const event = provider.parseWebhookEvent(rawBody);
-      if (!event) {
-        logger.error('Webhook error: Invalid payload');
-        res.status(400).json({ error: 'Invalid payload' });
-        return;
-      }
-      try {
-        await envelopes.handleWebhookEvent(event);
-        res.status(200).json({ received: true });
-      } catch (error) {
-        // Transient failure (e.g. database outage): 500 so the provider
-        // retries; the handler is idempotent, so a retry after recovery
-        // converges. Permanent conditions are handled inside and return 200.
-        logger.error(
-          'Webhook processing error:',
-          error instanceof Error ? error.message : error,
-        );
-        res.status(500).json({ error: 'Processing failed' });
-      }
+      const result = await processWebhookHttp({
+        provider,
+        envelopes,
+        headers: req.headers,
+        // The raw body (exact bytes) is what got signed
+        rawBody: typeof req.body === 'string' ? req.body : '',
+        ip: req.ip,
+        logger,
+      });
+      res.status(result.status).json(result.body);
     },
   );
 

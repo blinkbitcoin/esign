@@ -48,6 +48,20 @@ export { noopTracing } from './tracing';
 export type { Tracing, SpanLike, SpanAttributes } from './tracing';
 
 // --- Wire layer pieces that need no framework --------------------------------
+export {
+  createWebFormInstanceHandler,
+  createWebhookHandler,
+  mintWebFormInstanceHttp,
+  processWebhookHttp,
+} from './handlers';
+export type {
+  HttpResult,
+  MintHttpInput,
+  MintTarget,
+  WebFormInstanceHandlerOptions,
+  WebhookHandlerOptions,
+  WebhookHttpInput,
+} from './handlers';
 export { createESignGraphQL, typeDefs } from './graphql';
 export type { ESignGraphQLOptions, GraphQLContext } from './graphql';
 export {
