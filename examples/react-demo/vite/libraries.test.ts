@@ -1,5 +1,8 @@
 import type fs from 'node:fs';
-import { describe, expect, it, vi } from 'vitest';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { requireBuiltLibraries, sourceAliases } from './libraries';
 
 describe('sourceAliases', () => {
@@ -26,6 +29,31 @@ describe('sourceAliases', () => {
 });
 
 describe('requireBuiltLibraries', () => {
+  let tempDir: string | undefined;
+
+  afterEach(() => {
+    if (tempDir) {
+      rmSync(tempDir, { recursive: true, force: true });
+      tempDir = undefined;
+    }
+  });
+
+  it('defaults to the real filesystem when no exists check is given', () => {
+    tempDir = mkdtempSync(join(tmpdir(), 'esign-libraries-test-'));
+    mkdirSync(join(tempDir, 'esign-core', 'dist'), { recursive: true });
+    writeFileSync(join(tempDir, 'esign-core', 'dist', 'index.mjs'), '');
+    mkdirSync(join(tempDir, 'esign-react', 'dist'), { recursive: true });
+    writeFileSync(join(tempDir, 'esign-react', 'dist', 'index.mjs'), '');
+
+    expect(() => requireBuiltLibraries(tempDir as string)).not.toThrow();
+
+    rmSync(join(tempDir, 'esign-core'), { recursive: true, force: true });
+
+    expect(() => requireBuiltLibraries(tempDir as string)).toThrow(
+      'packages/esign-core/dist/index.mjs is missing: run `npm run build` at the repo root before building the demo',
+    );
+  });
+
   it('passes when both built entries exist', () => {
     const exists = vi.fn().mockReturnValue(true);
 
