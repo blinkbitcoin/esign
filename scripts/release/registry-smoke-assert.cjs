@@ -16,13 +16,18 @@ if (mode === 'default') {
   const webform = consumer('@blinkbitcoin/esign-core/webform');
   assert.equal(typeof webform.createWebFormsSource, 'function');
   assert.equal(typeof webform.createPublicUrlSource, 'function');
-  const loaded = Object.keys(require.cache).filter((f) => /node_modules[\\/](@apollo|graphql)/.test(f));
+  const loaded = Object.keys(require.cache).filter(f =>
+    /node_modules[\\/](@apollo|graphql)/.test(f),
+  );
   assert.deepEqual(loaded, [], '/webform must not load Apollo or graphql');
   console.log('verify: /webform loads Apollo-free for', process.env.VERSION);
 } else if (mode === 'lean') {
   consumer('@blinkbitcoin/esign-core/webform');
   let apollo = false;
-  try { consumer.resolve('@apollo/client'); apollo = true; } catch {}
+  try {
+    consumer.resolve('@apollo/client');
+    apollo = true;
+  } catch {}
   assert.equal(apollo, false, '--omit=peer install must not contain Apollo');
   console.log('verify: --omit=peer install is Apollo-free');
 } else {

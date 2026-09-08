@@ -130,6 +130,9 @@ esign/
 │   ├── Makefile                   # Repo-wide dev entry points (make help);
 │   │                              # apps/, packages/, examples/ have fan-out
 │   │                              # Makefiles; each workspace a local one
+│   ├── scripts/                   # the `tooling` npm workspace; pure logic in scripts/lib/*.mjs, Vitest-covered at 100% ⭐
+│   │   ├── {ci,e2e,release}/ , assemble-diagrams.mjs , coverage-badge.mjs
+│   │   └── lib/*.mjs              # extracted, unit-tested logic behind the CLI entry scripts
 │   ├── package.json               # Workspace root: orchestration scripts
 │   ├── .envrc                     # direnv: .env loading + use flake + workspace bins
 │   ├── flake.nix / flake.lock     # Nix dev shell: node 24, jdk 17, ruby 3.3, watchman

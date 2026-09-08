@@ -205,6 +205,13 @@ npm test -- --coverage
 npm test -- --watch
 ```
 
+### Tooling Scripts
+
+The CI/release logic under `scripts/` is its own `tooling` npm workspace;
+pure logic lives in `scripts/lib/*.mjs` and is covered by Vitest at the same
+100% bar as the publishable packages and the backend (`npm test -w scripts`,
+`npm run test:coverage -w scripts`).
+
 ### Backend E2E Tests
 
 ```bash
