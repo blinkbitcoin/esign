@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
 
 // Only lib/**: the CLI entry files (coverage-badge.mjs, status-badge.mjs,
-// release/resolve-version.sh) are thin wrappers over argv/env/git/fs/process
+// release/resolve-version.mjs) are thin wrappers over argv/env/git/fs/process
 // and stay uncovered by design (same precedent as apps/api/vitest.config.ts
 // excluding the port-binding src/index.ts).
 export default defineConfig({

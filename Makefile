@@ -74,7 +74,7 @@ release-rc: ## Hand-cut a prerelease-suffixed tag that ships under next: make re
 	gh release create "v$(V)" --target main --title "v$(V)" --prerelease --notes "Prerelease $(V) - see CHANGELOG.md on main for the pending changes."
 
 version: ## Show what CI would publish for HEAD (prerelease), or for a tag: make version TAG=vX.Y.Z
-	@DRY_RUN=1 EVENT=$(if $(TAG),release,push) TAG=$(TAG) bash scripts/release/resolve-version.sh
+	@DRY_RUN=1 EVENT=$(if $(TAG),release,push) TAG=$(TAG) node scripts/release/resolve-version.mjs
 
 registry-smoke: ## Install a published version from GitHub Packages and assert the consumer contract: make registry-smoke V=X.Y.Z
 	@test -n "$(V)" || { echo "usage: make registry-smoke V=X.Y.Z"; exit 1; }
