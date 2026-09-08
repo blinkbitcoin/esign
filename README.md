@@ -217,7 +217,7 @@ credentials are set).
 | Target | Purpose |
 |--------|---------|
 | `make test` | Unit suites + lint + typecheck + format check |
-| `make unit`<br>`make coverage` | Test suites (100% coverage on packages + backend) |
+| `make unit`<br>`make coverage` | Test suites (100% coverage on packages + backend + `scripts/lib`) |
 | `make coverage-badge` | Coverage badge + HTML report from the last `make coverage` run |
 | `make check-code` | Lint + typecheck + format check only |
 | `make build` | Build the library (react-native-builder-bob) |

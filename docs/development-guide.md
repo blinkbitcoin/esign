@@ -207,10 +207,18 @@ npm test -- --watch
 
 ### Tooling Scripts
 
-The CI/release logic under `scripts/` is its own `tooling` npm workspace;
-pure logic lives in `scripts/lib/*.mjs` and is covered by Vitest at the same
-100% bar as the publishable packages and the backend (`npm test -w scripts`,
-`npm run test:coverage -w scripts`).
+The CI/release logic under `scripts/` is its own `tooling` npm workspace
+(`npm run test -w scripts`, `npm run test:coverage -w scripts`). Pure logic
+lives in `scripts/lib/*.mjs` (semver parsing, version resolution, badge
+rendering) and is covered by Vitest at the same 100% bar as the publishable
+packages and the backend; the CLI entry points that wrap it
+(`scripts/release/resolve-version.mjs`, `scripts/coverage-badge.mjs`,
+`scripts/status-badge.mjs`) are thin argv/env/git/fs wrappers and stay
+excluded from that coverage measurement by design. Shell scripts
+(`scripts/ci/changed-class.sh`, `scripts/ci/docs-freshness.sh`, ...) are
+exercised separately in `scripts/__tests__/*.test.mjs`, which shell out to
+the real script under a temp git repo/fixture rather than being covered by
+V8 instrumentation.
 
 ### Backend E2E Tests
 

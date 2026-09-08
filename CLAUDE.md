@@ -51,7 +51,7 @@ e2e-backend-up` starts the mock-provider backend), `make db-up/migrate/backend`,
 
 ```bash
 npm ci                       # Install all workspaces
-npm test                     # All test suites: core + RN + web libraries, both demos (Jest), backend (Vitest)
+npm test                     # All test suites: core + RN + web libraries, both demos (Jest), backend + tooling scripts (Vitest)
 npm run test:coverage        # Coverage runs - 100% is the enforced baseline on every workspace
 npm run typecheck            # tsc across all workspaces
 npm run lint                 # ESLint (mobile code) + Biome lint (backend)
