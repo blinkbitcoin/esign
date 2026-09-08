@@ -30,7 +30,7 @@ const main = async (): Promise<void> => {
   }
   console.log(`jwt grant ok (user ${config.userId}, account ${config.accountId})`);
 
-  const url = `${config.webFormsBaseUrl}/accounts/${config.accountId}/forms/${config.webFormId}`;
+  const url = `${config.webFormsBaseUrl}/accounts/${config.accountId}/forms/${config.webFormId}?state=active`;
   const response = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
   if (!response.ok) {
     console.error(`GET ${url} -> ${response.status}: ${await response.text()}`);

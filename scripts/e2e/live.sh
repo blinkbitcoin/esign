@@ -13,8 +13,10 @@ SERVICE=examples/full-service-demo
 LIVE_PORT="${LIVE_PORT:-4010}"
 LOG="${RUNNER_TEMP:-/tmp}/esign-live.log"
 
-# The fixture form's locked terms (group C) plus the signer fields it requires
-PREFILL_DEFAULT='{"full_name":"Test User","email":"test@example.com","newsletter":"yes","reference":"E2E-0001","plan":"seed","number_of_units":1000,"total_subscription_usd":1000,"settlement_amount_btc":0.01,"btc_usd_rate":78850,"rate_timestamp":"2026-09-08 10:44","settlement_date":"2026-09-10","phone":"+1 555 123 4567"}'
+# The fixture form's locked terms (group C) plus every required editable
+# field (the form refuses Next while one is empty, so the walker could not
+# reach the locked pages otherwise)
+PREFILL_DEFAULT='{"Signer_name":"Test User","Signer_email":"test@example.com","full_name":"Test User","email":"test@example.com","country":"Sweden","newsletter":"yes","reference":"E2E-0001","plan":"seed","number_of_units":1000,"total_subscription_usd":1000,"settlement_amount_btc":0.01,"btc_usd_rate":78850,"rate_timestamp":"2026-09-08 10:44","settlement_date":"2026-09-10","phone":"+1 555 123 4567"}'
 LABELS_DEFAULT='{"Registration Reference":"E2E-0001","Number of Units":"1000","Total Subscription (USD)":"1000","Settlement Amount (BTC)":"0.01","BTC/USD Conversion Rate":"78850","Rate Timestamp":"2026-09-08 10:44"}'
 export E2E_LIVE_PREFILL="${E2E_LIVE_PREFILL:-$PREFILL_DEFAULT}"
 export E2E_LIVE_LOCKED_LABELS="${E2E_LIVE_LOCKED_LABELS:-$LABELS_DEFAULT}"
@@ -23,13 +25,24 @@ export DOCUSIGN_LIVE_PREFILL="${DOCUSIGN_LIVE_PREFILL:-$E2E_LIVE_PREFILL}"
 echo "== docusign check"
 npm run --silent docusign:check -w "$SERVICE"
 
-echo "== api live test"
-npm run --silent test:live -w "$SERVICE"
+# The Web Forms half of the live suite (the envelope half needs a template
+# built for the proxy flow: make test-live)
+echo "== api live test (Web Forms)"
+npm run --silent test:live -w "$SERVICE" -- tests/live/webforms.live.test.ts
 
 echo "== service on :$LIVE_PORT (DocuSign provider)"
+# Never adopt a listener already on the port (a stale run, a foreign server)
+if lsof -t -iTCP:"$LIVE_PORT" -sTCP:LISTEN > /dev/null 2>&1; then
+  echo "::error::port $LIVE_PORT is taken - stop that process or set LIVE_PORT"; exit 1
+fi
 ( cd "$SERVICE" && PORT="$LIVE_PORT" DOCUSIGN_RETURN_URL="http://localhost:$LIVE_PORT/signing/return" npm run dev > "$LOG" 2>&1 ) &
 PID=$!
-trap 'kill "$PID" 2>/dev/null || true' EXIT
+# npm wraps tsx wraps node: stop the process that actually listens, then the wrapper
+stop_service() {
+  lsof -t -iTCP:"$LIVE_PORT" -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true
+  kill "$PID" 2>/dev/null || true
+}
+trap stop_service EXIT
 for _ in $(seq 1 30); do
   curl -fsS "http://127.0.0.1:$LIVE_PORT/health" > /dev/null 2>&1 && break
   sleep 1
