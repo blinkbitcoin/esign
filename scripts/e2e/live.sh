@@ -9,7 +9,24 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 SERVICE=examples/full-service-demo
-[ -f "$SERVICE/.env" ] || { echo "::error::$SERVICE/.env missing - run make docusign-env first"; exit 1; }
+
+# Two ways in: a local .env (make docusign-env), or the DocuSign values in
+# the environment (CI: docs/operations/live-e2e-ci.md). In the second case
+# the non-secret service settings get local-dev defaults here.
+if [ -f "$SERVICE/.env" ]; then
+  LIVE_TEST="test:live"
+elif [ -n "${DOCUSIGN_INTEGRATION_KEY:-}" ]; then
+  : "${DOCUSIGN_USER_ID:?}" "${DOCUSIGN_ACCOUNT_ID:?}" "${DOCUSIGN_PRIVATE_KEY:?}" \
+    "${DOCUSIGN_TEMPLATE_ID:?}" "${DOCUSIGN_WEBFORM_ID:?}"
+  export ESIGN_PROVIDER=docusign ALLOW_INSECURE_DEV=true
+  export DATABASE_URL="${DATABASE_URL:-postgresql://live:live@localhost:5432/live}"
+  export DOCUSIGN_HMAC_KEY="${DOCUSIGN_HMAC_KEY:-live-e2e-hmac}"
+  export DOCUSIGN_WEBFORMS_BASE_URL="${DOCUSIGN_WEBFORMS_BASE_URL:-https://apps-d.docusign.com/api/webforms/v1.1}"
+  unset JWT_SECRET # the bearer token is the user id (what the specs send)
+  LIVE_TEST="test:live:env"
+else
+  echo "::error::no $SERVICE/.env (make docusign-env) and no DOCUSIGN_* in the environment"; exit 1
+fi
 LIVE_PORT="${LIVE_PORT:-4010}"
 LOG="${RUNNER_TEMP:-/tmp}/esign-live.log"
 
@@ -28,7 +45,7 @@ npm run --silent docusign:check -w "$SERVICE"
 # The Web Forms half of the live suite (the envelope half needs a template
 # built for the proxy flow: make test-live)
 echo "== api live test (Web Forms)"
-npm run --silent test:live -w "$SERVICE" -- tests/live/webforms.live.test.ts
+npm run --silent "$LIVE_TEST" -w "$SERVICE" -- tests/live/webforms.live.test.ts
 
 echo "== service on :$LIVE_PORT (DocuSign provider)"
 # Never adopt a listener already on the port (a stale run, a foreign server)

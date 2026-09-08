@@ -69,6 +69,12 @@ Organized by namespace - pick by what you're doing:
 | [security.md](architecture/security.md) | Auth, webhook verification, rate limiting, fail-closed boot |
 | [source-tree.md](architecture/source-tree.md) | Annotated directory structure |
 
+### `operations/` - running the repository
+
+| Doc | Covers |
+|-----|--------|
+| [live-e2e-ci.md](operations/live-e2e-ci.md) | The live DocuSign suite in GitHub Actions: environment, secrets, variables, the CI integration key + consent, triggers, rotation, failure modes |
+
 ### Root
 
 | Doc | Covers |

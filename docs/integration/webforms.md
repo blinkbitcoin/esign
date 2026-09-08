@@ -165,7 +165,8 @@ canonical :4000 / :5174), so parallel sessions never collide.
 ## Live run against real DocuSign
 
 The one-command version, once `.env` exists (`make docusign-env`, see
-[docusign-proxy.md](docusign-proxy.md)):
+[docusign-proxy.md](docusign-proxy.md)); the same run in GitHub Actions is
+[operations/live-e2e-ci.md](../operations/live-e2e-ci.md):
 
 ```sh
 make docusign-check   # JWT grant + the form is reachable (names the consent URL otherwise)

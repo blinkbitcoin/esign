@@ -18,7 +18,8 @@
     "format:check": "biome format .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "schema:emit": "tsx scripts/emit-schema.ts",
-    "docusign:check": "tsx scripts/docusign-check.ts"
+    "docusign:check": "tsx scripts/docusign-check.ts",
+    "test:live:env": "vitest run --config vitest.live.config.ts"
   },
   "keywords": [],
   "author": "",

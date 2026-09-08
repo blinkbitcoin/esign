@@ -190,6 +190,9 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
 - iOS E2E runs by default (public repo: GitHub-hosted macOS is free). Pause it
   with repo variable `E2E_IOS=false`; PR label `e2e:ios` forces it for one PR
   while paused; `E2E_IOS_RUNNER` overrides `runs-on`.
+- Live DocuSign E2E is opt-in: repo variable `E2E_LIVE=true` (main, releases,
+  dispatch) or PR label `e2e:live` (same-repo PRs); secrets live in the
+  `docusign-demo` environment. `docs/operations/live-e2e-ci.md`.
 - Native E2E builds are cached on the inputs `scripts/native-deps-hash.sh`
   sees plus `android/**` / `ios/**`; bump the cache key's `v` suffix when an
   input the script cannot see changes.

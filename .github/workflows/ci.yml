@@ -66,6 +66,11 @@ name: CI
 #                                           default macos-latest; set it to a
 #                                           self-hosted label, e.g.
 #                                           ["self-hosted","macOS","arm64"]
+#   - repo variable E2E_LIVE=true        -> run the live DocuSign suite on
+#                                           main / releases / dispatch (needs
+#                                           the docusign-demo environment)
+#   - PR label `e2e:live`                -> live DocuSign for one same-repo PR
+#                                           docs/operations/live-e2e-ci.md
 
 on:
   push:
@@ -119,6 +124,11 @@ jobs:
       ios: ${{ vars.E2E_IOS != 'false' || contains(github.event.pull_request.labels.*.name, 'e2e:ios') }}
       ios-runner: ${{ vars.E2E_IOS_RUNNER || 'macos-latest' }}
       release-tag: ${{ inputs.release_tag || '' }}
+      # Live DocuSign: repo variable E2E_LIVE=true turns it on for main pushes,
+      # releases and dispatches; PR label `e2e:live` for one same-repo PR.
+      # Fork PRs never get secrets, so they never qualify.
+      live: ${{ (github.event_name != 'pull_request' && vars.E2E_LIVE == 'true') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'e2e:live')) }}
+    secrets: inherit
 
   # Badges for this branch under gh-pages/badges/<branch>/: the measured
   # coverage badge (artifact from Unit / Coverage, or a red "failing"
