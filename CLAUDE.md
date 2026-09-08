@@ -164,9 +164,9 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   pre-push, `npm ci` on post-merge/post-checkout when the lockfile changed.
   Escape hatches: `git commit --no-verify`, `LEFTHOOK=0 git push`
 - Commit messages and PR titles follow Conventional Commits with an allowed
-  scope list: `core`, `rn`, `react`, `api`, `demo`, `e2e`, `ci`, `deps`,
+  scope list: `core`, `server`, `rn`, `react`, `demo`, `e2e`, `ci`, `deps`,
   `deps-dev`, `docs`, `release` (`commitlint.config.mjs` is the source of
-  truth; e.g. `feat(rn): ...`, `fix(api): ...`, `ci(e2e): ...`, `docs: ...`).
+  truth; e.g. `feat(rn): ...`, `fix(server): ...`, `ci(e2e): ...`, `docs: ...`).
   Squash merges take the PR title, so name the PR like a commit. Details in
   `CONTRIBUTING.md`
 - Change code and the relevant `docs/` page in the same change; the CI Docs

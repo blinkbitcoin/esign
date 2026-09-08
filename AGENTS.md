@@ -63,7 +63,7 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
   that checkout, and a commit made there lands on whatever branch another
   session left checked out
 - Commit messages and PR titles are Conventional Commits with an allowed
-  scope list (`core`, `rn`, `react`, `api`, `demo`, `e2e`, `ci`, `deps`,
+  scope list (`core`, `server`, `rn`, `react`, `demo`, `e2e`, `ci`, `deps`,
   `deps-dev`, `docs`, `release`; source of truth `commitlint.config.mjs`).
   Squash merges take the PR title, so name the PR like a commit
 - Change code **and the relevant doc in the same change**; `docs/` is
