@@ -1,9 +1,15 @@
 import { createDocuSignClient } from '../client';
 import { DocuSignConfigError } from '../config';
-import { HttpError } from '../http';
-import { WebFormPrefillError } from '../prefill';
+import { HttpError } from '../../http';
+import { WebFormPrefillError } from '../../prefill';
 import { clientFor, createWebFormInstance } from '../webforms';
-import { fail, fakeFetch, ok, testConfig, token } from './support';
+import {
+  fail,
+  fakeFetch,
+  ok,
+  testConfig,
+  token,
+} from '../../__tests__/support';
 
 const instance = () =>
   ok({ formUrl: 'https://f', instanceToken: 'T', id: 'i-1' });

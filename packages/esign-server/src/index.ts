@@ -2,8 +2,8 @@
 // packages: a DocuSign client (JWT grant, envelopes, Web Forms) and the one
 // call a host needs for locked prefill, createWebFormInstance. Node only.
 
-export { createWebFormInstance, clientFor } from './webforms';
-export type { CreateWebFormInstanceParams } from './webforms';
+export { createWebFormInstance, clientFor } from './docusign/webforms';
+export type { CreateWebFormInstanceParams } from './docusign/webforms';
 
 // --- Domain: the envelope service over a provider port and a store port ----
 export { createEnvelopeService } from './envelopes';
@@ -83,18 +83,18 @@ export {
   mapWebhookStatus,
   parseDocuSignWebhook,
   DOCUSIGN_SIGNATURE_HEADER,
-} from './providers/docusign';
+} from './docusign/provider';
 export type {
   DocuSignProviderHandle,
   DocuSignProviderOptions,
   DocuSignWebhookOptions,
   DocuSignWebhookPayload,
-} from './providers/docusign';
-export { createMockProvider } from './providers/mock';
-export type { MockProviderHandle, MockProviderOptions } from './providers/mock';
+} from './docusign/provider';
+export { createMockProvider } from './mock/provider';
+export type { MockProviderHandle, MockProviderOptions } from './mock/provider';
 
-export { createDocuSignClient } from './client';
-export type { DocuSignClient, DocuSignClientOptions } from './client';
+export { createDocuSignClient } from './docusign/client';
+export type { DocuSignClient, DocuSignClientOptions } from './docusign/client';
 
 export {
   docuSignConfigFromEnv,
@@ -104,11 +104,11 @@ export {
   DOCUSIGN_ENV,
   DOCUSIGN_DEMO_URLS,
   JWT_CREDENTIALS,
-} from './config';
-export type { DocuSignConfig, DocuSignConfigKey, Env } from './config';
+} from './docusign/config';
+export type { DocuSignConfig, DocuSignConfigKey, Env } from './docusign/config';
 
-export { createTokenProvider, createJwtAssertion } from './auth';
-export type { TokenProvider } from './auth';
+export { createTokenProvider, createJwtAssertion } from './docusign/auth';
+export type { TokenProvider } from './docusign/auth';
 
 export {
   parseWebFormPrefill,

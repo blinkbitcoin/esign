@@ -4,14 +4,14 @@
 
 import { assertDocuSignConfig, type DocuSignConfig } from './config';
 import { createTokenProvider, defaultFetch, type TokenProvider } from './auth';
-import { HttpError } from './http';
+import { HttpError } from '../http';
 import type {
   FetchLike,
   RecipientData,
   WebFormInstanceOptions,
   WebFormInstanceResult,
   WebFormPrefill,
-} from './types';
+} from '../types';
 
 export interface DocuSignClientOptions {
   // Replace fetch (tests, custom agents)

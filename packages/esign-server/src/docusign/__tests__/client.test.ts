@@ -1,7 +1,13 @@
 import { createDocuSignClient } from '../client';
 import { DocuSignConfigError } from '../config';
-import { HttpError } from '../http';
-import { fail, fakeFetch, ok, testConfig, token } from './support';
+import { HttpError } from '../../http';
+import {
+  fail,
+  fakeFetch,
+  ok,
+  testConfig,
+  token,
+} from '../../__tests__/support';
 
 const recipient = { name: 'Jane Signer', email: 'jane@example.com' };
 
