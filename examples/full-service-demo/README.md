@@ -1,11 +1,14 @@
-# examples/full-service-demo — E-Sign Service
+# examples/full-service-demo — the whole service, as a reference host
 
-Express 5 + Apollo Server 5 GraphQL API that orchestrates e-signature
-envelopes against a provider (DocuSign, or a local mock), persists them via
-Knex/PostgreSQL, and syncs status through provider webhooks.
+Express 5 + Apollo Server 5 GraphQL API composed from
+`@blinkbitcoin/esign-server`: the package's Express router, envelope domain,
+Postgres store and provider adapters (DocuSign, or a local mock), wired to
+this host's auth, CORS, rate limits, config validation and telemetry.
 
-This is **the main service** of the monorepo; the `@blinkbitcoin/esign-react*`
-packages are its client SDKs.
+It is one of the three server shapes the package supports (see
+[`examples/`](../README.md)) and the backend the two client demos and every
+E2E suite run against. Nobody deploys it as a product; the `esign-api`
+image exists so a host team can run it locally or start from it.
 
 ## Quick Start
 
