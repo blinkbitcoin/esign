@@ -11,15 +11,20 @@ import helmet from 'helmet';
 import { getUserIdFromAuthHeader } from './auth';
 import { getAllowedOrigins } from './config';
 import { provider } from './providers';
+// The mock web-form page is the mock adapter's own UI, so this route reads the
+// adapter's instance store directly (the only place app.ts touches an adapter)
+import { getWebFormPrefill } from './providers/mock';
 import { supportsWebForms } from './providers/port';
 import { resolvers, typeDefs } from './schema';
 import {
+  mockWebFormFields,
   renderMockSigningPage,
   renderMockWebFormPage,
   renderSigningReturnBridge,
 } from './signingPages';
 import { setActiveSpanAttributes } from './tracing';
-import type { GraphQLContext, WebFormPrefill } from './types';
+import type { GraphQLContext } from './types';
+import { parseWebFormPrefill } from './webFormPrefill';
 import { handleWebhookEvent } from './webhook';
 
 // Body size cap for JSON/text payloads - the signing/webhook bodies are small,
@@ -119,10 +124,13 @@ export const createApp = async (): Promise<express.Express> => {
   });
 
   // Mock DocuSign Web Forms instance page (emits the real DocuSign event
-  // vocabulary). Served by the mock provider's instance URL.
+  // vocabulary). Served by the mock provider's instance URL. Shows the prefill
+  // the instance was minted with as locked fields, and any query-string
+  // prefill (public-form URL style) as editable fields.
   app.get('/signing/mock-webform/:instanceId', (req, res) => {
     const nonce = crypto.randomBytes(16).toString('base64');
-    sendSigningPage(res, renderMockWebFormPage(req.params.instanceId, nonce), nonce);
+    const fields = mockWebFormFields(getWebFormPrefill(req.params.instanceId), req.query);
+    sendSigningPage(res, renderMockWebFormPage(req.params.instanceId, nonce, fields), nonce);
   });
 
   // Create a prefilled Web Forms signing instance and return its embeddable
@@ -145,11 +153,15 @@ export const createApp = async (): Promise<express.Express> => {
         res.status(400).json({ error: 'Web Forms not supported by the configured provider' });
         return;
       }
-      // req.body is undefined for a bodyless request, an object otherwise
-      const prefill: WebFormPrefill =
-        (req.body as { prefill?: WebFormPrefill } | undefined)?.prefill ?? {};
+      // req.body is undefined for a bodyless request, an object otherwise.
+      // Only the documented value shapes go to the provider (400 otherwise).
+      const parsed = parseWebFormPrefill((req.body as { prefill?: unknown } | undefined)?.prefill);
+      if (!parsed.ok) {
+        res.status(400).json({ error: `Invalid prefill: ${parsed.error}` });
+        return;
+      }
       try {
-        const instance = await provider.createWebFormInstance(userId, prefill);
+        const instance = await provider.createWebFormInstance(userId, parsed.prefill);
         res.status(200).json(instance);
       } catch (error) {
         const code =

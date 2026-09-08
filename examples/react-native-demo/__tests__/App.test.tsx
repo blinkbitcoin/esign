@@ -8,6 +8,7 @@ import { Alert } from 'react-native';
 import * as RN from 'react-native';
 import App, {
   BLINK_THEME,
+  getDemoPrefill,
   getRecipientData,
   handleSigningComplete,
   handleSigningError,
@@ -92,6 +93,14 @@ describe('getRecipientData', () => {
       name: 'Test User',
       email: 'test@example.com',
     });
+  });
+});
+
+describe('getDemoPrefill', () => {
+  it('sends numeric terms as numbers (DocuSign Number fields reject strings)', () => {
+    expect(JSON.stringify({ prefill: getDemoPrefill() })).toBe(
+      '{"prefill":{"full_name":"Test User","email":"test@example.com","units":10,"total_usd":1000.5}}',
+    );
   });
 });
 

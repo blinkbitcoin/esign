@@ -1,6 +1,6 @@
 # DocuSign Web Forms Mode
 
-**Updated:** 2026-07-06
+**Updated:** 2026-09-08
 
 The signing component supports three modes via its `SigningSource` (see the
 package READMEs). This doc covers the **DocuSign Web Forms** mode: a prefilled,
@@ -35,6 +35,49 @@ lives outside the DocuSign adapter (`apps/api/src/providers/docusign/`).
 | RN demo (Metro, bundle-time) | `ESIGN_MODE` | `ESIGN_MODE=webform npm start` |
 
 Both default to `proxy`.
+
+## Locking prefilled values (read-only fields)
+
+A form typically mixes values the signer enters (country of residence) with
+terms the sender has already fixed (number of units, amounts, an FX rate and
+its timestamp). The fixed terms must not be editable in the form, or the
+signed document can disagree with what the backend settles.
+
+DocuSign's rules (verified against the Web Forms docs, 2026-09):
+
+- A field marked **Read only** in the Web Forms builder can only be populated
+  by a builder **default value** or by the `formValues` of an
+  **`Instances:createInstance`** request. Prefill by URL (`#field=value`) and
+  prefill through Docusign JS **cannot** populate read-only fields.
+- A required read-only field left empty makes the submission fail
+  ("Request sent is well formed but otherwise invalid").
+- A field hidden by a rule is dropped from the submission - its value never
+  reaches the document.
+
+So the recipe is: mark the fixed fields Read only (keep Required) in the
+builder, and mint every instance through the backend with those values in the
+prefill. That is what `POST /webform/instance` does:
+
+```json
+{ "prefill": { "number_of_units": 1000, "total_subscription_usd": 1000,
+               "settlement_amount_btc": 0.01268231, "rate_timestamp": "2026-09-08 10:44" } }
+```
+
+Keys are the fields' API reference names; the value shape follows the field
+type (`apps/api/src/types.ts`): text / email / date (`yyyy-mm-dd`) / dropdown /
+radio → string, **Number → a JSON number** (unquoted, `.` decimal, no
+thousands separators), checkbox group → string array, phone →
+`{ countryCode?, nationalNumber }`. The endpoint validates that contract at the
+edge (`apps/api/src/webFormPrefill.ts`) and answers 400 with a reason for
+anything else, before the provider is called. Mint the instance right before
+opening it: the instance token expires about five minutes after creation.
+
+The **mock web-form page** models both prefill channels so the guarantee is
+testable without credentials: values minted with the instance render as
+locked (`readonly`) inputs, values arriving in the URL (public-form style)
+render editable. The browser E2E (`e2e/webform.spec.ts`, `e2e/publicurl.spec.ts`),
+the Maestro webform flow and the backend E2E (`tests/e2e/webform.e2e.test.ts`)
+assert exactly that.
 
 ## Running the E2E
 
@@ -71,14 +114,44 @@ protocol, not a lenient stand-in.
    `createInstance` call, asserting the response shape and that the minted
    URL is served. Skips itself when the `DOCUSIGN_*` env vars are unset, so
    it is safe to leave in place (it is excluded from `npm test` and CI).
-5. Run a demo in webform mode; it now embeds the real form.
+   Set `DOCUSIGN_LIVE_PREFILL='{"number_of_units": 1000, ...}'` to also mint
+   a typed-prefill instance for the configured form.
+5. Verify the locked fields in a real browser: `make e2e-web-webform-live`
+   runs `examples/react-demo/e2e/webform-live.spec.ts` against the real form
+   (Playwright, no mock, no web servers started). It skips itself unless one
+   of the first two variables is set:
 
-## Verified against DocuSign docs (2026-07)
+   | Variable | Meaning |
+   |---|---|
+   | `E2E_LIVE_WEBFORM_URL` | An already-minted instance URL (`formUrl#instanceToken=...`, valid ~5 min) - opened as is |
+   | `E2E_LIVE_API_ORIGIN` | Otherwise: a running backend (`ESIGN_PROVIDER=docusign`) the spec mints through |
+   | `E2E_LIVE_AUTH_TOKEN` | Bearer for `POST /webform/instance` (default `e2e-live`, the dev passthrough userId) |
+   | `E2E_LIVE_PREFILL` | JSON object of field API reference name → value to mint with |
+   | `E2E_LIVE_LOCKED_LABELS` | JSON object of form label → expected value for the read-only fields |
+
+   ```sh
+   E2E_LIVE_API_ORIGIN=http://localhost:4000 \
+   E2E_LIVE_PREFILL='{"number_of_units":1000,"settlement_amount_btc":0.01268231}' \
+   E2E_LIVE_LOCKED_LABELS='{"Number of Units":"1000","Settlement Amount (BTC)":"0.01268231"}' \
+   make e2e-web-webform-live
+   ```
+
+   It asserts every scalar prefill value is displayed, every labelled field
+   shows the minted value and is read-only or disabled, and saves
+   `examples/react-demo/test-results/webform-live.png`.
+6. Run a demo in webform mode; it now embeds the real form.
+
+## Verified against DocuSign docs (2026-07, prefill rules 2026-09)
 
 - **createInstance** — endpoint `…/webforms/v1.1/accounts/{id}/forms/{formId}/instances`,
   body `{ clientUserId (REQUIRED, ≤100 chars), formValues }`, response
   `{ formUrl, instanceToken }` (token ~5 min TTL). Implemented in
   `providers/docusign/client.ts`. ✓
+- **Read-only fields** — populated only by a builder default or by
+  `createInstance` `formValues`; prefill by URL / Docusign JS is ignored for
+  them ("Prefill web form instance fields", "Populate Read-Only Fields on a
+  Web Form"). Number fields take unquoted numbers, dates `yyyy-mm-dd`,
+  checkbox groups string arrays, phone `{ countryCode, nationalNumber }`. ✓
 - **Event model** — real DocuSign delivers a single **`sessionEnd`** event via
   DocuSign.js, with the outcome in a discriminator: `signingResult` /
   `formConfirmation` (done), `sessionTimeout` (timeout). `interpretDocuSignEvent`

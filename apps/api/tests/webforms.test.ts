@@ -15,9 +15,14 @@ import type { Express } from 'express';
 import { createApp } from '../src/app';
 import { provider } from '../src/providers';
 import { clearTokenCache, DocuSignProvider } from '../src/providers/docusign';
-import { MockProvider } from '../src/providers/mock';
+import { clearEnvelopes, getWebFormPrefill, MockProvider } from '../src/providers/mock';
 import { supportsWebForms } from '../src/providers/port';
-import { renderMockWebFormPage } from '../src/signingPages';
+import {
+  LOCKED_FIELDS_HINT,
+  type MockWebFormField,
+  mockWebFormFields,
+  renderMockWebFormPage,
+} from '../src/signingPages';
 
 const { privateKey: testPrivateKey } = generateKeyPairSync('rsa', {
   modulusLength: 2048,
@@ -38,10 +43,27 @@ describe('supportsWebForms', () => {
 });
 
 describe('MockProvider.createWebFormInstance', () => {
+  beforeEach(() => {
+    clearEnvelopes();
+  });
+
   it('returns a mock-webform URL + instanceId', async () => {
     const result = await MockProvider.createWebFormInstance!('user-1', { full_name: 'Jane' });
     expect(result.url).toMatch(/\/signing\/mock-webform\/[0-9a-f-]{36}$/);
     expect(result.instanceId).toMatch(/[0-9a-f-]{36}/);
+  });
+
+  it('keeps the prefill with the instance, like DocuSign stores formValues', async () => {
+    const prefill = { full_name: 'Jane', units: 1000, alerts: ['a', 'b'] };
+    const result = await MockProvider.createWebFormInstance!('user-1', prefill);
+    expect(getWebFormPrefill(result.instanceId!)).toEqual(prefill);
+  });
+
+  it('has no prefill for an unknown instance, and forgets instances on clear', async () => {
+    expect(getWebFormPrefill('public-demo')).toBeUndefined();
+    const result = await MockProvider.createWebFormInstance!('user-1', { a: 'b' });
+    clearEnvelopes();
+    expect(getWebFormPrefill(result.instanceId!)).toBeUndefined();
   });
 });
 
@@ -93,17 +115,26 @@ describe('DocuSignProvider.createWebFormInstance', () => {
           Promise.resolve({ formUrl: 'https://wf.test/f/abc', instanceToken: 'TKN', id: 'inst-9' }),
       });
 
-    const result = await DocuSignProvider.createWebFormInstance!('user-42', { full_name: 'Jane' });
+    // Every documented formValues shape, forwarded verbatim: numbers stay
+    // unquoted (DocuSign Number fields reject quoted numbers)
+    const prefill = {
+      full_name: 'Jane',
+      units: 1000,
+      settlement_btc: 0.01268231,
+      alerts: ['Funds_withdrawn'],
+      phone_num: { countryCode: '55', nationalNumber: '1133301000' },
+    };
+    const result = await DocuSignProvider.createWebFormInstance!('user-42', prefill);
     expect(result).toEqual({
       url: 'https://wf.test/f/abc#instanceToken=TKN',
       instanceId: 'inst-9',
     });
     // The createInstance body includes the required clientUserId + formValues
     const instanceCall = mockFetch.mock.calls[1];
-    expect(JSON.parse(instanceCall[1].body)).toEqual({
-      clientUserId: 'user-42',
-      formValues: { full_name: 'Jane' },
-    });
+    expect(instanceCall[1].body).toBe(
+      JSON.stringify({ clientUserId: 'user-42', formValues: prefill })
+    );
+    expect(instanceCall[1].body).toContain('"units":1000,');
   });
 
   it('maps a 4xx from the Web Forms API to envelope-creation-failed', async () => {
@@ -151,6 +182,73 @@ describe('renderMockWebFormPage', () => {
   it('sanitizes the instance id', () => {
     expect(renderMockWebFormPage('<img onerror=alert(1)>')).toContain('Instance unknown');
   });
+
+  it('renders no fields block when the instance has no prefill', () => {
+    const html = renderMockWebFormPage('inst-1', '', []);
+    expect(html).not.toContain('<form');
+    expect(html).not.toContain(LOCKED_FIELDS_HINT);
+  });
+
+  it('renders locked fields read-only and editable fields plain, with the hint', () => {
+    const fields: MockWebFormField[] = [
+      { name: 'units', value: '1000', locked: true },
+      { name: 'country', value: 'Honduras', locked: false },
+    ];
+    const html = renderMockWebFormPage('inst-1', '', fields);
+    expect(html).toContain('<label for="field-0">units</label>');
+    expect(html).toContain(
+      '<input id="field-0" name="units" value="1000" readonly data-locked="true" />'
+    );
+    expect(html).toContain('<label for="field-1">country</label>');
+    expect(html).toContain('<input id="field-1" name="country" value="Honduras" />');
+    expect(html).toContain(`<p class="hint">${LOCKED_FIELDS_HINT}</p>`);
+  });
+
+  it('omits the hint when no field is locked', () => {
+    const html = renderMockWebFormPage('inst-1', '', [
+      { name: 'country', value: 'Honduras', locked: false },
+    ]);
+    expect(html).toContain('<form');
+    expect(html).not.toContain(LOCKED_FIELDS_HINT);
+  });
+
+  it('escapes field names and values (no HTML/attribute injection)', () => {
+    const html = renderMockWebFormPage('inst-1', '', [
+      { name: 'x" onfocus="alert(1)', value: '<script>alert(1)</script>', locked: true },
+      { name: "it's", value: 'a & b', locked: false },
+    ]);
+    expect(html).not.toContain('<script>alert');
+    expect(html).not.toContain('onfocus="alert');
+    expect(html).toContain('x&quot; onfocus=&quot;alert(1)');
+    expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+    expect(html).toContain('it&#39;s');
+    expect(html).toContain('a &amp; b');
+  });
+});
+
+describe('mockWebFormFields', () => {
+  it('locks instance prefill and keeps URL prefill editable', () => {
+    expect(
+      mockWebFormFields(
+        { units: 1000, phone: { countryCode: '1', nationalNumber: '5551234' } },
+        { country: 'Honduras' }
+      )
+    ).toEqual([
+      { name: 'units', value: '1000', locked: true },
+      { name: 'phone', value: '+1 5551234', locked: true },
+      { name: 'country', value: 'Honduras', locked: false },
+    ]);
+  });
+
+  it('is empty for an unknown instance with no query', () => {
+    expect(mockWebFormFields(undefined, {})).toEqual([]);
+  });
+
+  it('ignores non-string query values and lets the instance value win a name clash', () => {
+    expect(
+      mockWebFormFields({ units: 1000 }, { units: '1', tags: ['a', 'b'], nested: { a: 1 } })
+    ).toEqual([{ name: 'units', value: '1000', locked: true }]);
+  });
 });
 
 describe('POST /webform/instance', () => {
@@ -175,6 +273,34 @@ describe('POST /webform/instance', () => {
       .set('authorization', 'Bearer user-1')
       .send();
     expect(response.status).toBe(200);
+  });
+
+  it('forwards typed prefill (numbers unquoted) to the provider', async () => {
+    const spy = vi.spyOn(provider, 'createWebFormInstance');
+    const prefill = { full_name: 'Jane', units: 1000, settlement_btc: 0.01268231 };
+    const response = await request(app)
+      .post('/webform/instance')
+      .set('authorization', 'Bearer user-1')
+      .send({ prefill });
+
+    expect(response.status).toBe(200);
+    expect(spy).toHaveBeenCalledWith('user-1', prefill);
+    spy.mockRestore();
+  });
+
+  it('rejects a malformed prefill with 400 and a reason, before touching the provider', async () => {
+    const spy = vi.spyOn(provider, 'createWebFormInstance');
+    const response = await request(app)
+      .post('/webform/instance')
+      .set('authorization', 'Bearer user-1')
+      .send({ prefill: { units: true } });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'Invalid prefill: unsupported value for field "units"',
+    });
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 
   it('rejects an unauthenticated caller with 401', async () => {
@@ -241,5 +367,30 @@ describe('GET /signing/mock-webform/:id', () => {
     expect(response.headers['content-security-policy']).toMatch(/script-src 'nonce-/);
     expect(response.text).toContain('Instance abc-123');
     expect(response.text).toContain('data-event="signingResult"');
+    expect(response.text).not.toContain('<form');
+  });
+
+  it('shows the prefill a minted instance carries as locked fields', async () => {
+    const minted = await request(app)
+      .post('/webform/instance')
+      .set('authorization', 'Bearer user-1')
+      .send({ prefill: { units: 1000, total_usd: 1000.5 } });
+    const path = new URL(minted.body.url).pathname;
+
+    const response = await request(app).get(path);
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('name="units" value="1000" readonly');
+    expect(response.text).toContain('name="total_usd" value="1000.5" readonly');
+    expect(response.text).toContain(LOCKED_FIELDS_HINT);
+  });
+
+  it('shows query-string prefill (public-form URL style) as editable fields', async () => {
+    const response = await request(app).get(
+      '/signing/mock-webform/public-demo?full_name=Test+User'
+    );
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('name="full_name" value="Test User" />');
+    expect(response.text).not.toContain('data-locked');
+    expect(response.text).not.toContain(LOCKED_FIELDS_HINT);
   });
 });

@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:e2e": "playwright test",
     "test:e2e:webform": "playwright test --config playwright.webform.config.ts",
-    "test:e2e:publicurl": "playwright test --config playwright.publicurl.config.ts"
+    "test:e2e:publicurl": "playwright test --config playwright.publicurl.config.ts",
+    "test:e2e:webform:live": "playwright test --config playwright.webform-live.config.ts"
   },
   "dependencies": {
     "@apollo/client": "^4.2.12",

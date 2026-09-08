@@ -145,6 +145,9 @@ e2e-web-publicurl: test-db-up build ## Playwright browser E2E for the web demo i
 	npm run test:e2e:publicurl -w examples/react-demo
 	$(MAKE) test-db-down
 
+e2e-web-webform-live: ## Playwright against a REAL DocuSign Web Form (opt-in via E2E_LIVE_* env, see docs/integration/webforms.md)
+	npm run test:e2e:webform:live -w examples/react-demo
+
 e2e-backend-up: ## Start the backend (mock provider) in the background for mobile E2E, wait for /health
 	bash scripts/e2e/backend-up.sh
 
@@ -179,5 +182,5 @@ help: ## List available targets
 
 .PHONY: install hooks pods release release-rc version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
 	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check start ios android backend web db-up db-down migrate \
-	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl \
+	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-web-webform-live \
 	e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live clean reset help
