@@ -179,6 +179,56 @@ canonical :4000 / :5174), so parallel sessions never collide.
    `examples/react-demo/test-results/webform-live.png`.
 6. Run a demo in webform mode; it now embeds the real form.
 
+## The capability test form (live E2E fixture)
+
+One generic Web Form in the DocuSign demo account, "esign capability test
+form", built on its own template from a one-page placeholder document. It
+exercises every prefill shape the backend accepts and every lock mode the
+component can meet, so a single live run covers the whole surface. Rebuild it
+from this table if it is ever lost (labels are what the signer sees, API
+reference names are the prefill keys):
+
+| Group | Label | API reference name | Type | Required | Read only | Live prefill |
+|---|---|---|---|---|---|---|
+| A signer-entered | Full name | `full_name` | Text | yes | no | `"Test User"` |
+| A signer-entered | Email | `email` | Email | yes | no | `"test@example.com"` |
+| A signer-entered | Country of residence | `country` | Text | yes | no | (none, signer types) |
+| B prefilled, editable | Preferred contact | `preferred_contact` | Checkbox group: `email`, `phone`, `post` | no | no | `["email","phone"]` |
+| B prefilled, editable | Newsletter | `newsletter` | Radio: `yes`, `no` | no | no | `"yes"` |
+| C locked terms | Number of Units | `number_of_units` | Number | yes | **yes** | `1000` |
+| C locked terms | Total Subscription (USD) | `total_subscription_usd` | Number (2 decimals) | yes | **yes** | `1000` |
+| C locked terms | Settlement Amount (BTC) | `settlement_amount_btc` | Number (8 decimals) | yes | **yes** | `0.01268231` |
+| C locked terms | BTC/USD Rate | `btc_usd_rate` | Number | yes | **yes** | `78850` |
+| C locked terms | Rate Timestamp | `rate_timestamp` | Text | yes | **yes** | `"2026-09-08 10:44"` |
+| C locked terms | Settlement Date | `settlement_date` | Date | yes | **yes** | `"2026-09-10"` |
+| C locked terms | Plan | `plan` | Dropdown: `seed`, `series_a` | yes | **yes** | `"seed"` |
+| C locked terms | Reference | `reference` | Text | yes | **yes** | `"E2E-0001"` |
+| D optional | Phone | `phone` | Phone number | no | no | `{"countryCode":"1","nationalNumber":"5551234567"}` |
+| D optional | Notes | `notes` | Text (multi-line) | no | no | (none) |
+
+Every template field maps 1:1 to a form field; the template has one signer
+role with a signature and a date-signed tab. Nothing is hidden by a rule (a
+hidden field never reaches the document, see above).
+
+What each group proves in the live run: A the signer can still enter values;
+B a minted value can be shown yet remain editable; C every value shape
+(integer, decimals, text, date, dropdown) can be locked by minting; D optional
+fields and the phone object shape are accepted without blocking submit.
+
+```sh
+# Local live run against the fixture (backend on :4000 with ESIGN_PROVIDER=docusign
+# and DOCUSIGN_WEBFORM_ID=<the form id>)
+E2E_LIVE_API_ORIGIN=http://localhost:4000 \
+E2E_LIVE_PREFILL='{"full_name":"Test User","email":"test@example.com","preferred_contact":["email","phone"],"newsletter":"yes","number_of_units":1000,"total_subscription_usd":1000,"settlement_amount_btc":0.01268231,"btc_usd_rate":78850,"rate_timestamp":"2026-09-08 10:44","settlement_date":"2026-09-10","plan":"seed","reference":"E2E-0001","phone":{"countryCode":"1","nationalNumber":"5551234567"}}' \
+E2E_LIVE_LOCKED_LABELS='{"Number of Units":"1000","Total Subscription (USD)":"1000","Settlement Amount (BTC)":"0.01268231","BTC/USD Rate":"78850","Rate Timestamp":"2026-09-08 10:44","Reference":"E2E-0001"}' \
+make e2e-web-webform-live
+```
+
+(Date and dropdown fields render their value in DocuSign's display format,
+so they are checked by presence in the prefill assertion rather than by
+label; add them to `E2E_LIVE_LOCKED_LABELS` once the displayed format is
+known.)
+
 ## Verified against DocuSign docs (2026-07, prefill rules 2026-09)
 
 - **createInstance** — endpoint `…/webforms/v1.1/accounts/{id}/forms/{formId}/instances`,
