@@ -72,6 +72,42 @@ edge (`apps/api/src/webFormPrefill.ts`) and answers 400 with a reason for
 anything else, before the provider is called. Mint the instance right before
 opening it: the instance token expires about five minutes after creation.
 
+### How we got here (2026-09-08)
+
+The invest flow's first test against a published form showed every computed
+field editable. Two builder-side fixes were tried and both fail, for reasons
+that are documented DocuSign behaviour, not bugs to work around:
+
+| Tried | Result | Why |
+|---|---|---|
+| Mark the fields **Read only** in the builder, keep prefilling by URL | fields render disabled but **empty**; submit fails with "Request sent is well formed but otherwise invalid" | URL prefill cannot populate read-only fields, and the fields are required |
+| **Hide** the fields with a rule | the values never reach the document | hidden fields are dropped from the submission |
+
+Options considered:
+
+1. Ship v1 with the fields editable - rejected: the signer could sign a
+   document whose amounts, rate and timestamp differ from what the backend
+   settles.
+2. eSignature envelopes from a template with locked tabs - workable, but a
+   different product surface (no form step, DocuSign.js not involved) and a
+   second integration to maintain next to Web Forms.
+3. **Web Forms `createInstance` with `formValues`** - chosen: it is the one
+   documented way to populate read-only fields, the backend already exposed it
+   (`POST /webform/instance`), and the host only has to build the prefill
+   from the values it already computed.
+
+Sources (DocuSign, read 2026-09-08):
+[Prefill web form instance fields](https://developers.docusign.com/docs/web-forms-api/plan-integration/prefill-instance-fields/)
+("If supplied in an Instances:createInstance request, prefill values can be
+used to populate read-only fields. If supplied with Docusign JS, prefill values
+cannot"),
+[Populate Read-Only Fields on a Web Form](https://support.docusign.com/s/document-item?language=en_US&bundleId=gmi1660583110357&topicId=hty1709929728541.html)
+("Their values must be set either through the API or by assigning a default
+value"),
+[Prefill a Web Form By URL](https://support.docusign.com/s/document-item?language=en_US&bundleId=gmi1660583110357&topicId=kup1721242003741.html),
+[Web form instance URLs](https://developers.docusign.com/docs/web-forms-api/plan-integration/instance-urls/)
+(instance token expires five minutes after generation).
+
 The **mock web-form page** models both prefill channels so the guarantee is
 testable without credentials: values minted with the instance render as
 locked (`readonly`) inputs, values arriving in the URL (public-form style)
