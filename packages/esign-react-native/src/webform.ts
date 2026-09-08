@@ -26,6 +26,7 @@ export type {
 
 export {
   createWebFormsSource,
+  createWebFormsMinter,
   createPublicUrlSource,
   interpretDocuSignEvent,
   interpretProxyEvent,
@@ -38,6 +39,12 @@ export type {
   SigningEvent,
   SigningSourceError,
   WebFormsSigningSourceOptions,
+  WebFormsCreateInstanceOptions,
+  WebFormsMintOptions,
   WebFormsInstance,
+  MintWebFormsInstanceOptions,
+  WebFormPrefill,
+  WebFormPrefillValue,
+  WebFormPhoneNumber,
   PublicUrlSigningSourceOptions,
 } from '@blinkbitcoin/esign-core/webform';

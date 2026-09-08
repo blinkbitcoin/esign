@@ -96,21 +96,11 @@ export const handleSigningCancel = (): void => {
 // and callbacks are identical across modes.
 export const buildSource = (): SigningSource => {
   if (ESIGN_MODE === 'webform') {
+    // The source mints through the backend endpoint with the app's own
+    // session token; the backend holds the DocuSign credentials
     return createWebFormsSource({
-      createInstance: async () => {
-        const res = await fetch(WEBFORM_INSTANCE_URL, {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            authorization: 'Bearer mock-jwt-token',
-          },
-          body: JSON.stringify({ prefill: getDemoPrefill() }),
-        });
-        if (!res.ok) {
-          throw new Error(`Could not start signing (HTTP ${res.status})`);
-        }
-        return res.json();
-      },
+      mint: { url: WEBFORM_INSTANCE_URL, getAuthToken: () => 'mock-jwt-token' },
+      prefill: getDemoPrefill(),
     });
   }
   return createProxySigningSource({

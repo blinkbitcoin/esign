@@ -37,6 +37,8 @@ export type {
 export { createDocuSignWebFormsSource, isMountable } from './docusignWebForms';
 export type {
   DocuSignWebFormsSourceOptions,
+  DocuSignWebFormsCreateInstanceOptions,
+  DocuSignWebFormsMintOptions,
   MountableSigningSource,
   DocuSignSdk,
   DocuSignSigning,
@@ -47,6 +49,7 @@ export type {
 export {
   createProxySigningSource,
   createWebFormsSource,
+  createWebFormsMinter,
   createPublicUrlSource,
   isRestartable,
   interpretProxyEvent,
@@ -67,7 +70,13 @@ export type {
   SigningSourceError,
   ProxySigningSourceOptions,
   WebFormsSigningSourceOptions,
+  WebFormsCreateInstanceOptions,
+  WebFormsMintOptions,
   WebFormsInstance,
+  MintWebFormsInstanceOptions,
+  WebFormPrefill,
+  WebFormPrefillValue,
+  WebFormPhoneNumber,
   PublicUrlSigningSourceOptions,
   ESignApolloClientOptions,
   GetAuthToken,

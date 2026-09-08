@@ -1,10 +1,13 @@
-// DocuSign Web Forms (API-embedded) signing source. The host injects a single
-// async call that hits its own thin backend endpoint (which holds the DocuSign
-// credentials and calls Instances:createInstance with prefill values). No
-// Apollo/GraphQL dependency.
+// DocuSign Web Forms (API-embedded) signing source. The host's backend mints
+// the instance (it holds the DocuSign credentials; read-only fields come
+// back locked with the values it prefilled). The host either points this
+// source at that endpoint (`mint` + `prefill`) or injects its own
+// `createInstance` call. No Apollo/GraphQL dependency.
 
 import { interpretDocuSignEvent } from './events';
+import { createWebFormsMinter } from './mint';
 
+import type { MintWebFormsInstanceOptions, WebFormPrefill } from './mint';
 import type {
   SigningSession,
   SigningSource,
@@ -18,13 +21,11 @@ export interface WebFormsInstance {
   envelopeId?: string;
 }
 
-export interface WebFormsSigningSourceOptions {
-  /** Host-provided call that mints a prefilled Web Forms instance URL. */
-  createInstance: () => Promise<WebFormsInstance>;
+interface WebFormsSigningSourceBase {
   /** Origin to accept postMessage from (e.g. https://apps.docusign.com). */
   allowedOrigin?: string;
   /**
-   * Give up on createInstance after this many milliseconds (default 30000).
+   * Give up on minting after this many milliseconds (default 30000).
    * Without it, a hung host fetch would leave the component in `loading`
    * forever - the component has no watchdog of its own. Times out with
    * code NETWORK_ERROR so the UI shows the connectivity message.
@@ -32,43 +33,75 @@ export interface WebFormsSigningSourceOptions {
   timeoutMs?: number;
 }
 
+/** The host brings its own backend client. */
+export interface WebFormsCreateInstanceOptions
+  extends WebFormsSigningSourceBase {
+  /** Host-provided call that mints a prefilled Web Forms instance URL. */
+  createInstance: () => Promise<WebFormsInstance>;
+}
+
+/** The host names its mint endpoint and the prefill; the source does the call. */
+export interface WebFormsMintOptions extends WebFormsSigningSourceBase {
+  mint: MintWebFormsInstanceOptions;
+  /** Values minted with the instance; read-only fields show them locked. */
+  prefill?: WebFormPrefill;
+}
+
+export type WebFormsSigningSourceOptions =
+  | WebFormsCreateInstanceOptions
+  | WebFormsMintOptions;
+
 const DEFAULT_TIMEOUT_MS = 30_000;
+
+/** The createInstance call for either option shape. */
+export const resolveCreateInstance = (
+  options: WebFormsSigningSourceOptions,
+): (() => Promise<WebFormsInstance>) =>
+  'createInstance' in options
+    ? options.createInstance
+    : createWebFormsMinter(options.mint, options.prefill);
 
 export const createWebFormsSource = (
   options: WebFormsSigningSourceOptions,
-): SigningSource => ({
-  async start(): Promise<SigningSession> {
-    const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    try {
-      const instance = await Promise.race([
-        options.createInstance(),
-        new Promise<never>((_, reject) => {
-          timer = setTimeout(() => {
-            reject({
-              code: 'NETWORK_ERROR',
-              message: `Timed out creating the signing instance after ${timeoutMs}ms`,
-            } as SigningSourceError);
-          }, timeoutMs);
-        }),
-      ]);
-      return {
-        url: instance.url,
-        envelopeId: instance.envelopeId,
-        allowedOrigin: options.allowedOrigin,
-      };
-    } catch (error) {
-      if ((error as SigningSourceError)?.code === 'NETWORK_ERROR') {
-        throw error;
+): SigningSource => {
+  const createInstance = resolveCreateInstance(options);
+  return {
+    async start(): Promise<SigningSession> {
+      const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const instance = await Promise.race([
+          createInstance(),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => {
+              reject({
+                code: 'NETWORK_ERROR',
+                message: `Timed out creating the signing instance after ${timeoutMs}ms`,
+              } as SigningSourceError);
+            }, timeoutMs);
+          }),
+        ]);
+        return {
+          url: instance.url,
+          envelopeId: instance.envelopeId,
+          allowedOrigin: options.allowedOrigin,
+        };
+      } catch (error) {
+        if ((error as SigningSourceError)?.code === 'NETWORK_ERROR') {
+          throw error;
+        }
+        throw {
+          code: 'ENVELOPE_CREATION_FAILED',
+          message: error instanceof Error ? error.message : undefined,
+        } as SigningSourceError;
+      } finally {
+        clearTimeout(timer);
       }
-      throw {
-        code: 'ENVELOPE_CREATION_FAILED',
-        message: error instanceof Error ? error.message : undefined,
-      } as SigningSourceError;
-    } finally {
-      clearTimeout(timer);
-    }
-  },
+    },
 
-  interpret: interpretDocuSignEvent,
-});
+    // Understands both the DocuSign.js `sessionEnd` shape and the return-URL
+    // bridge's `{ event }` shape, so a real form finishing via returnUrl in a
+    // plain WebView/iframe is read the same way as one embedded via DocuSign.js
+    interpret: interpretDocuSignEvent,
+  };
+};

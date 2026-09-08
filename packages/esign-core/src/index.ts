@@ -10,6 +10,8 @@ export type { RecipientData } from './types';
 export {
   createProxySigningSource,
   createWebFormsSource,
+  createWebFormsMinter,
+  resolveCreateInstance,
   createPublicUrlSource,
   isRestartable,
   interpretProxyEvent,
@@ -25,7 +27,13 @@ export type {
   SigningSourceError,
   ProxySigningSourceOptions,
   WebFormsSigningSourceOptions,
+  WebFormsCreateInstanceOptions,
+  WebFormsMintOptions,
   WebFormsInstance,
+  MintWebFormsInstanceOptions,
+  WebFormPrefill,
+  WebFormPrefillValue,
+  WebFormPhoneNumber,
   PublicUrlSigningSourceOptions,
 } from './signing';
 

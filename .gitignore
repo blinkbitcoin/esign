@@ -100,3 +100,7 @@ examples/*/dist/
 
 # lefthook personal overrides (see lefthook.yml)
 lefthook-local.yml
+
+# Declarations are emitted into dist/ by the build; never next to the sources
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map

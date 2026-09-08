@@ -71,7 +71,21 @@ const { url } = await createWebFormInstance({
 ```
 
 Hosts without a backend of their own run this repo's service instead, whose
-`POST /webform/instance` is that same call behind an authenticated endpoint:
+`POST /webform/instance` is that same call behind an authenticated endpoint.
+On the app side the source does the authenticated POST itself:
+
+```tsx
+const source = createWebFormsSource({
+  mint: { url: 'https://api.example.com/webform/instance', getAuthToken }, // the app's session token
+  prefill: { number_of_units: 1000, settlement_amount_btc: '0.01268231' },
+});
+<ESignature source={source} onComplete onCancel onError />
+```
+
+The instance also carries a `returnUrl` (the service's `/signing/return`
+bridge by default), so a real form finishing in a plain WebView or iframe
+reports its outcome through the same postMessage protocol as the mock -
+no DocuSign.js needed on React Native. The request body is:
 
 ```json
 { "prefill": { "number_of_units": 1000, "total_subscription_usd": 1000,

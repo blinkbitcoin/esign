@@ -24,8 +24,11 @@ only when the full entry (proxy mode) is used.
 
 - `createProxySigningSource` — backend creates an envelope via the GraphQL
   API (Apollo); restartable on session expiry.
-- `createWebFormsSource` — DocuSign Web Forms, API-embedded: the host injects
-  a `createInstance()` call to its backend, which mints the instance URL.
+- `createWebFormsSource` — DocuSign Web Forms, API-embedded: the host names
+  its backend's mint endpoint + the prefill (`mint`, `prefill`; the source
+  does the authenticated POST via `createWebFormsMinter`) or injects its own
+  `createInstance()`. The backend mints with `@blinkbitcoin/esign-server`;
+  read-only fields come back locked with the prefill.
 - `createPublicUrlSource` — a published public form URL, no backend.
 
 Adding a provider = implementing `SigningSource` (`start()` + `interpret()`);

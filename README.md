@@ -68,9 +68,9 @@ credentials - so it belongs on a backend, not in the app.
 
 1. Add **one authenticated endpoint to your own backend** that calls
    DocuSign's `createInstance` with the signer's `clientUserId` + prefill
-   values and returns `{ url }`. (This repo's service implements it as
-   `POST /webform/instance` if you'd rather run it than write it - but any
-   backend able to make one REST call works.)
+   values and returns `{ url }` - one call from `@blinkbitcoin/esign-server`
+   (`createWebFormInstance`) in any Node backend, or this repo's service,
+   which exposes exactly that as `POST /webform/instance`.
 2. Install exactly as in mode 1 (same minimal packages, still no Apollo).
 3. Point the source at your endpoint:
 
@@ -78,11 +78,10 @@ credentials - so it belongs on a backend, not in the app.
 import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/webform';
 
 const source = createWebFormsSource({
-  createInstance: () =>
-    fetch('https://your-backend.example.com/webform/instance', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.json()), // -> { url }
+  // your endpoint + the app's own session token; the backend mints with
+  // @blinkbitcoin/esign-server, so read-only fields come back locked
+  mint: { url: 'https://your-backend.example.com/webform/instance', getAuthToken },
+  prefill: { number_of_units: 1000, settlement_amount_btc: '0.01268231' },
 });
 ```
 

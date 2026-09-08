@@ -36,21 +36,11 @@ export const DEMO_PREFILL = {
 export const buildSource = (): SigningSource => {
   switch (ESIGN_MODE) {
     case 'webform':
+      // The source mints through the backend endpoint with the app's own
+      // session token; the backend holds the DocuSign credentials
       return createWebFormsSource({
-        createInstance: async () => {
-          const res = await fetch(WEBFORM_INSTANCE_URL, {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json',
-              authorization: `Bearer ${getAuthToken()}`,
-            },
-            body: JSON.stringify({ prefill: DEMO_PREFILL }),
-          });
-          if (!res.ok) {
-            throw new Error(`Could not start signing (HTTP ${res.status})`);
-          }
-          return res.json();
-        },
+        mint: { url: WEBFORM_INSTANCE_URL, getAuthToken },
+        prefill: DEMO_PREFILL,
       });
     case 'publicurl':
       // No backend call - just embed a published form URL (prefill in the URL).
