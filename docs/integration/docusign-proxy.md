@@ -18,7 +18,13 @@ adapter works internally.
    defaults already target the demo environment
    (`https://demo.docusign.net/restapi`, `https://account-d.docusign.com`).
 2. **Admin → Apps and Keys → Add App / Integration Key**. On the app:
-   - Generate an **RSA keypair**; download the private key PEM (shown once).
+   - Pick **Private custom integration**.
+   - Add an RSA keypair. Prefer **Upload RSA** with a key generated on your
+     machine, so the private half never appears in a browser:
+     `openssl genrsa -out examples/full-service-demo/.docusign.pem 2048 &&
+     openssl rsa -in examples/full-service-demo/.docusign.pem -pubout`
+     (`*.pem` is gitignored). Generate RSA in the UI works too; save the PEM
+     it shows once.
    - Add any **redirect URI** (e.g. `http://localhost:4000`) - needed for the
      consent step below, not used at runtime.
 3. **Grant one-time consent** for JWT impersonation (without it the token
@@ -37,6 +43,18 @@ adapter works internally.
    `providers/docusign/` - place a Sign Here tab, save, and copy the **template ID**.
 
 ## 2. Backend Configuration (`examples/full-service-demo/.env`)
+
+The short way, from the repo root (inlines the PEM correctly quoted; refuses
+to overwrite an existing `.env` without `FORCE=1`):
+
+```sh
+make docusign-env ACCOUNT_ID=<api-account-guid> INTEGRATION_KEY=<integration-key-guid> \
+  USER_ID=<user-guid> TEMPLATE_ID=<template-guid> WEBFORM_ID=<web-form-id> \
+  PEM=examples/full-service-demo/.docusign.pem
+make docusign-check     # JWT grant + fetches the Web Form; prints the consent URL if consent is missing
+```
+
+By hand:
 
 ```env
 ESIGN_PROVIDER=docusign

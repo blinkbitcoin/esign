@@ -164,6 +164,18 @@ canonical :4000 / :5174), so parallel sessions never collide.
 
 ## Live run against real DocuSign
 
+The one-command version, once `.env` exists (`make docusign-env`, see
+[docusign-proxy.md](docusign-proxy.md)):
+
+```sh
+make docusign-check   # JWT grant + the form is reachable (names the consent URL otherwise)
+make e2e-live         # service on DocuSign (LIVE_PORT, default 4010) → API live test → Playwright locked-fields check → stop
+```
+
+`make e2e-live` mints with the capability test form's group C values and
+asserts the six locked labels (`scripts/e2e/live.sh` holds the defaults;
+`E2E_LIVE_PREFILL` / `E2E_LIVE_LOCKED_LABELS` override them). Step by step:
+
 1. Complete the DocuSign account + JWT setup in
    [docusign-proxy.md](docusign-proxy.md) (consent, keys, account/user IDs).
 2. Build and **publish a Web Form** in the DocuSign Web Forms builder, mapped to
