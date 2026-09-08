@@ -181,46 +181,65 @@ canonical :4000 / :5174), so parallel sessions never collide.
 
 ## The capability test form (live E2E fixture)
 
-One generic Web Form in the DocuSign demo account, "esign capability test
-form", built on its own template from a one-page placeholder document. It
-exercises every prefill shape the backend accepts and every lock mode the
-component can meet, so a single live run covers the whole surface. Rebuild it
-from this table if it is ever lost (labels are what the signer sees, API
-reference names are the prefill keys):
+One generic Web Form in the DocuSign demo account, **"esign capability test
+form"** (form id `1228ee55-ce36-4b87-8646-39c93d50ee69`, built 2026-09-08 via
+"Convert PDF document" from the AcroForm PDF checked into
+`docs/assets/esign-capability-test-form.pdf`; its template was generated
+alongside). It exercises every prefill shape the backend accepts and every
+lock mode the component can meet, so a single live run covers the whole
+surface. Rebuild it from this table if it is ever lost (labels are what the
+signer sees, API reference names are the prefill keys):
 
 | Group | Label | API reference name | Type | Required | Read only | Live prefill |
 |---|---|---|---|---|---|---|
-| A signer-entered | Full name | `full_name` | Text | yes | no | `"Test User"` |
-| A signer-entered | Email | `email` | Email | yes | no | `"test@example.com"` |
-| A signer-entered | Country of residence | `country` | Text | yes | no | (none, signer types) |
-| B prefilled, editable | Preferred contact | `preferred_contact` | Checkbox group: `email`, `phone`, `post` | no | no | `["email","phone"]` |
-| B prefilled, editable | Newsletter | `newsletter` | Radio: `yes`, `no` | no | no | `"yes"` |
+| recipient | Name | `Signer_name` | Text (recipient name) | yes | no | `"Test User"` |
+| recipient | Email Address | `Signer_email` | Email (recipient email) | yes | no | `"test@example.com"` |
+| A signer-entered | Full Name | `full_name` | Text | yes | no | `"Test User"` |
+| A signer-entered | Email Address | `email` | Email | yes | no | `"test@example.com"` |
+| A signer-entered | Country of Residence | `country` | Text | yes | no | (none, signer types) |
+| A signer-entered | Preferred Contact Method | `preferred_contact` | Checkbox group (option API values from the builder) | no | no | see below |
+| B prefilled, editable | Newsletter Subscription | `newsletter` | Radio: `yes`, `no` | no | no | `"yes"` |
+| C locked terms | Registration Reference | `reference` | Text | yes | **yes** | `"E2E-0001"` |
+| C locked terms | Subscription Plan | `plan` | Dropdown: Seed, Series A | yes | **yes** | `"seed"` |
 | C locked terms | Number of Units | `number_of_units` | Number | yes | **yes** | `1000` |
-| C locked terms | Total Subscription (USD) | `total_subscription_usd` | Number (2 decimals) | yes | **yes** | `1000` |
-| C locked terms | Settlement Amount (BTC) | `settlement_amount_btc` | Number (8 decimals) | yes | **yes** | `0.01268231` |
-| C locked terms | BTC/USD Rate | `btc_usd_rate` | Number | yes | **yes** | `78850` |
+| C locked terms | Total Subscription (USD) | `total_subscription_usd` | Number | yes | **yes** | `1000` |
+| C locked terms | Settlement Amount (BTC) | `settlement_amount_btc` | Number | yes | **yes** | `0.01268231` |
+| C locked terms | BTC/USD Conversion Rate | `btc_usd_rate` | Number | yes | **yes** | `78850` |
 | C locked terms | Rate Timestamp | `rate_timestamp` | Text | yes | **yes** | `"2026-09-08 10:44"` |
-| C locked terms | Settlement Date | `settlement_date` | Date | yes | **yes** | `"2026-09-10"` |
-| C locked terms | Plan | `plan` | Dropdown: `seed`, `series_a` | yes | **yes** | `"seed"` |
-| C locked terms | Reference | `reference` | Text | yes | **yes** | `"E2E-0001"` |
-| D optional | Phone | `phone` | Phone number | no | no | `{"countryCode":"1","nationalNumber":"5551234567"}` |
-| D optional | Notes | `notes` | Text (multi-line) | no | no | (none) |
+| C locked terms | Settlement Date | `settlement_date` | Date (yyyy/mm/dd display) | yes | **yes** | `"2026-09-10"` |
+| D optional | Phone Number | `phone` | Text | no | no | `"+1 555 123 4567"` |
+| D optional | Additional Notes | `notes` | Text | no | no | (none) |
 
-Every template field maps 1:1 to a form field; the template has one signer
-role with a signature and a date-signed tab. Nothing is hidden by a rule (a
-hidden field never reaches the document, see above).
+Notes from the build:
+
+- The two **recipient** fields (`Signer_name`, `Signer_email`) are what the
+  builder adds to feed the envelope's signer; they are mapped under
+  Signature → Recipient Connections and must be prefilled (or typed) or the
+  envelope cannot be created.
+- The builder offers only Text / Email / Number / Date types for a
+  **template-based** form, so the phone field is plain text here. The
+  `{ countryCode, nationalNumber }` phone shape the backend accepts is for
+  standalone forms and is covered by the unit tests only.
+- Option API values of the checkbox group and dropdown are assigned by the
+  builder and cannot be edited there; read them from
+  `GET /v1.1/accounts/{accountId}/forms/{formId}` (`Configurations:getForm`)
+  before prefilling `preferred_contact` / `plan`.
+- Signature settings: "Initiate signing session from email" **off** (embedded
+  signing), "Enable document field editing" **off** (the submitted values are
+  final; the signer cannot re-open the locked terms on the document).
+- Nothing is hidden by a rule (a hidden field never reaches the document).
 
 What each group proves in the live run: A the signer can still enter values;
 B a minted value can be shown yet remain editable; C every value shape
 (integer, decimals, text, date, dropdown) can be locked by minting; D optional
-fields and the phone object shape are accepted without blocking submit.
+fields are accepted without blocking submit.
 
 ```sh
 # Local live run against the fixture (backend on :4000 with ESIGN_PROVIDER=docusign
-# and DOCUSIGN_WEBFORM_ID=<the form id>)
+# and DOCUSIGN_WEBFORM_ID=1228ee55-ce36-4b87-8646-39c93d50ee69)
 E2E_LIVE_API_ORIGIN=http://localhost:4000 \
-E2E_LIVE_PREFILL='{"full_name":"Test User","email":"test@example.com","preferred_contact":["email","phone"],"newsletter":"yes","number_of_units":1000,"total_subscription_usd":1000,"settlement_amount_btc":0.01268231,"btc_usd_rate":78850,"rate_timestamp":"2026-09-08 10:44","settlement_date":"2026-09-10","plan":"seed","reference":"E2E-0001","phone":{"countryCode":"1","nationalNumber":"5551234567"}}' \
-E2E_LIVE_LOCKED_LABELS='{"Number of Units":"1000","Total Subscription (USD)":"1000","Settlement Amount (BTC)":"0.01268231","BTC/USD Rate":"78850","Rate Timestamp":"2026-09-08 10:44","Reference":"E2E-0001"}' \
+E2E_LIVE_PREFILL='{"Signer_name":"Test User","Signer_email":"test@example.com","full_name":"Test User","email":"test@example.com","newsletter":"yes","reference":"E2E-0001","number_of_units":1000,"total_subscription_usd":1000,"settlement_amount_btc":0.01268231,"btc_usd_rate":78850,"rate_timestamp":"2026-09-08 10:44","settlement_date":"2026-09-10"}' \
+E2E_LIVE_LOCKED_LABELS='{"Registration Reference":"E2E-0001","Number of Units":"1000","Total Subscription (USD)":"1000","Settlement Amount (BTC)":"0.01268231","BTC/USD Conversion Rate":"78850","Rate Timestamp":"2026-09-08 10:44"}' \
 make e2e-web-webform-live
 ```
 
