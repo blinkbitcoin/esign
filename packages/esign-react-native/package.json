@@ -62,7 +62,7 @@
     "@types/jest": "^30.0.0",
     "@types/react": "^19.2.18",
     "@types/react-test-renderer": "^19.1.0",
-    "graphql": "^16.14.2",
+    "graphql": "^17.0.2",
     "jest": "^30.5.0",
     "react": "19.2.8",
     "react-native": "0.86.3",
