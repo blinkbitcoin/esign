@@ -1,4 +1,4 @@
-# Security Model — apps/api
+# Security Model — examples/full-service-demo
 
 **Updated:** 2026-07-03
 

@@ -15,7 +15,7 @@ export default {
         'server', // packages/esign-server
         'rn', // packages/esign-react-native
         'react', // packages/esign-react
-        'api', // apps/api
+        'api', // examples/full-service-demo
         'demo', // examples/*
         'e2e',
         'ci',

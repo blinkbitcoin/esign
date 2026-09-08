@@ -8,14 +8,14 @@ export class BadgeError extends Error {}
 
 // Single source of truth for "what the coverage badge measures". reportDir is
 // where each runner writes its HTML report relative to `<ws>/coverage`:
-// Vitest (apps/api, scripts) uses the html reporter's own `coverage/` root;
+// Vitest (examples/full-service-demo, scripts) uses the html reporter's own `coverage/` root;
 // Jest uses the lcov reporter's `coverage/lcov-report`.
 export const WORKSPACES = [
   { ws: 'packages/esign-core', reportDir: 'coverage/lcov-report' },
   { ws: 'packages/esign-server', reportDir: 'coverage/lcov-report' },
   { ws: 'packages/esign-react-native', reportDir: 'coverage/lcov-report' },
   { ws: 'packages/esign-react', reportDir: 'coverage/lcov-report' },
-  { ws: 'apps/api', reportDir: 'coverage' },
+  { ws: 'examples/full-service-demo', reportDir: 'coverage' },
   { ws: 'scripts', reportDir: 'coverage' },
 ];
 

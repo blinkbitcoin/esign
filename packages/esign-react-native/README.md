@@ -179,7 +179,7 @@ Component behaviors worth knowing:
 
 ```sh
 make test        # 74 Jest tests, 100% coverage (enforced threshold)
-make codegen     # regenerate types from ../../apps/api/schema.graphql
+make codegen     # regenerate types from ../../examples/full-service-demo/schema.graphql
 make build       # react-native-builder-bob (CJS + ESM + types)
 ```
 

@@ -10,14 +10,14 @@ libraries, and one demo app per platform for manual and E2E testing.
 
 - **Language**: TypeScript 6.0 everywhere
 - **Node**: `^22.22.2 || >= 24.15.0`; toolchain pinned by `flake.nix`, entered
-  via direnv (`direnv allow . && direnv allow apps/api`, once per machine)
+  via direnv (`direnv allow . && direnv allow examples/full-service-demo`, once per machine)
 - **Docs**: `docs/index.md` is the current-state entry point; CLAUDE.md has
   the full command reference; `CONTRIBUTING.md` has the commit and release rules
 
 ## Project Structure
 
 ```
-├── apps/api/                    # 🖥️ THE SERVICE (Express 5 + Apollo 5 + Knex/Postgres)
+├── examples/full-service-demo/                    # 🖥️ THE SERVICE (Express 5 + Apollo 5 + Knex/Postgres)
 ├── packages/
 │   ├── esign-core/              # 📦 shared core: SigningSource abstraction, Apollo factory, GraphQL codegen
 │   ├── esign-server/            # 📦 server side: DocuSign client, createWebFormInstance, envelope domain over provider + store ports
@@ -28,7 +28,7 @@ libraries, and one demo app per platform for manual and E2E testing.
 │   └── react-demo/              # 🌐 Web integration demo (Vite, Playwright E2E)
 ├── docs/                        # Current-state documentation (hand-maintained)
 ├── scripts/                     # the `tooling` npm workspace: ci/, e2e/, release/ shell + node used by the Makefile and CI; lib/*.mjs is Vitest-covered at 100%, __tests__/ covers the shell scripts
-├── Makefile                     # Root flows; apps/, packages/, examples/ and each workspace have their own
+├── Makefile                     # Root flows; packages/, examples/ and each workspace have their own
 └── package.json                 # Workspace root (orchestration scripts, single lockfile)
 ```
 
@@ -68,11 +68,11 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
   hand-maintained and CI's Docs check flags architecture changes without one
 - Shell that CI or the Makefile runs lives in `scripts/{ci,e2e,release}/`,
   not inline in workflows; it is shellcheck'd by `make check-ci`
-- The `ESignProvider` port (`apps/api/src/providers/port.ts`) is the provider
-  boundary - nothing DocuSign-specific outside `apps/api/src/providers/docusign/`
+- The `ESignProvider` port (`examples/full-service-demo/src/providers/port.ts`) is the provider
+  boundary - nothing DocuSign-specific outside `examples/full-service-demo/src/providers/docusign/`
   and the `@blinkbitcoin/esign-server` package it is built on
 - GraphQL error codes are a wire contract: the `ErrorCode` enum in
-  `apps/api/schema.graphql` (emitted from `src/typeDefs.ts`) and the generated
+  `examples/full-service-demo/schema.graphql` (emitted from `src/typeDefs.ts`) and the generated
   client types in `packages/esign-core/src/generated/` - run `make codegen`
   after schema changes; drift fails tests and a CI step
 - The libraries take no URLs/tokens/platform detection - host apps inject via
@@ -101,7 +101,7 @@ cannot see changes.
 - Core / RN / web library tests: `packages/*/src/__tests__/`
 - Demo tests: `examples/react-native-demo/{__tests__,src/__tests__}/`,
   `examples/react-demo/src/__tests__/`; browser E2E in `examples/react-demo/e2e/` (Playwright)
-- Backend unit tests: `apps/api/tests/` (DB mocked); E2E: `apps/api/tests/e2e/`
+- Backend unit tests: `examples/full-service-demo/tests/` (DB mocked); E2E: `examples/full-service-demo/tests/e2e/`
   (real Postgres via `docker-compose.test.yml`); `tests/live/` runs only with
   real DocuSign credentials (`make test-live`)
 - Tooling scripts: `scripts/lib/*.test.mjs` (100% Vitest coverage) for the

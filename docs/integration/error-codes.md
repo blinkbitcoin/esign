@@ -7,7 +7,7 @@ two layers:
 
 ## Schema-borne codes (produced by the backend, proxy mode)
 
-The `ErrorCode` GraphQL enum in `apps/api/schema.graphql` is the wire
+The `ErrorCode` GraphQL enum in `examples/full-service-demo/schema.graphql` is the wire
 contract; client packages generate types from it and parity tests fail on
 drift.
 

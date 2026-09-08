@@ -17,7 +17,7 @@ esign/
 │       │   ├── signing/           # SigningSource abstraction + 3 sources
 │       │   ├── client.ts          # createESignApolloClient + ErrorCodes
 │       │   ├── operations.ts      # GraphQL mutations (wire contract)
-│       │   ├── generated/         # Codegen output (from apps/api schema)
+│       │   ├── generated/         # Codegen output (from examples/full-service-demo schema)
 │       │   └── __tests__/         # incl. webform-entry Apollo-free guard
 │       ├── codegen.ts             # GraphQL Codegen config
 │       └── dist/                  # tsup output (gitignored)
@@ -103,7 +103,7 @@ esign/
 │
 ├── 🖥️ BACKEND (Express + Apollo)
 │   │
-│   └── apps/api/
+│   └── examples/full-service-demo/
 │       ├── package.json           # Backend dependencies
 │       ├── tsconfig.json          # TypeScript configuration
 │       ├── biome.json             # Biome lint + format configuration
@@ -152,7 +152,7 @@ esign/
 ├── 🔧 CONFIGURATION
 │   │
 │   ├── Makefile                   # Repo-wide dev entry points (make help);
-│   │                              # apps/, packages/, examples/ have fan-out
+│   │                              # packages/, examples/ have fan-out
 │   │                              # Makefiles; each workspace a local one
 │   ├── scripts/                   # the `tooling` npm workspace; pure logic in scripts/lib/*.mjs, Vitest-covered at 100% ⭐
 │   │   ├── {ci,e2e,release}/ , assemble-diagrams.mjs , coverage-badge.mjs , status-badge.mjs
@@ -207,13 +207,13 @@ esign/
 
 | Path | Purpose |
 |------|---------|
-| `apps/api/src/app.ts` | Server factory |
-| `apps/api/src/schema.ts` | GraphQL API |
-| `apps/api/src/webhook.ts` | Generic webhook processing |
-| `apps/api/src/types.ts` | ESignProvider interface |
-| `apps/api/src/providers/index.ts` | Provider factory + singleton |
+| `examples/full-service-demo/src/app.ts` | Server factory |
+| `examples/full-service-demo/src/schema.ts` | GraphQL API |
+| `examples/full-service-demo/src/webhook.ts` | Generic webhook processing |
+| `examples/full-service-demo/src/types.ts` | ESignProvider interface |
+| `examples/full-service-demo/src/providers/index.ts` | Provider factory + singleton |
 | `packages/esign-server/src/knex/migrations.ts` | Database schema (programmatic Knex migration source) |
-| `apps/api/tests/e2e/` | E2E tests |
+| `examples/full-service-demo/tests/e2e/` | E2E tests |
 
 ## Integration Points
 

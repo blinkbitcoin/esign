@@ -15,23 +15,23 @@ pre-commit:
     - merge
     - rebase
   commands:
-    # Biome runs per config root (repo root and apps/api are separate Biome
-    # roots - a single root-invoked run on files from both errors with
-    # "nested root configuration", same reason the npm scripts split them).
+    # Biome runs per config: the service example carries a nested config
+    # (root: false, its own style) and its own hook below, so the root hook
+    # leaves its files alone - same split as the npm format scripts.
     biome:
       glob: '*.{ts,tsx,js,jsx,mjs,cjs,json}'
       exclude:
-        - apps/api/**
+        - examples/full-service-demo/**
       # format (not check) - mirrors check-code; ESLint owns linting here
       run: npx biome format --write --no-errors-on-unmatched {staged_files}
       stage_fixed: true
     biome-api:
-      root: 'apps/api/'
+      root: 'examples/full-service-demo/'
       glob: '*.{ts,tsx,js,jsx,mjs,cjs,json}'
       run: npx biome check --write --no-errors-on-unmatched {staged_files}
       stage_fixed: true
     eslint:
-      # Flat config ignores apps/api etc.; --no-warn-ignored keeps staged
+      # Flat config ignores examples/full-service-demo etc.; --no-warn-ignored keeps staged
       # files from ignored paths silent instead of counting as warnings.
       glob: '*.{ts,tsx}'
       run: npx eslint --no-warn-ignored --max-warnings=0 {staged_files}

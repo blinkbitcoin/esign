@@ -25,7 +25,7 @@ The embedded page reports back via postMessage
 
 The backend endpoint is provider-agnostic (`POST /webform/instance`,
 authenticated); the mode is chosen by `ESIGN_PROVIDER`. Nothing DocuSign-specific
-lives outside the DocuSign adapter (`apps/api/src/providers/docusign/`).
+lives outside the DocuSign adapter (`examples/full-service-demo/src/providers/docusign/`).
 
 ## Toggling the demos
 
@@ -93,11 +93,11 @@ no DocuSign.js needed on React Native. The request body is:
 ```
 
 Keys are the fields' API reference names; the value shape follows the field
-type (`apps/api/src/types.ts`): text / email / date (`yyyy-mm-dd`) / dropdown /
+type (`examples/full-service-demo/src/types.ts`): text / email / date (`yyyy-mm-dd`) / dropdown /
 radio → string, **Number → a JSON number** (unquoted, `.` decimal, no
 thousands separators), checkbox group → string array, phone →
 `{ countryCode?, nationalNumber }`. The endpoint validates that contract at the
-edge (`apps/api/src/webFormPrefill.ts`) and answers 400 with a reason for
+edge (`examples/full-service-demo/src/webFormPrefill.ts`) and answers 400 with a reason for
 anything else, before the provider is called. Mint the instance right before
 opening it: the instance token expires about five minutes after creation.
 
@@ -169,14 +169,14 @@ canonical :4000 / :5174), so parallel sessions never collide.
 2. Build and **publish a Web Form** in the DocuSign Web Forms builder, mapped to
    a template; note its **form id** and the fields' **API reference names**
    (these are the `formValues`/prefill keys).
-3. Configure the backend (`apps/api/.env`):
+3. Configure the backend (`examples/full-service-demo/.env`):
    ```env
    ESIGN_PROVIDER=docusign
    DOCUSIGN_WEBFORM_ID=<form id>
    DOCUSIGN_WEBFORMS_BASE_URL=https://apps-d.docusign.com/api/webforms/v1.1
    # + the standard DOCUSIGN_* JWT config (see docusign-proxy.md)
    ```
-4. Verify the API contract without a UI: `make test-live` in `apps/api` runs
+4. Verify the API contract without a UI: `make test-live` in `examples/full-service-demo` runs
    `tests/live/webforms.live.test.ts` — real JWT auth + a real
    `createInstance` call, asserting the response shape and that the minted
    URL is served. Skips itself when the `DOCUSIGN_*` env vars are unset, so

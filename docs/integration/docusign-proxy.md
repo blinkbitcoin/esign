@@ -29,14 +29,14 @@ adapter works internally.
    ```
 
    The scope `signature impersonation` matches exactly what
-   `apps/api/src/providers/docusign/` requests in its JWT assertion.
+   `examples/full-service-demo/src/providers/docusign/` requests in its JWT assertion.
 4. From the Apps and Keys page, note the **API Account ID** and your
    **User ID** (both GUIDs).
 5. **Create a template**: upload any PDF, add a recipient **role named
    exactly `signer`** - this must match `roleName: 'signer'` in
    `providers/docusign/` - place a Sign Here tab, save, and copy the **template ID**.
 
-## 2. Backend Configuration (`apps/api/.env`)
+## 2. Backend Configuration (`examples/full-service-demo/.env`)
 
 ```env
 ESIGN_PROVIDER=docusign
@@ -87,7 +87,7 @@ unless DocuSign Connect can reach the backend:
 1. Tunnel: `ngrok http 4000` (or `cloudflared tunnel --url http://localhost:4000`)
 2. DocuSign **Admin → Connect → Add Configuration**:
    - URL: `https://<tunnel-host>/webhook/esign`
-   - **HMAC key**: must match `DOCUSIGN_HMAC_KEY` in `apps/api/.env`
+   - **HMAC key**: must match `DOCUSIGN_HMAC_KEY` in `examples/full-service-demo/.env`
      (unset = dev mode accepts unsigned webhooks with a warning)
    - Events: envelope completed / declined / voided
 
@@ -106,10 +106,10 @@ regression.
 
 | # | Assumption to confirm | How to capture | Where to fix if wrong |
 |---|----------------------|----------------|----------------------|
-| 1 | Envelope creation + recipient view succeed (template role `signer`, `clientUserId` = email, status `sent`) | **Automated**: `make test-live` in `apps/api` (skips unless `DOCUSIGN_*` + `DOCUSIGN_TEMPLATE_ID` are set; logs the signing ceremony URL to hand off to item 2) | `providers/docusign/client.ts` |
+| 1 | Envelope creation + recipient view succeed (template role `signer`, `clientUserId` = email, status `sent`) | **Automated**: `make test-live` in `examples/full-service-demo` (skips unless `DOCUSIGN_*` + `DOCUSIGN_TEMPLATE_ID` are set; logs the signing ceremony URL to hand off to item 2) | `providers/docusign/client.ts` |
 | 2 | Return-URL redirect carries `?event=` with values `signing_complete` / `cancel` / `decline` / `session_timeout` / `ttl_expired` | ngrok inspector (`http://127.0.0.1:4040`) or backend request log — the GET hitting the bridge route after each outcome (finish, cancel, decline, let the session expire) | `mapDocuSignReturnEvent` in `packages/esign-server/src/pages.ts` (unknown values already fail safe to `exception`) |
 | 3 | Connect webhook: HMAC header is `x-docusign-signature-1`, body has `event: "envelope-completed"` etc. and `data.envelopeId` | ngrok inspector shows the raw POST to `/webhook/esign` — headers + body, no code changes needed | `parseWebhookEvent` in `providers/docusign/index.ts` + the payload type in `providers/docusign/mapping.ts`; mirror any change in `tests/webhook*.test.ts` fixtures |
-| 4 | Web Forms `createInstance` request/response (`clientUserId` + `formValues` in, `formUrl` + `instanceToken` out) + JWT auth | **Automated**: `make test-live` in `apps/api` (skips unless `DOCUSIGN_*` env is set; on contract mismatch it fails with DocuSign's raw HTTP body, and it logs a minted instance URL to hand off to items 5-6) | `createWebFormInstanceRequest` in `providers/docusign/client.ts` |
+| 4 | Web Forms `createInstance` request/response (`clientUserId` + `formValues` in, `formUrl` + `instanceToken` out) + JWT auth | **Automated**: `make test-live` in `examples/full-service-demo` (skips unless `DOCUSIGN_*` env is set; on contract mismatch it fails with DocuSign's raw HTTP body, and it logs a minted instance URL to hand off to items 5-6) | `createWebFormInstanceRequest` in `providers/docusign/client.ts` |
 | 5 | DocuSign.js `sessionEnd` event: discriminator field (`type` / `sessionEndType` / `returnValue`) and values (`signingResult`, `formConfirmation`, `sessionTimeout`) | Web demo + browser devtools: log the raw event in the `sessionEnd` handler (temp `console.log` in `packages/esign-react/src/docusignWebForms.ts`), exercise finish + timeout | `interpretDocuSignEvent` in `packages/esign-core/src/signing/events.ts` + the mock page vocabulary in `packages/esign-server/src/pages.ts` |
 | 6 | RN WebView + real Web Forms: does a plain WebView receive any events at all? (Assumed **no** — DocuSign.js is web-only) | RN demo in webform mode against the real backend; watch Metro logs for `onMessage` traffic while completing a form | If events do arrive: update the caveat in [consuming.md](consuming.md). If not (expected): the return-URL bridge stays the documented RN path |
 

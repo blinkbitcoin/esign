@@ -12,7 +12,7 @@ no framework, no peers:
   with authorization and ownership, input bounds, atomic persistence with an
   audit trail, the restart rule and the webhook state machine.
 
-The esign service (`apps/api`) is this package plus Express, Apollo and a
+The esign service (`examples/full-service-demo`) is this package plus Express, Apollo and a
 Postgres store; a host that already has a backend imports the package
 instead of running that service.
 
@@ -191,7 +191,7 @@ make test        # Jest, 100% coverage enforced
 make build       # tsup (ESM + CJS + types)
 ```
 
-The reference host is `apps/api` (Knex store, Express + Apollo, the same
+The reference host is `examples/full-service-demo` (Knex store, Express + Apollo, the same
 router mounted); it also ships as a container image,
 `ghcr.io/blinkbitcoin/esign-api`, for hosts that would rather run the
-service than import the package ([apps/api/README.md](../../apps/api/README.md#deploy)).
+service than import the package ([examples/full-service-demo/README.md](../../examples/full-service-demo/README.md#deploy)).

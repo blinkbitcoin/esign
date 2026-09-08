@@ -44,7 +44,7 @@ EnvelopeStore port → Knex store (store.ts) → PostgreSQL
 ## Source Structure
 
 ```
-apps/api/src/
+examples/full-service-demo/src/
 ├── index.ts          # Bootstrap (dotenv + startServer)
 ├── server.ts         # HTTP server startup (testable startServer factory)
 ├── app.ts            # Express + Apollo setup (createApp factory): this service's policy
@@ -256,14 +256,14 @@ Defined by the package's programmatic migration source
 
 ## Testing Strategy
 
-### Unit Tests (`apps/api/tests/`)
+### Unit Tests (`examples/full-service-demo/tests/`)
 - Vitest; 100% statement/branch/function/line coverage enforced culture
 - Database globally mocked (`tests/setup.ts` auto-mocks `src/db`); the Knex
   store test uses a `knex-mock-client` tracker, resolver/route tests run the
   real domain over the package's in-memory store (`vi.mock('../src/store')`)
 - `npm test`
 
-### E2E Tests (`apps/api/tests/e2e/`)
+### E2E Tests (`examples/full-service-demo/tests/e2e/`)
 - Real PostgreSQL via Docker Compose (tmpfs-backed, port 5433)
 - Separate config (`vitest.e2e.config.ts`, sequential execution)
 - Factory pattern for test data; env from `.env.test` via dotenv-cli
@@ -298,7 +298,7 @@ npm run test:e2e
 
 Full reference (every variable, incl. optional overrides and OTEL):
 [development-guide.md](../development-guide.md#environment-variables-reference);
-runnable template: `apps/api/.env.example`.
+runnable template: `examples/full-service-demo/.env.example`.
 
 ## Entry Points
 
