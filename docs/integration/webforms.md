@@ -93,7 +93,9 @@ make e2e-web-webform
 
 Both exercise `createWebFormsSource` + `interpretDocuSignEvent` against a page
 emitting the real DocuSign event names — so a green run proves the actual
-protocol, not a lenient stand-in.
+protocol, not a lenient stand-in. The web suites pick their ports per git
+worktree (`examples/react-demo/e2e/ports.ts`; `E2E_PORT_OFFSET=0` for the
+canonical :4000 / :5174), so parallel sessions never collide.
 
 ## Live run against real DocuSign
 

@@ -1,6 +1,8 @@
 // Demo configuration - a real host app would take this from its own
 // environment/config system.
-export const API_ORIGIN = 'http://localhost:4000';
+// The backend origin; the E2E configs move it per worktree (e2e/ports.ts)
+export const API_ORIGIN: string =
+  import.meta.env.VITE_API_ORIGIN || 'http://localhost:4000';
 export const GRAPHQL_URL = `${API_ORIGIN}/graphql`;
 export const WEBFORM_INSTANCE_URL = `${API_ORIGIN}/webform/instance`;
 // A "published public form" URL (prefill via query params). For the demo it

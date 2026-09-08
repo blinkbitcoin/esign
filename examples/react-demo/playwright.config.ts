@@ -1,36 +1,17 @@
 import { defineConfig } from '@playwright/test';
 
-// Browser E2E for the web demo: drives the built demo (vite preview, :5173,
-// over the libraries' dist - what a consumer installs) embedding
-// the backend's real mock signing page (:4000) in a genuinely cross-origin
-// iframe - exercising the window.postMessage path jsdom can only fake.
-//
-// Prerequisite (handled by `make e2e-web` at the repo root): the dockerized
-// test database is up and migrated; both servers below are started here.
+import { backendServer, baseURL, vitePreviewServer } from './e2e/ports';
+
+// Browser E2E for the proxy (envelope) mode: the demo is built and previewed
+// against the packages' dist, and drives the backend's real mock signing page
+// in a genuinely cross-origin iframe. Ports are per worktree (e2e/ports.ts).
 export default defineConfig({
   testDir: 'e2e',
-  testIgnore: ['**/webform.spec.ts', '**/publicurl.spec.ts'],
+  testMatch: '**/signing.spec.ts',
   timeout: 30_000,
   retries: 0,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: baseURL('proxy'),
   },
-  webServer: [
-    {
-      command:
-        'ESIGN_PROVIDER=mock npx dotenv-cli -e apps/api/.env.test -- npm run dev -w apps/api',
-      cwd: '../..',
-      url: 'http://localhost:4000/health',
-      reuseExistingServer: true,
-      timeout: 30_000,
-    },
-    {
-      // Production bundle over the libraries' built dist (see vite.config.ts).
-      command:
-        'npm run build -- --outDir dist/proxy && npm run preview -- --outDir dist/proxy --port 5173 --strictPort',
-      url: 'http://localhost:5173',
-      reuseExistingServer: true,
-      timeout: 30_000,
-    },
-  ],
+  webServer: [backendServer(), vitePreviewServer('proxy')],
 });

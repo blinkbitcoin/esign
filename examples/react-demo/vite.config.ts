@@ -43,10 +43,10 @@ export default defineConfig(({ command }) => {
     test: {
       environment: 'jsdom',
       globals: true,
-      include: ['src/**/*.test.{ts,tsx}'],
+      include: ['src/**/*.test.{ts,tsx}', 'e2e/**/*.test.ts'],
       coverage: {
         provider: 'v8',
-        include: ['src/**/*.{ts,tsx}'],
+        include: ['src/**/*.{ts,tsx}', 'e2e/ports.ts'],
         exclude: ['src/main.tsx', 'src/**/*.test.*'],
         // Demo app: unit-coverage floor at current level; the real coverage is
         // the Playwright E2E suites.
