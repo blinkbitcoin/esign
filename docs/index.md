@@ -9,29 +9,33 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Type** | Monorepo (npm workspaces): library + service + demo app |
+| **Type** | Monorepo (npm workspaces): four packages + service + two demo apps + tooling |
 | **Domain** | Fintech / E-Signature |
 | **Primary Language** | TypeScript |
-| **Architecture** | React Native + Express/Apollo |
+| **Architecture** | React Native / React (web) + Express/Apollo, hexagonal server library |
 
 ### Quick Reference
 
-#### Library (`packages/esign-react-native/`) - the product
-- **Type:** Publishable React Native library (react-native-builder-bob)
-- **Public API:** `src/index.ts` - `ESignature` component + `createESignApolloClient`
-- **Peers:** react, react-native, @apollo/client, graphql, webview, netinfo
+#### Libraries (`packages/`) - the product
+- **`esign-react-native/`:** publishable React Native library (react-native-builder-bob); `ESignature` (WebView) + `useESignature` over the core; peers react, react-native, @apollo/client, graphql, webview, netinfo
+- **`esign-react/`:** the same API for the browser (iframe embed, DocuSign.js source)
+- **`esign-core/`:** platform-agnostic `SigningSource` abstraction, sources (proxy / Web Forms / public URL), Apollo factory, codegen - a dependency of both
+- **`esign-server/`:** Node-only: DocuSign client (JWT grant), `createWebFormInstance` (locked prefill), the envelope domain over the `ESignProvider` + `EnvelopeStore` ports, Fetch handlers, `/express` router; the backend is built on it
 
 #### Demo app (`examples/react-native-demo/`) - integration/E2E host
 - **Framework:** React Native 0.86.0
 - **Entry Point:** `App.tsx` (hosts the library component)
 - **E2E:** `.maestro/` flows
 
-#### Backend
-- **Framework:** Express 5.2.x + Apollo Server 5.5.x
-- **Database:** PostgreSQL via Knex 3.3.x
+#### Backend (`apps/api/`)
+- **Framework:** Express 5.2.x + Apollo Server 5.5.x, composed from `@blinkbitcoin/esign-server`
+- **Database:** PostgreSQL via Knex 3.3.x (the Knex `EnvelopeStore`)
 - **Entry Point:** `apps/api/src/index.ts`
-- **Role:** The main service - the library and demo exist to integrate with it
-- **API:** GraphQL at `/graphql`, Webhook at `/webhook/esign`
+- **Role:** The reference service for mode 3 (and the Web Forms mint endpoint); ships as a container image (`ghcr.io/blinkbitcoin/esign-api`)
+- **API:** GraphQL at `/graphql`, mint at `POST /webform/instance`, webhook at `/webhook/esign`
+
+#### Tooling (`scripts/`)
+- **Type:** `tooling` npm workspace: ci/, e2e/, release/ shell + node; `lib/*.mjs` Vitest-covered at 100%
 
 ---
 
@@ -66,7 +70,7 @@ Organized by namespace - pick by what you're doing:
 |-----|--------|
 | [development-guide.md](./development-guide.md) | Working on this repo: setup, commands, quality gates, CI |
 | [releasing.md](./releasing.md) | How a merged PR becomes a version: release-please, the release PR, the changelog, what merging it does |
-| [diagrams/](./diagrams/README.md) | All eight diagrams (render directly on GitHub) |
+| [diagrams/](./diagrams/README.md) | All nine diagrams (render directly on GitHub) |
 
 ---
 

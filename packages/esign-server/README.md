@@ -170,3 +170,8 @@ const { typeDefs, resolvers } = createESignGraphQL({ envelopes }); // → your A
 make test        # Jest, 100% coverage enforced
 make build       # tsup (ESM + CJS + types)
 ```
+
+The reference host is `apps/api` (Knex store, Express + Apollo, the same
+router mounted); it also ships as a container image,
+`ghcr.io/blinkbitcoin/esign-api`, for hosts that would rather run the
+service than import the package ([apps/api/README.md](../../apps/api/README.md#deploy)).

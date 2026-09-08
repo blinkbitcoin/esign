@@ -13,7 +13,7 @@ The four packages publish to **GitHub Packages** under the
 | `@blinkbitcoin/esign-server` | Your Node backend: mint Web Forms instances with locked prefill (`createWebFormInstance`), or run the whole envelope domain (`createEnvelopeService` over your own store) without running this repo's service |
 
 Publishing has two channels (both gated on the full test fleet - unit
-coverage thresholds + all three E2E suites):
+coverage thresholds + every E2E suite: backend, browser, Android, iOS - and the service image smoke):
 
 - **Stable** (`latest`): merge the open `chore(release): X.Y.Z` pull request
   that release-please keeps up to date (`make release`). That tags `vX.Y.Z`,
