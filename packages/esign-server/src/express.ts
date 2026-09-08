@@ -1,0 +1,201 @@
+// @blinkbitcoin/esign-server/express - the HTTP surface as a mountable
+// Express router: the Web Forms mint endpoint, the provider webhook, the
+// signing pages (mock pages + the real-DocuSign return-URL bridge) and a
+// health check. The host owns authentication, CORS, rate limits and its
+// GraphQL server (createESignGraphQL gives it the schema); this router owns
+// the HTTP semantics of the esign endpoints.
+//
+// `express` is an optional peer: only this entry imports it.
+
+import { randomBytes } from 'node:crypto';
+import express, {
+  type Request,
+  type RequestHandler,
+  type Response,
+  Router,
+} from 'express';
+import type { EnvelopeService } from './envelopes';
+import { consoleLogger, type Logger } from './log';
+import {
+  renderMockSigningPage,
+  renderMockWebFormPage,
+  renderSigningReturnBridge,
+  mockWebFormFields,
+} from './pages';
+import { parseWebFormPrefill } from './prefill';
+import { type ESignProvider, supportsWebForms } from './provider';
+import { getErrorCode } from './errors';
+import type { WebFormPrefill } from './types';
+
+export interface ESignRouterMiddleware {
+  // Applied to POST /webform/instance (e.g. CORS, rate limit); the OPTIONS
+  // preflight gets `cors` only
+  webform?: RequestHandler[];
+  cors?: RequestHandler;
+  // Applied to POST /webhook/esign (e.g. rate limit)
+  webhook?: RequestHandler[];
+}
+
+export interface ESignRouterOptions {
+  envelopes: EnvelopeService;
+  provider: ESignProvider;
+  // The host's authentication: the caller's user id, or null when
+  // unauthenticated (the mint endpoint answers 401)
+  authenticate: (req: Request) => string | null | Promise<string | null>;
+  // Serve the mock provider's pages; pass the mock's prefill lookup so the
+  // mock web-form page shows minted values locked (undefined = pages off)
+  mockPages?: {
+    getWebFormPrefill: (instanceId: string) => WebFormPrefill | undefined;
+  };
+  middleware?: ESignRouterMiddleware;
+  // JSON/text body cap - the signing/webhook bodies are small, so a tight
+  // limit bounds naive payload-flood DoS (default 64kb)
+  bodyLimit?: string;
+  logger?: Logger;
+}
+
+// The signing pages are HTML meant to be embedded (WebView/iframe) and run
+// a small inline script. A per-response nonce keeps a strict CSP (no
+// 'unsafe-inline') while allowing that one script. frame-ancestors stays
+// open: the pages carry no secrets (the event payload is a fixed enum) and
+// must be embeddable by any host integrating the SDK.
+const signingPageCsp = (nonce: string): string =>
+  [
+    "default-src 'none'",
+    `script-src 'nonce-${nonce}'`,
+    `style-src 'nonce-${nonce}'`,
+    'frame-ancestors *',
+  ].join('; ');
+
+const sendSigningPage = (
+  res: Response,
+  render: (nonce: string) => string,
+): void => {
+  const nonce = randomBytes(16).toString('base64');
+  res.setHeader('Content-Security-Policy', signingPageCsp(nonce));
+  res.type('html').send(render(nonce));
+};
+
+export const createESignRouter = (options: ESignRouterOptions): Router => {
+  const { envelopes, provider, authenticate } = options;
+  const logger = options.logger ?? consoleLogger;
+  const bodyLimit = options.bodyLimit ?? '64kb';
+  const middleware = options.middleware ?? {};
+  const router = Router();
+
+  router.get('/health', (_req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // Return-URL bridge for REAL DocuSign: DocuSign redirects here with
+  // ?event=... (it never postMessages); the page forwards the event to the
+  // host app in the postMessage protocol the components expect.
+  router.get('/signing/return', (req, res) => {
+    const rawEvent =
+      typeof req.query.event === 'string' ? req.query.event : undefined;
+    sendSigningPage(res, nonce => renderSigningReturnBridge(rawEvent, nonce));
+  });
+
+  if (options.mockPages) {
+    const { getWebFormPrefill } = options.mockPages;
+
+    // The mock provider's embedded signing page
+    router.get('/signing/mock/:envelopeId', (req, res) => {
+      sendSigningPage(res, nonce =>
+        renderMockSigningPage(req.params.envelopeId, nonce),
+      );
+    });
+
+    // The mock Web Forms instance page: minted prefill locked, query-string
+    // prefill (public-form style) editable
+    router.get('/signing/mock-webform/:instanceId', (req, res) => {
+      const fields = mockWebFormFields(
+        getWebFormPrefill(req.params.instanceId),
+        req.query,
+      );
+      sendSigningPage(res, nonce =>
+        renderMockWebFormPage(req.params.instanceId, nonce, fields),
+      );
+    });
+  }
+
+  // Mint a prefilled Web Forms instance for the authenticated caller. The
+  // CORS preflight for a cross-origin host app is the host's cors handler.
+  if (middleware.cors) {
+    router.options('/webform/instance', middleware.cors);
+  }
+  router.post(
+    '/webform/instance',
+    ...(middleware.webform ?? []),
+    express.json({ limit: bodyLimit }),
+    async (req, res) => {
+      const userId = await authenticate(req);
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+      if (!supportsWebForms(provider)) {
+        res.status(400).json({
+          error: 'Web Forms not supported by the configured provider',
+        });
+        return;
+      }
+      // req.body is undefined for a bodyless request, an object otherwise.
+      // Only the documented value shapes go to the provider (400 otherwise).
+      const parsed = parseWebFormPrefill(
+        (req.body as { prefill?: unknown } | undefined)?.prefill,
+      );
+      if (!parsed.ok) {
+        res.status(400).json({ error: `Invalid prefill: ${parsed.error}` });
+        return;
+      }
+      try {
+        res
+          .status(200)
+          .json(await provider.createWebFormInstance(userId, parsed.prefill));
+      } catch (error) {
+        logger.error(
+          'Web Forms instance creation failed:',
+          getErrorCode(error),
+        );
+        res.status(502).json({ error: 'Could not create signing session' });
+      }
+    },
+  );
+
+  // Provider webhook. Signature verification and payload parsing belong to
+  // the provider; the raw body (exact bytes) is what gets signed.
+  router.post(
+    '/webhook/esign',
+    ...(middleware.webhook ?? []),
+    express.text({ type: 'application/json', limit: bodyLimit }),
+    async (req, res) => {
+      const rawBody = typeof req.body === 'string' ? req.body : '';
+      if (!provider.verifyWebhook(req.headers, rawBody, req.ip)) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+      const event = provider.parseWebhookEvent(rawBody);
+      if (!event) {
+        logger.error('Webhook error: Invalid payload');
+        res.status(400).json({ error: 'Invalid payload' });
+        return;
+      }
+      try {
+        await envelopes.handleWebhookEvent(event);
+        res.status(200).json({ received: true });
+      } catch (error) {
+        // Transient failure (e.g. database outage): 500 so the provider
+        // retries; the handler is idempotent, so a retry after recovery
+        // converges. Permanent conditions are handled inside and return 200.
+        logger.error(
+          'Webhook processing error:',
+          error instanceof Error ? error.message : error,
+        );
+        res.status(500).json({ error: 'Processing failed' });
+      }
+    },
+  );
+
+  return router;
+};

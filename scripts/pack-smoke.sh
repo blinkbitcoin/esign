@@ -39,6 +39,12 @@ assert.equal(typeof server.createWebFormInstance, 'function');
 assert.equal(typeof server.createDocuSignClient, 'function');
 assert.equal(typeof server.parseWebFormPrefill, 'function');
 console.log('pack smoke: esign-server loads on plain Node');
+// The /express subpath needs the optional express peer: without it the
+// require must fail loudly (the boundary that keeps the main entry framework-free)
+let expressLoaded = false;
+try { require('@blinkbitcoin/esign-server/express'); expressLoaded = true; } catch {}
+assert.equal(expressLoaded, false, 'esign-server/express must require the express peer');
+console.log('pack smoke: esign-server/express correctly needs express');
 NODE
 NODE_OPTIONS="" node --input-type=module -e "
 import { createWebFormsSource } from '@blinkbitcoin/esign-core/webform';

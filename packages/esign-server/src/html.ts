@@ -15,7 +15,7 @@ const HTML_ESCAPES: Record<string, string> = {
 // Escape text for interpolation into HTML content or a double/single-quoted
 // attribute value
 export const escapeHtml = (value: string): string =>
-  value.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+  value.replace(/[&<>"']/g, c => HTML_ESCAPES[c]);
 
 // Strict allow-list sanitization for identifiers (envelope / instance ids)
 // interpolated into HTML: anything outside [a-zA-Z0-9-]{1,64} becomes 'unknown'

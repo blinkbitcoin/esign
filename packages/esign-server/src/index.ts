@@ -47,6 +47,21 @@ export type { Logger } from './log';
 export { noopTracing } from './tracing';
 export type { Tracing, SpanLike, SpanAttributes } from './tracing';
 
+// --- Wire layer pieces that need no framework --------------------------------
+export { createESignGraphQL, typeDefs } from './graphql';
+export type { ESignGraphQLOptions, GraphQLContext } from './graphql';
+export {
+  CLIENT_EVENTS,
+  LOCKED_FIELDS_HINT,
+  mapDocuSignReturnEvent,
+  mockWebFormFields,
+  renderMockSigningPage,
+  renderMockWebFormPage,
+  renderSigningReturnBridge,
+} from './pages';
+export type { ClientEvent, MockWebFormField } from './pages';
+export { escapeHtml, jsonForScript, sanitizeId } from './html';
+
 // --- Provider adapters -------------------------------------------------------
 export {
   createDocuSignProvider,

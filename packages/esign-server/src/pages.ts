@@ -1,4 +1,6 @@
-// Embedded signing pages served by the backend.
+// Embedded signing pages a host serves (the esign service does, via the
+// Express router): the mock provider's pages and the real-DocuSign
+// return-URL bridge.
 //
 // Both pages speak the signing-event protocol the client components listen
 // for: JSON messages posted via window.ReactNativeWebView.postMessage (React
@@ -10,8 +12,8 @@
 //   redirect to DOCUSIGN_RETURN_URL with an `event` query param) into the
 //   postMessage protocol. DocuSign's embedded signing never postMessages.
 
-import { formatPrefillValue } from '@blinkbitcoin/esign-server';
 import { escapeHtml, jsonForScript, sanitizeId } from './html';
+import { formatPrefillValue } from './prefill';
 import type { WebFormPrefill } from './types';
 
 // Signing events the client components handle
@@ -29,7 +31,9 @@ export type ClientEvent = (typeof CLIENT_EVENTS)[number];
 // https://developers.docusign.com/docs/esign-rest-api/ (embedded signing
 // ceremony redirect events). Unknown/missing values map to 'exception' -
 // never trust a query param.
-export const mapDocuSignReturnEvent = (raw: string | undefined): ClientEvent => {
+export const mapDocuSignReturnEvent = (
+  raw: string | undefined,
+): ClientEvent => {
   switch (raw) {
     case 'signing_complete':
       return 'signing_complete';
@@ -58,7 +62,10 @@ const POST_HELPER = `
 
 // The mock provider's signing page: interactive, so manual testing and
 // Maestro E2E exercise the real WebView/iframe -> postMessage path.
-export const renderMockSigningPage = (envelopeId: string, nonce = ''): string => {
+export const renderMockSigningPage = (
+  envelopeId: string,
+  nonce = '',
+): string => {
   const safeId = sanitizeId(envelopeId);
   const nonceAttr = nonce ? ` nonce="${nonce}"` : '';
   // Buttons carry their event in data-event (no inline onclick) so the page
@@ -125,7 +132,8 @@ export interface MockWebFormField {
 
 // Text shown under the fields whenever at least one is locked (asserted by
 // the browser/mobile E2E suites)
-export const LOCKED_FIELDS_HINT = 'Locked fields were set by the sender and cannot be edited.';
+export const LOCKED_FIELDS_HINT =
+  'Locked fields were set by the sender and cannot be edited.';
 
 // Fields for the mock web-form page, mirroring how DocuSign Web Forms treats
 // the two prefill channels (verified 2026-09):
@@ -137,16 +145,18 @@ export const LOCKED_FIELDS_HINT = 'Locked fields were set by the sender and cann
 // present in both is locked (the sender's value wins).
 export const mockWebFormFields = (
   instancePrefill: WebFormPrefill | undefined,
-  query: Record<string, unknown>
+  query: Record<string, unknown>,
 ): MockWebFormField[] => {
   const locked = Object.entries(instancePrefill ?? {}).map(([name, value]) => ({
     name,
     value: formatPrefillValue(value),
     locked: true,
   }));
-  const lockedNames = new Set(locked.map((field) => field.name));
+  const lockedNames = new Set(locked.map(field => field.name));
   const editable = Object.entries(query).flatMap(([name, value]) =>
-    typeof value === 'string' && !lockedNames.has(name) ? [{ name, value, locked: false }] : []
+    typeof value === 'string' && !lockedNames.has(name)
+      ? [{ name, value, locked: false }]
+      : [],
   );
   return [...locked, ...editable];
 };
@@ -166,7 +176,7 @@ const renderMockWebFormFields = (fields: MockWebFormField[]): string => {
       <input id="${id}" name="${escapeHtml(field.name)}" value="${escapeHtml(field.value)}"${lockedAttrs} />
     </div>`;
   });
-  const hint = fields.some((field) => field.locked)
+  const hint = fields.some(field => field.locked)
     ? `<p class="hint">${LOCKED_FIELDS_HINT}</p>`
     : '';
   return `
@@ -184,7 +194,7 @@ const renderMockWebFormFields = (fields: MockWebFormField[]): string => {
 export const renderMockWebFormPage = (
   instanceId: string,
   nonce = '',
-  fields: MockWebFormField[] = []
+  fields: MockWebFormField[] = [],
 ): string => {
   const safeId = sanitizeId(instanceId);
   const nonceAttr = nonce ? ` nonce="${nonce}"` : '';
@@ -235,7 +245,10 @@ export const renderMockWebFormPage = (
 // The return-URL bridge for REAL DocuSign: DocuSign redirects the embedded
 // page here with ?event=...; this page forwards it as a postMessage so the
 // client components see the same protocol the mock speaks natively.
-export const renderSigningReturnBridge = (rawEvent: string | undefined, nonce = ''): string => {
+export const renderSigningReturnBridge = (
+  rawEvent: string | undefined,
+  nonce = '',
+): string => {
   const event = mapDocuSignReturnEvent(rawEvent);
   const nonceAttr = nonce ? ` nonce="${nonce}"` : '';
   return `<!doctype html>

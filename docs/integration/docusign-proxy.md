@@ -73,8 +73,8 @@ protocol (`ttl_expired` → `session_timeout`; unknown values → `exception`,
 query input is never interpolated raw) and forwards them via
 `window.ReactNativeWebView.postMessage` (RN WebView) or
 `window.parent.postMessage` (web iframe). Implementation:
-`apps/api/src/signingPages.ts`; behavior covered by
-`tests/signingPages.test.ts`.
+`packages/esign-server/src/pages.ts`; behavior covered by
+`packages/esign-server/src/__tests__/pages.test.ts`.
 
 If you override `DOCUSIGN_RETURN_URL`, point it at a publicly reachable
 deployment of this same route.
@@ -107,10 +107,10 @@ regression.
 | # | Assumption to confirm | How to capture | Where to fix if wrong |
 |---|----------------------|----------------|----------------------|
 | 1 | Envelope creation + recipient view succeed (template role `signer`, `clientUserId` = email, status `sent`) | **Automated**: `make test-live` in `apps/api` (skips unless `DOCUSIGN_*` + `DOCUSIGN_TEMPLATE_ID` are set; logs the signing ceremony URL to hand off to item 2) | `providers/docusign/client.ts` |
-| 2 | Return-URL redirect carries `?event=` with values `signing_complete` / `cancel` / `decline` / `session_timeout` / `ttl_expired` | ngrok inspector (`http://127.0.0.1:4040`) or backend request log — the GET hitting the bridge route after each outcome (finish, cancel, decline, let the session expire) | `mapDocuSignReturnEvent` in `apps/api/src/signingPages.ts` (unknown values already fail safe to `exception`) |
+| 2 | Return-URL redirect carries `?event=` with values `signing_complete` / `cancel` / `decline` / `session_timeout` / `ttl_expired` | ngrok inspector (`http://127.0.0.1:4040`) or backend request log — the GET hitting the bridge route after each outcome (finish, cancel, decline, let the session expire) | `mapDocuSignReturnEvent` in `packages/esign-server/src/pages.ts` (unknown values already fail safe to `exception`) |
 | 3 | Connect webhook: HMAC header is `x-docusign-signature-1`, body has `event: "envelope-completed"` etc. and `data.envelopeId` | ngrok inspector shows the raw POST to `/webhook/esign` — headers + body, no code changes needed | `parseWebhookEvent` in `providers/docusign/index.ts` + the payload type in `providers/docusign/mapping.ts`; mirror any change in `tests/webhook*.test.ts` fixtures |
 | 4 | Web Forms `createInstance` request/response (`clientUserId` + `formValues` in, `formUrl` + `instanceToken` out) + JWT auth | **Automated**: `make test-live` in `apps/api` (skips unless `DOCUSIGN_*` env is set; on contract mismatch it fails with DocuSign's raw HTTP body, and it logs a minted instance URL to hand off to items 5-6) | `createWebFormInstanceRequest` in `providers/docusign/client.ts` |
-| 5 | DocuSign.js `sessionEnd` event: discriminator field (`type` / `sessionEndType` / `returnValue`) and values (`signingResult`, `formConfirmation`, `sessionTimeout`) | Web demo + browser devtools: log the raw event in the `sessionEnd` handler (temp `console.log` in `packages/esign-react/src/docusignWebForms.ts`), exercise finish + timeout | `interpretDocuSignEvent` in `packages/esign-core/src/signing/events.ts` + the mock page vocabulary in `apps/api/src/signingPages.ts` |
+| 5 | DocuSign.js `sessionEnd` event: discriminator field (`type` / `sessionEndType` / `returnValue`) and values (`signingResult`, `formConfirmation`, `sessionTimeout`) | Web demo + browser devtools: log the raw event in the `sessionEnd` handler (temp `console.log` in `packages/esign-react/src/docusignWebForms.ts`), exercise finish + timeout | `interpretDocuSignEvent` in `packages/esign-core/src/signing/events.ts` + the mock page vocabulary in `packages/esign-server/src/pages.ts` |
 | 6 | RN WebView + real Web Forms: does a plain WebView receive any events at all? (Assumed **no** — DocuSign.js is web-only) | RN demo in webform mode against the real backend; watch Metro logs for `onMessage` traffic while completing a form | If events do arrive: update the caveat in [consuming.md](consuming.md). If not (expected): the return-URL bridge stays the documented RN path |
 
 Items 2 and 3 need the tunnel from section 4. Items 4–6 need a published Web

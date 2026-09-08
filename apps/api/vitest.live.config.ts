@@ -6,13 +6,18 @@ import { defineConfig } from 'vitest/config';
 // setup file: these tests must use the real fetch and real modules.
 export default defineConfig({
   resolve: {
-    alias: {
-      // The workspace package straight from source (no build needed for tests)
-      '@blinkbitcoin/esign-server': path.resolve(
-        __dirname,
-        '../../packages/esign-server/src/index.ts'
-      ),
-    },
+    alias: [
+      // The workspace package straight from source (no build needed for tests);
+      // the subpath first so the bare name does not swallow it
+      {
+        find: '@blinkbitcoin/esign-server/express',
+        replacement: path.resolve(__dirname, '../../packages/esign-server/src/express.ts'),
+      },
+      {
+        find: '@blinkbitcoin/esign-server',
+        replacement: path.resolve(__dirname, '../../packages/esign-server/src/index.ts'),
+      },
+    ],
   },
   test: {
     environment: 'node',
