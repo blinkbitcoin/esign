@@ -3,6 +3,7 @@
 // TRUNCATE CASCADE for test isolation
 // NOTE: Tests run sequentially (fileParallelism: false) to prevent parallel execution issues
 
+import { runESignMigrations } from '@blinkbitcoin/esign-server/knex';
 import createKnex from 'knex';
 
 const connectionString = process.env.DATABASE_URL;
@@ -39,8 +40,8 @@ beforeAll(async () => {
     throw new Error(`Failed to connect to test database after 5 attempts: ${lastError?.message}`);
   }
 
-  // Ensure schema is up to date (directory is resolved relative to process.cwd())
-  await knex.migrate.latest({ directory: 'migrations', extension: 'ts' });
+  // Ensure schema is up to date (the package's programmatic migration source)
+  await runESignMigrations(knex);
 
   // TRUNCATE CASCADE ensures all related records are removed
   // Order matters due to foreign key constraints: AuditLog references Envelope

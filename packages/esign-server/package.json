@@ -1,7 +1,7 @@
 {
   "name": "@blinkbitcoin/esign-server",
   "version": "0.0.0-development",
-  "description": "Server-side e-signature for Node: DocuSign client (JWT grant, envelopes, Web Forms), createWebFormInstance (the one call that locks read-only fields), the envelope domain over provider + store ports, and an optional Express router.",
+  "description": "Server-side e-signature for Node: DocuSign client (JWT grant, envelopes, Web Forms), createWebFormInstance (the one call that locks read-only fields), the envelope domain over provider + store ports, an optional Express router, and a Knex/Postgres store with its migrations.",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -27,6 +27,16 @@
         "default": "./dist/express.cjs"
       }
     },
+    "./knex": {
+      "import": {
+        "types": "./dist/knex.d.mts",
+        "default": "./dist/knex.mjs"
+      },
+      "require": {
+        "types": "./dist/knex.d.ts",
+        "default": "./dist/knex.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "files": ["src", "dist", "!**/__tests__"],
@@ -38,7 +48,15 @@
     "build": "tsup",
     "clean": "rm -rf dist"
   },
-  "keywords": ["e-signature", "docusign", "web-forms", "server", "express"],
+  "keywords": [
+    "e-signature",
+    "docusign",
+    "web-forms",
+    "server",
+    "express",
+    "knex",
+    "postgres"
+  ],
   "license": "MIT",
   "devDependencies": {
     "@babel/preset-env": "^7.29.7",
@@ -49,6 +67,8 @@
     "@types/supertest": "^7.2.1",
     "express": "^5.2.1",
     "jest": "^30.5.0",
+    "knex": "^3.3.0",
+    "knex-mock-client": "^3.0.2",
     "supertest": "^7.2.2",
     "tsup": "^8.5.0",
     "typescript": "^6.0.3"
@@ -70,10 +90,14 @@
     "node": ">= 18"
   },
   "peerDependencies": {
-    "express": ">=4.18.0"
+    "express": ">=4.18.0",
+    "knex": ">=3.0.0"
   },
   "peerDependenciesMeta": {
     "express": {
+      "optional": true
+    },
+    "knex": {
       "optional": true
     }
   }

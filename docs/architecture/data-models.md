@@ -7,10 +7,13 @@
 ## Overview
 
 The backend uses two primary models for envelope management and audit tracking.
-Schema is managed with Knex migrations (`apps/api/migrations/`, TypeScript,
-executed through `tsx`); data access goes through `src/store.ts`, the Knex
-implementation of the `EnvelopeStore` port defined by
-`@blinkbitcoin/esign-server`, built on a shared Knex instance (`src/db.ts`).
+Schema and data access both come from `@blinkbitcoin/esign-server/knex`:
+`ESIGN_MIGRATIONS` (a programmatic Knex migration source, no migration files
+or knexfile in the service) and `createKnexEnvelopeStore`, the Knex
+implementation of the `EnvelopeStore` port. The service composes the store
+over its shared Knex instance in `src/store.ts` (`src/db.ts`) and applies the
+migrations with `src/migrate.ts`. A host with its own Postgres uses the same
+two exports.
 
 ## Entity Relationship Diagram
 
@@ -178,23 +181,25 @@ const logs = await store.listAuditEntries(envelopeId);
 
 ## Migration Commands
 
-Migrations are TypeScript, so the `knex` CLI is run through `tsx`:
+The migrations live in the package
+(`packages/esign-server/src/knex/migrations.ts`, `ESIGN_MIGRATIONS`, in
+order; append, never edit a shipped one). Their names are the original file
+names, so a database migrated before the move keeps its `knex_migrations`
+history. Hosts run them through their own Knex instance:
+
+```ts
+import { runESignMigrations, createESignMigrationSource } from '@blinkbitcoin/esign-server/knex';
+await runESignMigrations(db);                                          // migrate.latest
+await db.migrate.rollback({ migrationSource: createESignMigrationSource() });
+```
+
+In this repo:
 
 ```bash
 cd apps/api
-
-# Apply migrations (uses DATABASE_URL)
-npm run migrate
-
-# Apply migrations against the test database (.env.test)
-npm run migrate:test
-
-# Create a new migration
-npx tsx "$(command -v knex)" migrate:make -x ts <migration-name>
-
-# Roll back the last batch / check status
-npx tsx "$(command -v knex)" migrate:rollback
-npx tsx "$(command -v knex)" migrate:status
+npm run migrate          # tsx src/migrate.ts against DATABASE_URL (.env)
+npm run migrate:test     # the same against .env.test
+# in the image: docker run --rm --env-file .env esign-api node dist/migrate.js
 ```
 
 ---

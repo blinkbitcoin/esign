@@ -45,6 +45,12 @@ let expressLoaded = false;
 try { require('@blinkbitcoin/esign-server/express'); expressLoaded = true; } catch {}
 assert.equal(expressLoaded, false, 'esign-server/express must require the express peer');
 console.log('pack smoke: esign-server/express correctly needs express');
+// The /knex subpath only types against knex: the host passes its own Knex
+// instance, so the entry must load with no knex installed at all
+const knexEntry = require('@blinkbitcoin/esign-server/knex');
+assert.equal(typeof knexEntry.createKnexEnvelopeStore, 'function');
+assert.equal(typeof knexEntry.runESignMigrations, 'function');
+console.log('pack smoke: esign-server/knex loads without knex (host-provided instance)');
 NODE
 NODE_OPTIONS="" node --input-type=module -e "
 import { createWebFormsSource } from '@blinkbitcoin/esign-core/webform';

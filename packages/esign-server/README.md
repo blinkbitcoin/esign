@@ -102,6 +102,26 @@ local runs and tests; `Tracing` and `Logger` are optional seams.
 | `createEnvelope`, `getEnvelopeById`, `getEnvelopeByIdForUser`, `getEnvelopeByProviderEnvelopeId`, `updateEnvelopeStatus` | envelope rows; the user-scoped read returns `null` for a wrong owner (no info leak); the update throws for an unknown id |
 | `appendAuditEntry`, `listAuditEntries` | audit rows, newest first |
 
+## The Postgres store (`@blinkbitcoin/esign-server/knex`)
+
+For a host that keeps envelopes in Postgres, the store port and its schema
+are already written. The host passes its own Knex instance; `knex` is an
+optional peer for the types only, nothing else is imported:
+
+```ts
+import { createKnexEnvelopeStore, runESignMigrations } from '@blinkbitcoin/esign-server/knex';
+
+await runESignMigrations(db);                        // once per database (knex.migrate.latest)
+const store = createKnexEnvelopeStore(db);           // any Knex instance; { logger } optional
+const envelopes = createEnvelopeService({ provider, store });
+```
+
+The migrations are a programmatic Knex migration source
+(`createESignMigrationSource()`, `ESIGN_MIGRATIONS`), so no migration
+files, knexfile or TypeScript loader are needed at runtime; `rollback` and
+`status` take the same `migrationSource`. Two tables, `Envelope` and
+`AuditLog` ([data-models](../../docs/architecture/data-models.md)).
+
 ## As a serverless / route handler (no framework)
 
 The two endpoints exist as Fetch API `Request → Response` handlers, the

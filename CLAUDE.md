@@ -75,7 +75,7 @@ Single test file: `npm test -w @blinkbitcoin/esign-react-native -- ESignature` o
 
 ```bash
 cd apps/api
-npm run migrate              # Knex migrations (TS, run via tsx)
+npm run migrate              # The package's migrations (src/migrate.ts via tsx)
 npm run migrate:test         # Same against the .env.test database
 ```
 
@@ -83,8 +83,10 @@ npm run migrate:test         # Same against the .env.test database
   webhook state machine) is `createEnvelopeService` from
   `@blinkbitcoin/esign-server`, composed in `src/services.ts`; resolvers
   (`src/schema.ts`) and routes (`src/app.ts`) only map inputs/outputs.
-- DB access is the Knex implementation of the package's `EnvelopeStore` port
-  (`src/store.ts`); never query inline in resolvers.
+- DB access is the package's Knex `EnvelopeStore` (`@blinkbitcoin/esign-server/knex`),
+  composed over the shared client in `src/store.ts`; the schema is the
+  package's programmatic migration source (`src/migrate.ts` applies it, no
+  migration files here). Never query inline in resolvers.
 - Provider work goes through the package's `ESignProvider` port - including
   webhooks + Web Forms. `src/providers/docusign/` and `src/providers/mock.ts`
   are the package adapters wired to the service's config and policy; the

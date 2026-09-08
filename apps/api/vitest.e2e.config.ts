@@ -11,6 +11,10 @@ export default defineConfig({
         replacement: path.resolve(__dirname, '../../packages/esign-server/src/express.ts'),
       },
       {
+        find: '@blinkbitcoin/esign-server/knex',
+        replacement: path.resolve(__dirname, '../../packages/esign-server/src/knex.ts'),
+      },
+      {
         find: '@blinkbitcoin/esign-server',
         replacement: path.resolve(__dirname, '../../packages/esign-server/src/index.ts'),
       },

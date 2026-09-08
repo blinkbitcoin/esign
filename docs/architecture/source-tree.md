@@ -28,6 +28,8 @@ esign/
 │       ├── src/
 │       │   ├── index.ts           # Public API: client, domain, handlers, prefill ⭐
 │       │   ├── express.ts         # ./express entry: createESignRouter (express is a peer) ⭐
+│       │   ├── knex.ts            # ./knex entry: Knex EnvelopeStore + migration source (knex is a peer) ⭐
+│       │   ├── knex/              #   store.ts, migrations.ts (ESIGN_MIGRATIONS, programmatic source)
 │       │   ├── envelopes.ts       # createEnvelopeService: rules, audit, webhook state machine ⭐
 │       │   ├── provider.ts        # ESignProvider port
 │       │   ├── store.ts           # EnvelopeStore port + in-memory implementation
@@ -104,14 +106,11 @@ esign/
 │   └── apps/api/
 │       ├── package.json           # Backend dependencies
 │       ├── tsconfig.json          # TypeScript configuration
-│       ├── knexfile.ts            # Knex CLI configuration
 │       ├── biome.json             # Biome lint + format configuration
 │       ├── vitest.config.ts       # Unit test config (with coverage)
 │       ├── vitest.e2e.config.ts   # E2E test config (sequential)
 │       ├── .env.example           # Documented environment variables
 │       ├── .env.test              # Test database connection (tracked)
-│       │
-│       ├── migrations/            # Knex migrations (TypeScript) ⭐
 │       │
 │       ├── src/
 │       │   ├── index.ts           # Bootstrap (dotenv + startServer)
@@ -120,7 +119,8 @@ esign/
 │       │   ├── schema.ts          # createESignGraphQL over the envelope service ⭐
 │       │   ├── typeDefs.ts        # Re-exports the package SDL (schema.graphql source)
 │       │   ├── services.ts        # Composition: createEnvelopeService(provider, store) ⭐
-│       │   ├── store.ts           # Knex implementation of the EnvelopeStore port ⭐
+│       │   ├── store.ts           # The package's Knex EnvelopeStore over db.ts
+│       │   ├── migrate.ts         # Applies the package's migrations (dist/migrate.js in the image)
 │       │   ├── db.ts              # Knex instance (fail-fast)
 │       │   ├── auth.ts            # JWT verification (HS256)
 │       │   ├── config.ts          # Boot-time security validation (fail-closed)
@@ -212,7 +212,7 @@ esign/
 | `apps/api/src/webhook.ts` | Generic webhook processing |
 | `apps/api/src/types.ts` | ESignProvider interface |
 | `apps/api/src/providers/index.ts` | Provider factory + singleton |
-| `apps/api/migrations/` | Database schema |
+| `packages/esign-server/src/knex/migrations.ts` | Database schema (programmatic Knex migration source) |
 | `apps/api/tests/e2e/` | E2E tests |
 
 ## Integration Points
