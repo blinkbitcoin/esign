@@ -33,8 +33,12 @@ semantics of `DOCUSIGN_HMAC_KEY` and `JWT_SECRET`).
 - **Wire contract**: the `ErrorCode` enum in `schema.graphql` (emitted from
   `src/typeDefs.ts` via `make schema-emit`). Client packages codegen from it;
   parity tests + a CI step fail on drift.
-- **Repositories**: resolvers never query inline — `src/envelope.ts` /
-  `src/audit.ts`, with optional Knex transactions for atomic writes.
+- **Domain in the package**: authorization, validation, persistence with an
+  audit trail, the restart rule and the webhook state machine are
+  `createEnvelopeService` from `@blinkbitcoin/esign-server`, composed in
+  `src/services.ts`; resolvers never query inline. `src/store.ts` is the
+  Knex implementation of the package's `EnvelopeStore` port (transactions
+  for atomic writes).
 - **ID protection**: clients only ever see internal UUIDs; provider envelope
   IDs never leave this service.
 - **Fail-fast / fail-closed**: missing provider config aborts startup;
@@ -60,7 +64,7 @@ make e2e            # 14 E2E tests against real Postgres
 | `src/schema.ts` | Resolvers |
 | `src/providers/port.ts` | `ESignProvider` interface (the provider boundary) |
 | `src/providers/docusign/` / `src/providers/mock.ts` | Provider adapters (factory in `providers/index.ts`) |
-| `src/webhook.ts` | Generic webhook processing (idempotent, transactional) |
+| `src/services.ts` / `src/store.ts` | Domain composition (`createEnvelopeService`) / Knex `EnvelopeStore` |
 | `src/signingPages.ts` | Mock signing page + real-DocuSign return-URL bridge |
 | `src/auth.ts` | HS256 JWT verification, dev/prod split |
 | `migrations/` | Knex migrations (TypeScript, run via tsx) |

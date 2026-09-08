@@ -12,7 +12,7 @@ the demo app exists for manual and E2E testing.
 |-----------|------|------|
 | `backend` | `apps/api/` | Express 5 + Apollo Server 5 GraphQL API, Knex/PostgreSQL, provider adapters (DocuSign/mock), webhooks |
 | `@blinkbitcoin/esign-core` | `packages/esign-core/` | Platform-agnostic core: `SigningSource` abstraction + sources, Apollo factory, GraphQL operations + codegen (no React/DOM) |
-| `@blinkbitcoin/esign-server` | `packages/esign-server/` | Node-only DocuSign client (JWT grant, envelopes, Web Forms) + `createWebFormInstance`, the one server call for locked prefill; the backend is built on it, hosts with their own backend import it |
+| `@blinkbitcoin/esign-server` | `packages/esign-server/` | Node-only server half: DocuSign client (JWT grant, envelopes, Web Forms) + `createWebFormInstance` (the one call for locked prefill) + the envelope domain (`createEnvelopeService` over the `ESignProvider` and `EnvelopeStore` ports); the backend is built on it, hosts with their own backend import it |
 | `@blinkbitcoin/esign-react-native` | `packages/esign-react-native/` | Publishable RN library: `ESignature` component (WebView) over core |
 | `@blinkbitcoin/esign-react` | `packages/esign-react/` | Publishable React **web** library: `ESignature` (iframe) + DocuSign.js source over core |
 | `esign-react-native-example` | `examples/react-native-demo/` | RN 0.86 demo app hosting the RN library (Maestro E2E target) |
@@ -77,14 +77,17 @@ npm run migrate              # Knex migrations (TS, run via tsx)
 npm run migrate:test         # Same against the .env.test database
 ```
 
-- DB access via repository modules (`envelope.ts`, `audit.ts`) with optional
-  Knex transactions; never query inline in resolvers.
-- Provider work goes through the `ESignProvider` port (`src/providers/port.ts`) -
-  including webhooks + Web Forms (`createWebFormInstance`). Adapters live in
-  `src/providers/` (`docusign/` = adapter + mapping + service config over the
-  `@blinkbitcoin/esign-server` client; `mock.ts`); the factory + singleton are
-  `src/providers/index.ts`. Nothing DocuSign-specific outside
-  `src/providers/docusign/` and that package.
+- The domain (authorization, validation, persistence + audit, restart rule,
+  webhook state machine) is `createEnvelopeService` from
+  `@blinkbitcoin/esign-server`, composed in `src/services.ts`; resolvers
+  (`src/schema.ts`) and routes (`src/app.ts`) only map inputs/outputs.
+- DB access is the Knex implementation of the package's `EnvelopeStore` port
+  (`src/store.ts`); never query inline in resolvers.
+- Provider work goes through the package's `ESignProvider` port - including
+  webhooks + Web Forms. `src/providers/docusign/` and `src/providers/mock.ts`
+  are the package adapters wired to the service's config and policy; the
+  factory + singleton are `src/providers/index.ts`. Nothing DocuSign-specific
+  outside `src/providers/docusign/` and the package.
 - The api resolves `@blinkbitcoin/esign-server` from source for typecheck,
   tests and `tsx` dev (`tsconfig.json` paths + vitest aliases); `npm run
   build` (`tsconfig.build.json`) needs the package's dist, so build the

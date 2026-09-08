@@ -36,9 +36,9 @@ Express Router
 │          └── MockProvider                 │
 └───────────────────────────────────────────┘
     ↓
-Repository functions (envelope.ts, audit.ts)
+Envelope service (@blinkbitcoin/esign-server: rules, audit, webhook state machine)
     ↓
-Knex → PostgreSQL
+EnvelopeStore port → Knex store (store.ts) → PostgreSQL
 ```
 
 ## Source Structure
@@ -48,24 +48,22 @@ apps/api/src/
 ├── index.ts          # Bootstrap (dotenv + startServer)
 ├── server.ts         # HTTP server startup (testable startServer factory)
 ├── app.ts            # Express + Apollo setup (createApp factory)
-├── schema.ts         # GraphQL typeDefs + resolvers
+├── schema.ts         # GraphQL resolvers (thin: map inputs/outputs onto the service)
+├── services.ts       # Composition root: createEnvelopeService({ provider, store, tracing })
+├── store.ts          # Knex implementation of the package's EnvelopeStore port
 ├── db.ts             # Knex instance (fail-fast on missing DATABASE_URL)
 ├── auth.ts           # JWT verification (HS256) with dev/prod split
 ├── providers/        # Hexagonal provider layer
 │   ├── port.ts       #   ESignProvider port + supportsWebForms
 │   ├── index.ts      #   Factory (ESIGN_PROVIDER) + tracing-wrapped singleton
-│   ├── mock.ts       #   Mock adapter (mirrors DocuSign locally)
-│   └── docusign/     #   DocuSign adapter split: index (adapter),
-│                     #   client (JWT/OAuth+retry+HTTP), mapping, config
+│   ├── mock.ts       #   The package's mock adapter, wired to this service's pages
+│   └── docusign/     #   The package's DocuSign adapter wired to the service's
+│                     #   config (config.ts) and webhook policy
 ├── signingPages.ts   # Mock signing/web-form pages + return-URL bridge
 ├── config.ts         # Boot-time security validation (fail-closed)
 ├── tracing.ts        # OTel domain spans + provider instrumentation
-├── log.ts            # CRLF-safe log sanitizer
-├── envelope.ts       # Envelope repository (Knex CRUD)
-├── webhook.ts        # Generic webhook processing (HMAC policy + status sync)
-├── audit.ts          # Audit logging repository
-├── errors.ts         # GraphQL error factories with typed codes
-├── types.ts          # Shared types incl. ESignProvider interface
+├── errors.ts         # Re-exports the package's coded errors (extensions.code)
+├── types.ts          # Re-exports the package's domain types + GraphQLContext
 └── __mocks__/
     └── db.ts         # knex-mock-client instance for unit tests
 
@@ -258,9 +256,9 @@ Managed by Knex migrations in `apps/api/migrations/` (see
 
 ### Unit Tests (`apps/api/tests/`)
 - Vitest; 100% statement/branch/function/line coverage enforced culture
-- Database globally mocked (`tests/setup.ts` auto-mocks `src/db`); repository
-  tests use `knex-mock-client` trackers, consumer tests mock the repository
-  modules
+- Database globally mocked (`tests/setup.ts` auto-mocks `src/db`); the Knex
+  store test uses a `knex-mock-client` tracker, resolver/route tests run the
+  real domain over the package's in-memory store (`vi.mock('../src/store')`)
 - `npm test`
 
 ### E2E Tests (`apps/api/tests/e2e/`)

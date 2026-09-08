@@ -5,6 +5,65 @@
 export { createWebFormInstance, clientFor } from './webforms';
 export type { CreateWebFormInstanceParams } from './webforms';
 
+// --- Domain: the envelope service over a provider port and a store port ----
+export { createEnvelopeService } from './envelopes';
+export type {
+  EnvelopeService,
+  EnvelopeServiceDeps,
+  EnvelopeView,
+  WebhookOutcome,
+} from './envelopes';
+export { supportsWebForms } from './provider';
+export type { ESignProvider } from './provider';
+export { createMemoryEnvelopeStore } from './store';
+export type {
+  EnvelopeStore,
+  EnvelopeRecord,
+  NewEnvelope,
+  NewAuditEntry,
+} from './store';
+export { sanitizeAuditMetadata } from './audit';
+export type { AuditAction, AuditEntry, AuditMetadata } from './audit';
+export {
+  ESignError,
+  ErrorCodes,
+  Errors,
+  createError,
+  getErrorCode,
+} from './errors';
+export type { ErrorCode } from './errors';
+export {
+  isValidEmail,
+  requireId,
+  validateContractType,
+  validateRecipient,
+  MAX_CONTRACT_TYPE_LENGTH,
+  MAX_NAME_LENGTH,
+} from './validation';
+export { validateHmac } from './hmac';
+export type { ValidateHmacOptions } from './hmac';
+export { consoleLogger, sanitizeForLog } from './log';
+export type { Logger } from './log';
+export { noopTracing } from './tracing';
+export type { Tracing, SpanLike, SpanAttributes } from './tracing';
+
+// --- Provider adapters -------------------------------------------------------
+export {
+  createDocuSignProvider,
+  mapDocuSignStatus,
+  mapWebhookStatus,
+  parseDocuSignWebhook,
+  DOCUSIGN_SIGNATURE_HEADER,
+} from './providers/docusign';
+export type {
+  DocuSignProviderHandle,
+  DocuSignProviderOptions,
+  DocuSignWebhookOptions,
+  DocuSignWebhookPayload,
+} from './providers/docusign';
+export { createMockProvider } from './providers/mock';
+export type { MockProviderHandle, MockProviderOptions } from './providers/mock';
+
 export { createDocuSignClient } from './client';
 export type { DocuSignClient, DocuSignClientOptions } from './client';
 
@@ -50,4 +109,11 @@ export type {
   WebFormInstanceOptions,
   WebFormInstanceResult,
   FetchLike,
+  EnvelopeStatus,
+  EnvelopeResult,
+  SigningUrlResult,
+  WebhookHeaders,
+  WebhookEvent,
+  CreateEnvelopeInput,
+  GetSigningUrlInput,
 } from './types';

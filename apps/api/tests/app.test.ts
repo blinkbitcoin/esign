@@ -1,45 +1,44 @@
 // Integration tests for Express app endpoints
-// Tests webhook endpoint HMAC validation behavior
+// Tests webhook endpoint HMAC validation behavior against the real envelope
+// domain over an in-memory store (no Postgres): "processed" is asserted on
+// the stored status and audit trail, not on mocked repository calls.
 
+import { randomUUID } from 'node:crypto';
 import crypto from 'crypto';
 import request from 'supertest';
 import { vi } from 'vitest';
 
-vi.mock('../src/envelope');
-vi.mock('../src/audit');
-// handleDocuSignWebhook wraps its writes in knex.transaction; the repository
-// calls inside are already mocked above, so a trivial transaction stub suffices
-vi.mock('../src/db', () => ({
-  knex: { transaction: (cb: (trx: unknown) => unknown) => cb({}) },
-}));
+vi.mock('../src/store', async () => {
+  const { createMemoryEnvelopeStore } = await import('@blinkbitcoin/esign-server');
+  return { store: createMemoryEnvelopeStore(), createKnexEnvelopeStore: vi.fn() };
+});
 
 import type { Express } from 'express';
 import type { MockInstance } from 'vitest';
 import { createApp } from '../src/app';
-import { logAuditEvent } from '../src/audit';
-import { getEnvelopeByProviderEnvelopeId, updateEnvelopeStatus } from '../src/envelope';
-
-const mockGetEnvelopeByProviderEnvelopeId = vi.mocked(getEnvelopeByProviderEnvelopeId);
-const mockUpdateEnvelopeStatus = vi.mocked(updateEnvelopeStatus);
-const mockLogAuditEvent = vi.mocked(logAuditEvent);
+import { store } from '../src/store';
 
 describe('Express App Endpoints', () => {
   let app: Express;
   let consoleWarnSpy: MockInstance;
   let consoleErrorSpy: MockInstance;
+  let consoleLogSpy: MockInstance;
 
   beforeAll(async () => {
     app = await createApp();
     // Silence expected console output: console.warn from the "unknown
     // envelope" and "HMAC key not configured" paths, console.error from the
-    // security-event logging on invalid/missing HMAC signatures.
+    // security-event logging on invalid/missing HMAC signatures, console.log
+    // from a processed webhook.
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterAll(() => {
     consoleWarnSpy.mockRestore();
     consoleErrorSpy.mockRestore();
+    consoleLogSpy.mockRestore();
   });
 
   describe('POST /webhook/esign', () => {
@@ -61,8 +60,9 @@ describe('Express App Endpoints', () => {
       return crypto.createHmac('sha256', key).update(body, 'utf8').digest('base64');
     };
 
-    // Sample webhook payload
-    const webhookPayload = {
+    // Sample webhook payload (provider envelope ids are unique per test: the
+    // in-memory store is shared across the file and never cleared)
+    const webhookPayload = (envelopeId: string) => ({
       event: 'envelope-completed',
       apiVersion: 'v2.1',
       uri: '/restapi/v2.1/accounts/xxx/envelopes/xxx',
@@ -72,12 +72,25 @@ describe('Express App Endpoints', () => {
       data: {
         accountId: 'account-123',
         userId: 'user-456',
-        envelopeId: 'docusign-test-123',
+        envelopeId,
         envelopeSummary: {
           status: 'completed',
           emailSubject: 'Test Document',
         },
       },
+    });
+
+    // A persisted, still-being-signed envelope the webhook may complete
+    const seedSentEnvelope = async () => {
+      const providerEnvelopeId = `docusign-test-${randomUUID()}`;
+      const record = await store.createEnvelope({
+        id: randomUUID(),
+        providerEnvelopeId,
+        userId: 'user-456',
+        contractType: 'loan_agreement',
+        status: 'sent',
+      });
+      return record;
     };
 
     describe('with HMAC key configured', () => {
@@ -95,7 +108,7 @@ describe('Express App Endpoints', () => {
         const response = await request(app)
           .post('/webhook/esign')
           .set('x-docusign-signature-1', invalidSignature)
-          .send(webhookPayload);
+          .send(webhookPayload('docusign-test-123'));
 
         // Assert
         expect(response.status).toBe(401);
@@ -104,7 +117,9 @@ describe('Express App Endpoints', () => {
 
       it('should return 401 for missing signature header', async () => {
         // Act - no signature header
-        const response = await request(app).post('/webhook/esign').send(webhookPayload);
+        const response = await request(app)
+          .post('/webhook/esign')
+          .send(webhookPayload('docusign-test-123'));
 
         // Assert
         expect(response.status).toBe(401);
@@ -112,12 +127,10 @@ describe('Express App Endpoints', () => {
       });
 
       it('should return 200 for valid HMAC signature', async () => {
-        // Arrange - use raw JSON string for HMAC computation
-        const rawBody = JSON.stringify(webhookPayload);
+        // Arrange - use raw JSON string for HMAC computation; the envelope is
+        // unknown to the store (acknowledged, not processed)
+        const rawBody = JSON.stringify(webhookPayload(`unknown-${randomUUID()}`));
         const validSignature = computeSignature(rawBody, testHmacKey);
-
-        // Mock envelope lookup to return no envelope (unknown envelope case)
-        mockGetEnvelopeByProviderEnvelopeId.mockResolvedValue(null);
 
         // Act - send raw body string with correct signature
         const response = await request(app)
@@ -132,38 +145,41 @@ describe('Express App Endpoints', () => {
       });
 
       it('should NOT process webhook when signature is invalid', async () => {
-        // Arrange
+        // Arrange - a real envelope the forged webhook tries to complete
+        const seeded = await seedSentEnvelope();
         const invalidSignature = 'aW52YWxpZA==';
 
         // Act
-        await request(app)
+        const response = await request(app)
           .post('/webhook/esign')
           .set('x-docusign-signature-1', invalidSignature)
-          .send(webhookPayload);
+          .send(webhookPayload(seeded.providerEnvelopeId));
 
-        // Assert - database should NOT be accessed
-        expect(mockGetEnvelopeByProviderEnvelopeId).not.toHaveBeenCalled();
-        expect(mockUpdateEnvelopeStatus).not.toHaveBeenCalled();
-        expect(mockLogAuditEvent).not.toHaveBeenCalled();
+        // Assert - rejected, and the store was NOT touched
+        expect(response.status).toBe(401);
+        expect((await store.getEnvelopeById(seeded.id))!.status).toBe('sent');
+        expect(await store.listAuditEntries(seeded.id)).toEqual([]);
       });
 
       it('should process webhook ONLY after valid signature', async () => {
         // Arrange - use raw JSON string for HMAC computation
-        const rawBody = JSON.stringify(webhookPayload);
+        const seeded = await seedSentEnvelope();
+        const rawBody = JSON.stringify(webhookPayload(seeded.providerEnvelopeId));
         const validSignature = computeSignature(rawBody, testHmacKey);
 
-        // Mock envelope lookup (return null for unknown envelope)
-        mockGetEnvelopeByProviderEnvelopeId.mockResolvedValue(null);
-
         // Act - send raw body string with correct signature
-        await request(app)
+        const response = await request(app)
           .post('/webhook/esign')
           .set('x-docusign-signature-1', validSignature)
           .set('Content-Type', 'application/json')
           .send(rawBody);
 
-        // Assert - database WAS accessed (validation passed)
-        expect(mockGetEnvelopeByProviderEnvelopeId).toHaveBeenCalled();
+        // Assert - the store WAS updated (validation passed)
+        expect(response.status).toBe(200);
+        expect((await store.getEnvelopeById(seeded.id))!.status).toBe('completed');
+        const audit = await store.listAuditEntries(seeded.id);
+        expect(audit).toHaveLength(1);
+        expect(audit[0]).toMatchObject({ action: 'completed', metadata: { source: 'webhook' } });
       });
 
       it('should return 400 for invalid JSON payload', async () => {
@@ -207,14 +223,15 @@ describe('Express App Endpoints', () => {
       });
 
       it('should return 200 without signature in dev mode', async () => {
-        // Arrange
-        mockGetEnvelopeByProviderEnvelopeId.mockResolvedValue(null);
-
-        // Act - no signature, no HMAC key configured
-        const response = await request(app).post('/webhook/esign').send(webhookPayload);
+        // Act - no signature, no HMAC key configured (ALLOW_INSECURE_DEV is set
+        // by tests/setup.ts); unknown envelope, so nothing to update
+        const response = await request(app)
+          .post('/webhook/esign')
+          .send(webhookPayload(`unknown-${randomUUID()}`));
 
         // Assert - should allow in dev mode
         expect(response.status).toBe(200);
+        expect(response.body).toEqual({ received: true });
       });
     });
 
@@ -262,10 +279,29 @@ describe('Express App Endpoints', () => {
         .send(ENVELOPE_QUERY);
 
       expect(response.status).toBe(200);
-      // Authenticated, so it gets past UNAUTHORIZED - the mocked envelope
-      // lookup returns undefined, so it resolves to ENVELOPE_NOT_FOUND
-      // instead, proving the Bearer token was extracted as the userId.
+      // Authenticated, so it gets past UNAUTHORIZED - no such envelope is
+      // stored, so it resolves to ENVELOPE_NOT_FOUND instead, proving the
+      // Bearer token was extracted as the userId.
       expect(response.body.errors?.[0]?.extensions?.code).toBe('ENVELOPE_NOT_FOUND');
+    });
+
+    it('should resolve a stored envelope for its owner via the Bearer userId', async () => {
+      const seeded = await store.createEnvelope({
+        id: randomUUID(),
+        providerEnvelopeId: `docusign-${randomUUID()}`,
+        userId: 'test-user-123',
+        contractType: 'loan_agreement',
+        status: 'sent',
+      });
+
+      const response = await request(app)
+        .post('/graphql')
+        .set('Authorization', 'Bearer test-user-123')
+        .send({ ...ENVELOPE_QUERY, variables: { id: seeded.id } });
+
+      expect(response.status).toBe(200);
+      expect(response.body.errors).toBeUndefined();
+      expect(response.body.data.envelope).toEqual({ id: seeded.id, status: 'sent' });
     });
   });
 

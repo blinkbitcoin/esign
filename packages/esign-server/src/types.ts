@@ -51,3 +51,43 @@ export type FetchLike = (
   input: string,
   init?: RequestInit,
 ) => Promise<Response>;
+
+// --- Envelope domain ---------------------------------------------------------
+
+// Possible envelope statuses (the normalized vocabulary every provider maps to)
+export type EnvelopeStatus = 'sent' | 'completed' | 'voided' | 'declined';
+
+// Result from creating an envelope at the provider
+export interface EnvelopeResult {
+  envelopeId: string;
+  signingUrl: string;
+}
+
+// Result from getting a signing URL
+export interface SigningUrlResult {
+  signingUrl: string;
+}
+
+// Inbound webhook headers (framework-neutral shape of Express/Node headers)
+export type WebhookHeaders = Record<string, string | string[] | undefined>;
+
+// Parsed inbound webhook event, normalized across providers
+export interface WebhookEvent {
+  // The provider's envelope ID (maps to the stored provider envelope ID)
+  providerEnvelopeId: string;
+  // Normalized status; null when the provider sent an event we don't track
+  // (such events are acknowledged and ignored)
+  status: EnvelopeStatus | null;
+  // The provider's raw status string, for diagnostics
+  rawStatus: string;
+}
+
+// Inputs of the envelope service
+export interface CreateEnvelopeInput {
+  contractType: string;
+  recipient: RecipientData;
+}
+export interface GetSigningUrlInput {
+  envelopeId: string;
+  recipient: RecipientData;
+}
