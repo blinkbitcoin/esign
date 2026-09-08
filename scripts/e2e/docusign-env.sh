@@ -20,7 +20,10 @@ fi
   echo "# Written by make docusign-env ($(date -u +%Y-%m-%dT%H:%M:%SZ)); local only"
   echo "PORT=${PORT:-4000}"
   echo "DATABASE_URL=${DATABASE_URL:-postgresql://dev:dev@localhost:5432/esign}"
-  echo "JWT_SECRET=${JWT_SECRET:-local-dev-secret}"
+  # No JWT_SECRET: with ALLOW_INSECURE_DEV the bearer token is the user id,
+  # which is what the live specs send (E2E_LIVE_AUTH_TOKEN). Set JWT_SECRET=
+  # when writing to get real HS256 verification instead.
+  [ -n "${JWT_SECRET:-}" ] && echo "JWT_SECRET=$JWT_SECRET"
   echo "ALLOW_INSECURE_DEV=true"
   echo "ESIGN_PROVIDER=docusign"
   echo "DOCUSIGN_HMAC_KEY=${DOCUSIGN_HMAC_KEY:-local-dev-hmac}"

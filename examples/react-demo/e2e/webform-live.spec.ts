@@ -117,9 +117,13 @@ const walkForm = async (page: Page, url: string): Promise<SeenField[]> => {
 
   const seen: SeenField[] = [];
   for (let step = 0; step < 20; step++) {
-    await expect(page.locator('input, select, textarea').first()).toBeVisible({
-      timeout: 30_000,
-    });
+    // A field page shows inputs; the closing Summary page shows only headings
+    await expect(
+      page.locator('input, select, textarea, h1').first(),
+    ).toBeVisible({ timeout: 30_000 });
+    if ((await page.locator('input, select, textarea').count()) === 0) {
+      break;
+    }
     seen.push(...(await fieldsOnPage(page)));
     const next = page.getByRole('button', { name: 'Next' });
     if ((await next.count()) === 0) {
@@ -128,13 +132,19 @@ const walkForm = async (page: Page, url: string): Promise<SeenField[]> => {
     const before = await page.title();
     await next.click();
     // The page title carries the section name; a validation error keeps the
-    // page (title unchanged), so stop rather than loop forever
+    // page (title unchanged). Name the fields that blocked the walk rather
+    // than failing later on a misleading assertion.
     try {
       await expect
         .poll(() => page.title(), { timeout: 10_000 })
         .not.toBe(before);
     } catch {
-      break;
+      const blocking = (await fieldsOnPage(page))
+        .filter(field => field.value === '' && !field.locked)
+        .map(field => field.label || field.name);
+      throw new Error(
+        `the form did not advance past "${before}"; empty editable fields on that page: ${blocking.join(', ')} - prefill the required ones (E2E_LIVE_PREFILL)`,
+      );
     }
   }
   return seen;
@@ -148,13 +158,22 @@ test('live web form: minted prefill is shown, read-only fields cannot be changed
   const fields = await walkForm(page, url);
   expect(fields.length).toBeGreaterThan(0);
 
-  // Every scalar prefill value is displayed somewhere in the form
+  // Every scalar prefill value is displayed somewhere in the form. Date
+  // fields are minted as ISO (2026-09-10) and rendered in the form's own
+  // format (2026/09/10), so dates compare on their digits.
+  const isIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const digits = (value: string) => value.replace(/\D/g, '');
   const shown = fields.map(field => field.value);
   for (const [name, value] of Object.entries(PREFILL)) {
     if (typeof value === 'string' || typeof value === 'number') {
-      expect(shown, `prefill "${name}" should be displayed`).toContain(
-        String(value),
-      );
+      const expected = String(value);
+      const displayed = isIsoDate(expected)
+        ? shown.some(candidate => digits(candidate) === digits(expected))
+        : shown.includes(expected);
+      expect(
+        displayed,
+        `prefill "${name}" (${expected}) should be displayed`,
+      ).toBe(true);
     }
   }
 

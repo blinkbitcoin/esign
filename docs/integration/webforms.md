@@ -172,9 +172,13 @@ make docusign-check   # JWT grant + the form is reachable (names the consent URL
 make e2e-live         # service on DocuSign (LIVE_PORT, default 4010) → API live test → Playwright locked-fields check → stop
 ```
 
-`make e2e-live` mints with the capability test form's group C values and
-asserts the six locked labels (`scripts/e2e/live.sh` holds the defaults;
-`E2E_LIVE_PREFILL` / `E2E_LIVE_LOCKED_LABELS` override them). Step by step:
+`make e2e-live` mints with the capability test form's group C values plus
+every required editable field (the form refuses Next while one is empty, so
+the walker could not reach the locked pages otherwise) and asserts the six
+locked labels (`scripts/e2e/live.sh` holds the defaults;
+`E2E_LIVE_PREFILL` / `E2E_LIVE_LOCKED_LABELS` override them). Verified
+green against the real form on 2026-09-09: every minted value is displayed,
+the group C fields are read-only, dates render as `yyyy/mm/dd`. Step by step:
 
 1. Complete the DocuSign account + JWT setup in
    [docusign-proxy.md](docusign-proxy.md) (consent, keys, account/user IDs).
