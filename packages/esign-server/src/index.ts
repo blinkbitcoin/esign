@@ -103,7 +103,9 @@ export {
   DocuSignConfigError,
   DOCUSIGN_ENV,
   DOCUSIGN_DEMO_URLS,
+  DOCUSIGN_SCOPES,
   JWT_CREDENTIALS,
+  consentUrl,
 } from './docusign/config';
 export type { DocuSignConfig, DocuSignConfigKey, Env } from './docusign/config';
 

@@ -6,6 +6,8 @@ import {
   assertDocuSignConfig,
   docuSignConfigFromEnv,
   missingDocuSignConfig,
+  DOCUSIGN_SCOPES,
+  consentUrl,
 } from '../config';
 
 describe('docuSignConfigFromEnv', () => {
@@ -104,5 +106,42 @@ describe('missingDocuSignConfig / assertDocuSignConfig', () => {
       );
       expect((error as Error).name).toBe('DocuSignConfigError');
     }
+  });
+});
+
+describe('consentUrl', () => {
+  it('asks for every scope the JWT grant uses, on the OAuth host, with the redirect encoded', () => {
+    const url = new URL(
+      consentUrl(
+        {
+          oauthBaseUrl: 'https://account-d.docusign.com',
+          integrationKey: 'ik-1',
+        },
+        'http://localhost:4000',
+      ),
+    );
+    expect(url.origin + url.pathname).toBe(
+      'https://account-d.docusign.com/oauth/auth',
+    );
+    expect(url.searchParams.get('response_type')).toBe('code');
+    expect(url.searchParams.get('scope')).toBe(DOCUSIGN_SCOPES);
+    expect(url.searchParams.get('client_id')).toBe('ik-1');
+    expect(url.searchParams.get('redirect_uri')).toBe('http://localhost:4000');
+    expect(DOCUSIGN_SCOPES.split(' ')).toEqual(
+      expect.arrayContaining([
+        'signature',
+        'impersonation',
+        'webforms_instance_write',
+      ]),
+    );
+  });
+
+  it('tolerates a missing integration key (the config is validated elsewhere)', () => {
+    expect(
+      consentUrl(
+        { oauthBaseUrl: 'https://o', integrationKey: undefined },
+        'http://r',
+      ),
+    ).toContain('client_id=&');
   });
 });

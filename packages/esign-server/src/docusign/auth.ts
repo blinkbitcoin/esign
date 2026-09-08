@@ -2,7 +2,11 @@
 // key, exchange it for an access token, cache the token (single-flight).
 
 import { createSign } from 'node:crypto';
-import { assertDocuSignConfig, type DocuSignConfig } from './config';
+import {
+  DOCUSIGN_SCOPES,
+  assertDocuSignConfig,
+  type DocuSignConfig,
+} from './config';
 import { HttpError } from '../http';
 import type { FetchLike } from '../types';
 
@@ -13,7 +17,7 @@ export const defaultFetch: FetchLike = (input, init) =>
 const base64Url = (data: string | Buffer): string =>
   Buffer.from(data).toString('base64url');
 
-// The signed JWT assertion for the grant (1 hour, signature + impersonation)
+// The signed JWT assertion for the grant (1 hour, DOCUSIGN_SCOPES)
 export const createJwtAssertion = (
   config: DocuSignConfig,
   now = Date.now(),
@@ -27,7 +31,7 @@ export const createJwtAssertion = (
     aud: config.oauthBaseUrl.replace('https://', ''),
     iat: issuedAt,
     exp: issuedAt + 3600,
-    scope: 'signature impersonation',
+    scope: DOCUSIGN_SCOPES,
   };
   const signingInput = `${base64Url(JSON.stringify(header))}.${base64Url(JSON.stringify(payload))}`;
 
