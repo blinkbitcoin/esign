@@ -17,6 +17,7 @@ the demo app exists for manual and E2E testing.
 | `@blinkbitcoin/esign-react` | `packages/esign-react/` | Publishable React **web** library: `ESignature` (iframe) + DocuSign.js source over core |
 | `esign-react-native-example` | `examples/react-native-demo/` | RN 0.86 demo app hosting the RN library (Maestro E2E target) |
 | `esign-react-example` | `examples/react-demo/` | Vite web demo hosting the web library (`make web`) |
+| `tooling` | `scripts/` | CI/release scripts; `lib/*.mjs` unit-tested at 100% (Vitest) |
 
 - **Language**: TypeScript everywhere (TS 6.0)
 - **Node**: ^22.22.2 || >= 24.15.0 (floor set by jsdom 30)
