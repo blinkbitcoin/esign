@@ -125,7 +125,7 @@ jobs:
           EVENT: ${{ inputs.release-tag != '' && 'release' || github.event_name }}
           TAG: ${{ inputs.release-tag || github.event.release.tag_name }}
           RUN: ${{ github.run_number }}
-        run: bash scripts/release/resolve-version.sh # tag = version on release; -pre.<run>.<sha> otherwise
+        run: node scripts/release/resolve-version.mjs # tag = version on release; -pre.<run>.<sha> otherwise
 
       - name: Build packages (core first - the platform packages need its dist)
         run: npm run build
@@ -186,7 +186,7 @@ jobs:
           EVENT: ${{ inputs.release-tag != '' && 'release' || github.event_name }}
           TAG: ${{ inputs.release-tag || github.event.release.tag_name }}
           RUN: ${{ github.run_number }}
-        run: bash scripts/release/resolve-version.sh
+        run: node scripts/release/resolve-version.mjs
 
       - name: Build the service image
         env:

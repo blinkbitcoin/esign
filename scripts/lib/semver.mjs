@@ -1,7 +1,6 @@
 // Shared parsing for release tags of the form vX.Y.Z or vX.Y.Z-<prerelease>.
-// Mirrors the regex `scripts/release/resolve-version.sh` checks the release
-// tag against - kept here as the single source of truth once that script (and
-// any other caller) is wired to it.
+// Single source of truth for the release-tag shape; scripts/lib/resolve-version.mjs
+// is the only caller today.
 const VERSION_TAG_RE = /^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$/;
 
 /**
