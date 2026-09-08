@@ -69,8 +69,7 @@ apps/api/src/
 └── __mocks__/
     └── db.ts         # knex-mock-client instance for unit tests
 
-apps/api/migrations/    # Knex migrations (TypeScript, run via tsx)
-apps/api/knexfile.ts    # Knex CLI configuration
+├── migrate.ts        # Applies the package's migrations (@blinkbitcoin/esign-server/knex)
 ```
 
 ## Provider Pattern
@@ -232,8 +231,9 @@ statuses only - never recipient names, emails, or document content.
 
 ## Database Schema
 
-Managed by Knex migrations in `apps/api/migrations/` (see
-[data-models.md](data-models.md) for full details).
+Defined by the package's programmatic migration source
+(`@blinkbitcoin/esign-server/knex`, applied by `src/migrate.ts`); see
+[data-models.md](data-models.md) for full details.
 
 ### Envelope
 | Column | Type | Notes |

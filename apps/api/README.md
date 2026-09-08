@@ -15,7 +15,7 @@ direnv allow . && direnv allow apps/api   # env + nix dev shell
 
 # From this directory:
 make db-up          # dev Postgres (docker, port 5432)
-make migrate        # Knex migrations
+make migrate        # the package's migrations (src/migrate.ts)
 make dev            # server at http://localhost:4000/graphql
 ```
 
@@ -64,7 +64,7 @@ root so the workspace lockfile and `packages/esign-server` are inputs):
 ```sh
 make docker-build                     # → esign-api (node 24 alpine, production deps only)
 make docker-smoke                     # boots it with the mock provider, checks /health
-docker run --rm --env-file apps/api/.env esign-api npm run migrate   # once per database
+docker run --rm --env-file apps/api/.env esign-api node dist/migrate.js   # once per database
 docker run --rm -p 4000:4000 --env-file apps/api/.env esign-api      # serve
 ```
 
@@ -94,10 +94,10 @@ instead (one function call, a Fetch handler, or the Express router).
 | `src/schema.ts` | Resolvers |
 | `src/providers/port.ts` | `ESignProvider` interface (the provider boundary) |
 | `src/providers/docusign/` / `src/providers/mock.ts` | Provider adapters (factory in `providers/index.ts`) |
-| `src/services.ts` / `src/store.ts` | Domain composition (`createEnvelopeService`) / Knex `EnvelopeStore` |
+| `src/services.ts` / `src/store.ts` | Domain composition (`createEnvelopeService`) / the package's Knex `EnvelopeStore` over `src/db.ts` |
 | `src/app.ts` | Mounts the package's Express router (`/health`, signing pages, `/webform/instance`, `/webhook/esign`) with this service's auth, CORS and rate limits |
 | `src/auth.ts` | HS256 JWT verification, dev/prod split |
-| `migrations/` | Knex migrations (TypeScript, run via tsx) |
+| `src/migrate.ts` | Applies the package's migrations (`@blinkbitcoin/esign-server/knex`) |
 | `tests/` / `tests/e2e/` | Unit (mocked DB) / E2E (real DB) |
 
 Full documentation: [architecture](../../docs/architecture/backend.md) ·

@@ -14,7 +14,8 @@
     "forceConsistentCasingInFileNames": true,
     "paths": {
       "@blinkbitcoin/esign-server": ["../../packages/esign-server/src/index.ts"],
-      "@blinkbitcoin/esign-server/express": ["../../packages/esign-server/src/express.ts"]
+      "@blinkbitcoin/esign-server/express": ["../../packages/esign-server/src/express.ts"],
+      "@blinkbitcoin/esign-server/knex": ["../../packages/esign-server/src/knex.ts"]
     }
   },
   "include": ["src/**/*"],

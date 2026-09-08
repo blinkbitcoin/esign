@@ -8,6 +8,7 @@ module.exports = {
   coveragePathIgnorePatterns: [
     '/node_modules/',
     'src/index\\.ts$',
+    'src/knex\\.ts$', // re-exports only, like index.ts
     'src/types\\.ts$',
     // Test helpers are not product code
     '/__tests__/support\\.ts$',

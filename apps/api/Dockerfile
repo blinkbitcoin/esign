@@ -3,7 +3,7 @@
 #
 #   docker build -f apps/api/Dockerfile -t esign-api .        (make docker-build)
 #   docker run --rm -p 4000:4000 --env-file apps/api/.env esign-api
-#   docker run --rm --env-file apps/api/.env esign-api npm run migrate   # once per database
+#   docker run --rm --env-file apps/api/.env esign-api node dist/migrate.js   # once per database
 #
 # Three stages: install everything → build the two workspaces the service
 # needs → a production image with only their runtime dependencies.
@@ -43,9 +43,6 @@ RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund -w apps/api -w packa
   && npm cache clean --force
 COPY --from=build /app/packages/esign-server/dist packages/esign-server/dist
 COPY --from=build /app/apps/api/dist apps/api/dist
-# Migrations run from source through tsx (a runtime dependency of the service)
-COPY apps/api/migrations apps/api/migrations
-COPY apps/api/knexfile.ts apps/api/knexfile.ts
 
 USER node
 WORKDIR /app/apps/api
