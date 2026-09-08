@@ -102,6 +102,31 @@ local runs and tests; `Tracing` and `Logger` are optional seams.
 | `createEnvelope`, `getEnvelopeById`, `getEnvelopeByIdForUser`, `getEnvelopeByProviderEnvelopeId`, `updateEnvelopeStatus` | envelope rows; the user-scoped read returns `null` for a wrong owner (no info leak); the update throws for an unknown id |
 | `appendAuditEntry`, `listAuditEntries` | audit rows, newest first |
 
+## As a serverless / route handler (no framework)
+
+The two endpoints exist as Fetch API `Request → Response` handlers, the
+shape Vercel and Netlify functions, Next.js route handlers and Lambda
+adapters mount directly. Keep the config at module scope so a warm instance
+reuses its access token; a cold start costs one token exchange.
+
+```ts
+import { createWebFormInstanceHandler, docuSignConfigFromEnv } from '@blinkbitcoin/esign-server';
+
+const docusign = docuSignConfigFromEnv();
+
+// e.g. app/api/webform/instance/route.ts (Next.js) or api/webform-instance.ts (Vercel)
+export const POST = createWebFormInstanceHandler({
+  config: docusign,                                   // or { provider } for the full provider
+  authenticate: async request => verifySession(request.headers.get('authorization')), // user id or null
+});
+```
+
+`createWebhookHandler({ provider, envelopes, clientIp? })` is the webhook
+counterpart. Both answer the same status codes as the Express router
+(`401`, `400` with the reason, `502` / `500`), because both call the same
+`mintWebFormInstanceHttp` / `processWebhookHttp` decision functions. Runs
+on Node runtimes (needs `node:crypto`); not on edge runtimes.
+
 ## The HTTP surface (`@blinkbitcoin/esign-server/express`)
 
 For a host that already runs Express and wants the esign endpoints without
