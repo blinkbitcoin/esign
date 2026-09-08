@@ -17,7 +17,6 @@ libraries, and one demo app per platform for manual and E2E testing.
 ## Project Structure
 
 ```
-├── examples/full-service-demo/                    # 🖥️ THE SERVICE (Express 5 + Apollo 5 + Knex/Postgres)
 ├── packages/
 │   ├── esign-core/              # 📦 shared core: SigningSource abstraction, Apollo factory, GraphQL codegen
 │   ├── esign-server/            # 📦 server side: DocuSign client, createWebFormInstance, envelope domain over provider + store ports
@@ -25,7 +24,10 @@ libraries, and one demo app per platform for manual and E2E testing.
 │   └── esign-react/             # 📦 THE PRODUCT - web (`ESignature` + `useESignature` over an iframe)
 ├── examples/
 │   ├── react-native-demo/       # 📱 RN integration demo (Maestro E2E)
-│   └── react-demo/              # 🌐 Web integration demo (Vite, Playwright E2E)
+│   ├── react-demo/              # 🌐 Web integration demo (Vite, Playwright E2E)
+│   ├── full-service-demo/       # 🖥️ server shape 1: the whole service (Express 5 + Apollo 5 + Knex/Postgres), the E2E backend, the esign-api image
+│   ├── mint-only-demo/          # 🖥️ server shape 2: an existing GraphQL API adds one mint mutation (the Blink API shape)
+│   └── serverless-handler-demo/ # 🖥️ server shape 3: the Fetch handlers behind a route handler
 ├── docs/                        # Current-state documentation (hand-maintained)
 ├── scripts/                     # the `tooling` npm workspace: ci/, e2e/, release/ shell + node used by the Makefile and CI; lib/*.mjs is Vitest-covered at 100%, __tests__/ covers the shell scripts
 ├── Makefile                     # Root flows; packages/, examples/ and each workspace have their own

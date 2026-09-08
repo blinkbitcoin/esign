@@ -10,7 +10,7 @@ The four packages publish to **GitHub Packages** under the
 | `@blinkbitcoin/esign-react-native` | React Native apps |
 | `@blinkbitcoin/esign-react` | React web apps |
 | `@blinkbitcoin/esign-core` | (transitive dependency of both; also usable standalone) |
-| `@blinkbitcoin/esign-server` | Your Node backend: mint Web Forms instances with locked prefill (`createWebFormInstance`), or run the whole envelope domain (`createEnvelopeService` over your own store, or the `/knex` Postgres store + migrations) without running this repo's service |
+| `@blinkbitcoin/esign-server` | Your Node backend, in one of three shapes (each has a worked example under `examples/`): one mutation that mints locked Web Forms instances (`mint-only-demo`), the Fetch handlers behind a route (`serverless-handler-demo`), or the whole service with the `/express` router and `/knex` store (`full-service-demo`) |
 
 Publishing has two channels (both gated on the full test fleet - unit
 coverage thresholds + every E2E suite: backend, browser, Android, iOS - and the service image smoke):

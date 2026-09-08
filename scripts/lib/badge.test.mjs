@@ -281,13 +281,15 @@ describe('WORKSPACES', () => {
     }
   });
 
-  it('covers the four publishable packages plus the backend and tooling', () => {
+  it('covers the four publishable packages plus the server examples and tooling', () => {
     expect(WORKSPACES.map(({ ws }) => ws)).toEqual([
       'packages/esign-core',
       'packages/esign-server',
       'packages/esign-react-native',
       'packages/esign-react',
       'examples/full-service-demo',
+      'examples/mint-only-demo',
+      'examples/serverless-handler-demo',
       'scripts',
     ]);
   });

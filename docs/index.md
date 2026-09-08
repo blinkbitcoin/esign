@@ -27,11 +27,16 @@
 - **Entry Point:** `App.tsx` (hosts the library component)
 - **E2E:** `.maestro/` flows
 
-#### Backend (`examples/full-service-demo/`)
+#### Server examples (`examples/*-demo/`, the three shapes on `esign-server`)
+- **`full-service-demo/`:** the whole service, below
+- **`mint-only-demo/`:** an existing GraphQL API adds one mutation that mints a locked Web Forms instance (the Blink API shape)
+- **`serverless-handler-demo/`:** the Fetch handlers (mint + webhook) behind a route handler, plain Node adapter
+
+#### The service (`examples/full-service-demo/`)
 - **Framework:** Express 5.2.x + Apollo Server 5.5.x, composed from `@blinkbitcoin/esign-server`
 - **Database:** PostgreSQL via Knex 3.3.x (the Knex `EnvelopeStore`)
 - **Entry Point:** `examples/full-service-demo/src/index.ts`
-- **Role:** The reference service for mode 3 (and the Web Forms mint endpoint); ships as a container image (`ghcr.io/blinkbitcoin/esign-api`)
+- **Role:** The reference host for mode 3 (and the Web Forms mint endpoint); the backend every E2E suite runs against; ships as a container image (`ghcr.io/blinkbitcoin/esign-api`)
 - **API:** GraphQL at `/graphql`, mint at `POST /webform/instance`, webhook at `/webhook/esign`
 
 #### Tooling (`scripts/`)

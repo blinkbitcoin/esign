@@ -16,6 +16,12 @@ The esign service (`examples/full-service-demo`) is this package plus Express, A
 Postgres store; a host that already has a backend imports the package
 instead of running that service.
 
+Three worked hosts live in this repo, one per shape:
+[`examples/mint-only-demo`](../../examples/mint-only-demo/README.md) (one
+mutation on an existing API), [`examples/serverless-handler-demo`](../../examples/serverless-handler-demo/README.md)
+(the Fetch handlers behind a route) and [`examples/full-service-demo`](../../examples/full-service-demo/README.md)
+(the whole service, also shipped as the `esign-api` image).
+
 ## Why a server call at all
 
 DocuSign populates a **read-only** Web Form field only from a

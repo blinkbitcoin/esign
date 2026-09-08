@@ -84,6 +84,31 @@ jobs:
         if: always()
         run: make test-db-down
 
+  # The two small server examples, booted with the mock provider and called
+  # over HTTP: proves the Fetch handlers and the one-mutation shape in a real
+  # process (their unit suites run in Unit). No database, no browser.
+  server-demos:
+    name: Server demos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies (workspace root)
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Boot both examples and call their routes
+        run: bash scripts/e2e/server-demos-smoke.sh
+
   # The one build of the deliverable. Web bundles the demo against the dist
   # uploaded here (what a web consumer installs), and Publish ships the
   # tarballs packed here - so what was tested is what ships, byte for byte.
