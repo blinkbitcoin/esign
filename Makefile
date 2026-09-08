@@ -20,10 +20,10 @@ pods: ## Install iOS CocoaPods (example app)
 unit: ## Run all unit test suites (libraries, example apps, backend)
 	npm test
 
-coverage: ## Run test suites with coverage (100% enforced on packages + backend)
+coverage: ## Run test suites with coverage (100% enforced on packages + backend + scripts/lib)
 	npm run test:coverage
 
-coverage-badge: ## Render the README coverage badge from the last `make coverage` run (packages + backend)
+coverage-badge: ## Render the README coverage badge from the last `make coverage` run (packages + backend + scripts/lib)
 	npm run coverage:badge
 
 typecheck: ## TypeScript across all workspaces
