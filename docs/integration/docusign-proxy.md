@@ -58,7 +58,8 @@ make docusign-env ACCOUNT_ID=<api-account-guid> INTEGRATION_KEY=<integration-key
 make docusign-check     # JWT grant + fetches the Web Form; prints the consent URL if consent is missing
 ```
 
-By hand:
+By hand (the full layout with realistic dummy values is
+`examples/full-service-demo/.env.docusign.example`):
 
 ```env
 ESIGN_PROVIDER=docusign

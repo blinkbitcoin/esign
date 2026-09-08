@@ -82,7 +82,8 @@ docker pull ghcr.io/blinkbitcoin/esign-api:latest
 docker run --rm -p 4000:4000 --env-file .env ghcr.io/blinkbitcoin/esign-api:latest
 ```
 
-Configuration is the same `.env` as local (`.env.example`); with
+Configuration is the same `.env` as local (`.env.example`; the live DocuSign
+layout with dummy values is `.env.docusign.example`); with
 `ESIGN_PROVIDER=docusign` the JWT credentials and `DOCUSIGN_HMAC_KEY` are
 required at boot (fail-closed). The image runs as the unprivileged `node`
 user, exposes `4000` (`PORT` overrides) and carries a `/health` healthcheck.
