@@ -70,8 +70,7 @@ area names (`commitlint.config.mjs` is the source of truth):
 | `server` | `packages/esign-server` |
 | `rn` | `packages/esign-react-native` |
 | `react` | `packages/esign-react` |
-| `api` | `examples/full-service-demo` |
-| `demo` | `examples/*` |
+| `demo` | `examples/*` (the client demos and the three server examples) |
 | `e2e` | Maestro / Playwright / backend E2E suites |
 | `ci` | `.github/` |
 | `deps`, `deps-dev` | Dependency bumps (Dependabot uses these) |
