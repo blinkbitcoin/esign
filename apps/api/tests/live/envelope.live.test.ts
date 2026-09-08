@@ -15,14 +15,9 @@
 // Each run creates one real envelope on the demo account (status `sent`,
 // DEMONSTRATION watermark). Demo envelopes are throwaway; no cleanup needed.
 
+import { createDocuSignClient } from '@blinkbitcoin/esign-server';
 import { describe, expect, it } from 'vitest';
-
-import {
-  createEnvelopeFromTemplate,
-  fetchEnvelopeStatus,
-  getAccessToken,
-  getEmbeddedSigningUrl,
-} from '../../src/providers/docusign/client';
+import { getConfig } from '../../src/providers/docusign/config';
 
 const REQUIRED_ENV = [
   'DOCUSIGN_ACCOUNT_ID',
@@ -41,24 +36,24 @@ if (missing.length > 0) {
 
 describe.runIf(missing.length === 0)('DocuSign envelope API (live, demo account)', () => {
   it('authenticates, creates a template envelope, and mints a recipient view URL', async () => {
-    const accessToken = await getAccessToken();
-    expect(accessToken).toBeTruthy();
+    const docusign = createDocuSignClient(getConfig());
+    expect(await docusign.getAccessToken()).toBeTruthy();
 
     // The template must have a role named exactly `signer` (checklist item 1);
     // a 400 here with a TEMPLATE_ROLE-ish error body means the dummy template
     // is set up wrong, not that the adapter is.
     const recipient = { name: 'Live Smoke', email: `live-smoke-${Date.now()}@example.com` };
-    const { envelopeId } = await createEnvelopeFromTemplate(accessToken, recipient);
+    const { envelopeId } = await docusign.createEnvelopeFromTemplate(recipient);
     expect(envelopeId).toMatch(/^[0-9a-f-]{36}$/i); // DocuSign envelope IDs are GUIDs
 
     // Freshly created from a template with status: 'sent'
-    const { status } = await fetchEnvelopeStatus(accessToken, envelopeId);
+    const { status } = await docusign.fetchEnvelopeStatus(envelopeId);
     expect(status).toBe('sent');
 
     // Recipient view = the embedded signing ceremony URL. Single-use and
     // ~5 min TTL, so we verify shape without GETting it (a fetch would
     // consume it) and log it intact for the manual checklist items.
-    const signingUrl = await getEmbeddedSigningUrl(accessToken, envelopeId, recipient);
+    const signingUrl = await docusign.getEmbeddedSigningUrl(envelopeId, recipient);
     const url = new URL(signingUrl);
     expect(url.protocol).toBe('https:');
     expect(url.hostname).toMatch(/docusign\.(com|net)$/);

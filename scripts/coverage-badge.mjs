@@ -1,6 +1,6 @@
 // Renders the README coverage badge from measured numbers instead of a
 // hardcoded shields.io URL. Aggregates line coverage across the workspaces
-// that enforce 100% (the three publishable packages + the backend) by
+// that enforce 100% (the four publishable packages + the backend) by
 // reading the `json-summary` reporter output each of them emits under
 // `<workspace>/coverage/coverage-summary.json`. The demo apps are excluded
 // on purpose: they carry floors, not 100%, and their real coverage is E2E.
@@ -37,6 +37,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Single source of truth for "what the badge measures".
 const WORKSPACES = [
   'packages/esign-core',
+  'packages/esign-server',
   'packages/esign-react-native',
   'packages/esign-react',
   'apps/api',

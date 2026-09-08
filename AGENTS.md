@@ -20,6 +20,7 @@ libraries, and one demo app per platform for manual and E2E testing.
 ├── apps/api/                    # 🖥️ THE SERVICE (Express 5 + Apollo 5 + Knex/Postgres)
 ├── packages/
 │   ├── esign-core/              # 📦 shared core: SigningSource abstraction, Apollo factory, GraphQL codegen
+│   ├── esign-server/            # 📦 server side: DocuSign client + createWebFormInstance (the one call for locked prefill)
 │   ├── esign-react-native/      # 📦 THE PRODUCT - RN (`ESignature` + `useESignature` over a WebView)
 │   └── esign-react/             # 📦 THE PRODUCT - web (`ESignature` + `useESignature` over an iframe)
 ├── examples/
@@ -69,6 +70,7 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
   not inline in workflows; it is shellcheck'd by `make check-ci`
 - The `ESignProvider` port (`apps/api/src/providers/port.ts`) is the provider
   boundary - nothing DocuSign-specific outside `apps/api/src/providers/docusign/`
+  and the `@blinkbitcoin/esign-server` package it is built on
 - GraphQL error codes are a wire contract: the `ErrorCode` enum in
   `apps/api/schema.graphql` (emitted from `src/typeDefs.ts`) and the generated
   client types in `packages/esign-core/src/generated/` - run `make codegen`

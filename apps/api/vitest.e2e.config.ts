@@ -1,6 +1,16 @@
+import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // The workspace package straight from source (no build needed for tests)
+      '@blinkbitcoin/esign-server': path.resolve(
+        __dirname,
+        '../../packages/esign-server/src/index.ts'
+      ),
+    },
+  },
   test: {
     environment: 'node',
     globals: true,

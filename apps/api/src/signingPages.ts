@@ -10,9 +10,9 @@
 //   redirect to DOCUSIGN_RETURN_URL with an `event` query param) into the
 //   postMessage protocol. DocuSign's embedded signing never postMessages.
 
+import { formatPrefillValue } from '@blinkbitcoin/esign-server';
 import { escapeHtml, jsonForScript, sanitizeId } from './html';
 import type { WebFormPrefill } from './types';
-import { formatPrefillValue } from './webFormPrefill';
 
 // Signing events the client components handle
 export const CLIENT_EVENTS = [

@@ -12,6 +12,7 @@ the demo app exists for manual and E2E testing.
 |-----------|------|------|
 | `backend` | `apps/api/` | Express 5 + Apollo Server 5 GraphQL API, Knex/PostgreSQL, provider adapters (DocuSign/mock), webhooks |
 | `@blinkbitcoin/esign-core` | `packages/esign-core/` | Platform-agnostic core: `SigningSource` abstraction + sources, Apollo factory, GraphQL operations + codegen (no React/DOM) |
+| `@blinkbitcoin/esign-server` | `packages/esign-server/` | Node-only DocuSign client (JWT grant, envelopes, Web Forms) + `createWebFormInstance`, the one server call for locked prefill; the backend is built on it, hosts with their own backend import it |
 | `@blinkbitcoin/esign-react-native` | `packages/esign-react-native/` | Publishable RN library: `ESignature` component (WebView) over core |
 | `@blinkbitcoin/esign-react` | `packages/esign-react/` | Publishable React **web** library: `ESignature` (iframe) + DocuSign.js source over core |
 | `esign-react-native-example` | `examples/react-native-demo/` | RN 0.86 demo app hosting the RN library (Maestro E2E target) |
@@ -54,7 +55,7 @@ npm run test:coverage        # Coverage runs - 100% is the enforced baseline on 
 npm run typecheck            # tsc across all workspaces
 npm run lint                 # ESLint (mobile code) + Biome lint (backend)
 npm run format               # Biome format (all workspaces)
-npm run build                # Build the three libraries (bob for RN, tsup for core + web)
+npm run build                # Build the four packages (bob for RN, tsup for core + server + web)
 npm run check:packages       # publint + arethetypeswrong on the built packages (CI: E2E / Build Packages)
 npm run codegen              # Emit schema.graphql from typeDefs.ts + regenerate core's client types
 npm start                    # Metro for the RN demo app
@@ -80,9 +81,14 @@ npm run migrate:test         # Same against the .env.test database
   Knex transactions; never query inline in resolvers.
 - Provider work goes through the `ESignProvider` port (`src/providers/port.ts`) -
   including webhooks + Web Forms (`createWebFormInstance`). Adapters live in
-  `src/providers/` (`docusign/` split into adapter + client + mapping + config;
-  `mock.ts`); the factory + singleton are `src/providers/index.ts`. Nothing
-  DocuSign-specific outside `src/providers/docusign/`.
+  `src/providers/` (`docusign/` = adapter + mapping + service config over the
+  `@blinkbitcoin/esign-server` client; `mock.ts`); the factory + singleton are
+  `src/providers/index.ts`. Nothing DocuSign-specific outside
+  `src/providers/docusign/` and that package.
+- The api resolves `@blinkbitcoin/esign-server` from source for typecheck,
+  tests and `tsx` dev (`tsconfig.json` paths + vitest aliases); `npm run
+  build` (`tsconfig.build.json`) needs the package's dist, so build the
+  packages first (`npm run build` at the root).
 - The wire contract is the `ErrorCode` enum in `apps/api/schema.graphql`
   (emitted from `src/typeDefs.ts`). After schema changes run `make codegen`;
   drift fails backend tests, client parity tests, and a CI step.
@@ -178,7 +184,7 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   merging the `chore(release): X.Y.Z` PR that release-please opens once a
   feat/fix lands (`make release`). That tags `vX.Y.Z`, writes the GitHub
   Release from `CHANGELOG.md`, and dispatches `ci.yml` at the tag - the tag
-  is the version, CI stamps it at publish time, the three package.json files
+  is the version, CI stamps it at publish time, the four package.json files
   stay at `0.0.0-development`. Never hand-edit CHANGELOG.md or the root
   `package.json` version. A release ships only once the commit's main run is
   green (`release.yml`'s retry job re-runs a blocked Publish). `docs/releasing.md`.

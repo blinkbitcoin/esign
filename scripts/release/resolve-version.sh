@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Decides what a CI run publishes and stamps it into the three packages.
+# Decides what a CI run publishes and stamps it into the four packages.
 #   release event : the tag IS the version (vX.Y.Z -> X.Y.Z, dist-tag latest;
 #                   vX.Y.Z-<pre> -> dist-tag next). The commit must be on main.
 #   anything else : prerelease <next-patch-after-latest-v*-tag>-pre.<run>.<sha>
@@ -35,7 +35,7 @@ else
 fi
 
 if [ -z "${DRY_RUN:-}" ]; then
-  for p in packages/esign-core packages/esign-react-native packages/esign-react; do
+  for p in packages/esign-core packages/esign-server packages/esign-react-native packages/esign-react; do
     (cd "$p" && npm pkg set version="$VERSION")
   done
   for p in packages/esign-react-native packages/esign-react; do

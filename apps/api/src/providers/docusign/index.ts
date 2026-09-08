@@ -1,8 +1,17 @@
-// DocuSign adapter: implements the ESignProvider port by composing the DocuSign
-// HTTP client (client.ts), status/webhook mapping (mapping.ts), and config
-// (config.ts). This file is intentionally thin - all DocuSign plumbing lives in
-// the sibling modules.
+// DocuSign adapter: implements the ESignProvider port over the
+// @blinkbitcoin/esign-server client (JWT auth, envelopes, Web Forms), the
+// status/webhook mapping (mapping.ts) and the service config (config.ts).
+// This file is intentionally thin - the DocuSign plumbing lives in the
+// package, so a host that runs its own backend gets the same code.
 
+import {
+  createDocuSignClient,
+  type DocuSignClient,
+  isClientError,
+  isNotFoundError,
+  createWebFormInstance as mintWebFormInstance,
+  withRetry,
+} from '@blinkbitcoin/esign-server';
 import { Errors } from '../../errors';
 import type {
   EnvelopeResult,
@@ -16,19 +25,24 @@ import type {
 } from '../../types';
 import { validateHmac } from '../../webhook';
 import type { ESignProvider } from '../port';
-import {
-  createEnvelopeFromTemplate,
-  createWebFormInstanceRequest,
-  fetchEnvelopeStatus,
-  getAccessToken,
-  getEmbeddedSigningUrl,
-  isClientError,
-  isNotFoundError,
-  withRetry,
-} from './client';
 import { getConfig } from './config';
 import type { DocuSignWebhookPayload } from './mapping';
 import { mapDocuSignStatus, mapWebhookStatus } from './mapping';
+
+// One client (and token cache) per process, built from the environment on
+// first use; clearTokenCache drops it (tests, credential rotation)
+let client: DocuSignClient | null = null;
+const getClient = (): DocuSignClient => {
+  if (!client) {
+    client = createDocuSignClient(getConfig());
+  }
+  return client;
+};
+
+// Forget the client and its cached token
+export const clearTokenCache = (): void => {
+  client = null;
+};
 
 export const DocuSignProvider: ESignProvider = {
   async createEnvelope(
@@ -37,10 +51,10 @@ export const DocuSignProvider: ESignProvider = {
     recipient: RecipientData
   ): Promise<EnvelopeResult> {
     try {
-      const accessToken = await withRetry(() => getAccessToken());
-      const envelope = await withRetry(() => createEnvelopeFromTemplate(accessToken, recipient));
+      const docusign = getClient();
+      const envelope = await withRetry(() => docusign.createEnvelopeFromTemplate(recipient));
       const signingUrl = await withRetry(() =>
-        getEmbeddedSigningUrl(accessToken, envelope.envelopeId, recipient)
+        docusign.getEmbeddedSigningUrl(envelope.envelopeId, recipient)
       );
       return { envelopeId: envelope.envelopeId, signingUrl };
     } catch (error) {
@@ -55,8 +69,7 @@ export const DocuSignProvider: ESignProvider = {
 
   async getEnvelopeStatus(envelopeId: string): Promise<EnvelopeStatus> {
     try {
-      const accessToken = await withRetry(() => getAccessToken());
-      const response = await withRetry(() => fetchEnvelopeStatus(accessToken, envelopeId));
+      const response = await withRetry(() => getClient().fetchEnvelopeStatus(envelopeId));
       return mapDocuSignStatus(response.status);
     } catch (error) {
       if (isNotFoundError(error)) {
@@ -69,9 +82,8 @@ export const DocuSignProvider: ESignProvider = {
   // New signing URL for an existing envelope (session restart)
   async getSigningUrl(envelopeId: string, recipient: RecipientData): Promise<SigningUrlResult> {
     try {
-      const accessToken = await withRetry(() => getAccessToken());
       const signingUrl = await withRetry(() =>
-        getEmbeddedSigningUrl(accessToken, envelopeId, recipient)
+        getClient().getEmbeddedSigningUrl(envelopeId, recipient)
       );
       return { signingUrl };
     } catch (error) {
@@ -116,8 +128,10 @@ export const DocuSignProvider: ESignProvider = {
   },
 
   // Create a prefilled DocuSign Web Forms instance (form-based signing).
-  // Requires DOCUSIGN_WEBFORM_ID (+ the standard JWT config). Errors map like
-  // createEnvelope: 4xx → creation failed, else unavailable.
+  // Requires DOCUSIGN_WEBFORM_ID (+ the standard JWT config). The instance
+  // carries the service's return-URL bridge, so a plain WebView/iframe host
+  // gets the outcome without DocuSign.js. Errors map like createEnvelope:
+  // 4xx → creation failed, else unavailable.
   async createWebFormInstance(
     userId: string,
     prefill: WebFormPrefill
@@ -126,13 +140,7 @@ export const DocuSignProvider: ESignProvider = {
       throw Errors.validationError('DOCUSIGN_WEBFORM_ID is not configured');
     }
     try {
-      const accessToken = await withRetry(() => getAccessToken());
-      // The authenticated app user is the clientUserId (required by DocuSign,
-      // identifies the form submitter); truncate to the 100-char limit.
-      const clientUserId = userId.slice(0, 100);
-      return await withRetry(() =>
-        createWebFormInstanceRequest(accessToken, clientUserId, prefill)
-      );
+      return await mintWebFormInstance({ client: getClient(), userId, prefill });
     } catch (error) {
       if (isClientError(error)) {
         throw Errors.envelopeCreationFailed();
@@ -142,8 +150,14 @@ export const DocuSignProvider: ESignProvider = {
   },
 };
 
-export { clearTokenCache, HttpError, RETRY_CONFIG, shouldRetry, sleep, withRetry } from './client';
-// Re-exports: config validation (used by the factory) and the client's testable
-// utilities + the webhook payload type (imported by tests).
+// Re-exports: the package's testable utilities (imported by tests), config
+// validation (used by the factory) and the webhook payload type.
+export {
+  HttpError,
+  RETRY_CONFIG,
+  shouldRetry,
+  sleep,
+  withRetry,
+} from '@blinkbitcoin/esign-server';
 export { validateConfig } from './config';
 export type { DocuSignWebhookPayload } from './mapping';

@@ -66,6 +66,7 @@ area names (`commitlint.config.mjs` is the source of truth):
 | Scope | Covers |
 |-------|--------|
 | `core` | `packages/esign-core` |
+| `server` | `packages/esign-server` |
 | `rn` | `packages/esign-react-native` |
 | `react` | `packages/esign-react` |
 | `api` | `apps/api` |
@@ -140,7 +141,7 @@ Full walkthrough with a worked example: [docs/releasing.md](docs/releasing.md).
   `package.json` version. Approve it and `make release` (or the Merge
   button). Merging tags `vX.Y.Z`, publishes the GitHub Release with that
   entry as its body, and starts the release run. **The tag is the version**:
-  CI stamps it into the three packages before building them, so their
+  CI stamps it into the four packages before building them, so their
   `package.json` stays at `0.0.0-development`. GitHub Packages never
   accepts the same version twice, so a failed release means fixing forward.
   A release ships only once the commit's push-to-`main` run is green: the

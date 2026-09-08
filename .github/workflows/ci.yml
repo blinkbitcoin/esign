@@ -236,6 +236,12 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DISTTAG: ${{ needs.e2e.outputs.disttag }}
 
+      - name: Publish @blinkbitcoin/esign-server
+        run: npm publish "$RUNNER_TEMP"/tarballs/blinkbitcoin-esign-server-[0-9]*.tgz --tag "$DISTTAG"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISTTAG: ${{ needs.e2e.outputs.disttag }}
+
       - name: Publish @blinkbitcoin/esign-react-native
         run: npm publish "$RUNNER_TEMP"/tarballs/blinkbitcoin-esign-react-native-[0-9]*.tgz --tag "$DISTTAG"
         env:

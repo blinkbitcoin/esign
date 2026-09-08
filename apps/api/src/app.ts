@@ -3,6 +3,7 @@
 
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@as-integrations/express5';
+import { parseWebFormPrefill } from '@blinkbitcoin/esign-server';
 import cors from 'cors';
 import crypto from 'crypto';
 import express from 'express';
@@ -24,7 +25,6 @@ import {
 } from './signingPages';
 import { setActiveSpanAttributes } from './tracing';
 import type { GraphQLContext } from './types';
-import { parseWebFormPrefill } from './webFormPrefill';
 import { handleWebhookEvent } from './webhook';
 
 // Body size cap for JSON/text payloads - the signing/webhook bodies are small,
