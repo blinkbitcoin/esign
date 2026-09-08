@@ -35,11 +35,12 @@ jobs:
         run: npm ci --prefer-offline --no-audit
 
       # Coverage thresholds are enforced per workspace: 100% on the three
-      # packages and the backend, current-level floors on the demo apps.
+      # packages, the backend, and the tooling scripts' library (scripts/lib),
+      # current-level floors on the demo apps.
       - name: Unit tests with coverage
         run: npm run test:coverage
 
-      # Badge + combined HTML report (packages + backend). The `Badges` job in
+      # Badge + combined HTML report (packages + backend + tooling). The `Badges` job in
       # ci.yml publishes the badge per branch to gh-pages once E2E is done (it
       # is not on the E2E critical path); the report stays a run artifact -
       # private, unlike GitHub Pages, which would expose the source embedded

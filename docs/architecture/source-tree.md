@@ -60,7 +60,8 @@ esign/
 │       ├── index.html / src/main.tsx
 │       ├── src/App.tsx            # Host wiring around the web component
 │       ├── src/apollo.ts          # createESignApolloClient({uri, getAuthToken})
-│       └── vite.config.ts         # Vite + vitest; lib from source when serving, dist when building
+│       ├── vite.config.ts         # Vite + vitest; lib from source when serving, dist when building
+│       └── vite/libraries.ts      # requireBuiltLibraries + sourceAliases, unit-tested ⭐
 │
 ├── 📱 EXAMPLE APP (integration / E2E host)
 │   │
@@ -107,6 +108,9 @@ esign/
 │       │   ├── envelope.ts        # Envelope repository (Knex)
 │       │   ├── webhook.ts         # Generic webhook processing ⭐
 │       │   ├── audit.ts           # Audit logging repository
+│       │   ├── signingPages.ts    # Mock provider's hosted signing/Web Forms pages
+│       │   ├── hosted/
+│       │   │   └── bridgeScript.ts# postMessage helpers shared by the signing pages, unit-tested ⭐
 │       │   │
 │       │   ├── errors.ts          # GraphQL error factories
 │       │   ├── types.ts           # Shared types incl. ESignProvider
@@ -131,8 +135,10 @@ esign/
 │   │                              # apps/, packages/, examples/ have fan-out
 │   │                              # Makefiles; each workspace a local one
 │   ├── scripts/                   # the `tooling` npm workspace; pure logic in scripts/lib/*.mjs, Vitest-covered at 100% ⭐
-│   │   ├── {ci,e2e,release}/ , assemble-diagrams.mjs , coverage-badge.mjs
-│   │   └── lib/*.mjs              # extracted, unit-tested logic behind the CLI entry scripts
+│   │   ├── {ci,e2e,release}/ , assemble-diagrams.mjs , coverage-badge.mjs , status-badge.mjs
+│   │   │   └── release/resolve-version.mjs  # thin CLI over scripts/lib/resolve-version.mjs
+│   │   ├── lib/*.mjs              # extracted, unit-tested logic behind the CLI entry scripts (semver, resolve-version, badge)
+│   │   └── __tests__/*.test.mjs   # shell-script tests (changed-class.sh, docs-freshness.sh) - shell out, not V8-covered
 │   ├── package.json               # Workspace root: orchestration scripts
 │   ├── .envrc                     # direnv: .env loading + use flake + workspace bins
 │   ├── flake.nix / flake.lock     # Nix dev shell: node 24, jdk 17, ruby 3.3, watchman

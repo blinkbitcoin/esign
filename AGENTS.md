@@ -27,7 +27,7 @@ libraries, and one demo app per platform for manual and E2E testing.
 │   ├── react-native-demo/       # 📱 RN integration demo (Maestro E2E)
 │   └── react-demo/              # 🌐 Web integration demo (Vite, Playwright E2E)
 ├── docs/                        # Current-state documentation (hand-maintained)
-├── scripts/                     # ci/, e2e/, release/ shell + node used by the Makefile and CI
+├── scripts/                     # the `tooling` npm workspace: ci/, e2e/, release/ shell + node used by the Makefile and CI; lib/*.mjs is Vitest-covered at 100%, __tests__/ covers the shell scripts
 ├── Makefile                     # Root flows; apps/, packages/, examples/ and each workspace have their own
 └── package.json                 # Workspace root (orchestration scripts, single lockfile)
 ```
@@ -41,7 +41,7 @@ one-line description. The ones you will reach for:
 |--------|-------------|
 | `make install` | `npm ci` across all workspaces (also installs the git hooks) |
 | `make test` | Unit suites + `check-code` (lint, typecheck, format check) |
-| `make coverage` | Coverage - 100% enforced on the packages and the backend |
+| `make coverage` | Coverage - 100% enforced on the packages, the backend, and `scripts/lib` |
 | `make check-ci` | actionlint on the workflows + shellcheck on `scripts/**` |
 | `make codegen` | Regenerate `schema.graphql` + client types after editing the SDL in `packages/esign-server/src/graphql.ts` |
 | `make diagrams` | Re-render `docs/diagrams/dist/*.svg` from `src/*.mmd` (CI fails on drift) |
@@ -104,6 +104,9 @@ cannot see changes.
 - Backend unit tests: `apps/api/tests/` (DB mocked); E2E: `apps/api/tests/e2e/`
   (real Postgres via `docker-compose.test.yml`); `tests/live/` runs only with
   real DocuSign credentials (`make test-live`)
+- Tooling scripts: `scripts/lib/*.test.mjs` (100% Vitest coverage) for the
+  extracted logic; `scripts/__tests__/*.test.mjs` shells out to the shell
+  scripts themselves; CLI entry points are excluded from coverage by design
 - Mobile E2E: Maestro flows in `examples/react-native-demo/.maestro/`, driven by `scripts/e2e/*`
 - Native-module mocks live in `packages/esign-react-native/__mocks__/` and are shared by the demo
 
