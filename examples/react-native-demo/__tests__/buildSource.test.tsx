@@ -46,8 +46,17 @@ describe('buildSource', () => {
       'http://localhost:4000/webform/instance',
       expect.objectContaining({
         method: 'POST',
+        headers: expect.objectContaining({
+          authorization: 'Bearer mock-jwt-token',
+          'content-type': 'application/json',
+        }),
         body: JSON.stringify({
-          prefill: { full_name: 'Test User', email: 'test@example.com' },
+          prefill: {
+            full_name: 'Test User',
+            email: 'test@example.com',
+            units: 10,
+            total_usd: 1000.5,
+          },
         }),
       }),
     );
