@@ -22,6 +22,28 @@ esign/
 │       ├── codegen.ts             # GraphQL Codegen config
 │       └── dist/                  # tsup output (gitignored)
 │
+├── 🖥️ SERVER LIBRARY (Node-only; the backend is built on it)
+│   │
+│   └── packages/esign-server/
+│       ├── src/
+│       │   ├── index.ts           # Public API: client, domain, handlers, prefill ⭐
+│       │   ├── express.ts         # ./express entry: createESignRouter (express is a peer) ⭐
+│       │   ├── envelopes.ts       # createEnvelopeService: rules, audit, webhook state machine ⭐
+│       │   ├── provider.ts        # ESignProvider port
+│       │   ├── store.ts           # EnvelopeStore port + in-memory implementation
+│       │   ├── handlers.ts        # Fetch-API mint + webhook handlers (serverless) ⭐
+│       │   ├── graphql.ts         # SDL + resolvers factory (createESignGraphQL)
+│       │   ├── pages.ts           # Mock signing/Web Forms pages + return-URL bridge
+│       │   ├── bridgeScript.ts    # postMessage helpers the pages ship, run in tests ⭐
+│       │   ├── html.ts            # escapeHtml / sanitizeId / jsonForScript
+│       │   ├── prefill.ts         # Web Forms prefill validation + formatting
+│       │   ├── hmac.ts / validation.ts / audit.ts / errors.ts / log.ts / tracing.ts / http.ts
+│       │   ├── docusign/          # DocuSign adapter: auth (JWT grant), client, config, webforms, provider
+│       │   ├── mock/              # Mock adapter (mirrors DocuSign locally)
+│       │   └── __tests__/         # Jest, 100% enforced
+│       ├── tsup.config.ts         # ESM + CJS + d.ts build (two entries)
+│       └── dist/                  # Build output (gitignored)
+│
 ├── 📦 LIBRARY - THE PRODUCT
 │   │
 │   └── packages/esign-react-native/
@@ -94,26 +116,24 @@ esign/
 │       ├── src/
 │       │   ├── index.ts           # Bootstrap (dotenv + startServer)
 │       │   ├── server.ts          # startServer(port) - testable ⭐
-│       │   ├── app.ts             # Express + Apollo setup ⭐
-│       │   ├── schema.ts          # GraphQL schema + resolvers ⭐
+│       │   ├── app.ts             # Express + Apollo; mounts the package's router ⭐
+│       │   ├── schema.ts          # createESignGraphQL over the envelope service ⭐
+│       │   ├── typeDefs.ts        # Re-exports the package SDL (schema.graphql source)
+│       │   ├── services.ts        # Composition: createEnvelopeService(provider, store) ⭐
+│       │   ├── store.ts           # Knex implementation of the EnvelopeStore port ⭐
 │       │   ├── db.ts              # Knex instance (fail-fast)
 │       │   ├── auth.ts            # JWT verification (HS256)
+│       │   ├── config.ts          # Boot-time security validation (fail-closed)
+│       │   ├── tracing.ts         # OTel spans for the service + providers
 │       │   │
-│       │   ├── providers/         # Port + factory + adapters ⭐
-│       │   │   ├── port.ts        #   ESignProvider + supportsWebForms
+│       │   ├── providers/         # The package's adapters wired to this service ⭐
+│       │   │   ├── port.ts        #   Re-exports ESignProvider + supportsWebForms
 │       │   │   ├── index.ts       #   factory/singleton (tracing-wrapped)
-│       │   │   ├── mock.ts        #   mock adapter
-│       │   │   └── docusign/      #   adapter + client + mapping + config
+│       │   │   ├── mock.ts        #   mock adapter handle (pages served by the router)
+│       │   │   └── docusign/      #   DocuSign adapter handle + env config
 │       │   │
-│       │   ├── envelope.ts        # Envelope repository (Knex)
-│       │   ├── webhook.ts         # Generic webhook processing ⭐
-│       │   ├── audit.ts           # Audit logging repository
-│       │   ├── signingPages.ts    # Mock provider's hosted signing/Web Forms pages
-│       │   ├── hosted/
-│       │   │   └── bridgeScript.ts# postMessage helpers shared by the signing pages, unit-tested ⭐
-│       │   │
-│       │   ├── errors.ts          # GraphQL error factories
-│       │   ├── types.ts           # Shared types incl. ESignProvider
+│       │   ├── errors.ts          # Re-exports the package's coded errors
+│       │   ├── types.ts           # Re-exports the domain types + GraphQLContext
 │       │   │
 │       │   └── __mocks__/
 │       │       └── db.ts          # knex-mock-client for unit tests
