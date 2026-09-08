@@ -2,7 +2,7 @@
 
 **Updated:** 2026-09-01
 
-The three client packages publish to **GitHub Packages** under the
+The four packages publish to **GitHub Packages** under the
 `blinkbitcoin` org:
 
 | Package | For |
@@ -10,6 +10,7 @@ The three client packages publish to **GitHub Packages** under the
 | `@blinkbitcoin/esign-react-native` | React Native apps |
 | `@blinkbitcoin/esign-react` | React web apps |
 | `@blinkbitcoin/esign-core` | (transitive dependency of both; also usable standalone) |
+| `@blinkbitcoin/esign-server` | Your Node backend: mint Web Forms instances with locked prefill (`createWebFormInstance`) without running this repo's service |
 
 Publishing has two channels (both gated on the full test fleet - unit
 coverage thresholds + all three E2E suites):

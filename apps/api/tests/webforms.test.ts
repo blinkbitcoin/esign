@@ -131,8 +131,14 @@ describe('DocuSignProvider.createWebFormInstance', () => {
     });
     // The createInstance body includes the required clientUserId + formValues
     const instanceCall = mockFetch.mock.calls[1];
+    // ... plus the service's return-URL bridge, so a plain WebView/iframe
+    // host gets the signing outcome without DocuSign.js
     expect(instanceCall[1].body).toBe(
-      JSON.stringify({ clientUserId: 'user-42', formValues: prefill })
+      JSON.stringify({
+        clientUserId: 'user-42',
+        formValues: prefill,
+        returnUrl: 'http://localhost:4000/signing/return',
+      })
     );
     expect(instanceCall[1].body).toContain('"units":1000,');
   });

@@ -55,8 +55,23 @@ DocuSign's rules (verified against the Web Forms docs, 2026-09):
   reaches the document.
 
 So the recipe is: mark the fixed fields Read only (keep Required) in the
-builder, and mint every instance through the backend with those values in the
-prefill. That is what `POST /webform/instance` does:
+builder, and mint every instance server-side with those values in the
+prefill. That mint is one call from `@blinkbitcoin/esign-server`, which any
+Node backend can make (the values are usually computed there anyway):
+
+```ts
+import { createWebFormInstance, docuSignConfigFromEnv } from '@blinkbitcoin/esign-server';
+
+const docusign = docuSignConfigFromEnv(); // once; DOCUSIGN_* env
+const { url } = await createWebFormInstance({
+  config: docusign,
+  userId: session.userId,
+  prefill: { number_of_units: 1000, settlement_amount_btc: '0.01268231', rate_timestamp: '2026-09-08 10:44' },
+});
+```
+
+Hosts without a backend of their own run this repo's service instead, whose
+`POST /webform/instance` is that same call behind an authenticated endpoint:
 
 ```json
 { "prefill": { "number_of_units": 1000, "total_subscription_usd": 1000,

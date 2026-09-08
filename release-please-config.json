@@ -5,7 +5,7 @@
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": false,
   "pull-request-title-pattern": "chore(release): ${version}",
-  "pull-request-header": ":robot: Merging this PR tags the version below, creates the GitHub Release with these notes, and publishes the three packages under `latest`.",
+  "pull-request-header": ":robot: Merging this PR tags the version below, creates the GitHub Release with these notes, and publishes the four packages under `latest`.",
   "changelog-sections": [
     { "type": "feat", "section": "Features" },
     { "type": "fix", "section": "Bug Fixes" },

@@ -14,9 +14,9 @@
 // contract mismatch fails with DocuSign's raw HTTP status + body instead of
 // the provider's mapped generic error.
 
+import { createDocuSignClient, createWebFormInstance } from '@blinkbitcoin/esign-server';
 import { describe, expect, it } from 'vitest';
-
-import { createWebFormInstanceRequest, getAccessToken } from '../../src/providers/docusign/client';
+import { getConfig } from '../../src/providers/docusign/config';
 
 const REQUIRED_ENV = [
   'DOCUSIGN_ACCOUNT_ID',
@@ -33,13 +33,19 @@ if (missing.length > 0) {
 
 describe.runIf(missing.length === 0)('DocuSign Web Forms API (live, demo account)', () => {
   it('authenticates via JWT and mints an instance with the contracted shape', async () => {
-    const accessToken = await getAccessToken();
-    expect(accessToken).toBeTruthy();
+    const docusign = createDocuSignClient(getConfig());
+    expect(await docusign.getAccessToken()).toBeTruthy();
 
     const clientUserId = `live-smoke-${Date.now()}`;
-    const result = await createWebFormInstanceRequest(accessToken, clientUserId, {});
+    const result = await docusign.createWebFormInstanceRequest(
+      clientUserId,
+      {},
+      {
+        returnUrl: getConfig().returnUrl,
+      }
+    );
 
-    // The contract assumed by providers/docusign/client.ts:
+    // The contract assumed by @blinkbitcoin/esign-server's client:
     // { formUrl, instanceToken } -> url = formUrl#instanceToken=<token>
     const url = new URL(result.url);
     expect(url.protocol).toBe('https:');
@@ -68,13 +74,12 @@ describe.runIf(missing.length === 0)('DocuSign Web Forms API (live, demo account
   it.runIf(livePrefill)(
     'mints an instance with typed prefill values',
     async () => {
-      const prefill = JSON.parse(livePrefill as string) as Record<string, unknown>;
-      const accessToken = await getAccessToken();
-      const result = await createWebFormInstanceRequest(
-        accessToken,
-        `live-prefill-${Date.now()}`,
-        prefill as Parameters<typeof createWebFormInstanceRequest>[2]
-      );
+      // The one-call path a host backend uses (validation + retry + returnUrl)
+      const result = await createWebFormInstance({
+        config: getConfig(),
+        userId: `live-prefill-${Date.now()}`,
+        prefill: JSON.parse(livePrefill as string),
+      });
       expect(new URL(result.url).hash).toMatch(/^#instanceToken=.+/);
       console.log(`[live] Minted prefilled instance (token expires ~5 min):\n${result.url}`);
     },
