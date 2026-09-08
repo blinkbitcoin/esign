@@ -43,7 +43,7 @@ one-line description. The ones you will reach for:
 | `make test` | Unit suites + `check-code` (lint, typecheck, format check) |
 | `make coverage` | Coverage - 100% enforced on the packages and the backend |
 | `make check-ci` | actionlint on the workflows + shellcheck on `scripts/**` |
-| `make codegen` | Regenerate `schema.graphql` + client types after editing `apps/api/src/typeDefs.ts` |
+| `make codegen` | Regenerate `schema.graphql` + client types after editing the SDL in `packages/esign-server/src/graphql.ts` |
 | `make diagrams` | Re-render `docs/diagrams/dist/*.svg` from `src/*.mmd` (CI fails on drift) |
 | `make docs-check` | Warn when architecture-relevant changes ship without a `docs/` update |
 | `make db-up migrate backend` | Dev Postgres, migrations, backend dev server |

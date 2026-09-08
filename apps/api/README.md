@@ -65,7 +65,7 @@ make e2e            # 14 E2E tests against real Postgres
 | `src/providers/port.ts` | `ESignProvider` interface (the provider boundary) |
 | `src/providers/docusign/` / `src/providers/mock.ts` | Provider adapters (factory in `providers/index.ts`) |
 | `src/services.ts` / `src/store.ts` | Domain composition (`createEnvelopeService`) / Knex `EnvelopeStore` |
-| `src/signingPages.ts` | Mock signing page + real-DocuSign return-URL bridge |
+| `src/app.ts` | Mounts the package's Express router (`/health`, signing pages, `/webform/instance`, `/webhook/esign`) with this service's auth, CORS and rate limits |
 | `src/auth.ts` | HS256 JWT verification, dev/prod split |
 | `migrations/` | Knex migrations (TypeScript, run via tsx) |
 | `tests/` / `tests/e2e/` | Unit (mocked DB) / E2E (real DB) |

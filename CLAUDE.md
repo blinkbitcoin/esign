@@ -93,7 +93,8 @@ npm run migrate:test         # Same against the .env.test database
   build` (`tsconfig.build.json`) needs the package's dist, so build the
   packages first (`npm run build` at the root).
 - The wire contract is the `ErrorCode` enum in `apps/api/schema.graphql`
-  (emitted from `src/typeDefs.ts`). After schema changes run `make codegen`;
+  (the SDL lives in `packages/esign-server/src/graphql.ts`, re-exported by
+  `src/typeDefs.ts`). After schema changes run `make codegen`;
   drift fails backend tests, client parity tests, and a CI step.
 - Security is fail-closed by default: `validateSecurityConfig` (`src/config.ts`)
   refuses to boot without `JWT_SECRET` (and `DOCUSIGN_HMAC_KEY` when

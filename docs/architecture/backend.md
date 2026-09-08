@@ -47,8 +47,11 @@ EnvelopeStore port → Knex store (store.ts) → PostgreSQL
 apps/api/src/
 ├── index.ts          # Bootstrap (dotenv + startServer)
 ├── server.ts         # HTTP server startup (testable startServer factory)
-├── app.ts            # Express + Apollo setup (createApp factory)
-├── schema.ts         # GraphQL resolvers (thin: map inputs/outputs onto the service)
+├── app.ts            # Express + Apollo setup (createApp factory): this service's policy
+│                     #   (helmet, CORS, rate limits, JWT auth) around the package's
+│                     #   Express router (/health, signing pages, /webform/instance,
+│                     #   /webhook/esign) and GraphQL schema
+├── schema.ts         # typeDefs + resolvers = createESignGraphQL({ envelopes }) from the package
 ├── services.ts       # Composition root: createEnvelopeService({ provider, store, tracing })
 ├── store.ts          # Knex implementation of the package's EnvelopeStore port
 ├── db.ts             # Knex instance (fail-fast on missing DATABASE_URL)
@@ -59,7 +62,6 @@ apps/api/src/
 │   ├── mock.ts       #   The package's mock adapter, wired to this service's pages
 │   └── docusign/     #   The package's DocuSign adapter wired to the service's
 │                     #   config (config.ts) and webhook policy
-├── signingPages.ts   # Mock signing/web-form pages + return-URL bridge
 ├── config.ts         # Boot-time security validation (fail-closed)
 ├── tracing.ts        # OTel domain spans + provider instrumentation
 ├── errors.ts         # Re-exports the package's coded errors (extensions.code)

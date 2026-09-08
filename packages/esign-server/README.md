@@ -102,6 +102,33 @@ local runs and tests; `Tracing` and `Logger` are optional seams.
 | `createEnvelope`, `getEnvelopeById`, `getEnvelopeByIdForUser`, `getEnvelopeByProviderEnvelopeId`, `updateEnvelopeStatus` | envelope rows; the user-scoped read returns `null` for a wrong owner (no info leak); the update throws for an unknown id |
 | `appendAuditEntry`, `listAuditEntries` | audit rows, newest first |
 
+## The HTTP surface (`@blinkbitcoin/esign-server/express`)
+
+For a host that already runs Express and wants the esign endpoints without
+writing them: a mountable router plus the GraphQL schema. `express` is an
+optional peer - only this subpath imports it.
+
+```ts
+import { createESignRouter } from '@blinkbitcoin/esign-server/express';
+import { createESignGraphQL } from '@blinkbitcoin/esign-server';
+
+app.use(createESignRouter({
+  envelopes, provider,
+  authenticate: req => yourAuth(req.headers.authorization), // user id or null
+  mockPages: provider === mock ? { getWebFormPrefill: mock.getWebFormPrefill } : undefined,
+  middleware: { cors, webform: [rateLimit, cors], webhook: [rateLimit] }, // your policy
+}));
+const { typeDefs, resolvers } = createESignGraphQL({ envelopes }); // → your Apollo/GraphQL server, context { userId }
+```
+
+| Route | What |
+|---|---|
+| `GET /health` | `{ status, timestamp }` |
+| `POST /webform/instance` | mint for the authenticated caller (`401`), validated prefill (`400` with the reason), provider failure `502` |
+| `POST /webhook/esign` | raw-body signature check (`401`), parse (`400`), `handleWebhookEvent` (`500` = retry, `200 { received: true }`) |
+| `GET /signing/return` | the return-URL bridge for real DocuSign (postMessage protocol, nonce CSP) |
+| `GET /signing/mock/:id`, `GET /signing/mock-webform/:id` | the mock provider's pages, when `mockPages` is given |
+
 ## Configuration
 
 | Variable | Setting | Notes |
