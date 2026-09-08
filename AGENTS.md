@@ -94,7 +94,9 @@ smoked) → Badges, then Publish (ships that build: packages to GitHub
 Packages, image to GHCR) + Verify on `main`. Docs-only PRs stop after Checks. The iOS E2E
 suite runs by default (GitHub-hosted macOS is free on a public repo); repo
 variable `E2E_IOS=false` pauses it and PR label `e2e:ios` forces it for one PR
-while paused. Native E2E builds are cached on the inputs
+while paused. Live DocuSign E2E is opt-in (`E2E_LIVE=true` / label
+`e2e:live`, secrets in the `docusign-demo` environment;
+`docs/operations/live-e2e-ci.md`). Native E2E builds are cached on the inputs
 `scripts/native-deps-hash.sh` sees; bump the key's `v` suffix when an input it
 cannot see changes.
 

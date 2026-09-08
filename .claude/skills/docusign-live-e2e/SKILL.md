@@ -15,7 +15,10 @@ make e2e-live         # check → Web Forms live API test → service on :4010 (
                       #   → Playwright walks the real form, asserts the locked fields → stop
 ```
 
-Prerequisites: `examples/full-service-demo/.env` from `make docusign-env`
+In CI the same runner reads the DocuSign values from the environment
+(job `E2E / Live DocuSign`, opt-in; `docs/operations/live-e2e-ci.md`).
+
+Prerequisites locally: `examples/full-service-demo/.env` from `make docusign-env`
 (see the docusign-integration-key-setup skill), consent granted with the
 Web Forms scopes, the packages built (`npm run build`) for Playwright.
 

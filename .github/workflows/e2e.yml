@@ -30,6 +30,10 @@ on:
         description: vX.Y.Z tag this run releases (release-please dispatch); empty = not a release
         type: string
         default: ''
+      live:
+        description: Run the live DocuSign suite (needs the docusign-demo environment secrets; docs/operations/live-e2e-ci.md)
+        type: boolean
+        default: false
     outputs:
       version:
         description: The version stamped into the packages built by Build Packages (what Publish ships)
@@ -83,6 +87,70 @@ jobs:
       - name: Stop test database
         if: always()
         run: make test-db-down
+
+  # Live DocuSign (opt-in, docs/operations/live-e2e-ci.md): the JWT grant,
+  # a real Web Forms instance mint, and Playwright walking the real
+  # capability test form and tampering with its locked fields. Secrets come
+  # from the `docusign-demo` environment; the caller decides when this runs
+  # (never for fork PRs - they get no secrets). Mints instances on the demo
+  # account, hence opt-in and serialized.
+  live:
+    name: Live DocuSign
+    if: inputs.live
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: docusign-demo
+    concurrency:
+      group: live-docusign
+      cancel-in-progress: false
+    env:
+      DOCUSIGN_INTEGRATION_KEY: ${{ secrets.DOCUSIGN_INTEGRATION_KEY }}
+      DOCUSIGN_USER_ID: ${{ secrets.DOCUSIGN_USER_ID }}
+      DOCUSIGN_ACCOUNT_ID: ${{ secrets.DOCUSIGN_ACCOUNT_ID }}
+      DOCUSIGN_PRIVATE_KEY: ${{ secrets.DOCUSIGN_PRIVATE_KEY }}
+      DOCUSIGN_TEMPLATE_ID: ${{ vars.DOCUSIGN_TEMPLATE_ID }}
+      DOCUSIGN_WEBFORM_ID: ${{ vars.DOCUSIGN_WEBFORM_ID }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies (workspace root)
+        run: npm ci --prefer-offline --no-audit
+
+      # The Playwright run previews the web demo against the packages' dist
+      - name: Build packages
+        run: npm run build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium --with-deps
+
+      - name: JWT grant, live mint, locked fields in a real browser
+        run: bash scripts/e2e/live.sh
+
+      # The screenshot only; the service log carries minted instance URLs
+      - name: Upload the form screenshot
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: live-docusign-webform
+          path: examples/react-demo/test-results/webform-live.png
+          if-no-files-found: ignore
+          retention-days: 7
 
   # The two small server examples, booted with the mock provider and called
   # over HTTP: proves the Fetch handlers and the one-mutation shape in a real
