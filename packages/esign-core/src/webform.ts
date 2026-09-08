@@ -12,11 +12,24 @@
 
 export type { RecipientData } from './types';
 
-export { createWebFormsSource } from './signing/webFormsSource';
+export {
+  createWebFormsSource,
+  resolveCreateInstance,
+} from './signing/webFormsSource';
 export type {
   WebFormsSigningSourceOptions,
+  WebFormsCreateInstanceOptions,
+  WebFormsMintOptions,
   WebFormsInstance,
 } from './signing/webFormsSource';
+
+export { createWebFormsMinter } from './signing/mint';
+export type {
+  MintWebFormsInstanceOptions,
+  WebFormPrefill,
+  WebFormPrefillValue,
+  WebFormPhoneNumber,
+} from './signing/mint';
 
 export { createPublicUrlSource } from './signing/publicUrlSource';
 export type { PublicUrlSigningSourceOptions } from './signing/publicUrlSource';

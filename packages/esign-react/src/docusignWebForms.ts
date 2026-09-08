@@ -9,12 +9,17 @@
 // real loader is the only unverified surface (marked below) - confirm the exact
 // DocuSign.js API (loadDocuSign / signing() / on / mount) against a live account.
 
-import { interpretDocuSignEvent } from '@blinkbitcoin/esign-core';
+import {
+  interpretDocuSignEvent,
+  resolveCreateInstance,
+} from '@blinkbitcoin/esign-core';
 
 import type {
+  MintWebFormsInstanceOptions,
   SigningEvent,
   SigningSession,
   SigningSourceError,
+  WebFormPrefill,
   WebFormsInstance,
 } from '@blinkbitcoin/esign-core';
 
@@ -79,9 +84,7 @@ const defaultLoadDocuSign =
     return sdk.loadDocuSign(integrationKey);
   };
 
-export interface DocuSignWebFormsSourceOptions {
-  /** Host-provided call that mints a prefilled Web Forms instance URL. */
-  createInstance: () => Promise<WebFormsInstance>;
+interface DocuSignWebFormsSourceBase {
   /** DocuSign integration key (needed by the SDK loader). */
   integrationKey: string;
   /** 'demo' (default) or 'production' - picks the bundle.js host. */
@@ -92,18 +95,38 @@ export interface DocuSignWebFormsSourceOptions {
   loadDocuSign?: LoadDocuSign;
 }
 
+/** The host brings its own backend client. */
+export interface DocuSignWebFormsCreateInstanceOptions
+  extends DocuSignWebFormsSourceBase {
+  /** Host-provided call that mints a prefilled Web Forms instance URL. */
+  createInstance: () => Promise<WebFormsInstance>;
+}
+
+/** The host names its mint endpoint and the prefill; the source does the call. */
+export interface DocuSignWebFormsMintOptions
+  extends DocuSignWebFormsSourceBase {
+  mint: MintWebFormsInstanceOptions;
+  /** Values minted with the instance; read-only fields show them locked. */
+  prefill?: WebFormPrefill;
+}
+
+export type DocuSignWebFormsSourceOptions =
+  | DocuSignWebFormsCreateInstanceOptions
+  | DocuSignWebFormsMintOptions;
+
 export const createDocuSignWebFormsSource = (
   options: DocuSignWebFormsSourceOptions,
 ): MountableSigningSource => {
   /* istanbul ignore next -- the default loader path needs the real SDK (not CI) */
   const load =
     options.loadDocuSign ?? defaultLoadDocuSign(options.environment ?? 'demo');
+  const createInstance = resolveCreateInstance(options);
   let resolvedUrl: string | undefined;
 
   return {
     async start(): Promise<SigningSession> {
       try {
-        const instance = await options.createInstance();
+        const instance = await createInstance();
         resolvedUrl = instance.url;
         return { url: instance.url, envelopeId: instance.envelopeId };
       } catch (error) {

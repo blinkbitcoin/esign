@@ -73,14 +73,14 @@ import {
   createPublicUrlSource,  // OR: a published public form URL, no backend
 } from '@blinkbitcoin/esign-react-native/webform';
 
-// Shape 1 - API-embedded (recommended: prefill stays server-side)
+// Shape 1 - API-embedded (recommended: prefill stays server-side, read-only
+// fields come back locked). Your backend mints with @blinkbitcoin/esign-server
+// (createWebFormInstance); the app sends its own session token.
 const source = createWebFormsSource({
-  createInstance: async () => {
-    const res = await fetch('https://your-backend.example.com/webform/instance', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-      body: JSON.stringify({ prefill: { full_name: user.name, email: user.email } }),
-    });
+  mint: { url: 'https://your-backend.example.com/webform/instance', getAuthToken },
+  prefill: { number_of_units: 1000, settlement_amount_btc: '0.01268231' },
+});
+// Bring your own client instead: createWebFormsSource({ createInstance: () => ... /* { url } */ })
     if (!res.ok) throw new Error(`Could not start signing (HTTP ${res.status})`);
     return res.json(); // { url }
   },

@@ -70,10 +70,14 @@ Other modes swap only the source (the component and callbacks are identical):
 ```tsx
 // Mode 2 - DocuSign Web Forms (API-embedded): a thin backend mints the URL.
 const source = createWebFormsSource({
-  createInstance: () =>
-    fetch('/onboarding/webform', { method: 'POST' }).then((r) => r.json()), // { url }
+  // Your backend mints the instance (one call from @blinkbitcoin/esign-server);
+  // the app sends its own session token. Read-only fields come back locked
+  // with the prefill; numbers stay numbers.
+  mint: { url: 'https://api.example.com/webform/instance', getAuthToken },
+  prefill: { number_of_units: 1000, settlement_amount_btc: '0.01268231' },
   allowedOrigin: 'https://apps.docusign.com',
 });
+// (or bring your own client: createWebFormsSource({ createInstance: () => ... /* { url } */ }))
 
 // Mode 3 - Public Web Form URL (no backend; prefill via query params):
 const source = createPublicUrlSource({ url, allowedOrigin: 'https://apps.docusign.com' });
