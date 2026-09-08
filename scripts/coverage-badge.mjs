@@ -1,7 +1,8 @@
 // Renders the README coverage badge from measured numbers instead of a
 // hardcoded shields.io URL. Aggregates line coverage across the workspaces
-// that enforce 100% (the four publishable packages + the backend) by
-// reading the `json-summary` reporter output each of them emits under
+// that enforce 100% (the four publishable packages, the backend, and the
+// tooling scripts) by reading the `json-summary` reporter output each of
+// them emits under
 // `<workspace>/coverage/coverage-summary.json`. The demo apps are excluded
 // on purpose: they carry floors, not 100%, and their real coverage is E2E.
 //
@@ -34,26 +35,24 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// Single source of truth for "what the badge measures".
+// Single source of truth for "what the badge measures". reportDir is where
+// each runner writes its HTML report relative to `<ws>/coverage`: Vitest
+// (apps/api, scripts) uses the html reporter's own `coverage/` root; Jest
+// uses the lcov reporter's `coverage/lcov-report`.
 const WORKSPACES = [
-  'packages/esign-core',
-  'packages/esign-server',
-  'packages/esign-react-native',
-  'packages/esign-react',
-  'apps/api',
+  { ws: 'packages/esign-core', reportDir: 'coverage/lcov-report' },
+  { ws: 'packages/esign-server', reportDir: 'coverage/lcov-report' },
+  { ws: 'packages/esign-react-native', reportDir: 'coverage/lcov-report' },
+  { ws: 'packages/esign-react', reportDir: 'coverage/lcov-report' },
+  { ws: 'apps/api', reportDir: 'coverage' },
+  { ws: 'scripts', reportDir: 'coverage' },
 ];
 
 const BADGE_DIR = join(root, 'coverage', 'badge');
 const REPORT_DIR = join(root, 'coverage', 'report');
 
-// Where each runner writes its HTML report (jest: lcov reporter; vitest: html)
-function htmlReportDir(ws) {
-  return join(
-    root,
-    ws,
-    'coverage',
-    ws.startsWith('apps/') ? '' : 'lcov-report',
-  );
+function htmlReportDir({ ws, reportDir }) {
+  return join(root, ws, reportDir);
 }
 
 const PLACEHOLDERS = { failing: 'red', pending: 'yellow' };
@@ -88,7 +87,7 @@ function measure() {
   let covered = 0;
   let total = 0;
   const rows = [];
-  for (const ws of WORKSPACES) {
+  for (const { ws, reportDir } of WORKSPACES) {
     const file = join(root, ws, 'coverage', 'coverage-summary.json');
     if (!existsSync(file)) {
       console.error(
@@ -102,7 +101,7 @@ function measure() {
     );
     covered += t.lines.covered;
     total += t.lines.total;
-    rows.push({ ws, ...t });
+    rows.push({ ws, reportDir, ...t });
   }
   if (total === 0) {
     console.error(
@@ -130,8 +129,8 @@ function writeReport({ message, detail, rows }) {
   rmSync(REPORT_DIR, { recursive: true, force: true });
   mkdirSync(REPORT_DIR, { recursive: true });
   const body = rows
-    .map(({ ws, ...m }) => {
-      const src = htmlReportDir(ws);
+    .map(({ ws, reportDir, ...m }) => {
+      const src = htmlReportDir({ ws, reportDir });
       if (!existsSync(join(src, 'index.html'))) {
         console.error(
           `coverage-badge: no HTML report at ${src} - check the workspace's coverage reporters`,
@@ -152,7 +151,7 @@ function writeReport({ message, detail, rows }) {
     `<!doctype html><meta charset="utf-8"><title>esign coverage ${esc(message)}</title>
 <style>body{font:14px/1.5 system-ui,sans-serif;margin:2rem auto;max-width:60rem;padding:0 1rem}table{border-collapse:collapse;width:100%}th,td{padding:.4rem .6rem;border-bottom:1px solid #ddd;text-align:left}th.n,td.n{text-align:right}.muted{color:#777}h1 small{font-weight:normal;color:#777}</style>
 <h1>Coverage ${esc(message)} <small>${esc(detail)} - ${esc(branch)} @ ${esc(sha)}</small></h1>
-<p>Line coverage aggregated over the workspaces that enforce 100% (the three publishable packages and the backend). Demo apps are excluded. Click a workspace for its file-level report.</p>
+<p>Line coverage aggregated over the workspaces that enforce 100% (the three publishable packages, the backend, and the tooling scripts). Demo apps are excluded. Click a workspace for its file-level report.</p>
 <table><thead><tr><th>Workspace</th><th class="n" colspan="2">Lines</th><th class="n" colspan="2">Statements</th><th class="n" colspan="2">Branches</th><th class="n" colspan="2">Functions</th></tr></thead>
 <tbody>${body}</tbody></table>
 `,
