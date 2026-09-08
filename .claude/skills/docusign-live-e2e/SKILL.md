@@ -38,7 +38,12 @@ Web Forms scopes, the packages built (`npm run build`) for Playwright.
 Start → pages A (signer, required), B (prefilled editable), C (locked
 terms), D (optional) → Summary. Fields are collected per page from
 `input, select, textarea` with labels from `<label for>` / aria. Locked
-fields render `readOnly` or `disabled`. Radio/checkbox values are the option
+text fields render `readOnly` or `disabled`; a locked dropdown keeps the
+select enabled and disables every option. After the walk the spec reopens
+section C from the Summary (its Edit button) and tampers with every locked
+field (click, type, `fill` and `selectOption` with `force`), asserting the
+value is unchanged. Controls are found with `getByRole('textbox'|'combobox', { name })`,
+not `getByLabel` - DocuSign names them through aria. Radio/checkbox values are the option
 values (`yes`/`no`), never checked state, so assert them via the Summary
 text if needed. Number fields carry at most two decimals (`settlement_amount_btc`
 is minted as `0.01`). Instance tokens expire ~5 min after minting: never
