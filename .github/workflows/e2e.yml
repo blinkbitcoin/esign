@@ -12,6 +12,9 @@ name: Tests / E2E
 # Shell lives in scripts/e2e/*.sh (the E2E stack, runnable on a laptop: see
 # `make help`) and scripts/ci/*.sh (runner-only plumbing); steps here are
 # one-liners. `make shellcheck` lints them.
+#
+# Build Packages and Docker are the two builds of the deliverables (the npm
+# packages, the service image); Publish ships both unchanged.
 on:
   workflow_call:
     inputs:
@@ -156,6 +159,50 @@ jobs:
         with:
           name: packages-tarballs
           path: ${{ runner.temp }}/tarballs/*.tgz
+          retention-days: 7
+          overwrite: true
+          if-no-files-found: error
+
+  # The one build of the service image (apps/api/Dockerfile): stamped with
+  # the same version Build Packages resolves, smoked (mock provider, /health)
+  # and saved as an artifact, so Publish ships the exact image that passed
+  # here. Sits in this stage for the same reason Build Packages does: nothing
+  # is built before Unit has passed.
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # tags: the prerelease base is derived from the latest v* tag
+
+      # npm pkg set only (no install): the version stamp lands in the image
+      - name: Resolve version and stamp it into the packages
+        id: ver
+        env:
+          EVENT: ${{ inputs.release-tag != '' && 'release' || github.event_name }}
+          TAG: ${{ inputs.release-tag || github.event.release.tag_name }}
+          RUN: ${{ github.run_number }}
+        run: bash scripts/release/resolve-version.sh
+
+      - name: Build the service image
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: bash scripts/ci/docker-build.sh esign-api "$RUNNER_TEMP/esign-api.tar.gz"
+
+      - name: Boot the image with the mock provider and hit /health
+        run: bash scripts/ci/docker-smoke.sh esign-api
+
+      # 7 days like the tarballs: a blocked release's Publish is re-run later
+      # from this same artifact.
+      - name: Publish the image for the Publish job
+        uses: actions/upload-artifact@v7
+        with:
+          name: service-image
+          path: ${{ runner.temp }}/esign-api.tar.gz
           retention-days: 7
           overwrite: true
           if-no-files-found: error

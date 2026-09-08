@@ -174,11 +174,13 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
 
 - One pipeline per branch (`ci.yml`): Checks (`checks.yml`: Changes, Code,
   Commits, Docs - all static) → Unit (`test.yml`) → E2E (`e2e.yml`: Build
-  Packages → Web, Backend, Build Android → Android, Build iOS → iOS) → Badges,
-  then Publish → Verify on `main`. Build Packages is the one build of the
-  libraries: Web bundles the demo against its dist and Publish ships its
-  tarballs unchanged. Docs-only PRs stop after Checks; `main` skips docs-only
-  pushes.
+  Packages → Web, Docker, Backend, Build Android → Android, Build iOS → iOS)
+  → Badges, then Publish → Verify on `main`. Build Packages is the one build
+  of the libraries: Web bundles the demo against its dist and Publish ships
+  its tarballs unchanged. Docker is the one build of the service image
+  (smoked with the mock provider); Publish ships it to GHCR as
+  `ghcr.io/blinkbitcoin/esign-api:<version>` + `:latest` / `:next`.
+  Docs-only PRs stop after Checks; `main` skips docs-only pushes.
 - iOS E2E runs by default (public repo: GitHub-hosted macOS is free). Pause it
   with repo variable `E2E_IOS=false`; PR label `e2e:ios` forces it for one PR
   while paused; `E2E_IOS_RUNNER` overrides `runs-on`.

@@ -169,7 +169,7 @@ test-live: ## Live verification against real DocuSign (skips unless DOCUSIGN_* s
 # ---------- Container ----------
 
 docker-build: ## Build the service image (apps/api/Dockerfile, from the repo root)
-	docker build -f apps/api/Dockerfile -t esign-api .
+	bash scripts/ci/docker-build.sh esign-api
 
 docker-smoke: docker-build ## Boot the image with the mock provider and hit /health
 	bash scripts/ci/docker-smoke.sh esign-api

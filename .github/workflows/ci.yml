@@ -10,6 +10,10 @@ name: CI
 #               iOS)
 #         -> Publish -> Verify (main / release / dispatch)
 #
+# Docker (in E2E) builds + smokes the service image the same way; Publish
+# ships it to GHCR (ghcr.io/<owner>/esign-api:<version>, :latest / :next)
+# and Verify pulls and smokes what was published.
+#
 # A docs-only PR (docs/, *.md, LICENSE, templates - classified by the Changes
 # job in checks.yml) stops after Checks; main already skips docs-only pushes
 # via paths-ignore below, so PR and main follow the same rule.
@@ -44,7 +48,8 @@ name: CI
 #   works for prereleases).
 #
 # Requires no extra secrets - GITHUB_TOKEN with packages:write is enough
-# for same-org publishing, and release.yml needs only the same token.
+# for same-org publishing (npm and GHCR), and release.yml needs only the
+# same token.
 #
 # The whole pipeline in one picture: docs/diagrams/README.md#ci--release-pipeline
 #
@@ -197,6 +202,7 @@ jobs:
       actions: read # look up the commit's main run
     outputs:
       version: ${{ needs.e2e.outputs.version }}
+      image: ${{ steps.image.outputs.image }}
 
     steps:
       - name: Checkout code (for scripts/release)
@@ -254,6 +260,22 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DISTTAG: ${{ needs.e2e.outputs.disttag }}
 
+      # The service image E2E / Docker built and smoked, tagged <version> and
+      # <disttag> like the packages: ghcr.io/<owner>/esign-api
+      - name: Fetch the service image built by E2E / Docker
+        uses: actions/download-artifact@v8
+        with:
+          name: service-image
+          path: ${{ runner.temp }}/image
+
+      - name: Publish the service image to GHCR
+        id: image
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/esign-api
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/release/publish-image.sh "$RUNNER_TEMP/image/esign-api.tar.gz" "${{ needs.e2e.outputs.version }}" "${{ needs.e2e.outputs.disttag }}"
+
   # Consumes what was ACTUALLY published: installs the exact version from
   # GitHub Packages into a clean project and asserts the consumer contract.
   registry-smoke:
@@ -285,3 +307,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/release/registry-smoke.sh "${{ needs.publish.outputs.version }}"
+
+      - name: Pull the published service image and smoke it
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/release/registry-smoke-image.sh "${{ needs.publish.outputs.image }}"

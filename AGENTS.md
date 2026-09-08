@@ -87,8 +87,9 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
 ## CI
 
 One pipeline per branch (`ci.yml`): Checks → Unit → E2E (incl. the one build
-of the packages, which Web tests) → Badges, then Publish (ships that build) +
-Verify on `main`. Docs-only PRs stop after Checks. The iOS E2E
+of the packages, which Web tests, and the one build of the service image,
+smoked) → Badges, then Publish (ships that build: packages to GitHub
+Packages, image to GHCR) + Verify on `main`. Docs-only PRs stop after Checks. The iOS E2E
 suite runs by default (GitHub-hosted macOS is free on a public repo); repo
 variable `E2E_IOS=false` pauses it and PR label `e2e:ios` forces it for one PR
 while paused. Native E2E builds are cached on the inputs
