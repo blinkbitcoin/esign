@@ -130,6 +130,7 @@ esign/
 │       ├── vitest.config.ts       # Unit test config (with coverage)
 │       ├── vitest.e2e.config.ts   # E2E test config (sequential)
 │       ├── .env.example           # Documented environment variables
+│       ├── .env.docusign.example  # The live DocuSign layout, dummy values (make docusign-env writes the real one)
 │       ├── .env.test              # Test database connection (tracked)
 │       │
 │       ├── src/
