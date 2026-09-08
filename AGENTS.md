@@ -20,7 +20,7 @@ libraries, and one demo app per platform for manual and E2E testing.
 ├── apps/api/                    # 🖥️ THE SERVICE (Express 5 + Apollo 5 + Knex/Postgres)
 ├── packages/
 │   ├── esign-core/              # 📦 shared core: SigningSource abstraction, Apollo factory, GraphQL codegen
-│   ├── esign-server/            # 📦 server side: DocuSign client + createWebFormInstance (the one call for locked prefill)
+│   ├── esign-server/            # 📦 server side: DocuSign client, createWebFormInstance, envelope domain over provider + store ports
 │   ├── esign-react-native/      # 📦 THE PRODUCT - RN (`ESignature` + `useESignature` over a WebView)
 │   └── esign-react/             # 📦 THE PRODUCT - web (`ESignature` + `useESignature` over an iframe)
 ├── examples/

@@ -1,31 +1,42 @@
 // Tests for GraphQL schema and resolvers
-// Mocks the envelope/audit repository modules to avoid a real Postgres connection
+// Runs the real envelope domain (@blinkbitcoin/esign-server) over an in-memory
+// store, so no Postgres connection is needed and behaviour is asserted on the
+// resulting state rather than on mocked repository calls.
 
+import { randomUUID } from 'node:crypto';
 import { ApolloServer } from '@apollo/server';
 import { vi } from 'vitest';
 
-vi.mock('../src/envelope');
-vi.mock('../src/audit');
-// schema.ts's createEnvelope resolver only uses knex.transaction() to wrap
-// calls to the (mocked) envelope/audit repository functions above - it never
-// runs a real query against `trx`, so a trivial stub is enough here.
-vi.mock('../src/db', () => ({
-  knex: { transaction: (cb: (trx: unknown) => unknown) => cb({}) },
-}));
+vi.mock('../src/store', async () => {
+  const { createMemoryEnvelopeStore } = await import('@blinkbitcoin/esign-server');
+  return { store: createMemoryEnvelopeStore(), createKnexEnvelopeStore: vi.fn() };
+});
 
-import { getAuditLogsByEnvelopeId, logAuditEvent } from '../src/audit';
-import { createEnvelope, getEnvelopeByIdForUser } from '../src/envelope';
+import type { EnvelopeStatus } from '@blinkbitcoin/esign-server';
 import { ErrorCodes, Errors } from '../src/errors';
 import { provider } from '../src/providers';
 import { addEnvelope, clearEnvelopes } from '../src/providers/mock';
 import { resolvers, typeDefs } from '../src/schema';
+import { store } from '../src/store';
 
 import type { GraphQLContext } from '../src/types';
 
-const mockCreateEnvelope = vi.mocked(createEnvelope);
-const mockGetEnvelopeByIdForUser = vi.mocked(getEnvelopeByIdForUser);
-const mockLogAuditEvent = vi.mocked(logAuditEvent);
-const mockGetAuditLogsByEnvelopeId = vi.mocked(getAuditLogsByEnvelopeId);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+// Seed a persisted envelope (ids are unique per test: the memory store is
+// shared across the file and is never cleared)
+const seedEnvelope = async (overrides: { status?: EnvelopeStatus; userId?: string } = {}) => {
+  const id = randomUUID();
+  const providerEnvelopeId = `docusign-secret-${randomUUID()}`;
+  const record = await store.createEnvelope({
+    id,
+    providerEnvelopeId,
+    userId: overrides.userId ?? 'user-123',
+    contractType: 'loan_agreement',
+    status: overrides.status ?? 'sent',
+  });
+  return record;
+};
 
 describe('GraphQL Schema', () => {
   let server: ApolloServer<GraphQLContext>;
@@ -41,18 +52,6 @@ describe('GraphQL Schema', () => {
 
   beforeEach(() => {
     clearEnvelopes();
-    vi.clearAllMocks();
-    // Setup default mock behavior for envelope creation
-    mockCreateEnvelope.mockImplementation(async (data) => ({
-      id: 'mock-internal-uuid-' + Date.now() + '-' + Math.random().toString(36).slice(2),
-      providerEnvelopeId: data.providerEnvelopeId,
-      userId: data.userId,
-      contractType: data.contractType,
-      status: 'sent',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }));
-    mockLogAuditEvent.mockResolvedValue(undefined);
   });
 
   describe('health query', () => {
@@ -112,15 +111,19 @@ describe('GraphQL Schema', () => {
         const data = response.body.singleResult.data as {
           createEnvelope: { envelopeId: string; signingUrl: string };
         };
-        // envelopeId is our internal ID (not exposed to provider)
-        expect(data.createEnvelope.envelopeId).toBeDefined();
-        expect(data.createEnvelope.envelopeId).toContain('mock-internal-uuid-');
+        // envelopeId is our internal ID (not the provider's)
+        expect(data.createEnvelope.envelopeId).toMatch(UUID_RE);
         // signingUrl contains provider's envelope ID (different from our internal ID)
         expect(data.createEnvelope.signingUrl).toContain('/signing/mock/');
-        // Verify envelope was persisted to database
-        expect(mockCreateEnvelope).toHaveBeenCalled();
+        expect(data.createEnvelope.signingUrl).not.toContain(data.createEnvelope.envelopeId);
+        // Verify envelope was persisted to the store
+        const persisted = await store.getEnvelopeById(data.createEnvelope.envelopeId);
+        expect(persisted).not.toBeNull();
+        expect(persisted!.status).toBe('sent');
         // Verify audit log was created
-        expect(mockLogAuditEvent).toHaveBeenCalled();
+        const audit = await store.listAuditEntries(data.createEnvelope.envelopeId);
+        expect(audit).toHaveLength(1);
+        expect(audit[0].action).toBe('initiated');
       }
     });
 
@@ -159,26 +162,27 @@ describe('GraphQL Schema', () => {
       expect(response.body.kind).toBe('single');
       if (response.body.kind === 'single') {
         expect(response.body.singleResult.errors).toBeUndefined();
-        // Verify envelope was saved with correct fields
-        expect(mockCreateEnvelope).toHaveBeenCalledWith(
-          expect.objectContaining({
-            userId: 'test-user-456',
-            contractType: 'rental_agreement',
-            // providerEnvelopeId is the provider's ID (not checked here, just exists)
-            providerEnvelopeId: expect.any(String),
-          }),
-          expect.anything()
-        );
-        // Verify audit log was created
-        expect(mockLogAuditEvent).toHaveBeenCalledWith(
-          expect.any(String),
-          'initiated',
-          expect.objectContaining({
-            contractType: 'rental_agreement',
-            userId: 'test-user-456',
-          }),
-          expect.anything()
-        );
+        const data = response.body.singleResult.data as {
+          createEnvelope: { envelopeId: string; signingUrl: string };
+        };
+        // Verify envelope was saved with correct fields, including the
+        // provider's id (the one the signing URL points at)
+        const persisted = await store.getEnvelopeById(data.createEnvelope.envelopeId);
+        expect(persisted).toMatchObject({
+          userId: 'test-user-456',
+          contractType: 'rental_agreement',
+          status: 'sent',
+          providerEnvelopeId: expect.any(String),
+        });
+        expect(data.createEnvelope.signingUrl).toContain(persisted!.providerEnvelopeId);
+        // Verify audit log was created with sanitized (PII-free) metadata
+        const audit = await store.listAuditEntries(data.createEnvelope.envelopeId);
+        expect(audit).toHaveLength(1);
+        expect(audit[0].action).toBe('initiated');
+        expect(audit[0].metadata).toEqual({
+          contractType: 'rental_agreement',
+          userId: 'test-user-456',
+        });
       }
     });
 
@@ -204,6 +208,13 @@ describe('GraphQL Schema', () => {
           createEnvelope: { envelopeId: string };
         };
         expect(data1.createEnvelope.envelopeId).not.toBe(data2.createEnvelope.envelopeId);
+        // Each is owned by its creator
+        expect((await store.getEnvelopeById(data1.createEnvelope.envelopeId))!.userId).toBe(
+          'user-1'
+        );
+        expect((await store.getEnvelopeById(data2.createEnvelope.envelopeId))!.userId).toBe(
+          'user-2'
+        );
       }
     });
 
@@ -247,9 +258,10 @@ describe('GraphQL Schema', () => {
         expect(envelope).not.toHaveProperty('providerEnvelopeId');
         expect(Object.keys(envelope)).toEqual(['envelopeId', 'signingUrl']);
 
-        // Verify envelopeId is our internal ID (not the docusign ID)
-        // Our internal ID starts with 'mock-internal-uuid-'
-        expect(envelope.envelopeId).toContain('mock-internal-uuid-');
+        // Verify envelopeId is our internal ID, not the provider's
+        const persisted = await store.getEnvelopeById(envelope.envelopeId as string);
+        expect(persisted).not.toBeNull();
+        expect(envelope.envelopeId).not.toBe(persisted!.providerEnvelopeId);
       }
     });
 
@@ -448,7 +460,7 @@ describe('GraphQL Schema', () => {
       });
 
       it('should default to UNKNOWN_ERROR when the provider throws a non-object', async () => {
-        // Arrange - provider rejects with a plain string, not a GraphQL error object
+        // Arrange - provider rejects with a plain string, not a coded error object
         const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         const providerCreateSpy = vi
           .spyOn(provider, 'createEnvelope')
@@ -496,7 +508,7 @@ describe('GraphQL Schema', () => {
       });
 
       it('should default to UNKNOWN_ERROR for an object error with no code or extensions.code', async () => {
-        // Arrange - an object that's neither a GraphQL error nor a plain
+        // Arrange - an object that's neither a coded error nor a plain
         // { code } shape, e.g. an unexpected object thrown by a dependency
         const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         const providerCreateSpy = vi
@@ -557,7 +569,11 @@ describe('GraphQL Schema', () => {
       it('should return PERSISTENCE_FAILED and log when the DB transaction fails', async () => {
         // Arrange - provider succeeds, but persisting the envelope fails
         const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-        mockCreateEnvelope.mockRejectedValue(new Error('connection terminated'));
+        // Call-through spy so we learn the provider id the envelope would have had
+        const providerCreateSpy = vi.spyOn(provider, 'createEnvelope');
+        const transactionSpy = vi
+          .spyOn(store, 'transaction')
+          .mockRejectedValueOnce(new Error('connection terminated'));
 
         // Act
         const response = await server.executeOperation(
@@ -571,6 +587,7 @@ describe('GraphQL Schema', () => {
           expect(response.body.singleResult.errors).toBeDefined();
           const error = response.body.singleResult.errors![0];
           expect(error.extensions?.code).toBe(ErrorCodes.PERSISTENCE_FAILED);
+          expect(error.message).not.toContain('connection terminated');
         }
 
         // Assert - failure was logged server-side with the underlying message
@@ -579,14 +596,22 @@ describe('GraphQL Schema', () => {
           'connection terminated'
         );
 
+        // Assert - nothing was persisted for the provider envelope
+        const { envelopeId: providerEnvelopeId } = await providerCreateSpy.mock.results[0].value;
+        expect(await store.getEnvelopeByProviderEnvelopeId(providerEnvelopeId)).toBeNull();
+
         // Cleanup
         consoleErrorSpy.mockRestore();
+        providerCreateSpy.mockRestore();
+        transactionSpy.mockRestore();
       });
 
       it('should log the raw value when the DB transaction rejects with a non-Error', async () => {
         // Arrange
         const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-        mockCreateEnvelope.mockRejectedValue('raw persistence failure');
+        const transactionSpy = vi
+          .spyOn(store, 'transaction')
+          .mockRejectedValueOnce('raw persistence failure');
 
         // Act
         const response = await server.executeOperation(
@@ -607,6 +632,37 @@ describe('GraphQL Schema', () => {
 
         // Cleanup
         consoleErrorSpy.mockRestore();
+        transactionSpy.mockRestore();
+      });
+
+      it('should roll back the envelope when the audit entry cannot be written', async () => {
+        // Arrange - the envelope insert succeeds inside the transaction but the
+        // audit write fails; the memory store restores its snapshot on throw
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const providerCreateSpy = vi.spyOn(provider, 'createEnvelope');
+        const appendSpy = vi
+          .spyOn(store, 'appendAuditEntry')
+          .mockRejectedValueOnce(new Error('audit insert failed'));
+
+        // Act
+        const response = await server.executeOperation(
+          { query: CREATE_ENVELOPE_MUTATION, variables: { input: validInput } },
+          { contextValue: { userId: 'user-123' } }
+        );
+
+        // Assert - atomic: no envelope without its audit entry
+        expect(response.body.kind).toBe('single');
+        if (response.body.kind === 'single') {
+          const error = response.body.singleResult.errors![0];
+          expect(error.extensions?.code).toBe(ErrorCodes.PERSISTENCE_FAILED);
+        }
+        const { envelopeId: providerEnvelopeId } = await providerCreateSpy.mock.results[0].value;
+        expect(await store.getEnvelopeByProviderEnvelopeId(providerEnvelopeId)).toBeNull();
+
+        // Cleanup
+        consoleErrorSpy.mockRestore();
+        providerCreateSpy.mockRestore();
+        appendSpy.mockRestore();
       });
     });
   });
@@ -623,23 +679,13 @@ describe('GraphQL Schema', () => {
       }
     `;
 
-    const mockEnvelope = {
-      id: 'uuid-123',
-      providerEnvelopeId: 'docusign-secret-id',
-      userId: 'user-123',
-      contractType: 'loan_agreement',
-      status: 'sent',
-      createdAt: new Date('2026-02-01T12:00:00.000Z'),
-      updatedAt: new Date('2026-02-01T12:00:00.000Z'),
-    };
-
     it('should return envelope for authenticated user', async () => {
       // Arrange
-      mockGetEnvelopeByIdForUser.mockResolvedValue(mockEnvelope);
+      const seeded = await seedEnvelope();
 
       // Act
       const response = await server.executeOperation(
-        { query: ENVELOPE_QUERY, variables: { id: 'uuid-123' } },
+        { query: ENVELOPE_QUERY, variables: { id: seeded.id } },
         { contextValue: { userId: 'user-123' } }
       );
 
@@ -650,17 +696,14 @@ describe('GraphQL Schema', () => {
         const data = response.body.singleResult.data as {
           envelope: { id: string; status: string; contractType: string; createdAt: string };
         };
-        expect(data.envelope.id).toBe('uuid-123');
+        expect(data.envelope.id).toBe(seeded.id);
         expect(data.envelope.status).toBe('sent');
         expect(data.envelope.contractType).toBe('loan_agreement');
-        expect(data.envelope.createdAt).toBe('2026-02-01T12:00:00.000Z');
+        expect(data.envelope.createdAt).toBe(seeded.createdAt.toISOString());
       }
     });
 
     it('should return ENVELOPE_NOT_FOUND for non-existent envelope', async () => {
-      // Arrange
-      mockGetEnvelopeByIdForUser.mockResolvedValue(null);
-
       // Act
       const response = await server.executeOperation(
         { query: ENVELOPE_QUERY, variables: { id: 'non-existent-id' } },
@@ -679,12 +722,11 @@ describe('GraphQL Schema', () => {
 
     it('should return ENVELOPE_NOT_FOUND for other user envelope (no info leak)', async () => {
       // Arrange - envelope exists but belongs to different user
-      // The getEnvelopeByIdForUser returns null when user doesn't match
-      mockGetEnvelopeByIdForUser.mockResolvedValue(null);
+      const seeded = await seedEnvelope({ userId: 'user-123' });
 
       // Act
       const response = await server.executeOperation(
-        { query: ENVELOPE_QUERY, variables: { id: 'uuid-123' } },
+        { query: ENVELOPE_QUERY, variables: { id: seeded.id } },
         { contextValue: { userId: 'different-user' } }
       );
 
@@ -701,9 +743,12 @@ describe('GraphQL Schema', () => {
     });
 
     it('should return UNAUTHORIZED for unauthenticated request', async () => {
+      // Arrange
+      const seeded = await seedEnvelope();
+
       // Act
       const response = await server.executeOperation(
-        { query: ENVELOPE_QUERY, variables: { id: 'uuid-123' } },
+        { query: ENVELOPE_QUERY, variables: { id: seeded.id } },
         { contextValue: { userId: null } }
       );
 
@@ -719,11 +764,11 @@ describe('GraphQL Schema', () => {
 
     it('should NEVER expose providerEnvelopeId in response (security critical)', async () => {
       // Arrange
-      mockGetEnvelopeByIdForUser.mockResolvedValue(mockEnvelope);
+      const seeded = await seedEnvelope();
 
       // Act
       const response = await server.executeOperation(
-        { query: ENVELOPE_QUERY, variables: { id: 'uuid-123' } },
+        { query: ENVELOPE_QUERY, variables: { id: seeded.id } },
         { contextValue: { userId: 'user-123' } }
       );
 
@@ -738,20 +783,20 @@ describe('GraphQL Schema', () => {
         expect(envelope).not.toHaveProperty('providerEnvelopeId');
         expect(Object.keys(envelope).sort()).toEqual(['contractType', 'createdAt', 'id', 'status']);
 
-        // Verify we're returning internal ID, not docusign ID
-        expect(envelope.id).toBe('uuid-123');
-        expect(envelope.id).not.toBe('docusign-secret-id');
+        // Verify we're returning internal ID, not the provider's ID
+        expect(envelope.id).toBe(seeded.id);
+        expect(envelope.id).not.toBe(seeded.providerEnvelopeId);
+        expect(JSON.stringify(data)).not.toContain(seeded.providerEnvelopeId);
       }
     });
 
     it('should return completed status when envelope is completed', async () => {
       // Arrange
-      const completedEnvelope = { ...mockEnvelope, status: 'completed' };
-      mockGetEnvelopeByIdForUser.mockResolvedValue(completedEnvelope);
+      const seeded = await seedEnvelope({ status: 'completed' });
 
       // Act
       const response = await server.executeOperation(
-        { query: ENVELOPE_QUERY, variables: { id: 'uuid-123' } },
+        { query: ENVELOPE_QUERY, variables: { id: seeded.id } },
         { contextValue: { userId: 'user-123' } }
       );
 
@@ -811,30 +856,19 @@ describe('GraphQL Schema', () => {
       }
     `;
 
-    const mockEnvelope = {
-      id: 'uuid-123',
-      providerEnvelopeId: 'docusign-envelope-id',
-      userId: 'user-123',
-      contractType: 'loan_agreement',
-      status: 'sent',
-      createdAt: new Date('2026-02-01T12:00:00.000Z'),
-      updatedAt: new Date('2026-02-01T12:00:00.000Z'),
-    };
-
-    const validInput = {
-      envelopeId: 'uuid-123',
-      recipient: { name: 'John Doe', email: 'john@example.com' },
-    };
+    const recipient = { name: 'John Doe', email: 'john@example.com' };
 
     it('should return new signingUrl for valid request', async () => {
-      // Arrange
-      mockGetEnvelopeByIdForUser.mockResolvedValue(mockEnvelope);
-      // Add envelope to MockProvider so provider.getSigningUrl works
-      addEnvelope(mockEnvelope.providerEnvelopeId, { status: 'sent', userId: 'user-123' });
+      // Arrange - persisted envelope the provider also knows about
+      const seeded = await seedEnvelope();
+      addEnvelope(seeded.providerEnvelopeId, { status: 'sent', userId: 'user-123' });
 
       // Act
       const response = await server.executeOperation(
-        { query: GET_SIGNING_URL_MUTATION, variables: { input: validInput } },
+        {
+          query: GET_SIGNING_URL_MUTATION,
+          variables: { input: { envelopeId: seeded.id, recipient } },
+        },
         { contextValue: { userId: 'user-123' } }
       );
 
@@ -847,22 +881,26 @@ describe('GraphQL Schema', () => {
         };
         expect(data.getSigningUrl.signingUrl).toBeDefined();
         expect(data.getSigningUrl.signingUrl).toContain('/signing/mock/');
-        // Verify audit log was created for session restart
-        expect(mockLogAuditEvent).toHaveBeenCalledWith(
-          'uuid-123',
-          'session_restart',
-          expect.anything()
-        );
+        // Verify audit log was created for session restart (PII-free metadata)
+        const audit = await store.listAuditEntries(seeded.id);
+        expect(audit).toHaveLength(1);
+        expect(audit[0].action).toBe('session_restart');
+        expect(audit[0].metadata).toEqual({ userId: 'user-123' });
+        // Status is unchanged by a restart
+        expect((await store.getEnvelopeById(seeded.id))!.status).toBe('sent');
       }
     });
 
     it('should return UNAUTHORIZED without auth', async () => {
       // Arrange
-      mockGetEnvelopeByIdForUser.mockResolvedValue(mockEnvelope);
+      const seeded = await seedEnvelope();
 
       // Act
       const response = await server.executeOperation(
-        { query: GET_SIGNING_URL_MUTATION, variables: { input: validInput } },
+        {
+          query: GET_SIGNING_URL_MUTATION,
+          variables: { input: { envelopeId: seeded.id, recipient } },
+        },
         { contextValue: { userId: null } }
       );
 
@@ -873,15 +911,19 @@ describe('GraphQL Schema', () => {
         const error = response.body.singleResult.errors![0];
         expect(error.extensions?.code).toBe(ErrorCodes.UNAUTHORIZED);
       }
+      // No audit entry for the rejected restart
+      expect(await store.listAuditEntries(seeded.id)).toEqual([]);
     });
 
     it('should return VALIDATION_ERROR for an over-length recipient name', async () => {
+      const seeded = await seedEnvelope();
+
       const response = await server.executeOperation(
         {
           query: GET_SIGNING_URL_MUTATION,
           variables: {
             input: {
-              envelopeId: 'uuid-123',
+              envelopeId: seeded.id,
               recipient: { name: 'n'.repeat(201), email: 'john@example.com' },
             },
           },
@@ -898,12 +940,12 @@ describe('GraphQL Schema', () => {
     });
 
     it('should return ENVELOPE_NOT_FOUND for non-existent envelope', async () => {
-      // Arrange
-      mockGetEnvelopeByIdForUser.mockResolvedValue(null);
-
       // Act
       const response = await server.executeOperation(
-        { query: GET_SIGNING_URL_MUTATION, variables: { input: validInput } },
+        {
+          query: GET_SIGNING_URL_MUTATION,
+          variables: { input: { envelopeId: randomUUID(), recipient } },
+        },
         { contextValue: { userId: 'user-123' } }
       );
 
@@ -918,11 +960,15 @@ describe('GraphQL Schema', () => {
 
     it('should return ENVELOPE_NOT_FOUND for other user envelope (ownership check)', async () => {
       // Arrange - envelope exists but user doesn't own it
-      mockGetEnvelopeByIdForUser.mockResolvedValue(null);
+      const seeded = await seedEnvelope({ userId: 'user-123' });
+      addEnvelope(seeded.providerEnvelopeId, { status: 'sent', userId: 'user-123' });
 
       // Act
       const response = await server.executeOperation(
-        { query: GET_SIGNING_URL_MUTATION, variables: { input: validInput } },
+        {
+          query: GET_SIGNING_URL_MUTATION,
+          variables: { input: { envelopeId: seeded.id, recipient } },
+        },
         { contextValue: { userId: 'different-user' } }
       );
 
@@ -933,18 +979,21 @@ describe('GraphQL Schema', () => {
         const error = response.body.singleResult.errors![0];
         expect(error.extensions?.code).toBe(ErrorCodes.ENVELOPE_NOT_FOUND);
       }
+      expect(await store.listAuditEntries(seeded.id)).toEqual([]);
     });
 
     it('should return VALIDATION_ERROR for completed envelope', async () => {
       // Arrange - envelope is already completed
-      const completedEnvelope = { ...mockEnvelope, status: 'completed' };
-      mockGetEnvelopeByIdForUser.mockResolvedValue(completedEnvelope);
+      const seeded = await seedEnvelope({ status: 'completed' });
       // Add envelope to MockProvider (not strictly needed since validation happens before provider call)
-      addEnvelope(mockEnvelope.providerEnvelopeId, { status: 'completed', userId: 'user-123' });
+      addEnvelope(seeded.providerEnvelopeId, { status: 'completed', userId: 'user-123' });
 
       // Act
       const response = await server.executeOperation(
-        { query: GET_SIGNING_URL_MUTATION, variables: { input: validInput } },
+        {
+          query: GET_SIGNING_URL_MUTATION,
+          variables: { input: { envelopeId: seeded.id, recipient } },
+        },
         { contextValue: { userId: 'user-123' } }
       );
 
@@ -956,6 +1005,7 @@ describe('GraphQL Schema', () => {
         expect(error.extensions?.code).toBe(ErrorCodes.VALIDATION_ERROR);
         expect(error.message).toContain('Cannot restart');
       }
+      expect(await store.listAuditEntries(seeded.id)).toEqual([]);
     });
 
     it('should return VALIDATION_ERROR for empty envelopeId', async () => {
@@ -963,7 +1013,7 @@ describe('GraphQL Schema', () => {
       const response = await server.executeOperation(
         {
           query: GET_SIGNING_URL_MUTATION,
-          variables: { input: { envelopeId: '', recipient: validInput.recipient } },
+          variables: { input: { envelopeId: '', recipient } },
         },
         { contextValue: { userId: 'user-123' } }
       );
@@ -984,7 +1034,7 @@ describe('GraphQL Schema', () => {
         {
           query: GET_SIGNING_URL_MUTATION,
           variables: {
-            input: { envelopeId: 'uuid-123', recipient: { name: '', email: 'john@example.com' } },
+            input: { envelopeId: randomUUID(), recipient: { name: '', email: 'john@example.com' } },
           },
         },
         { contextValue: { userId: 'user-123' } }
@@ -1006,7 +1056,7 @@ describe('GraphQL Schema', () => {
         {
           query: GET_SIGNING_URL_MUTATION,
           variables: {
-            input: { envelopeId: 'uuid-123', recipient: { name: 'John', email: 'invalid' } },
+            input: { envelopeId: randomUUID(), recipient: { name: 'John', email: 'invalid' } },
           },
         },
         { contextValue: { userId: 'user-123' } }
@@ -1036,48 +1086,31 @@ describe('GraphQL Schema', () => {
       }
     `;
 
-    const mockEnvelope = {
-      id: 'uuid-123',
-      providerEnvelopeId: 'docusign-secret-id',
-      userId: 'user-123',
-      contractType: 'loan_agreement',
-      status: 'sent',
-      createdAt: new Date('2026-02-01T12:00:00.000Z'),
-      updatedAt: new Date('2026-02-01T12:00:00.000Z'),
-    };
-
-    const mockAuditLogs = [
-      {
-        id: 'log-3',
-        envelopeId: 'uuid-123',
-        action: 'completed',
-        timestamp: new Date('2026-02-01T14:00:00.000Z'),
-        metadata: { source: 'webhook' },
-      },
-      {
-        id: 'log-2',
-        envelopeId: 'uuid-123',
-        action: 'session_restart',
-        timestamp: new Date('2026-02-01T13:00:00.000Z'),
-        metadata: { userId: 'user-123' },
-      },
-      {
-        id: 'log-1',
-        envelopeId: 'uuid-123',
-        action: 'initiated',
-        timestamp: new Date('2026-02-01T12:00:00.000Z'),
-        metadata: { contractType: 'loan_agreement', userId: 'user-123' },
-      },
-    ];
-
     it('should return audit logs for owned envelope', async () => {
-      // Arrange
-      mockGetEnvelopeByIdForUser.mockResolvedValue(mockEnvelope);
-      mockGetAuditLogsByEnvelopeId.mockResolvedValue(mockAuditLogs);
+      // Arrange - three entries written in chronological order
+      const seeded = await seedEnvelope();
+      await store.appendAuditEntry({
+        id: 'log-1',
+        envelopeId: seeded.id,
+        action: 'initiated',
+        metadata: { contractType: 'loan_agreement', userId: 'user-123' },
+      });
+      await store.appendAuditEntry({
+        id: 'log-2',
+        envelopeId: seeded.id,
+        action: 'session_restart',
+        metadata: { userId: 'user-123' },
+      });
+      await store.appendAuditEntry({
+        id: 'log-3',
+        envelopeId: seeded.id,
+        action: 'completed',
+        metadata: { source: 'webhook' },
+      });
 
       // Act
       const response = await server.executeOperation(
-        { query: AUDIT_LOGS_QUERY, variables: { envelopeId: 'uuid-123' } },
+        { query: AUDIT_LOGS_QUERY, variables: { envelopeId: seeded.id } },
         { contextValue: { userId: 'user-123' } }
       );
 
@@ -1089,12 +1122,16 @@ describe('GraphQL Schema', () => {
           auditLogs: { id: string; action: string; timestamp: string; metadata: string | null }[];
         };
         expect(data.auditLogs).toHaveLength(3);
-        // Verify order: most recent first (timestamp desc)
-        expect(data.auditLogs[0].action).toBe('completed');
-        expect(data.auditLogs[1].action).toBe('session_restart');
-        expect(data.auditLogs[2].action).toBe('initiated');
+        // Verify order: most recent first
+        expect(data.auditLogs.map((log) => log.action)).toEqual([
+          'completed',
+          'session_restart',
+          'initiated',
+        ]);
+        expect(data.auditLogs.map((log) => log.id)).toEqual(['log-3', 'log-2', 'log-1']);
         // Verify timestamps are ISO strings
-        expect(data.auditLogs[0].timestamp).toBe('2026-02-01T14:00:00.000Z');
+        const stored = await store.listAuditEntries(seeded.id);
+        expect(data.auditLogs[0].timestamp).toBe(stored[0].timestamp.toISOString());
         // Verify metadata is serialized JSON
         expect(JSON.parse(data.auditLogs[0].metadata!)).toEqual({ source: 'webhook' });
       }
@@ -1102,12 +1139,11 @@ describe('GraphQL Schema', () => {
 
     it('should return empty array for envelope with no logs', async () => {
       // Arrange
-      mockGetEnvelopeByIdForUser.mockResolvedValue(mockEnvelope);
-      mockGetAuditLogsByEnvelopeId.mockResolvedValue([]);
+      const seeded = await seedEnvelope();
 
       // Act
       const response = await server.executeOperation(
-        { query: AUDIT_LOGS_QUERY, variables: { envelopeId: 'uuid-123' } },
+        { query: AUDIT_LOGS_QUERY, variables: { envelopeId: seeded.id } },
         { contextValue: { userId: 'user-123' } }
       );
 
@@ -1123,9 +1159,6 @@ describe('GraphQL Schema', () => {
     });
 
     it('should return ENVELOPE_NOT_FOUND for non-existent envelope', async () => {
-      // Arrange
-      mockGetEnvelopeByIdForUser.mockResolvedValue(null);
-
       // Act
       const response = await server.executeOperation(
         { query: AUDIT_LOGS_QUERY, variables: { envelopeId: 'non-existent' } },
@@ -1143,12 +1176,18 @@ describe('GraphQL Schema', () => {
     });
 
     it('should return ENVELOPE_NOT_FOUND for other user envelope (ownership check)', async () => {
-      // Arrange - envelope exists but user doesn't own it
-      mockGetEnvelopeByIdForUser.mockResolvedValue(null);
+      // Arrange - envelope exists (with logs) but user doesn't own it
+      const seeded = await seedEnvelope({ userId: 'user-123' });
+      await store.appendAuditEntry({
+        id: randomUUID(),
+        envelopeId: seeded.id,
+        action: 'initiated',
+        metadata: { userId: 'user-123' },
+      });
 
       // Act
       const response = await server.executeOperation(
-        { query: AUDIT_LOGS_QUERY, variables: { envelopeId: 'uuid-123' } },
+        { query: AUDIT_LOGS_QUERY, variables: { envelopeId: seeded.id } },
         { contextValue: { userId: 'different-user' } }
       );
 
@@ -1158,13 +1197,17 @@ describe('GraphQL Schema', () => {
         expect(response.body.singleResult.errors).toBeDefined();
         const error = response.body.singleResult.errors![0];
         expect(error.extensions?.code).toBe(ErrorCodes.ENVELOPE_NOT_FOUND);
+        expect(response.body.singleResult.data?.auditLogs ?? null).toBeNull();
       }
     });
 
     it('should return UNAUTHORIZED without auth', async () => {
+      // Arrange
+      const seeded = await seedEnvelope();
+
       // Act
       const response = await server.executeOperation(
-        { query: AUDIT_LOGS_QUERY, variables: { envelopeId: 'uuid-123' } },
+        { query: AUDIT_LOGS_QUERY, variables: { envelopeId: seeded.id } },
         { contextValue: { userId: null } }
       );
 
@@ -1213,22 +1256,18 @@ describe('GraphQL Schema', () => {
     });
 
     it('should handle null metadata in audit logs', async () => {
-      // Arrange
-      const logsWithNullMetadata = [
-        {
-          id: 'log-1',
-          envelopeId: 'uuid-123',
-          action: 'failed',
-          timestamp: new Date('2026-02-01T12:00:00.000Z'),
-          metadata: null,
-        },
-      ];
-      mockGetEnvelopeByIdForUser.mockResolvedValue(mockEnvelope);
-      mockGetAuditLogsByEnvelopeId.mockResolvedValue(logsWithNullMetadata);
+      // Arrange - a stored entry with no metadata (nullable column in Postgres)
+      const seeded = await seedEnvelope();
+      await store.appendAuditEntry({
+        id: 'log-null',
+        envelopeId: seeded.id,
+        action: 'failed',
+        metadata: null as unknown as Record<string, unknown>,
+      });
 
       // Act
       const response = await server.executeOperation(
-        { query: AUDIT_LOGS_QUERY, variables: { envelopeId: 'uuid-123' } },
+        { query: AUDIT_LOGS_QUERY, variables: { envelopeId: seeded.id } },
         { contextValue: { userId: 'user-123' } }
       );
 
@@ -1239,6 +1278,7 @@ describe('GraphQL Schema', () => {
         const data = response.body.singleResult.data as {
           auditLogs: { id: string; metadata: string | null }[];
         };
+        expect(data.auditLogs).toHaveLength(1);
         expect(data.auditLogs[0].metadata).toBeNull();
       }
     });

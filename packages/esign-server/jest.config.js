@@ -9,6 +9,8 @@ module.exports = {
     '/node_modules/',
     'src/index\\.ts$',
     'src/types\\.ts$',
+    // Test helpers are not product code
+    '/__tests__/support\\.ts$',
   ],
   // json-summary feeds scripts/coverage-badge.mjs (README badge + HTML report)
   coverageReporters: ['text', 'lcov', 'json-summary'],

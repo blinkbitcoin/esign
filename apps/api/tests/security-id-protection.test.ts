@@ -1,30 +1,37 @@
 // Security Tests: ID Protection
 // Verifies that DocuSign envelope IDs are NEVER exposed to clients
-// These tests serve as regression guards against accidental ID exposure
+// These tests serve as regression guards against accidental ID exposure.
+// They run the real envelope domain over an in-memory store, so what is
+// stored (the provider's id) can be compared with what the client gets.
 
+import { randomUUID } from 'node:crypto';
 import { ApolloServer } from '@apollo/server';
 import { vi } from 'vitest';
 
-vi.mock('../src/envelope');
-vi.mock('../src/audit');
-// schema.ts's createEnvelope resolver only uses knex.transaction() to wrap
-// calls to the (mocked) envelope/audit repository functions above - it never
-// runs a real query against `trx`, so a trivial stub is enough here.
-vi.mock('../src/db', () => ({
-  knex: { transaction: (cb: (trx: unknown) => unknown) => cb({}) },
-}));
+vi.mock('../src/store', async () => {
+  const { createMemoryEnvelopeStore } = await import('@blinkbitcoin/esign-server');
+  return { store: createMemoryEnvelopeStore(), createKnexEnvelopeStore: vi.fn() };
+});
 
-import { getAuditLogsByEnvelopeId, logAuditEvent } from '../src/audit';
-import { createEnvelope, getEnvelopeByIdForUser } from '../src/envelope';
 import { ErrorCodes } from '../src/errors';
 import { resolvers, typeDefs } from '../src/schema';
+import { store } from '../src/store';
 
 import type { GraphQLContext } from '../src/types';
 
-const mockCreateEnvelope = vi.mocked(createEnvelope);
-const mockGetEnvelopeByIdForUser = vi.mocked(getEnvelopeByIdForUser);
-const mockLogAuditEvent = vi.mocked(logAuditEvent);
-const mockGetAuditLogsByEnvelopeId = vi.mocked(getAuditLogsByEnvelopeId);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+// The provider id is deliberately conspicuous so any leak is easy to grep for
+const seedEnvelope = async (
+  overrides: { contractType?: string; status?: 'sent' | 'completed' } = {}
+) =>
+  store.createEnvelope({
+    id: randomUUID(),
+    providerEnvelopeId: `DOCUSIGN-SECRET-ID-NEVER-EXPOSE-${randomUUID()}`,
+    userId: 'user-123',
+    contractType: overrides.contractType ?? 'loan_agreement',
+    status: overrides.status ?? 'sent',
+  });
 
 describe('Security: ID Protection', () => {
   let server: ApolloServer<GraphQLContext>;
@@ -36,21 +43,6 @@ describe('Security: ID Protection', () => {
 
   afterAll(async () => {
     await server.stop();
-  });
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    // Setup default mock for envelope creation with explicit providerEnvelopeId
-    mockCreateEnvelope.mockImplementation(async (data) => ({
-      id: 'internal-uuid-12345',
-      providerEnvelopeId: 'DOCUSIGN-SECRET-ID-NEVER-EXPOSE',
-      userId: data.userId,
-      contractType: data.contractType,
-      status: 'sent',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }));
-    mockLogAuditEvent.mockResolvedValue(undefined);
   });
 
   // Verify Envelope type in schema has exactly these fields
@@ -227,11 +219,13 @@ describe('Security: ID Protection', () => {
           createEnvelope: { envelopeId: string; signingUrl: string };
         };
 
-        // envelopeId should be internal UUID (from our mock: 'internal-uuid-12345')
-        expect(data.createEnvelope.envelopeId).toBe('internal-uuid-12345');
-        // envelopeId should NOT be the docusign ID
-        expect(data.createEnvelope.envelopeId).not.toBe('DOCUSIGN-SECRET-ID-NEVER-EXPOSE');
-        expect(data.createEnvelope.envelopeId).not.toContain('DOCUSIGN');
+        // envelopeId should be our internal UUID - the key the store knows
+        expect(data.createEnvelope.envelopeId).toMatch(UUID_RE);
+        const persisted = await store.getEnvelopeById(data.createEnvelope.envelopeId);
+        expect(persisted).not.toBeNull();
+        // envelopeId should NOT be the provider's ID
+        expect(data.createEnvelope.envelopeId).not.toBe(persisted!.providerEnvelopeId);
+        expect(await store.getEnvelopeById(persisted!.providerEnvelopeId)).toBeNull();
       }
     });
 
@@ -276,21 +270,11 @@ describe('Security: ID Protection', () => {
       }
     `;
 
-    const mockEnvelope = {
-      id: 'internal-uuid-456',
-      providerEnvelopeId: 'DOCUSIGN-SECRET-ID-NEVER-EXPOSE',
-      userId: 'user-123',
-      contractType: 'loan_agreement',
-      status: 'sent',
-      createdAt: new Date('2026-02-01T12:00:00.000Z'),
-      updatedAt: new Date('2026-02-01T12:00:00.000Z'),
-    };
-
     it('should return ONLY id, status, contractType, createdAt', async () => {
-      mockGetEnvelopeByIdForUser.mockResolvedValue(mockEnvelope);
+      const seeded = await seedEnvelope();
 
       const response = await server.executeOperation(
-        { query: ENVELOPE_QUERY, variables: { id: 'internal-uuid-456' } },
+        { query: ENVELOPE_QUERY, variables: { id: seeded.id } },
         { contextValue: { userId: 'user-123' } }
       );
 
@@ -303,11 +287,13 @@ describe('Security: ID Protection', () => {
         // CRITICAL: Verify exact fields returned
         expect(Object.keys(envelope).sort()).toEqual(['contractType', 'createdAt', 'id', 'status']);
         expect(envelope).not.toHaveProperty('providerEnvelopeId');
+        expect(envelope.id).toBe(seeded.id);
+        expect(JSON.stringify(data)).not.toContain('DOCUSIGN-SECRET-ID-NEVER-EXPOSE');
       }
     });
 
     it('should not leak providerEnvelopeId even if requested via GraphQL', async () => {
-      mockGetEnvelopeByIdForUser.mockResolvedValue(mockEnvelope);
+      const seeded = await seedEnvelope();
 
       // Attempt to request providerEnvelopeId field
       const maliciousQuery = `
@@ -321,7 +307,7 @@ describe('Security: ID Protection', () => {
       `;
 
       const response = await server.executeOperation(
-        { query: maliciousQuery, variables: { id: 'internal-uuid-456' } },
+        { query: maliciousQuery, variables: { id: seeded.id } },
         { contextValue: { userId: 'user-123' } }
       );
 
@@ -330,6 +316,26 @@ describe('Security: ID Protection', () => {
       if (response.body.kind === 'single') {
         expect(response.body.singleResult.errors).toBeDefined();
         expect(response.body.singleResult.errors![0].message).toContain('providerEnvelopeId');
+        expect(JSON.stringify(response.body.singleResult)).not.toContain(
+          'DOCUSIGN-SECRET-ID-NEVER-EXPOSE'
+        );
+      }
+    });
+
+    it('should not resolve an envelope by its providerEnvelopeId', async () => {
+      // The provider's id must not double as a lookup key for clients
+      const seeded = await seedEnvelope();
+
+      const response = await server.executeOperation(
+        { query: ENVELOPE_QUERY, variables: { id: seeded.providerEnvelopeId } },
+        { contextValue: { userId: 'user-123' } }
+      );
+
+      expect(response.body.kind).toBe('single');
+      if (response.body.kind === 'single') {
+        expect(response.body.singleResult.errors![0].extensions?.code).toBe(
+          ErrorCodes.ENVELOPE_NOT_FOUND
+        );
       }
     });
   });
@@ -347,32 +353,17 @@ describe('Security: ID Protection', () => {
       }
     `;
 
-    const mockEnvelope = {
-      id: 'internal-uuid-789',
-      providerEnvelopeId: 'DOCUSIGN-SECRET-ID-NEVER-EXPOSE',
-      userId: 'user-123',
-      contractType: 'nda',
-      status: 'completed',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    const mockAuditLogs = [
-      {
-        id: 'log-1',
-        envelopeId: 'internal-uuid-789',
-        action: 'completed',
-        timestamp: new Date(),
-        metadata: { source: 'webhook', contractType: 'nda' },
-      },
-    ];
-
     it('should return audit logs without providerEnvelopeId in any field', async () => {
-      mockGetEnvelopeByIdForUser.mockResolvedValue(mockEnvelope);
-      mockGetAuditLogsByEnvelopeId.mockResolvedValue(mockAuditLogs);
+      const seeded = await seedEnvelope({ contractType: 'nda', status: 'completed' });
+      await store.appendAuditEntry({
+        id: 'log-1',
+        envelopeId: seeded.id,
+        action: 'completed',
+        metadata: { source: 'webhook', contractType: 'nda' },
+      });
 
       const response = await server.executeOperation(
-        { query: AUDIT_LOGS_QUERY, variables: { envelopeId: 'internal-uuid-789' } },
+        { query: AUDIT_LOGS_QUERY, variables: { envelopeId: seeded.id } },
         { contextValue: { userId: 'user-123' } }
       );
 
@@ -393,6 +384,7 @@ describe('Security: ID Protection', () => {
         // Verify metadata doesn't contain providerEnvelopeId
         const metadata = JSON.parse(log.metadata!);
         expect(metadata).not.toHaveProperty('providerEnvelopeId');
+        expect(JSON.stringify(data)).not.toContain('DOCUSIGN-SECRET-ID-NEVER-EXPOSE');
       }
     });
   });
@@ -400,8 +392,6 @@ describe('Security: ID Protection', () => {
   // Verify error responses contain no provider IDs
   describe('Error Response Security (AC: 3)', () => {
     it('should not include providerEnvelopeId in ENVELOPE_NOT_FOUND error', async () => {
-      mockGetEnvelopeByIdForUser.mockResolvedValue(null);
-
       const response = await server.executeOperation(
         {
           query: `query { envelope(id: "non-existent") { id status } }`,
@@ -479,7 +469,7 @@ describe('Security: ID Protection', () => {
         }
       `;
 
-      await server.executeOperation(
+      const response = await server.executeOperation(
         {
           query: createMutation,
           variables: {
@@ -492,10 +482,23 @@ describe('Security: ID Protection', () => {
         { contextValue: { userId: 'user-123' } }
       );
 
-      // Verify createEnvelope was called with providerEnvelopeId
-      expect(mockCreateEnvelope).toHaveBeenCalled();
-      const createCall = mockCreateEnvelope.mock.calls[0][0];
-      expect(createCall.providerEnvelopeId).toBeDefined();
+      expect(response.body.kind).toBe('single');
+      if (response.body.kind === 'single') {
+        const data = response.body.singleResult.data as {
+          createEnvelope: { envelopeId: string; signingUrl: string };
+        };
+
+        // The stored record carries the provider's id...
+        const persisted = await store.getEnvelopeById(data.createEnvelope.envelopeId);
+        expect(persisted!.providerEnvelopeId).toBeDefined();
+        expect(persisted!.providerEnvelopeId).not.toBe(data.createEnvelope.envelopeId);
+
+        // ...but the envelopeId handed to the client is never that id. (The
+        // signing URL necessarily embeds the provider's id - that is the
+        // provider's own page - so it is the envelopeId field that is guarded.)
+        expect(data.createEnvelope.envelopeId).not.toContain(persisted!.providerEnvelopeId);
+        expect(Object.keys(data.createEnvelope)).toEqual(['envelopeId', 'signingUrl']);
+      }
 
       // This confirms providerEnvelopeId IS stored in the database
       // Combined with the schema tests above, we prove it's stored but never exposed

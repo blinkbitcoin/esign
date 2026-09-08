@@ -1,10 +1,20 @@
 # @blinkbitcoin/esign-server
 
-The server-side half of the e-signature packages: a DocuSign client (JWT
-grant, envelopes from a template, Web Forms instances) and the **one call a
-backend needs for locked prefill**, `createWebFormInstance`. Node ≥ 18, no
-framework, no peers. The esign service (`apps/api`) is built on it; a host
-that already has a backend imports it instead of running that service.
+The server-side half of the e-signature packages, for any Node ≥ 18 backend,
+no framework, no peers:
+
+- a **DocuSign client** (JWT grant, envelopes from a template, embedded
+  signing views, Web Forms instances) and the **one call a backend needs for
+  locked prefill**, `createWebFormInstance`;
+- the **envelope domain** behind the proxy mode - `createEnvelopeService`
+  over two ports, an `ESignProvider` (DocuSign or the mock) and an
+  `EnvelopeStore` you implement on your database (an in-memory one ships) -
+  with authorization and ownership, input bounds, atomic persistence with an
+  audit trail, the restart rule and the webhook state machine.
+
+The esign service (`apps/api`) is this package plus Express, Apollo and a
+Postgres store; a host that already has a backend imports the package
+instead of running that service.
 
 ## Why a server call at all
 
@@ -50,6 +60,47 @@ Lower-level pieces, for hosts that need them:
 | `parseWebFormPrefill`, `assertWebFormPrefill`, `formatPrefillValue` | The prefill contract (string, number, string[], phone object) |
 | `withRetry`, `HttpError`, `isClientError`, `isNotFoundError` | Retry/backoff and error classification |
 | `createTokenProvider`, `createJwtAssertion` | The JWT grant on its own |
+
+## The envelope domain (proxy mode without hosting the service)
+
+```ts
+import {
+  createEnvelopeService, createDocuSignProvider, docuSignConfigFromEnv,
+  createMemoryEnvelopeStore, type EnvelopeStore,
+} from '@blinkbitcoin/esign-server';
+
+const provider = createDocuSignProvider({
+  config: docuSignConfigFromEnv(),
+  webhook: { hmacKey: () => process.env.DOCUSIGN_HMAC_KEY },
+});
+const store: EnvelopeStore = createMemoryEnvelopeStore(); // or your own, over your database
+const envelopes = createEnvelopeService({ provider, store });
+
+// In your API, with the authenticated user:
+const { envelopeId, signingUrl } = await envelopes.createEnvelope(userId, { contractType, recipient });
+const { signingUrl: again } = await envelopes.getSigningUrl(userId, { envelopeId, recipient }); // restart
+const view = await envelopes.getEnvelope(userId, envelopeId);          // never the provider's id
+const trail = await envelopes.getAuditLogs(userId, envelopeId);       // newest first, no PII
+
+// In your webhook route, with the RAW body bytes:
+if (!provider.verifyWebhook(req.headers, rawBody, req.ip)) return 401;
+const event = provider.parseWebhookEvent(rawBody);
+if (!event) return 400;
+await envelopes.handleWebhookEvent(event); // idempotent; terminal statuses never downgrade
+```
+
+Every failure is an `ESignError` with a `code` (`UNAUTHORIZED`,
+`ENVELOPE_NOT_FOUND`, `VALIDATION_ERROR`, `ENVELOPE_CREATION_FAILED`,
+`PROVIDER_UNAVAILABLE`, `PERSISTENCE_FAILED`, `SESSION_EXPIRED`) and a
+matching `extensions.code`, the wire contract the client packages map to
+messages. `createMockProvider` gives the same port without DocuSign for
+local runs and tests; `Tracing` and `Logger` are optional seams.
+
+| Store method | Contract |
+|---|---|
+| `transaction(fn)` | every write through the store `fn` receives commits together or not at all |
+| `createEnvelope`, `getEnvelopeById`, `getEnvelopeByIdForUser`, `getEnvelopeByProviderEnvelopeId`, `updateEnvelopeStatus` | envelope rows; the user-scoped read returns `null` for a wrong owner (no info leak); the update throws for an unknown id |
+| `appendAuditEntry`, `listAuditEntries` | audit rows, newest first |
 
 ## Configuration
 

@@ -1,128 +1,19 @@
-// Mock e-signature adapter for development and testing (no external API).
-// Implements the ESignProvider port and mirrors DocuSign's Connect webhook
-// format (delegating verify/parse to the DocuSign adapter) so the full webhook
-// path can be exercised without credentials.
+// The mock adapter for the service: the package's in-memory provider, with
+// signing pages served by this service (app.ts) and DocuSign's Connect
+// webhook format mirrored through the DocuSign adapter.
 
-import { randomUUID } from 'crypto';
-
-import { Errors } from '../errors';
-import type {
-  EnvelopeResult,
-  EnvelopeStatus,
-  RecipientData,
-  SigningUrlResult,
-  WebFormInstanceResult,
-  WebFormPrefill,
-  WebhookEvent,
-  WebhookHeaders,
-} from '../types';
+import { createMockProvider } from '@blinkbitcoin/esign-server';
 import { DocuSignProvider } from './docusign';
-import type { ESignProvider } from './port';
 
-// In-memory storage for mock envelopes
-const envelopes = new Map<
-  string,
-  { status: EnvelopeStatus; userId: string; contractType: string }
->();
+const handle = createMockProvider({
+  baseUrl: () => `http://localhost:${process.env.PORT || 4000}`,
+  webhook: DocuSignProvider,
+});
 
-// In-memory storage for mock Web Forms instances: the prefill minted with each
-// instance, so the mock web-form page can render it (like a real instance,
-// whose formValues DocuSign stores server-side and shows locked in the form)
-const webFormInstances = new Map<string, WebFormPrefill>();
+export const MockProvider = handle;
 
-const getBaseUrl = (): string => {
-  const port = process.env.PORT || 4000;
-  return `http://localhost:${port}`;
-};
-
-export const MockProvider: ESignProvider = {
-  async createEnvelope(
-    userId: string,
-    contractType: string,
-    _recipient: RecipientData
-  ): Promise<EnvelopeResult> {
-    const envelopeId = randomUUID();
-    envelopes.set(envelopeId, { status: 'sent', userId, contractType });
-    return {
-      envelopeId,
-      signingUrl: `${getBaseUrl()}/signing/mock/${envelopeId}`,
-    };
-  },
-
-  async getEnvelopeStatus(envelopeId: string): Promise<EnvelopeStatus> {
-    const envelope = envelopes.get(envelopeId);
-    if (!envelope) {
-      throw Errors.envelopeNotFound();
-    }
-    return envelope.status;
-  },
-
-  async getSigningUrl(envelopeId: string, _recipient: RecipientData): Promise<SigningUrlResult> {
-    const envelope = envelopes.get(envelopeId);
-    if (!envelope) {
-      throw Errors.envelopeNotFound();
-    }
-    return {
-      signingUrl: `${getBaseUrl()}/signing/mock/${envelopeId}?restart=true`,
-    };
-  },
-
-  // The mock simulates DocuSign's Connect callback format, so the full webhook
-  // path (signature validation, payload parsing, status sync) runs end-to-end
-  // without DocuSign credentials.
-  verifyWebhook(headers: WebhookHeaders, rawBody: string, ip?: string): boolean {
-    return DocuSignProvider.verifyWebhook(headers, rawBody, ip);
-  },
-
-  parseWebhookEvent(rawBody: string): WebhookEvent | null {
-    return DocuSignProvider.parseWebhookEvent(rawBody);
-  },
-
-  // Mock a DocuSign Web Forms instance: returns a URL to the local mock
-  // web-form page (which emits the real DocuSign event vocabulary), so the full
-  // Web Forms flow runs without credentials. The prefill is kept with the
-  // instance and rendered locked by the page (see getWebFormPrefill).
-  async createWebFormInstance(
-    userId: string,
-    prefill: WebFormPrefill
-  ): Promise<WebFormInstanceResult> {
-    const instanceId = randomUUID();
-    envelopes.set(instanceId, { status: 'sent', userId, contractType: 'webform' });
-    webFormInstances.set(instanceId, prefill);
-    return {
-      url: `${getBaseUrl()}/signing/mock-webform/${instanceId}`,
-      instanceId,
-    };
-  },
-};
-
-// The prefill a mock Web Forms instance was minted with (undefined for an
-// unknown instance, e.g. a public-form URL that never called createInstance)
-export const getWebFormPrefill = (instanceId: string): WebFormPrefill | undefined =>
-  webFormInstances.get(instanceId);
-
-// Test helper: Set envelope status for simulating status transitions
-export const setEnvelopeStatus = (envelopeId: string, status: EnvelopeStatus): void => {
-  const envelope = envelopes.get(envelopeId);
-  if (envelope) {
-    envelope.status = status;
-  }
-};
-
-// Test helper: Add envelope directly (for tests that mock the db but need provider state)
-export const addEnvelope = (
-  envelopeId: string,
-  options: { status?: EnvelopeStatus; userId?: string; contractType?: string } = {}
-): void => {
-  envelopes.set(envelopeId, {
-    status: options.status ?? 'sent',
-    userId: options.userId ?? 'test-user',
-    contractType: options.contractType ?? 'test-contract',
-  });
-};
-
-// Test helper: Clear all envelopes for test isolation
-export const clearEnvelopes = (): void => {
-  envelopes.clear();
-  webFormInstances.clear();
-};
+// Test helpers + the mock web-form page's prefill lookup
+export const setEnvelopeStatus = handle.setEnvelopeStatus;
+export const addEnvelope = handle.addEnvelope;
+export const clearEnvelopes = handle.clearEnvelopes;
+export const getWebFormPrefill = handle.getWebFormPrefill;

@@ -1,5 +1,4 @@
-import { GraphQLError } from 'graphql';
-import { createError, ErrorCodes, Errors } from '../src/errors';
+import { createError, ErrorCodes, Errors, ESignError } from '../src/errors';
 
 describe('ErrorCodes', () => {
   it('should have all expected error codes', () => {
@@ -13,10 +12,11 @@ describe('ErrorCodes', () => {
 });
 
 describe('createError', () => {
-  it('should create a GraphQL error with correct code', () => {
+  it('should create a coded error whose extensions.code reaches GraphQL clients', () => {
     const error = createError(ErrorCodes.UNAUTHORIZED, 'Test message');
 
-    expect(error).toBeInstanceOf(GraphQLError);
+    expect(error).toBeInstanceOf(ESignError);
+    expect(error).toBeInstanceOf(Error);
     expect(error.message).toBe('Test message');
     expect(error.extensions?.code).toBe('UNAUTHORIZED');
   });
@@ -111,8 +111,8 @@ describe('Errors', () => {
       for (const error of errors) {
         // No technical jargon in any error message
         expect(error.message).not.toMatch(/exception|stack|trace|HTTP|ECONNREFUSED/i);
-        // All should be GraphQL errors
-        expect(error).toBeInstanceOf(GraphQLError);
+        // All are coded errors (extensions.code is what GraphQL clients see)
+        expect(error).toBeInstanceOf(ESignError);
       }
     });
   });

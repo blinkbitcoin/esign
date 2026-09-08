@@ -17,6 +17,7 @@ import { provider } from './providers';
 import { getWebFormPrefill } from './providers/mock';
 import { supportsWebForms } from './providers/port';
 import { resolvers, typeDefs } from './schema';
+import { envelopeService } from './services';
 import {
   mockWebFormFields,
   renderMockSigningPage,
@@ -25,7 +26,6 @@ import {
 } from './signingPages';
 import { setActiveSpanAttributes } from './tracing';
 import type { GraphQLContext } from './types';
-import { handleWebhookEvent } from './webhook';
 
 // Body size cap for JSON/text payloads - the signing/webhook bodies are small,
 // so a tight limit bounds naive payload-flood DoS.
@@ -206,11 +206,11 @@ export const createApp = async (): Promise<express.Express> => {
 
       // Valid signature - process webhook normally
       try {
-        await handleWebhookEvent(event);
+        await envelopeService.handleWebhookEvent(event);
         res.status(200).json({ received: true });
       } catch (error) {
         // Transient processing failure (e.g. database outage): return 500 so
-        // the provider retries later. handleWebhookEvent is idempotent, so a
+        // the provider retries later. The handler is idempotent, so a
         // retry after recovery converges to the correct status - returning 200
         // here would permanently lose the update. Permanent conditions (unknown
         // envelope or status) are handled inside the handler and return 200.
