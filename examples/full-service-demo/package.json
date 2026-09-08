@@ -17,7 +17,8 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "schema:emit": "tsx scripts/emit-schema.ts"
+    "schema:emit": "tsx scripts/emit-schema.ts",
+    "docusign:check": "tsx scripts/docusign-check.ts"
   },
   "keywords": [],
   "author": "",

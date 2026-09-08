@@ -169,6 +169,15 @@ e2e-android: ## Maestro E2E, Android (needs: emulator, debug APK built, Metro + 
 test-live: ## Live verification against real DocuSign (skips unless DOCUSIGN_* set in examples/full-service-demo/.env)
 	npm run test:live -w examples/full-service-demo
 
+docusign-env: ## Write examples/full-service-demo/.env for a live run (ACCOUNT_ID= INTEGRATION_KEY= USER_ID= TEMPLATE_ID= WEBFORM_ID= [PEM=] [FORCE=1])
+	bash scripts/e2e/docusign-env.sh
+
+docusign-check: ## JWT grant + fetch the configured Web Form with that .env; prints the consent URL when consent is missing
+	npm run docusign:check -w examples/full-service-demo
+
+e2e-live: ## Full live run: start the service on DocuSign, API live test, Playwright locked-fields check against the fixture form, stop
+	bash scripts/e2e/live.sh
+
 # ---------- Container ----------
 
 docker-build: ## Build the service image (examples/full-service-demo/Dockerfile, from the repo root)
@@ -194,4 +203,4 @@ help: ## List available targets
 .PHONY: install hooks pods release release-rc version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
 	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check start ios android backend web db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-web-webform-live \
-	e2e-server-demos e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live docker-build docker-smoke clean reset help
+	e2e-server-demos e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live docusign-env docusign-check e2e-live docker-build docker-smoke clean reset help
