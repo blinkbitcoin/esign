@@ -7,27 +7,18 @@
 //
 //   node scripts/status-badge.mjs <name> <label> <result>
 //   e.g. node scripts/status-badge.mjs unit Unit success
-import { makeBadge } from 'badge-maker';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { STATUS_RESULTS, renderBadgeSvg } from './lib/badge.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = join(root, 'coverage', 'badge');
 
-// GitHub job results -> badge text/color. Anything else (a typo, a future
-// result value) is an error rather than a silently green badge.
-const RESULTS = {
-  success: { message: 'passing', color: 'brightgreen' },
-  failure: { message: 'failing', color: 'red' },
-  cancelled: { message: 'cancelled', color: 'lightgrey' },
-  skipped: { message: 'skipped', color: 'lightgrey' },
-};
-
 const [name, label, result] = process.argv.slice(2);
-if (!name || !label || !(result in RESULTS)) {
+if (!name || !label || !(result in STATUS_RESULTS)) {
   console.error(
-    `status-badge: usage: status-badge.mjs <name> <label> <${Object.keys(RESULTS).join('|')}>`,
+    `status-badge: usage: status-badge.mjs <name> <label> <${Object.keys(STATUS_RESULTS).join('|')}>`,
   );
   process.exit(1);
 }
@@ -36,11 +27,11 @@ if (!/^[a-z0-9-]+$/.test(name)) {
   process.exit(1);
 }
 
-const { message, color } = RESULTS[result];
+const { message, color } = STATUS_RESULTS[result];
 mkdirSync(OUT_DIR, { recursive: true });
 writeFileSync(
   join(OUT_DIR, `${name}.svg`),
-  makeBadge({ label, message, color, style: 'flat' }),
+  renderBadgeSvg({ label, message, color }),
 );
 writeFileSync(
   join(OUT_DIR, `${name}.json`),
