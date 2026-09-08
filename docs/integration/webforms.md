@@ -203,7 +203,7 @@ signer sees, API reference names are the prefill keys):
 | C locked terms | Subscription Plan | `plan` | Dropdown: Seed, Series A | yes | **yes** | `"seed"` |
 | C locked terms | Number of Units | `number_of_units` | Number | yes | **yes** | `1000` |
 | C locked terms | Total Subscription (USD) | `total_subscription_usd` | Number | yes | **yes** | `1000` |
-| C locked terms | Settlement Amount (BTC) | `settlement_amount_btc` | Number | yes | **yes** | `0.01268231` |
+| C locked terms | Settlement Amount (BTC) | `settlement_amount_btc` | Number (**max 2 decimals**, see notes) | yes | **yes** | `0.01` |
 | C locked terms | BTC/USD Conversion Rate | `btc_usd_rate` | Number | yes | **yes** | `78850` |
 | C locked terms | Rate Timestamp | `rate_timestamp` | Text | yes | **yes** | `"2026-09-08 10:44"` |
 | C locked terms | Settlement Date | `settlement_date` | Date (yyyy/mm/dd display) | yes | **yes** | `"2026-09-10"` |
@@ -211,6 +211,24 @@ signer sees, API reference names are the prefill keys):
 | D optional | Additional Notes | `notes` | Text | no | no | (none) |
 
 Notes from the build:
+
+- **Number fields accept at most 2 decimal places** (the form shows "Number
+  can have at most 2 decimal places" and blocks Next). A BTC amount with 8
+  decimals therefore cannot go into a Number field: send it as a Text field
+  (string) or as an integer amount in sats. The fixture keeps
+  `settlement_amount_btc` as a Number to document the limit; the live prefill
+  uses `0.01`. Field **types cannot be changed after the form has been
+  activated** (the Field Type selector disappears), so this stays as built.
+- **Demo vs production prefill by URL.** On the demo environment the public
+  form URL with `#field=value` DOES populate read-only fields, and DocuSign
+  shows a toast on the form: "Note that read-only fields must be populated
+  via API in a Production environment." So a demo-account public URL is a
+  handy manual smoke test, but it does not reproduce production behaviour;
+  only `createInstance` does.
+- **The public form URL is protected by a CAPTCHA**, which does not load in a
+  headless browser ("Unable to load CAPTCHA verification"), so Next never
+  works and the public URL cannot be driven by Playwright. API-minted
+  instances (`formUrl#instanceToken=…`) are what the live suite must open.
 
 - The two **recipient** fields (`Signer_name`, `Signer_email`) are what the
   builder adds to feed the envelope's signer; they are mapped under
@@ -238,15 +256,17 @@ fields are accepted without blocking submit.
 # Local live run against the fixture (backend on :4000 with ESIGN_PROVIDER=docusign
 # and DOCUSIGN_WEBFORM_ID=1228ee55-ce36-4b87-8646-39c93d50ee69)
 E2E_LIVE_API_ORIGIN=http://localhost:4000 \
-E2E_LIVE_PREFILL='{"Signer_name":"Test User","Signer_email":"test@example.com","full_name":"Test User","email":"test@example.com","newsletter":"yes","reference":"E2E-0001","number_of_units":1000,"total_subscription_usd":1000,"settlement_amount_btc":0.01268231,"btc_usd_rate":78850,"rate_timestamp":"2026-09-08 10:44","settlement_date":"2026-09-10"}' \
-E2E_LIVE_LOCKED_LABELS='{"Registration Reference":"E2E-0001","Number of Units":"1000","Total Subscription (USD)":"1000","Settlement Amount (BTC)":"0.01268231","BTC/USD Conversion Rate":"78850","Rate Timestamp":"2026-09-08 10:44"}' \
+E2E_LIVE_PREFILL='{"Signer_name":"Test User","Signer_email":"test@example.com","full_name":"Test User","email":"test@example.com","country":"Sweden","newsletter":"yes","reference":"E2E-0001","number_of_units":1000,"total_subscription_usd":1000,"settlement_amount_btc":0.01,"btc_usd_rate":78850,"rate_timestamp":"2026-09-08 10:44","settlement_date":"2026-09-10"}' \
+E2E_LIVE_LOCKED_LABELS='{"Registration Reference":"E2E-0001","Number of Units":"1000","Total Subscription (USD)":"1000","Settlement Amount (BTC)":"0.01","BTC/USD Conversion Rate":"78850","Rate Timestamp":"2026-09-08 10:44","Settlement Date":"2026/09/10"}' \
 make e2e-web-webform-live
 ```
 
-(Date and dropdown fields render their value in DocuSign's display format,
-so they are checked by presence in the prefill assertion rather than by
-label; add them to `E2E_LIVE_LOCKED_LABELS` once the displayed format is
-known.)
+The spec walks the form the way a signer does (Start, then Next page by
+page), collecting every field's label, value and read-only state, so labels
+can live on any page. A Date field displays in the format chosen in the
+builder (`yyyy/mm/dd` here, hence `"2026/09/10"` in the labels while the
+prefill is `"2026-09-10"`); dropdown and checkbox values display as their
+option labels.
 
 ## Verified against DocuSign docs (2026-07, prefill rules 2026-09)
 

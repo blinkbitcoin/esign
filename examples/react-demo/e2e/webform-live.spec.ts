@@ -68,28 +68,88 @@ const mintInstanceUrl = async (request: APIRequestContext): Promise<string> => {
   return body.url;
 };
 
-// Wait for the DocuSign form to render its fields
-const openForm = async (page: Page, url: string) => {
-  await page.goto(url);
-  await expect(page.locator('input').first()).toBeVisible({ timeout: 60_000 });
-};
+interface SeenField {
+  label: string;
+  name: string;
+  value: string;
+  locked: boolean;
+}
 
-const displayedValues = (page: Page): Promise<string[]> =>
-  page
-    .locator('input')
-    .evaluateAll(inputs =>
-      inputs.map(input => (input as HTMLInputElement).value),
-    );
+// The fields on the current page: label (from <label for>, aria-label or
+// aria-labelledby), value and whether the signer can change it
+const fieldsOnPage = (page: Page): Promise<SeenField[]> =>
+  page.locator('input, select, textarea').evaluateAll(elements =>
+    elements.map(element => {
+      const el = element as HTMLInputElement;
+      const byFor = el.id
+        ? document.querySelector(`label[for="${CSS.escape(el.id)}"]`)
+        : null;
+      const byIds = el.getAttribute('aria-labelledby');
+      const labelled = byIds
+        ? byIds
+            .split(/\s+/)
+            .map(id => document.getElementById(id)?.textContent ?? '')
+            .join(' ')
+        : '';
+      const label = (
+        byFor?.textContent ??
+        el.getAttribute('aria-label') ??
+        labelled
+      )
+        .replace(/\s*\*\s*$/, '')
+        .trim();
+      return {
+        label,
+        name: el.name,
+        value: el.value,
+        locked: el.readOnly || el.disabled,
+      };
+    }),
+  );
+
+// A DocuSign Web Form opens on a welcome page and spreads its fields over
+// pages; walk Start → Next … until Next is gone, collecting every field.
+const walkForm = async (page: Page, url: string): Promise<SeenField[]> => {
+  await page.goto(url);
+  const start = page.getByRole('button', { name: 'Start' });
+  await expect(start).toBeVisible({ timeout: 60_000 });
+  await start.click();
+
+  const seen: SeenField[] = [];
+  for (let step = 0; step < 20; step++) {
+    await expect(page.locator('input, select, textarea').first()).toBeVisible({
+      timeout: 30_000,
+    });
+    seen.push(...(await fieldsOnPage(page)));
+    const next = page.getByRole('button', { name: 'Next' });
+    if ((await next.count()) === 0) {
+      break;
+    }
+    const before = await page.title();
+    await next.click();
+    // The page title carries the section name; a validation error keeps the
+    // page (title unchanged), so stop rather than loop forever
+    try {
+      await expect
+        .poll(() => page.title(), { timeout: 10_000 })
+        .not.toBe(before);
+    } catch {
+      break;
+    }
+  }
+  return seen;
+};
 
 test('live web form: minted prefill is shown, read-only fields cannot be changed', async ({
   page,
   request,
 }) => {
   const url = FORM_URL ?? (await mintInstanceUrl(request));
-  await openForm(page, url);
+  const fields = await walkForm(page, url);
+  expect(fields.length).toBeGreaterThan(0);
 
   // Every scalar prefill value is displayed somewhere in the form
-  const shown = await displayedValues(page);
+  const shown = fields.map(field => field.value);
   for (const [name, value] of Object.entries(PREFILL)) {
     if (typeof value === 'string' || typeof value === 'number') {
       expect(shown, `prefill "${name}" should be displayed`).toContain(
@@ -99,15 +159,12 @@ test('live web form: minted prefill is shown, read-only fields cannot be changed
   }
 
   // Fields marked read-only in the builder show the minted value and refuse
-  // input (DocuSign renders them disabled or readonly)
+  // input (DocuSign renders them readonly or disabled)
   for (const [label, expected] of Object.entries(LOCKED_LABELS)) {
-    const field = page.getByLabel(label, { exact: true }).first();
-    await expect(field, `field "${label}"`).toHaveValue(String(expected));
-    const locked = await field.evaluate(
-      el =>
-        (el as HTMLInputElement).readOnly || (el as HTMLInputElement).disabled,
-    );
-    expect(locked, `field "${label}" should be read-only`).toBe(true);
+    const field = fields.find(candidate => candidate.label === label);
+    expect(field, `field "${label}" should exist`).toBeDefined();
+    expect(field?.value, `field "${label}" value`).toBe(String(expected));
+    expect(field?.locked, `field "${label}" should be read-only`).toBe(true);
   }
 
   await page.screenshot({
