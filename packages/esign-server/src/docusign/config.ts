@@ -57,6 +57,21 @@ export const JWT_CREDENTIALS: readonly DocuSignConfigKey[] = [
 export type Env = Record<string, string | undefined>;
 
 // Read the DOCUSIGN_* variables (defaults to the demo environment URLs)
+// The OAuth scopes the JWT grant asks for: eSignature (envelopes, embedded
+// signing) plus the Web Forms API (read a form, mint and read instances).
+// The one-time consent must cover the same set (see consentUrl).
+export const DOCUSIGN_SCOPES =
+  'signature impersonation webforms_read webforms_instance_read webforms_instance_write';
+
+// The URL a human opens once to grant this integration key consent to
+// impersonate the user with DOCUSIGN_SCOPES. redirectUri must be registered
+// on the integration key; it is never used at runtime.
+export const consentUrl = (
+  config: Pick<DocuSignConfig, 'oauthBaseUrl' | 'integrationKey'>,
+  redirectUri: string,
+): string =>
+  `${config.oauthBaseUrl}/oauth/auth?response_type=code&scope=${encodeURIComponent(DOCUSIGN_SCOPES)}&client_id=${config.integrationKey ?? ''}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+
 export const docuSignConfigFromEnv = (
   env: Env = process.env,
 ): DocuSignConfig => ({

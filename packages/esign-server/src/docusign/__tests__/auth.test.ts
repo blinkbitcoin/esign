@@ -24,7 +24,8 @@ describe('createJwtAssertion', () => {
       aud: 'account-d.docusign.com',
       iat: 1_800_000_000,
       exp: 1_800_003_600,
-      scope: 'signature impersonation',
+      scope:
+        'signature impersonation webforms_read webforms_instance_read webforms_instance_write',
     });
   });
 

@@ -31,10 +31,14 @@ adapter works internally.
    request fails with `consent_required`). Open in a browser, log in, accept:
 
    ```
-   https://account-d.docusign.com/oauth/auth?response_type=code&scope=signature%20impersonation&client_id=<INTEGRATION_KEY>&redirect_uri=<REDIRECT_URI>
+   https://account-d.docusign.com/oauth/auth?response_type=code&scope=signature%20impersonation%20webforms_read%20webforms_instance_read%20webforms_instance_write&client_id=<INTEGRATION_KEY>&redirect_uri=<REDIRECT_URI>
    ```
 
-   The scope `signature impersonation` matches exactly what
+   (`make docusign-check` prints this URL filled in.) The scopes are
+   `DOCUSIGN_SCOPES` in the server package: eSignature plus the Web Forms
+   API, which has its own `webforms_*` scopes - a consent granted for
+   `signature impersonation` alone yields `AUTHORIZATION_INSUFFICIENT_SCOPE`
+   on every Web Forms call. The scope list matches exactly what
    `examples/full-service-demo/src/providers/docusign/` requests in its JWT assertion.
 4. From the Apps and Keys page, note the **API Account ID** and your
    **User ID** (both GUIDs).

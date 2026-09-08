@@ -4,7 +4,7 @@
 // exposes. `make docusign-check` (reads .env).
 import 'dotenv/config';
 
-import { createDocuSignClient } from '@blinkbitcoin/esign-server';
+import { consentUrl, createDocuSignClient } from '@blinkbitcoin/esign-server';
 import { getConfig, validateConfig } from '../src/providers/docusign/config';
 
 const main = async (): Promise<void> => {
@@ -16,10 +16,13 @@ const main = async (): Promise<void> => {
     token = await client.getAccessToken();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('consent_required')) {
+    if (message.includes('consent_required') || message.includes('insufficient_scope')) {
       console.error('consent has not been granted for this integration key. Open, log in, accept:');
       console.error(
-        `${config.oauthBaseUrl}/oauth/auth?response_type=code&scope=signature%20impersonation&client_id=${config.integrationKey}&redirect_uri=${encodeURIComponent(config.returnUrl?.replace(/\/signing\/return$/, '') ?? 'http://localhost:4000')}`
+        consentUrl(
+          config,
+          config.returnUrl?.replace(/\/signing\/return$/, '') ?? 'http://localhost:4000'
+        )
       );
       process.exit(2);
     }
