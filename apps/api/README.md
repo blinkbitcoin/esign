@@ -56,6 +56,25 @@ make migrate-test   # migrations against the tmpfs test DB (start it first:
 make e2e            # 14 E2E tests against real Postgres
 ```
 
+## Deploy
+
+The service ships as a container (`apps/api/Dockerfile`, built from the repo
+root so the workspace lockfile and `packages/esign-server` are inputs):
+
+```sh
+make docker-build                     # → esign-api (node 24 alpine, production deps only)
+make docker-smoke                     # boots it with the mock provider, checks /health
+docker run --rm --env-file apps/api/.env esign-api npm run migrate   # once per database
+docker run --rm -p 4000:4000 --env-file apps/api/.env esign-api      # serve
+```
+
+Configuration is the same `.env` as local (`.env.example`); with
+`ESIGN_PROVIDER=docusign` the JWT credentials and `DOCUSIGN_HMAC_KEY` are
+required at boot (fail-closed). The image runs as the unprivileged `node`
+user, exposes `4000` (`PORT` overrides) and carries a `/health` healthcheck.
+Hosts that would rather not run a service import `@blinkbitcoin/esign-server`
+instead (one function call, a Fetch handler, or the Express router).
+
 ## Key Paths
 
 | Path | Purpose |

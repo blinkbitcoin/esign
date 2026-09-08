@@ -166,6 +166,14 @@ e2e-android: ## Maestro E2E, Android (needs: emulator, debug APK built, Metro + 
 test-live: ## Live verification against real DocuSign (skips unless DOCUSIGN_* set in apps/api/.env)
 	npm run test:live -w apps/api
 
+# ---------- Container ----------
+
+docker-build: ## Build the service image (apps/api/Dockerfile, from the repo root)
+	docker build -f apps/api/Dockerfile -t esign-api .
+
+docker-smoke: docker-build ## Boot the image with the mock provider and hit /health
+	bash scripts/ci/docker-smoke.sh esign-api
+
 # ---------- Housekeeping ----------
 
 clean: ## Remove build output and caches (library lib/, coverage)
@@ -183,4 +191,4 @@ help: ## List available targets
 .PHONY: install hooks pods release release-rc version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
 	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check start ios android backend web db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-web-webform-live \
-	e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live clean reset help
+	e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live docker-build docker-smoke clean reset help

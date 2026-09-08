@@ -45,7 +45,8 @@ The ones that matter most: `make test` (unit + check-code), `make coverage`,
 E2E → teardown), `make e2e-web[-webform|-publicurl]` (Playwright), `make
 e2e-android` / `make e2e-ios` (Maestro, needs a running stack; `make
 e2e-backend-up` starts the mock-provider backend), `make db-up/migrate/backend`,
-`make ios/android/start/web`, `make pods`, `make build`, `make release`,
+`make ios/android/start/web`, `make pods`, `make build`, `make docker-build` /
+`make docker-smoke` (the service image, `apps/api/Dockerfile`), `make release`,
 `make clean/reset`. The underlying npm scripts:
 
 ```bash
