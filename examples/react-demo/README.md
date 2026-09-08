@@ -40,5 +40,9 @@ make build         # production build sanity check
 ```
 
 The browser E2E is the only place the iframe postMessage path runs against a
-genuinely cross-origin signing page (built app via `vite preview` :5173,
-page :4000).
+genuinely cross-origin signing page (built app via `vite preview`, the
+backend's mock page on another origin). Ports are per worktree so parallel
+checkouts never clash: `e2e/ports.ts` hashes the worktree path into a block
+(backend 4000+n, Vite 5173+3n for the three modes); `E2E_PORT_OFFSET=0`
+pins the canonical :4000 / :5173 set. In CI a listener already on a port is
+never adopted (`ciPolicy`).

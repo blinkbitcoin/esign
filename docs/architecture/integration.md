@@ -119,11 +119,12 @@ mobile↔backend boundary; the provider's envelope ID never leaves the backend.
   cancel-from-signing-page, session-timeout → restart → complete
 - **Backend E2E** (`apps/api/tests/e2e/`) exercises points 4 and 6 against
   real Postgres, including the full webhook signature/parsing path
-- **CI:** `.github/workflows/e2e.yml` (build-packages, backend, web, iOS, Android jobs, called by `ci.yml`); `ci.yml` releases the tarballs `build-packages` made to GitHub Packages
+- **CI:** `.github/workflows/e2e.yml` (build-packages, docker, backend, web, iOS, Android jobs, called by `ci.yml`); `ci.yml` releases the tarballs `build-packages` made to GitHub Packages and the service image `docker` smoked to GHCR
 - **Playwright** (`examples/react-demo/e2e/`) drives the web demo in real
   Chromium against the same backend+DB stack — the built demo (`vite
-  preview`, :5173, bundling the libraries' dist) embeds
-  the mock signing page (:4000) in a genuinely cross-origin iframe, so the
+  preview`, bundling the libraries' dist) embeds the backend's mock signing
+  page on another origin (per-worktree ports, `examples/react-demo/e2e/ports.ts`;
+  :5173 / :4000 with `E2E_PORT_OFFSET=0`) in a genuinely cross-origin iframe, so the
   window.postMessage path is exercised for real. Same four journeys as
   Maestro: smoke, happy path, cancel-from-page, timeout → restart
   (`make e2e-web` at the repo root runs the full lifecycle)
