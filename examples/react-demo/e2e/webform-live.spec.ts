@@ -98,11 +98,17 @@ const fieldsOnPage = (page: Page): Promise<SeenField[]> =>
       )
         .replace(/\s*\*\s*$/, '')
         .trim();
+      // A locked dropdown keeps the select enabled and disables its options
+      const options = Array.from(
+        (el as unknown as HTMLSelectElement).options ?? [],
+      );
+      const optionsLocked =
+        options.length > 0 && options.every(option => option.disabled);
       return {
         label,
         name: el.name,
         value: el.value,
-        locked: el.readOnly || el.disabled,
+        locked: el.readOnly || el.disabled || optionsLocked,
       };
     }),
   );
@@ -185,6 +191,48 @@ test('live web form: minted prefill is shown, read-only fields cannot be changed
     expect(field?.value, `field "${label}" value`).toBe(String(expected));
     expect(field?.locked, `field "${label}" should be read-only`).toBe(true);
   }
+
+  // Locked means locked: go back to the page that holds every field the
+  // walker saw as read-only (not only the labelled ones), try to change each
+  // one the way a signer would - click, type, fill, pick - and prove the
+  // minted value survives. The Summary's Edit button reopens the section.
+  const lockedLabels = [
+    ...new Set(
+      fields.filter(field => field.locked && field.label).map(f => f.label),
+    ),
+  ];
+  expect(lockedLabels.length).toBeGreaterThanOrEqual(
+    Object.keys(LOCKED_LABELS).length,
+  );
+  for (const label of Object.keys(LOCKED_LABELS)) {
+    expect(lockedLabels, 'locked fields seen').toContain(label);
+  }
+  await page
+    .getByRole('button', { name: /^Edit C\./ })
+    .first()
+    .click();
+  for (const label of lockedLabels) {
+    // DocuSign names its controls through aria, not <label>: match by role
+    const control = page
+      .getByRole('textbox', { name: label, exact: true })
+      .or(page.getByRole('combobox', { name: label, exact: true }))
+      .first();
+    await expect(control).toBeVisible();
+    const before = await control.inputValue();
+    const quick = { timeout: 1500, force: true } as const;
+    await control.click(quick).catch(() => undefined);
+    await page.keyboard.type('999').catch(() => undefined);
+    await control.fill('tampered', quick).catch(() => undefined);
+    await control.selectOption({ index: 1 }, quick).catch(() => undefined);
+    expect(
+      await control.inputValue(),
+      `locked field "${label}" must keep its minted value`,
+    ).toBe(before);
+    expect(before, `locked field "${label}" is populated`).not.toBe('');
+  }
+  console.log(
+    `[live] tamper-checked locked fields: ${lockedLabels.join(', ')}`,
+  );
 
   await page.screenshot({
     path: 'test-results/webform-live.png',

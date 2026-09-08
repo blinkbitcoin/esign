@@ -177,8 +177,11 @@ every required editable field (the form refuses Next while one is empty, so
 the walker could not reach the locked pages otherwise) and asserts the six
 locked labels (`scripts/e2e/live.sh` holds the defaults;
 `E2E_LIVE_PREFILL` / `E2E_LIVE_LOCKED_LABELS` override them). Verified
-green against the real form on 2026-09-09: every minted value is displayed,
-the group C fields are read-only, dates render as `yyyy/mm/dd`. Step by step:
+green against the real form on 2026-09-09: every minted value is displayed;
+the walk then reopens the locked-terms page and tries to change each of
+the eight group C fields the way a signer would (click, type, fill, pick),
+and every one keeps its minted value (a locked dropdown keeps the select
+enabled and disables its options); dates render as `yyyy/mm/dd`. Step by step:
 
 1. Complete the DocuSign account + JWT setup in
    [docusign-proxy.md](docusign-proxy.md) (consent, keys, account/user IDs).
