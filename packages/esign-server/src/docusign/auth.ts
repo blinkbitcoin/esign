@@ -36,9 +36,12 @@ export const createJwtAssertion = (
   const signingInput = `${base64Url(JSON.stringify(header))}.${base64Url(JSON.stringify(payload))}`;
 
   // JWT-grant signature (RS256), not a password hash: the payload carries the
-  // OAuth host as the `aud` claim, which is why static analysis flags it.
+  // OAuth host as the `aud` claim, which is why static analysis flags it
+  // (js/insufficient-password-hash, dismissed as a false positive in the
+  // repository's code-scanning alerts; inline markers are not honoured by
+  // GitHub's default CodeQL setup).
   const sign = createSign('RSA-SHA256');
-  sign.update(signingInput); // codeql[js/insufficient-password-hash]
+  sign.update(signingInput);
   const signature = base64Url(sign.sign(config.privateKey as string));
   return `${signingInput}.${signature}`;
 };
