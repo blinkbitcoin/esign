@@ -48,6 +48,9 @@ designing a form or a flow that must lock values the signer cannot change.
 | Framing an instance works | DocuSign sends no `frame-ancestors`; the real form and the signing ceremony both run inside the component's iframe. | `examples/react-demo/e2e/webform-live-demo.spec.ts` |
 | Instance tokens live ~5 minutes | Mint right before opening; never reuse a URL across runs. | [webforms.md](webforms.md) |
 | Repeat recipients skip steps | The e-signature disclosure and "Adopt and Sign" appear only on a recipient's first envelope; automation must treat both as optional. | `examples/react-demo/e2e/liveCeremony.ts` |
+| Verified in a React Native WebView too | `make e2e-ios-live` drives the real form inside the demo's WebView on the iOS simulator: minted with locked terms, walked, submitted, signed in the ceremony, completed through the bridge, `onComplete` with the envelope id. | `examples/react-native-demo/.maestro/webform-live.yaml`, `scripts/e2e/ios-live.sh` |
+| The ceremony asks for the device's location | DocuSign's signing ceremony requests geolocation. In a WebView on iOS that surfaces the system prompt when the app itself holds location access; the flow declines it and signing is unaffected. Hosts should expect it (or keep geolocation off in the WebView). | `webform-live.yaml` |
+| The ceremony is a canvas to automation | The Web Form's buttons and values are accessible by text; the signing ceremony's document is not. Maestro taps the Sign tab and Finish by position, so the live flow is pinned to one simulator layout. | `webform-live.yaml` |
 
 ## The DocuSign account side
 
@@ -65,7 +68,7 @@ designing a form or a flow that must lock values the signer cannot change.
 | Lesson | Detail | Where |
 |---|---|---|
 | One generic form covers the surface | "esign capability test form v2 (text amounts)" (`c640d957-a2d0-4e36-9975-5374afb02b54`): signer-entered, prefilled-editable, locked (Text, Dropdown), optional and a signable block. Rebuildable from the table. | [webforms.md](webforms.md), "The capability test form" |
-| What `make e2e-live` proves | JWT grant, instance mints, every minted value shown and every locked field refusing input (tamper loop), the real form inside the component submitted and signed, a proxy-mode signature, the small examples minting live. | [webforms.md](webforms.md), "Live run against real DocuSign" |
+| What `make e2e-live` proves | JWT grant, instance mints, every minted value shown and every locked field refusing input (tamper loop), the real form inside the component submitted and signed, a proxy-mode signature, the small examples minting live. `make e2e-ios-live` repeats the Web Form journey in the React Native demo. | [webforms.md](webforms.md), "Live run against real DocuSign" |
 | Expected failures must be loud | While the submission was refused the suite carried it as an expected failure that turns red when behaviour changes, and the runner printed the limitation. Green alone would have hidden the gap. | git history of `webform-live-demo.spec.ts` |
 | Bisect on copies, one change at a time | Rewriting the submission in flight ruled out the values; only builder copies with one setting changed each isolated the field types. | [webforms.md](webforms.md), bisect table |
 
@@ -76,5 +79,5 @@ designing a form or a flow that must lock values the signer cannot change.
   production account runs `make e2e-live`.
 - Whether DocuSign treats a locked Dropdown the same in production as in
   demo (it submits fine in demo).
-- A React Native run against the real form (the web runs are green; the
-  RN suite still uses the mock page).
+- The React Native live flow runs locally on a booted simulator (iPhone 16
+  Pro layout for the ceremony taps); it is not in CI.

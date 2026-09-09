@@ -78,6 +78,22 @@ read the response; the spec logs the `x-docusign-tracetoken` /
 does not capture the submission (it is not made with the user's
 credentials).
 
+## The React Native run (`make e2e-ios-live`)
+
+`scripts/e2e/ios-live.sh` shares the service bootstrap with `live.sh`
+(`live-service.sh`), starts Metro with `ESIGN_MODE=webform
+ESIGN_BACKEND_PORT=<LIVE_PORT> ESIGN_PREFILL=<fixture prefill>` (inlined
+by Babel - a Metro already on :8081 would serve a bundle without them, so
+the runner refuses to start next to one) and runs
+`.maestro/webform-live.yaml` on the booted simulator with the app
+installed. Inside the WebView the Web Form is accessible by text but its
+buttons sit below the fold (`scrollUntilVisible` before every tap); the
+signing ceremony exposes no text at all, so Sign (28%,78%) and Finish
+(50%,88%) are position taps for the iPhone 16 Pro. The ceremony requests
+geolocation: iOS shows the prompt when the app holds location access - the
+flow taps "Don’t Allow" (optional). Verified 2026-09-09: envelope created,
+signed, `onComplete` alert with the envelope id.
+
 ## What the walker expects from the fixture form
 
 Start → pages A (signer, required), B (prefilled editable), C (locked

@@ -181,6 +181,9 @@ docusign-check: ## JWT grant + fetch the configured Web Form with that .env; pri
 e2e-live: ## Full live run: start the service on DocuSign, API live test, Playwright locked-fields check against the fixture form, stop
 	bash scripts/e2e/live.sh
 
+e2e-ios-live: ## React Native live run: service on DocuSign + Metro (webform mode) + Maestro drives the real form in the WebView to a signed envelope
+	bash scripts/e2e/ios-live.sh
+
 # ---------- Container ----------
 
 docker-build: ## Build the service image (examples/full-service-demo/Dockerfile, from the repo root)
@@ -206,4 +209,4 @@ help: ## List available targets
 .PHONY: install hooks pods release release-rc version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
 	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check start ios android backend web db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-web-webform-live \
-	e2e-server-demos e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live docusign-env docusign-template docusign-check e2e-live docker-build docker-smoke clean reset help
+	e2e-server-demos e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live docker-build docker-smoke clean reset help

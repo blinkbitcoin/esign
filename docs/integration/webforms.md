@@ -174,6 +174,7 @@ The one-command version, once `.env` exists (`make docusign-env`, see
 ```sh
 make docusign-check   # JWT grant + the form is reachable (names the consent URL otherwise)
 make e2e-live         # service on DocuSign (LIVE_PORT, default 4010) → API live test → Playwright locked-fields check → stop
+make e2e-ios-live     # the same journey in the React Native demo's WebView (booted simulator with the app installed, Maestro)
 ```
 
 `make e2e-live` also runs the web demo against the live service in a real
@@ -185,7 +186,13 @@ mode (an envelope from the template, DocuSign's signing ceremony inside
 the iframe, a real signature adopted and applied, Finish, the bridge, the
 success screen; the E2E Postgres holds the envelope) - and boots the
 mint-only and serverless examples on the DocuSign provider to mint real
-instances. It mints with the
+instances. `make e2e-ios-live` (`scripts/e2e/ios-live.sh`) repeats the
+Web Form journey in the React Native demo: the service on DocuSign, a
+Metro bundled with `ESIGN_MODE=webform`, `ESIGN_BACKEND_PORT` and the
+fixture's `ESIGN_PREFILL`, and the Maestro flow `webform-live.yaml`
+driving the real form in the WebView to a signed envelope (tagged `live`,
+excluded from the default suites; the ceremony's Sign and Finish are
+tapped by position, so it is pinned to the iPhone 16 Pro simulator). It mints with the
 capability test form's group C values plus
 every required editable field (the form refuses Next while one is empty, so
 the walker could not reach the locked pages otherwise) and asserts the six
