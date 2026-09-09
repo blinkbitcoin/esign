@@ -218,8 +218,9 @@ The CI/release logic under `scripts/` is its own `tooling` npm workspace
 lives in `scripts/lib/*.mjs` (semver parsing, version resolution, badge
 rendering) and is covered by Vitest at the same 100% bar as the publishable
 packages and the backend; the CLI entry points that wrap it
-(`scripts/release/resolve-version.mjs`, `scripts/coverage-badge.mjs`,
-`scripts/status-badge.mjs`) are thin argv/env/git/fs wrappers and stay
+(`scripts/release/resolve-version.mjs`, `scripts/ci/manifest-structural.mjs`,
+`scripts/coverage-badge.mjs`, `scripts/status-badge.mjs`) are thin
+argv/env/git/fs wrappers and stay
 excluded from that coverage measurement by design. Shell scripts
 (`scripts/ci/changed-class.sh`, `scripts/ci/docs-freshness.sh`, ...) are
 exercised separately in `scripts/__tests__/*.test.mjs`, which shell out to
