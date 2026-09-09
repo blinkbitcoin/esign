@@ -12,6 +12,7 @@ import {
   blockFor,
   ciPolicy,
   fnv1a,
+  liveViteDevServer,
   portsForBlock,
   viteDevServer,
   vitePreviewServer,
@@ -86,6 +87,27 @@ describe('ciPolicy', () => {
       reuseExistingServer: false,
       retries: 1,
     });
+  });
+});
+
+describe('liveViteDevServer', () => {
+  it('points the webform demo at the live service and hands it the prefill', () => {
+    const server = liveViteDevServer('http://localhost:4010', '{"a":1}');
+    expect(server.command).toContain('VITE_API_ORIGIN=http://localhost:4010 ');
+    expect(server.command).toContain('VITE_ESIGN_MODE=webform ');
+    expect(server.command).toContain(`VITE_ESIGN_PREFILL='{"a":1}' `);
+    expect(server.command).toContain(
+      `--port ${PORTS.vite.webform} --strictPort`,
+    );
+    expect(server.url).toBe(baseURL('webform'));
+    expect(server.reuseExistingServer).toBe(false);
+    // No prefill → an empty object; single quotes never break the shell
+    expect(liveViteDevServer('http://x', undefined).command).toContain(
+      "VITE_ESIGN_PREFILL='{}'",
+    );
+    expect(liveViteDevServer('http://x', `{"n":"o'x"}`).command).toContain(
+      `VITE_ESIGN_PREFILL='{"n":"ox"}'`,
+    );
   });
 });
 

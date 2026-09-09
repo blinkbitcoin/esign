@@ -230,6 +230,50 @@ enabled and disables its options); dates render as `yyyy/mm/dd`. Step by step:
    `examples/react-demo/test-results/webform-live.png`.
 6. Run a demo in webform mode; it now embeds the real form.
 
+## Submitting a form with read-only fields (verified 2026-09-09, demo env)
+
+The one thing the live runs do **not** prove is a completed signing: on
+the capability test form, DocuSign refuses the submission itself. Every
+API-minted instance walks fine and shows the locked values, and then
+`Summary → Next` posts the form's values to
+`…/forms/<slug>/actions/ESignAction_…` and gets **422
+`UNPROCESSABLE_ERROR` "Request sent is well formed but otherwise
+invalid"** - the message the invest-flow team first saw. Measured, not
+guessed (scratch Playwright runs that mint, walk, submit and read the
+form's own network responses):
+
+| Experiment | Result |
+|---|---|
+| Joinder / Subscription Agreement forms (template-built, no read-only), embedded instance, no prefill | **200**, envelope created, signing URL returned |
+| Subscription Agreement form with every field API-prefilled but editable | **200** |
+| Capability test form (8 read-only fields), full prefill, with or without `returnUrl` | 422 |
+| … with the date sent back as ISO, or omitted; numbers as numbers; the dropdown label | 422 |
+| … with the read-only fields' template tabs made optional | 422 |
+| … with the read-only fields stripped from the submission | 400 "The field is required" for each of them |
+
+So: embedded instances, API prefill and locked *display* all work; what the
+demo environment refuses is completing a form that has read-only fields
+at all, whatever their values. The submission must carry the read-only
+values (the backend does not fill them from the instance) and then rejects
+the request without saying why. DocuSign's own toast on URL-prefilled
+read-only fields ("read-only fields must be populated via API in a
+Production environment") suggests the production environment behaves
+differently; that is unverified. Still open: the same test on a
+template-built form with one field made read-only (needs the builder),
+and a production account.
+
+**Consequences for a host that needs locked terms today:**
+
+- The proxy flow locks values reliably: `createEnvelopeFromTemplate` can
+  pass tab values marked `locked` on the template role, DocuSign renders
+  them read-only in the signing ceremony, and nothing is submitted by a
+  form. The data-collection part of a Web Form then lives in the app.
+- A Web Form with read-only fields cannot be completed in the demo
+  environment; treat "read-only in the builder" as unverified for
+  production until a production account confirms it.
+- Prefilling *editable* fields works everywhere; it is a suggestion, not
+  a lock.
+
 ## The capability test form (live E2E fixture)
 
 One generic Web Form in the DocuSign demo account, **"esign capability test

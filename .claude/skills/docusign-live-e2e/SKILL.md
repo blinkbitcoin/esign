@@ -39,6 +39,19 @@ Web Forms scopes, the packages built (`npm run build`) for Playwright.
 | `toBeVisible` on inputs times out at 80% | the Summary page has no inputs | walker stops on a page without inputs |
 | date prefill "should be displayed" | minted `2026-09-10`, rendered `2026/09/10` | dates compare on digits |
 
+## Submission is refused for the fixture form (demo env)
+
+`Summary → Next` on the capability test form answers 422
+`UNPROCESSABLE_ERROR`; template-built forms without read-only fields submit
+fine through the same embedded path (200 + envelope). Diagnosed with scratch
+Playwright scripts that `page.route()` the `/actions/ESignAction_…` POST to
+rewrite the multipart `formValues` and read the response: date format,
+number types, dropdown label, optional template tabs and `returnUrl` all
+ruled out; the read-only values must be submitted (stripping them → 400
+required). See docs/integration/webforms.md "Submitting a form with
+read-only fields". DocuSign's API request logging does not capture the
+submission (it is not made with the user's credentials).
+
 ## What the walker expects from the fixture form
 
 Start → pages A (signer, required), B (prefilled editable), C (locked

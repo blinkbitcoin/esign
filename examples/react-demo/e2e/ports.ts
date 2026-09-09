@@ -108,6 +108,20 @@ export const viteDevServer = (mode: Mode) => ({
   timeout: 30_000,
 });
 
+// Vite dev server for the LIVE webform run: the demo in webform mode against
+// an already-running service on the DocuSign provider (not this worktree's
+// mock backend), minting with the given prefill (JSON) - see
+// playwright.webform-live-demo.config.ts
+export const liveViteDevServer = (
+  apiOrigin: string,
+  prefill: string | undefined,
+) => ({
+  command: `VITE_API_ORIGIN=${apiOrigin} VITE_ESIGN_MODE=webform VITE_ESIGN_PREFILL='${(prefill ?? '{}').replace(/'/g, '')}' npm run dev -- --port ${PORTS.vite.webform} --strictPort`,
+  url: viteOrigin('webform'),
+  reuseExistingServer: false,
+  timeout: 30_000,
+});
+
 // Production build + preview (proxy spec: bundles the demo against the
 // packages' dist, what CI's Web job verifies)
 export const vitePreviewServer = (mode: Mode) => ({
