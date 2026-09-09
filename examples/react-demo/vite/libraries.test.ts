@@ -10,6 +10,8 @@ describe('sourceAliases', () => {
     const aliases = sourceAliases('/repo/packages');
 
     expect(aliases).toEqual({
+      '@blinkbitcoin/esign-react/docusign':
+        '/repo/packages/esign-react/src/docusign.ts',
       '@blinkbitcoin/esign-react': '/repo/packages/esign-react/src/index.ts',
       '@blinkbitcoin/esign-core/docusign':
         '/repo/packages/esign-core/src/docusign.ts',
@@ -23,6 +25,7 @@ describe('sourceAliases', () => {
     const aliases = sourceAliases('/repo/packages');
 
     expect(Object.keys(aliases)).toEqual([
+      '@blinkbitcoin/esign-react/docusign',
       '@blinkbitcoin/esign-react',
       '@blinkbitcoin/esign-core/docusign',
       '@blinkbitcoin/esign-core/webform',

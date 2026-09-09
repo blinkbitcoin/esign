@@ -85,7 +85,8 @@ esign/
 │       │   ├── useESignature.ts   #   Headless hook (embed: iframe | mount)
 │       │   ├── ESignature.tsx     #   Default UI over the hook
 │       │   ├── theme.ts           #   Base styles/copy + theme/styles/labels resolvers
-│       │   ├── docusignWebForms.ts# DocuSign.js SDK source (web-only)
+│       │   ├── docusign.ts        #   The DocuSign entry (./docusign subpath) ⭐
+│       │   ├── providers/docusign/#   DocuSign.js SDK source (web-only); docusignWebForms.ts is its deprecated shim
 │       │   └── types.ts
 │       ├── tsup.config.ts         # ESM + CJS + d.ts build
 │       └── dist/                  # Build output (gitignored)

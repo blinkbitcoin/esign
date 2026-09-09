@@ -15,7 +15,8 @@
     "types": ["jest"],
     "paths": {
       "@blinkbitcoin/esign-core": ["../esign-core/src/index.ts"],
-      "@blinkbitcoin/esign-core/docusign": ["../esign-core/src/docusign.ts"]
+      "@blinkbitcoin/esign-core/docusign": ["../esign-core/src/docusign.ts"],
+      "@blinkbitcoin/esign-react/docusign": ["./src/docusign.ts"]
     }
   },
   "include": ["src"],

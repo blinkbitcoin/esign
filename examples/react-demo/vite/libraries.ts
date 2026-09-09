@@ -6,6 +6,7 @@ import fs from 'node:fs';
 // the E2E then exercise exactly what a web consumer installs. `dist` comes
 // from `npm run build` at the repo root (`make e2e-web*` runs it).
 export const sourceAliases = (packagesDir: string) => ({
+  '@blinkbitcoin/esign-react/docusign': `${packagesDir}/esign-react/src/docusign.ts`,
   '@blinkbitcoin/esign-react': `${packagesDir}/esign-react/src/index.ts`,
   '@blinkbitcoin/esign-core/docusign': `${packagesDir}/esign-core/src/docusign.ts`,
   '@blinkbitcoin/esign-core/webform': `${packagesDir}/esign-core/src/webform.ts`,

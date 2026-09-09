@@ -45,6 +45,10 @@ for (const sub of ['webform', 'docusign']) {
   assert.match(require.resolve(`@blinkbitcoin/esign-react-native/${sub}`), new RegExp(`lib/commonjs/${sub}\\.js$`));
 }
 console.log('pack smoke: esign-react-native /webform + /docusign resolve');
+// The web package's /docusign subpath resolves through its export map
+// (not loaded: the component needs react)
+assert.match(require.resolve('@blinkbitcoin/esign-react/docusign'), /dist\/docusign\.cjs$/);
+console.log('pack smoke: esign-react /docusign resolves');
 // The server package: CJS entry loads on plain Node with no peers at all
 const server = require('@blinkbitcoin/esign-server');
 assert.equal(typeof server.createWebFormInstance, 'function');
