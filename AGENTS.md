@@ -74,7 +74,9 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
 - The `ESignProvider` port is the provider boundary - nothing provider-specific
   outside a `providers/<name>/` directory: `packages/esign-server/src/providers/docusign/`,
   `packages/esign-core/src/providers/docusign/`, `packages/esign-react/src/providers/docusign/`
-  and `examples/full-service-demo/src/providers/docusign/`; generic layers never
+  and `examples/full-service-demo/src/providers/docusign/`; a package's
+  `src/docusign.ts` is a one-line re-export of its `providers/docusign/`
+  surface (guard tests); generic layers never
   import a provider (guard tests), and providers are selected through
   `providerFromEnv` (`ESIGN_PROVIDER`)
 - GraphQL error codes are a wire contract: the `ErrorCode` enum in

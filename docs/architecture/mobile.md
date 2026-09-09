@@ -136,7 +136,8 @@ See [../integration/consuming.md](../integration/consuming.md).
 | File | Purpose |
 |------|---------|
 | `packages/esign-react-native/src/index.ts` | Library public API (full) |
-| `packages/esign-react-native/src/docusign.ts` | The DocuSign entry, Apollo-free (`./docusign`) |
+| `packages/esign-react-native/src/providers/docusign/entry.ts` | The DocuSign surface, Apollo-free: core's `/docusign` + the<br>component and hook |
+| `packages/esign-react-native/src/docusign.ts` | The `./docusign` entry: one line over the surface above |
 | `packages/esign-react-native/src/webform.ts` | Alias of `./docusign` (`./webform`) |
 | `examples/react-native-demo/index.js` | Demo app registration |
 | `examples/react-native-demo/App.tsx` | Demo root; `buildSource()` picks the mode via `ESIGN_MODE` |

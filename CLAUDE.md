@@ -100,7 +100,9 @@ npm run migrate:test         # Same against the .env.test database
   `packages/esign-react/src/providers/docusign/`, `packages/esign-server/src/providers/docusign/`)
   and in the service. The generic layers (`signing/`, the port, the pages, the
   handlers) never import a provider; guard tests enforce it. DocuSign code is
-  reached through the `./docusign` subpaths; `./webform` stays as an alias.
+  reached through the `./docusign` subpaths, whose `src/docusign.ts` entry
+  files are one-line re-exports of `providers/docusign/` (guard tests);
+  `./webform` stays as an alias.
 - The api resolves `@blinkbitcoin/esign-server` from source for typecheck,
   tests and `tsx` dev (`tsconfig.json` paths + vitest aliases); `npm run
   build` (`tsconfig.build.json`) needs the package's dist, so build the

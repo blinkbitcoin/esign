@@ -8,6 +8,7 @@ module.exports = {
     'src/index\\.ts$',
     'src/webform\\.ts$',
     'src/docusign\\.ts$',
+    'src/providers/docusign/entry\\.ts$',
     // Pure re-export barrel - nothing to cover
     'src/signing/index\\.ts$',
     'src/providers/docusign/index\\.ts$',

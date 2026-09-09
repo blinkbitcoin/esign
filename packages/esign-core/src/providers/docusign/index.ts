@@ -9,12 +9,6 @@ export type {
   WebFormPrefill,
   WebFormPrefillValue,
 } from './prefill';
-export {
-  createPublicUrlSource,
-  createWebFormsMinter,
-  createWebFormsSource,
-  resolveCreateInstance,
-} from './webFormsSource';
 export type {
   MintWebFormsInstanceOptions,
   PublicUrlSigningSourceOptions,
@@ -22,4 +16,10 @@ export type {
   WebFormsInstance,
   WebFormsMintOptions,
   WebFormsSigningSourceOptions,
+} from './webFormsSource';
+export {
+  createPublicUrlSource,
+  createWebFormsMinter,
+  createWebFormsSource,
+  resolveCreateInstance,
 } from './webFormsSource';

@@ -48,7 +48,7 @@ export const listSources = (dir: string): string[] =>
 // re-exports, and one-name aliases (`export const x = y;` / `export type X = Y;`)
 const COMMENT_RE = /\/\*[\s\S]*?\*\/|\/\/.*$/gm;
 const SHIM_STATEMENT_RE =
-  /^(?:import\s[\s\S]*?\sfrom\s+'[^']+'|export\s+(?:type\s+)?\{[\s\S]*?\}\s+from\s+'[^']+'|export\s+const\s+\w+\s*=\s*\w+|export\s+type\s+\w+\s*=\s*[\w.]+)$/;
+  /^(?:import\s[\s\S]*?\sfrom\s+'[^']+'|export\s+(?:type\s+)?\{[\s\S]*?\}\s+from\s+'[^']+'|export\s+\*\s+from\s+'[^']+'|export\s+const\s+\w+\s*=\s*\w+|export\s+type\s+\w+\s*=\s*[\w.]+)$/;
 
 /** True when the file is nothing but imports, re-exports and one-name aliases. */
 export const isReExportOnly = (file: string): boolean =>
@@ -122,6 +122,19 @@ describe('the Apollo-free entries (webform, docusign)', () => {
       expect(offenders).toEqual([]);
     },
   );
+
+  // The provider's surface lives with the provider; the root entry files only
+  // name the subpaths. Anything DocuSign-specific added at the root fails here.
+  it.each([
+    ['docusign.ts', './providers/docusign/entry'],
+    ['webform.ts', './docusign'],
+  ])('%s is a one-line re-export of %s', (entry, target) => {
+    const file = path.join(SRC, entry);
+    expect(isReExportOnly(file)).toBe(true);
+    expect(fs.readFileSync(file, 'utf8')).toContain(
+      `export * from '${target}'`,
+    );
+  });
 
   it('the full index DOES reach Apollo (sanity check that the walker works)', () => {
     const { externals } = collectImportGraph(

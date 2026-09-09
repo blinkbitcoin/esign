@@ -75,6 +75,18 @@ describe('the ./docusign entry, across packages', () => {
     expect(externals).toContain('react');
   });
 
+  // The DocuSign surface lives under providers/docusign/; the root entry file
+  // only names the subpath (no DocuSign-specific code at the package root).
+  it('docusign.ts is a one-line re-export of ./providers/docusign/entry', () => {
+    const statements = fs
+      .readFileSync(path.join(WEB_SRC, 'docusign.ts'), 'utf8')
+      .replace(/\/\/.*$/gm, '')
+      .split(';')
+      .map(s => s.trim())
+      .filter(Boolean);
+    expect(statements).toEqual(["export * from './providers/docusign/entry'"]);
+  });
+
   it('the root entry does reach Apollo (the walker is not vacuous)', () => {
     const externals = collectExternals(path.join(WEB_SRC, 'index.ts'));
     expect(externals.some(s => s.startsWith('@apollo/'))).toBe(true);
