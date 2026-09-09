@@ -10,9 +10,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   getErrorMessage,
   isAllowedOrigin,
+  isMountable,
   isRestartable,
 } from '@blinkbitcoin/esign-core';
-import { isMountable } from './docusignWebForms';
 import type {
   SigningEvent,
   SigningSession,
@@ -172,7 +172,7 @@ export const useESignature = ({
 
   // Embedding: DocuSign.js sources mount themselves (SDK-managed iframe +
   // events); all others use a plain iframe + window postMessage.
-  const usesSdkMount = isMountable(source);
+  const usesSdkMount = isMountable<HTMLElement>(source);
 
   useEffect(() => {
     if (status !== 'signing' || usesSdkMount) {
@@ -190,7 +190,11 @@ export const useESignature = ({
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (status !== 'signing' || !isMountable(source) || !container) {
+    if (
+      status !== 'signing' ||
+      !isMountable<HTMLElement>(source) ||
+      !container
+    ) {
       return;
     }
     let unmount: (() => void) | undefined;

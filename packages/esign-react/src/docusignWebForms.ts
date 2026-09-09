@@ -17,7 +17,7 @@ import {
 
 import type {
   MintWebFormsInstanceOptions,
-  SigningEvent,
+  MountableSigningSource as CoreMountableSigningSource,
   SigningSession,
   WebFormPrefill,
   WebFormsInstance,
@@ -34,25 +34,10 @@ export interface DocuSignSdk {
 }
 export type LoadDocuSign = (integrationKey: string) => Promise<DocuSignSdk>;
 
-// A source that embeds via an SDK (mount) rather than a plain iframe URL.
-export interface MountableSigningSource {
-  start(): Promise<SigningSession>;
-  interpret(message: unknown): SigningEvent | null;
-  /**
-   * Mount the signing UI into `container` and forward normalized events to
-   * `onEvent`. Resolves with a cleanup function (call on unmount).
-   */
-  mount(
-    container: HTMLElement,
-    onEvent: (event: SigningEvent) => void,
-  ): Promise<() => void>;
-}
-
-// Capability check used by the component to pick the mount vs iframe path.
-export const isMountable = (
-  source: unknown,
-): source is MountableSigningSource =>
-  typeof (source as MountableSigningSource | null)?.mount === 'function';
+// The core capability, with the web's container: a source that embeds via an
+// SDK (mount) rather than a plain iframe URL. The guard is core's isMountable.
+export type MountableSigningSource = CoreMountableSigningSource<HTMLElement>;
+export { isMountable } from '@blinkbitcoin/esign-core';
 
 const BUNDLE_URLS = {
   demo: 'https://js-d.docusign.com/bundle.js',

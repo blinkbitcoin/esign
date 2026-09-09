@@ -14,6 +14,7 @@ export {
   resolveCreateInstance,
   createPublicUrlSource,
   isRestartable,
+  isMountable,
   SigningSourceError,
   isSigningSourceError,
   toSigningSourceError,
@@ -27,6 +28,7 @@ export {
 export type {
   SigningSource,
   RestartableSigningSource,
+  MountableSigningSource,
   SigningSession,
   SigningEvent,
   ProxySigningSourceOptions,
