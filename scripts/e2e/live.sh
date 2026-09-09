@@ -57,7 +57,10 @@ echo "== service on :$LIVE_PORT (DocuSign provider)"
 if lsof -t -iTCP:"$LIVE_PORT" -sTCP:LISTEN > /dev/null 2>&1; then
   echo "::error::port $LIVE_PORT is taken - stop that process or set LIVE_PORT"; exit 1
 fi
-( cd "$SERVICE" && PORT="$LIVE_PORT" DOCUSIGN_RETURN_URL="http://localhost:$LIVE_PORT/signing/return" npm run dev > "$LOG" 2>&1 ) &
+# The web demo (webform-live-demo spec) calls the service from the browser:
+# allow this worktree's Vite origins
+ORIGINS=$(cd examples/react-demo && npx tsx -e "import { MODES, PORTS } from './e2e/ports'; console.log(MODES.map(m => 'http://localhost:' + PORTS.vite[m]).join(','))" | tail -1)
+( cd "$SERVICE" && PORT="$LIVE_PORT" CORS_ALLOWED_ORIGINS="$ORIGINS" DOCUSIGN_RETURN_URL="http://localhost:$LIVE_PORT/signing/return" npm run dev > "$LOG" 2>&1 ) &
 PID=$!
 # npm wraps tsx wraps node: stop the process that actually listens, then the wrapper
 stop_service() {
@@ -73,6 +76,9 @@ curl -fsS "http://127.0.0.1:$LIVE_PORT/health" > /dev/null || { echo "::error::s
 
 echo "== playwright: locked fields on the real form"
 E2E_LIVE_API_ORIGIN="http://localhost:$LIVE_PORT" npm run --silent test:e2e:webform:live -w examples/react-demo
+
+echo "== playwright: the real form inside the web component (iframe)"
+E2E_LIVE_API_ORIGIN="http://localhost:$LIVE_PORT" npm run --silent test:e2e:webform:live:demo -w examples/react-demo
 
 echo "== the mint-only and serverless examples mint real instances"
 PROVIDER=docusign MINT_PORT="${MINT_PORT:-4110}" HANDLER_PORT="${HANDLER_PORT:-4210}" bash scripts/e2e/server-demos-smoke.sh

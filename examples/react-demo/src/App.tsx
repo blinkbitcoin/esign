@@ -14,7 +14,13 @@ import {
 } from '@blinkbitcoin/esign-react';
 
 import { apolloClient, getAuthToken } from './apollo';
-import { ESIGN_MODE, WEBFORM_INSTANCE_URL, PUBLIC_FORM_URL } from './config';
+import {
+  ESIGN_MODE,
+  PREFILL_OVERRIDE,
+  PUBLIC_FORM_URL,
+  WEBFORM_INSTANCE_URL,
+} from './config';
+import type { WebFormPrefill } from '@blinkbitcoin/esign-react';
 import { HookSigning } from './HookSigning';
 
 export const DEMO_RECIPIENT = { name: 'Test User', email: 'test@example.com' };
@@ -24,7 +30,7 @@ export const DEMO_RECIPIENT = { name: 'Test User', email: 'test@example.com' };
 // them - which is how a host pins the terms of a document (amounts, rates).
 // Numbers travel unquoted (DocuSign Number fields); keys are the form's field
 // API reference names.
-export const DEMO_PREFILL = {
+export const DEMO_PREFILL: WebFormPrefill = PREFILL_OVERRIDE ?? {
   full_name: DEMO_RECIPIENT.name,
   email: DEMO_RECIPIENT.email,
   units: 10,
