@@ -158,6 +158,25 @@ counterpart. Both answer the same status codes as the Express router
 `mintWebFormInstanceHttp` / `processWebhookHttp` decision functions. Runs
 on Node runtimes (needs `node:crypto`); not on edge runtimes.
 
+The return-URL bridge every Web Forms host serves is a `Response` too:
+
+```ts
+import { renderSigningReturnBridge, signingPageResponse } from '@blinkbitcoin/esign-server';
+
+// e.g. app/signing/return/route.ts (Next.js)
+export const GET = (request: Request) => {
+  const event = new URL(request.url).searchParams.get('event') ?? undefined;
+  return signingPageResponse(nonce => renderSigningReturnBridge(event, nonce));
+};
+```
+
+`signingPageResponse(render)` sends the page as `text/html` under the
+package's signing-page CSP (`signingPageCsp(nonce)`: `default-src 'none'`,
+inline script and style allowed by a fresh `signingPageNonce()` only,
+`frame-ancestors *` so the app's WebView/iframe may embed it). An Express
+host that writes the route itself sets the same header from the same two
+functions ([locked-terms.md](../../docs/integration/locked-terms.md#2-the-backend-side-node-a-graphql-mutation-or-a-rest-endpoint)).
+
 ## The HTTP surface (`@blinkbitcoin/esign-server/express`)
 
 For a host that already runs Express and wants the esign endpoints without
@@ -184,6 +203,10 @@ const { typeDefs, resolvers } = createESignGraphQL({ envelopes }); // → your A
 | `POST /webhook/esign` | raw-body signature check (`401`), parse (`400`), `handleWebhookEvent` (`500` = retry, `200 { received: true }`) |
 | `GET /signing/return` | the return-URL bridge for real DocuSign (postMessage protocol, nonce CSP) |
 | `GET /signing/mock/:id`, `GET /signing/mock-webform/:id` | the mock provider's pages, when `mockPages` is given |
+
+The signing pages go out under `signingPageCsp(nonce)` with a
+`signingPageNonce()` per response - the same CSP `signingPageResponse` gives
+a framework-neutral host.
 
 ## Configuration
 

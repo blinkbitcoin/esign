@@ -75,6 +75,11 @@ export {
 } from './pages';
 export type { ClientEvent, MockWebFormField } from './pages';
 export { escapeHtml, jsonForScript, sanitizeId } from './html';
+export {
+  signingPageCsp,
+  signingPageNonce,
+  signingPageResponse,
+} from './signingPage';
 
 // --- Provider adapters -------------------------------------------------------
 export {

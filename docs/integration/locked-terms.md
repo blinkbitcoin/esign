@@ -109,19 +109,21 @@ bridge page turns that into the postMessage the component understands.
 Serve it at the path `DOCUSIGN_RETURN_URL` points to:
 
 ```ts
-import { renderSigningReturnBridge } from '@blinkbitcoin/esign-server';
-import { randomUUID } from 'node:crypto';
+import { renderSigningReturnBridge, signingPageCsp, signingPageNonce } from '@blinkbitcoin/esign-server';
 
 app.get('/signing/return', (req, res) => {
   const event = typeof req.query.event === 'string' ? req.query.event : undefined;
-  const nonce = randomUUID();
-  res.setHeader('content-security-policy', `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'`);
+  const nonce = signingPageNonce();
+  res.setHeader('Content-Security-Policy', signingPageCsp(nonce)); // nonce-only inline script, frame-ancestors *
   res.type('html').send(renderSigningReturnBridge(event, nonce));
 });
 ```
 
-(Express hosts can mount `createESignRouter` from
-`@blinkbitcoin/esign-server/express` instead, which serves the same route.)
+A route handler that speaks Fetch (Next.js, Vercel, Workers) returns
+`signingPageResponse(nonce => renderSigningReturnBridge(event, nonce))`
+instead - the same page, CSP and nonce as a `Response`. (Express hosts can
+mount `createESignRouter` from `@blinkbitcoin/esign-server/express` instead,
+which serves the same route.)
 Without this route the form completes on DocuSign's side and the app never
 hears about it. The whole backend side, runnable: `examples/mint-only-demo`
 (`make e2e-server-demos` on the mock provider, `make e2e-live` on DocuSign).

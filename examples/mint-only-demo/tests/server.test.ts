@@ -87,10 +87,16 @@ describe('createServer', () => {
         `${url}signing/return?event=signing_complete`,
       );
       expect(complete.headers.get('content-type')).toMatch(/text\/html/);
-      expect(complete.headers.get('content-security-policy')).toMatch(
-        /script-src 'nonce-[0-9a-f-]+'/,
-      );
-      expect(await complete.text()).toContain('signing_complete');
+      // The package's CSP: the inline script is allowed by nonce only, and
+      // the page may be framed by the app (frame-ancestors *)
+      const csp = complete.headers.get('content-security-policy') ?? '';
+      const nonce = /script-src 'nonce-([^']+)'/.exec(csp)?.[1];
+      expect(nonce).toBeTruthy();
+      expect(csp).toContain("default-src 'none'");
+      expect(csp).toContain('frame-ancestors *');
+      const html = await complete.text();
+      expect(html).toContain(`<script nonce="${nonce}">`);
+      expect(html).toContain('signing_complete');
       // No event (or a non-string one) still renders the bridge
       const none = await fetch(`${url}signing/return?event=a&event=b`);
       expect(none.status).toBe(200);

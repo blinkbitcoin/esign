@@ -4,12 +4,15 @@
 // as-is - a real host verifies its own session token here (the full-service
 // demo shows an HS256 JWT check); the package never sees the token.
 
-import { randomUUID } from 'node:crypto';
 import { createServer as createHttpServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@as-integrations/express5';
-import { renderSigningReturnBridge } from '@blinkbitcoin/esign-server';
+import {
+  renderSigningReturnBridge,
+  signingPageCsp,
+  signingPageNonce,
+} from '@blinkbitcoin/esign-server';
 import express from 'express';
 import type { Mint } from './mint';
 import { type Context, resolvers, typeDefs } from './schema';
@@ -37,11 +40,10 @@ export const createServer = (mint: Mint) => {
   app.get('/signing/return', (req, res) => {
     const rawEvent =
       typeof req.query.event === 'string' ? req.query.event : undefined;
-    const nonce = randomUUID();
-    res.setHeader(
-      'content-security-policy',
-      `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'`,
-    );
+    // The package's CSP (nonce-only inline script/style, framed by any host:
+    // the page runs inside the app's WebView/iframe)
+    const nonce = signingPageNonce();
+    res.setHeader('Content-Security-Policy', signingPageCsp(nonce));
     res.type('html').send(renderSigningReturnBridge(rawEvent, nonce));
   });
 
