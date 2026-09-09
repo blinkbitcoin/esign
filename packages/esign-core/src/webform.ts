@@ -36,7 +36,7 @@ export type { PublicUrlSigningSourceOptions } from './signing/publicUrlSource';
 
 export { interpretDocuSignEvent, interpretProxyEvent } from './signing/events';
 export { getErrorMessage } from './signing/messages';
-export { isRestartable } from './signing/types';
+export { isRestartable, isMountable } from './signing/types';
 export {
   SigningSourceError,
   isSigningSourceError,
@@ -47,6 +47,7 @@ export { isAllowedOrigin } from './signing/origin';
 export type {
   SigningSource,
   RestartableSigningSource,
+  MountableSigningSource,
   SigningSession,
   SigningEvent,
 } from './signing/types';

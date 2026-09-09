@@ -32,7 +32,11 @@ only when the full entry (proxy mode) is used.
 - `createPublicUrlSource` — a published public form URL, no backend.
 
 Adding a provider = implementing `SigningSource` (`start()` + `interpret()`);
-the platform components never change. `start()` / `restart()` reject with a
+the platform components never change. Optional capabilities are extra
+methods the components detect: `RestartableSigningSource` (`restart()`,
+guard `isRestartable`) and `MountableSigningSource<Container>` (`mount()`
+for SDK-embedded UIs such as DocuSign.js on the web, guard `isMountable`).
+`start()` / `restart()` reject with a
 `SigningSourceError` (a real `Error` carrying a `code`; `toSigningSourceError`
 normalizes any rejection into one, `isSigningSourceError` narrows).
 `withTimeout(run, ms, onTimeout)` is the watchdog `createWebFormsSource` puts

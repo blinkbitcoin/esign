@@ -5,8 +5,9 @@ export type {
   SigningSession,
   SigningSource,
   RestartableSigningSource,
+  MountableSigningSource,
 } from './types';
-export { isRestartable } from './types';
+export { isRestartable, isMountable } from './types';
 
 export {
   SigningSourceError,

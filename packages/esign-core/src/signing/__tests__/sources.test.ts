@@ -4,7 +4,7 @@ import { SigningSourceError } from '../errors';
 import { createProxySigningSource, getApolloErrorCode } from '../proxySource';
 import { createWebFormsSource } from '../webFormsSource';
 import { createPublicUrlSource } from '../publicUrlSource';
-import { isRestartable } from '../types';
+import { isMountable, isRestartable } from '../types';
 
 import type { ApolloClient } from '@apollo/client';
 
@@ -35,6 +35,27 @@ describe('getApolloErrorCode', () => {
       errors: [{ message: 'x' }],
     } as never);
     expect(getApolloErrorCode(error, 'FALLBACK')).toBe('FALLBACK');
+  });
+});
+
+describe('capability guards', () => {
+  const base = { start: jest.fn(), interpret: jest.fn() };
+
+  it('isRestartable is true only when restart() is implemented', () => {
+    const withRestart = { ...base, restart: jest.fn() };
+    const withField = { ...base, restart: 'later' };
+    expect(isRestartable(withRestart)).toBe(true);
+    expect(isRestartable(base)).toBe(false);
+    expect(isRestartable(withField)).toBe(false);
+  });
+
+  it('isMountable is true only when mount() is implemented', () => {
+    expect(isMountable({ ...base, mount: jest.fn() })).toBe(true);
+    expect(isMountable(base)).toBe(false);
+    expect(isMountable({ ...base, mount: true })).toBe(false);
+    expect(isMountable(null)).toBe(false);
+    expect(isMountable(undefined)).toBe(false);
+    expect(isMountable('mount')).toBe(false);
   });
 });
 
