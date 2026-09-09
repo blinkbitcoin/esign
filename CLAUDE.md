@@ -137,8 +137,8 @@ npm run migrate:test         # Same against the .env.test database
   error / result / options / theme / labels types). Each platform package
   contains its `ESignature` component (the default UI), the headless
   `useESignature` hook (the machine's runner: connectivity probe, message
-  transport, success delay, embed), and `theme.ts` (+ web-only
-  `docusignWebForms.ts`). Never re-implement a transition in a hook - add
+  transport, success delay, embed), and `theme.ts` (+ the web-only DocuSign.js
+  source under `providers/docusign/`). Never re-implement a transition in a hook - add
   it to the machine and its table test.
   Codegen runs in core (`packages/esign-core/src/generated/`); never hand-edit
   or duplicate the generated types in a platform package.
