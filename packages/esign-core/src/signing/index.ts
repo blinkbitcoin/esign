@@ -4,10 +4,15 @@ export type {
   SigningEvent,
   SigningSession,
   SigningSource,
-  SigningSourceError,
   RestartableSigningSource,
 } from './types';
 export { isRestartable } from './types';
+
+export {
+  SigningSourceError,
+  isSigningSourceError,
+  toSigningSourceError,
+} from './errors';
 
 export { interpretProxyEvent, interpretDocuSignEvent } from './events';
 export { getErrorMessage } from './messages';

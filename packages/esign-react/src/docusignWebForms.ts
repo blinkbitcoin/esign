@@ -12,13 +12,13 @@
 import {
   interpretDocuSignEvent,
   resolveCreateInstance,
+  toSigningSourceError,
 } from '@blinkbitcoin/esign-core';
 
 import type {
   MintWebFormsInstanceOptions,
   SigningEvent,
   SigningSession,
-  SigningSourceError,
   WebFormPrefill,
   WebFormsInstance,
 } from '@blinkbitcoin/esign-core';
@@ -130,10 +130,7 @@ export const createDocuSignWebFormsSource = (
         resolvedUrl = instance.url;
         return { url: instance.url, envelopeId: instance.envelopeId };
       } catch (error) {
-        throw {
-          code: 'ENVELOPE_CREATION_FAILED',
-          message: error instanceof Error ? error.message : undefined,
-        } as SigningSourceError;
+        throw toSigningSourceError(error, 'ENVELOPE_CREATION_FAILED');
       }
     },
 

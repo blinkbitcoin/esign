@@ -4,15 +4,12 @@
 // source at that endpoint (`mint` + `prefill`) or injects its own
 // `createInstance` call. No Apollo/GraphQL dependency.
 
+import { SigningSourceError, toSigningSourceError } from './errors';
 import { interpretDocuSignEvent } from './events';
 import { createWebFormsMinter } from './mint';
 
 import type { MintWebFormsInstanceOptions, WebFormPrefill } from './mint';
-import type {
-  SigningSession,
-  SigningSource,
-  SigningSourceError,
-} from './types';
+import type { SigningSession, SigningSource } from './types';
 
 export interface WebFormsInstance {
   /** Embeddable instance URL (formUrl#instanceToken=...). */
@@ -74,10 +71,12 @@ export const createWebFormsSource = (
           createInstance(),
           new Promise<never>((_, reject) => {
             timer = setTimeout(() => {
-              reject({
-                code: 'NETWORK_ERROR',
-                message: `Timed out creating the signing instance after ${timeoutMs}ms`,
-              } as SigningSourceError);
+              reject(
+                new SigningSourceError(
+                  'NETWORK_ERROR',
+                  `Timed out creating the signing instance after ${timeoutMs}ms`,
+                ),
+              );
             }, timeoutMs);
           }),
         ]);
@@ -87,13 +86,9 @@ export const createWebFormsSource = (
           allowedOrigin: options.allowedOrigin,
         };
       } catch (error) {
-        if ((error as SigningSourceError)?.code === 'NETWORK_ERROR') {
-          throw error;
-        }
-        throw {
-          code: 'ENVELOPE_CREATION_FAILED',
-          message: error instanceof Error ? error.message : undefined,
-        } as SigningSourceError;
+        // The watchdog's NETWORK_ERROR passes through; a failed mint is
+        // ENVELOPE_CREATION_FAILED with the reason
+        throw toSigningSourceError(error, 'ENVELOPE_CREATION_FAILED');
       } finally {
         clearTimeout(timer);
       }
