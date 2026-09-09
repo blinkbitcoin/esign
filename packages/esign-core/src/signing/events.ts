@@ -1,53 +1,13 @@
-// Event interpreters: translate a raw embedded-page message into a normalized
-// SigningEvent. Pure functions, platform-agnostic, one per event protocol.
+// The DocuSign event interpreter: translates a raw embedded-page message into
+// a normalized SigningEvent. Pure, platform-agnostic.
+
+import { asRecord } from './bridge';
 
 import type { SigningEvent } from './types';
 
-// Parse a raw message (object or JSON string) into a plain record, or null.
-const asRecord = (message: unknown): Record<string, unknown> | null => {
-  if (typeof message === 'string') {
-    try {
-      const parsed = JSON.parse(message);
-      return parsed && typeof parsed === 'object'
-        ? (parsed as Record<string, unknown>)
-        : null;
-    } catch {
-      return null;
-    }
-  }
-  return message && typeof message === 'object'
-    ? (message as Record<string, unknown>)
-    : null;
-};
-
-/**
- * The proxy protocol: our mock/return-bridge pages emit
- * { event: 'signing_complete' | 'cancel' | 'decline' | 'session_timeout' | 'exception' }.
- */
-export const interpretProxyEvent = (message: unknown): SigningEvent | null => {
-  const data = asRecord(message);
-  if (!data || typeof data.event !== 'string') {
-    return null;
-  }
-  switch (data.event) {
-    case 'signing_complete':
-      return { type: 'complete' };
-    case 'cancel':
-      return { type: 'cancel' };
-    case 'decline':
-      return { type: 'decline' };
-    case 'session_timeout':
-      return { type: 'sessionExpired' };
-    case 'exception':
-      return {
-        type: 'error',
-        code: 'SIGNING_ERROR',
-        message: typeof data.message === 'string' ? data.message : undefined,
-      };
-    default:
-      return null;
-  }
-};
+// The bridge protocol's interpreter lives in ./bridge; kept here under its
+// old name.
+export { interpretBridgeEvent, interpretProxyEvent } from './bridge';
 
 const str = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;

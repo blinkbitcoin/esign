@@ -16,6 +16,25 @@ export type {
   UseESignatureOptions,
 } from './types';
 
+// The provider-neutral hosted-form layer the Web Forms sources are built on
+export {
+  createHostedFormSource,
+  resolveHostedFormCreateInstance,
+} from './signing/hostedForm/source';
+export type {
+  HostedFormSourceOptions,
+  HostedFormCreateInstanceOptions,
+  HostedFormMintOptions,
+} from './signing/hostedForm/source';
+export { createHostedFormMinter } from './signing/hostedForm/mint';
+export type {
+  HostedFormPrefill,
+  HostedFormInstance,
+  MintHostedFormOptions,
+} from './signing/hostedForm/mint';
+export { createHostedFormPublicUrlSource } from './signing/hostedForm/publicUrlSource';
+export type { HostedFormPublicUrlSourceOptions } from './signing/hostedForm/publicUrlSource';
+
 export {
   createWebFormsSource,
   resolveCreateInstance,
@@ -38,7 +57,8 @@ export type {
 export { createPublicUrlSource } from './signing/publicUrlSource';
 export type { PublicUrlSigningSourceOptions } from './signing/publicUrlSource';
 
-export { interpretDocuSignEvent, interpretProxyEvent } from './signing/events';
+export { interpretBridgeEvent, interpretProxyEvent } from './signing/bridge';
+export { interpretDocuSignEvent } from './signing/events';
 export { getErrorMessage } from './signing/messages';
 export { isRestartable, isMountable } from './signing/types';
 export {

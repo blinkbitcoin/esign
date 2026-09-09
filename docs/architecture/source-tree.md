@@ -14,7 +14,10 @@ esign/
 │       ├── src/
 │       │   ├── index.ts           # Full entry (incl. Apollo factory) ⭐
 │       │   ├── webform.ts         # Apollo-free entry (./webform) ⭐
-│       │   ├── signing/           # SigningSource abstraction + 3 sources + machine.ts (the state machine) + labels.ts
+│       │   ├── signing/           # SigningSource abstraction + machine.ts (the state machine) + labels.ts
+│       │   │   ├── bridge.ts      #   interpretBridgeEvent: the neutral `{ event }` protocol the bridge/mock pages post
+│       │   │   ├── hostedForm/    #   provider-neutral hosted-form source, minter, public-URL source (interpreter injectable)
+│       │   │   └── ...            #   proxySource (Apollo) + the DocuSign-bound Web Forms sources / interpreter
 │       │   ├── client.ts          # createESignApolloClient + ErrorCodes
 │       │   ├── operations.ts      # GraphQL mutations (wire contract)
 │       │   ├── generated/         # Codegen output (from examples/full-service-demo schema)

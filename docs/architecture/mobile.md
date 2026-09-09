@@ -59,7 +59,7 @@ restart:
 packages/esign-core/src/       # platform-agnostic (shared with web)
 ├── index.ts             # Full entry (all sources + Apollo factory)
 ├── webform.ts           # Apollo-free entry (./webform subpath)
-├── signing/             # SigningSource + sources + event interpreters
+├── signing/             # SigningSource + machine; bridge.ts + hostedForm/ (neutral) + the DocuSign-bound sources
 ├── client.ts            # createESignApolloClient factory + ErrorCodes
 ├── operations.ts        # GraphQL mutations
 └── generated/           # Schema-generated types (codegen)

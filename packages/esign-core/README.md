@@ -15,7 +15,7 @@ as their dependency. Install directly only to build a custom integration.
 | Import | Contents | Needs Apollo? |
 |--------|----------|---------------|
 | `@blinkbitcoin/esign-core` | Everything: all three sources, Apollo factory, GraphQL operations,<br>`ErrorCode` contract | Yes (`@apollo/client` + `graphql` peers) |
-| `@blinkbitcoin/esign-core/webform` | Web Forms only: `createWebFormsSource`, `createPublicUrlSource`,<br>interpreters, `getErrorMessage`, `SigningSourceError`, types | **No — Apollo-free by construction** (guard-tested) |
+| `@blinkbitcoin/esign-core/webform` | Web Forms only: `createWebFormsSource`, `createPublicUrlSource`, the<br>neutral `createHostedFormSource` layer, interpreters, `getErrorMessage`,<br>`SigningSourceError`, types | **No — Apollo-free by construction** (guard-tested) |
 
 `@apollo/client` and `graphql` are **optional** peer dependencies — required
 only when the full entry (proxy mode) is used.
@@ -30,6 +30,17 @@ only when the full entry (proxy mode) is used.
   `createInstance()`. The backend mints with `@blinkbitcoin/esign-server`;
   read-only fields come back locked with the prefill.
 - `createPublicUrlSource` — a published public form URL, no backend.
+
+The two Web Forms sources are DocuSign bindings of a provider-neutral
+**hosted-form** layer (`signing/hostedForm/`): `createHostedFormSource`
+(`{ createInstance }` or `{ mint, prefill }`, plus `allowedOrigin`,
+`timeoutMs` and an injectable `interpret`), `createHostedFormMinter` (the
+authenticated POST; the prefill shape is a generic a provider narrows) and
+`createHostedFormPublicUrlSource`. Their default interpreter is
+`interpretBridgeEvent` — the `{ event }` protocol the backend's return-URL
+bridge and mock pages post (`interpretProxyEvent` is its deprecated name);
+`createWebFormsSource` / `createPublicUrlSource` bind `interpretDocuSignEvent`
+instead. Another hosted-form provider is a source built the same way.
 
 Adding a provider = implementing `SigningSource` (`start()` + `interpret()`);
 the platform components never change. Optional capabilities are extra
