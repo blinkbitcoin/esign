@@ -480,6 +480,28 @@ describe('createEnvelopeService', () => {
       },
     );
 
+    it('refuses a webhook carrying sent before any write: no status change, no audit entry', async () => {
+      const { service, store, logger, envelopeId } = await withEnvelope();
+      // The only non-terminal status is sent, so reaching the transition
+      // with a sent webhook takes an envelope in a status the table does
+      // not know (what a future status would look like before it is mapped)
+      await store.updateEnvelopeStatus(envelopeId, 'pending' as EnvelopeStatus);
+      const appendAuditEntry = jest.spyOn(store, 'appendAuditEntry');
+      const transaction = jest.spyOn(store, 'transaction');
+
+      expect(await service.handleWebhookEvent(webhook('sent'))).toBe(
+        'rejected_no_transition',
+      );
+
+      expect(transaction).not.toHaveBeenCalled();
+      expect(appendAuditEntry).not.toHaveBeenCalled();
+      expect((await store.getEnvelopeById(envelopeId))?.status).toBe('pending');
+      expect(await store.listAuditEntries(envelopeId)).toHaveLength(1);
+      expect(logger.warn).toHaveBeenCalledWith(
+        `Webhook ignored: sent is not a transition for envelope ${envelopeId}`,
+      );
+    });
+
     it('rolls back the status when the audit write fails', async () => {
       const { service, store, envelopeId } = await withEnvelope();
       jest

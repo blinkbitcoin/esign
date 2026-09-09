@@ -221,7 +221,7 @@ Domain spans (`src/tracing.ts`, zero-cost no-ops when tracing is off):
 | `esign.provider.create_envelope` | provider boundary | `esign.provider`, `esign.contract_type`, `enduser.id`, `esign.provider_envelope_id` |
 | `esign.provider.get_signing_url` / `get_envelope_status` | provider boundary | `esign.provider`, `esign.provider_envelope_id`, `esign.envelope_status` |
 | `esign.provider.verify_webhook` / `parse_webhook_event` | provider boundary | `esign.webhook.verified` / `esign.webhook.malformed` |
-| `esign.webhook.process` | webhook handler | `esign.webhook.status`, `esign.webhook.outcome` (`updated` / `unchanged` / `unknown_envelope` / `ignored_unknown_status`) |
+| `esign.webhook.process` | webhook handler | `esign.webhook.status`, `esign.webhook.outcome` (`updated` / `unchanged` / `unknown_envelope` / `ignored_unknown_status` / `rejected_terminal` / `rejected_no_transition`) |
 | (request span) | GraphQL context | `enduser.id` on every authenticated request |
 
 The provider spans are applied **in the factory** (`instrumentProvider` in
