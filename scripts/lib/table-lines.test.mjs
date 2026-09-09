@@ -46,6 +46,13 @@ describe('overlongTableLines', () => {
     );
   });
 
+  it('strips tags until nothing tag-shaped is left, and terminates', () => {
+    const md = ['| A |', '|---|', '| <<b>b>text</b> <i>x |'].join('\n');
+    // "<<b>" is one tag, the rest is text: "b>text x" (8 visible characters)
+    expect(overlongTableLines(md, 8)).toEqual([]);
+    expect(overlongTableLines(md, 7)[0].text).toBe('b>text x');
+  });
+
   it('skips fenced code blocks and honours a custom limit', () => {
     const md = [
       '```',

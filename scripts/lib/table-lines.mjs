@@ -9,9 +9,18 @@ export const MAX_LINE = 72;
 
 // Visible width of a cell line: markdown/HTML decoration does not take
 // space on the page.
+const stripTags = text => {
+  let previous;
+  let current = text;
+  do {
+    previous = current;
+    current = current.replace(/<[^>]*>/g, '');
+  } while (current !== previous); // nested/partial tags: repeat until stable
+  return current;
+};
+
 const visible = text =>
-  text
-    .replace(/<[^>]+>/g, '') // html tags
+  stripTags(text)
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // links → their text
     .replace(/[`*_]/g, '') // code, emphasis
     .replace(/&nbsp;/g, ' ')

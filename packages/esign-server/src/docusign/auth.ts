@@ -37,9 +37,8 @@ export const createJwtAssertion = (
 
   // JWT-grant signature (RS256), not a password hash: the payload carries the
   // OAuth host as the `aud` claim, which is why static analysis flags it.
-  // codeql[js/insufficient-password-hash]
   const sign = createSign('RSA-SHA256');
-  sign.update(signingInput);
+  sign.update(signingInput); // codeql[js/insufficient-password-hash]
   const signature = base64Url(sign.sign(config.privateKey as string));
   return `${signingInput}.${signature}`;
 };

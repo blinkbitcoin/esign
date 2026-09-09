@@ -103,6 +103,10 @@ const main = async (): Promise<void> => {
     templateId = created.templateId;
     console.log(`template created: ${templateId}`);
   }
+  // What reaches .env comes from the API: accept only a DocuSign id (a UUID)
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(templateId)) {
+    throw new Error(`unexpected template id from DocuSign: ${JSON.stringify(templateId)}`);
+  }
   console.log(`DOCUSIGN_TEMPLATE_ID=${templateId}`);
   if (process.env.WRITE) {
     const env = readFileSync(ENV_FILE, 'utf8');
