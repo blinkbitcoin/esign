@@ -66,12 +66,12 @@ Lower-level pieces, for hosts that need them:
 
 | Export | What |
 |---|---|
-| `createDocuSignClient(config, { fetch? })`, `WebFormsClient` | The client: `createEnvelopeFromTemplate`, `getEmbeddedSigningUrl`, `fetchEnvelopeStatus`, `createWebFormInstanceRequest`, `getAccessToken`, `clearTokenCache`; `createWebFormInstance({ client })` needs only `WebFormsClient` (`config` + `createWebFormInstanceRequest`), so a host's own client fits |
-| `docuSignConfigFromEnv(env?)`, `DOCUSIGN_ENV`, `assertDocuSignConfig` | Configuration and its `DOCUSIGN_*` mapping (demo-environment URLs by default) |
+| `createDocuSignClient(config, { fetch? })`, `WebFormsClient` | The client: `createEnvelopeFromTemplate`, `getEmbeddedSigningUrl`,<br>`fetchEnvelopeStatus`, `createWebFormInstanceRequest`, `getAccessToken`,<br>`clearTokenCache`; `createWebFormInstance({ client })` needs only<br>`WebFormsClient` (`config` + `createWebFormInstanceRequest`), so a host's own<br>client fits |
+| `docuSignConfigFromEnv(env?)`, `DOCUSIGN_ENV`, `assertDocuSignConfig` | Configuration and its `DOCUSIGN_*` mapping (demo-environment URLs by<br>default) |
 | `parseWebFormPrefill`, `assertWebFormPrefill`, `formatPrefillValue` | The prefill contract (string, number, string[], phone object) |
 | `withRetry`, `HttpError`, `isClientError`, `isNotFoundError` | Retry/backoff and error classification |
 | `createTokenProvider`, `createJwtAssertion` | The JWT grant on its own |
-| `bearerToken(header)` | The token of an `Authorization: Bearer …` header, or `null` (missing, another scheme, empty); what it means - a session to verify, a user id in a demo - stays the host's |
+| `bearerToken(header)` | The token of an `Authorization: Bearer …` header, or `null` (missing,<br>another scheme, empty); what it means - a session to verify, a user id<br>in a demo - stays the host's |
 
 ## The envelope domain (proxy mode without hosting the service)
 
@@ -111,7 +111,7 @@ local runs and tests; `Tracing` and `Logger` are optional seams.
 | Store method | Contract |
 |---|---|
 | `transaction(fn)` | every write through the store `fn` receives commits together or not at all |
-| `createEnvelope`, `getEnvelopeById`, `getEnvelopeByIdForUser`, `getEnvelopeByProviderEnvelopeId`, `updateEnvelopeStatus` | envelope rows; the user-scoped read returns `null` for a wrong owner (no info leak); the update throws for an unknown id |
+| `createEnvelope`, `getEnvelopeById`, `getEnvelopeByIdForUser`,<br>`getEnvelopeByProviderEnvelopeId`, `updateEnvelopeStatus` | envelope rows; the user-scoped read returns `null` for a wrong owner (no<br>info leak); the update throws for an unknown id |
 | `appendAuditEntry`, `listAuditEntries` | audit rows, newest first |
 
 ## The Postgres store (`@blinkbitcoin/esign-server/knex`)
@@ -200,9 +200,9 @@ const { typeDefs, resolvers } = createESignGraphQL({ envelopes }); // → your A
 | Route | What |
 |---|---|
 | `GET /health` | `{ status, timestamp }` |
-| `POST /webform/instance` | mint for the authenticated caller (`401`), validated prefill (`400` with the reason), provider failure `502` |
-| `POST /webhook/esign` | raw-body signature check (`401`), parse (`400`), `handleWebhookEvent` (`500` = retry, `200 { received: true }`) |
-| `GET /signing/return` | the return-URL bridge for real DocuSign (postMessage protocol, nonce CSP) |
+| `POST /webform/instance` | mint for the authenticated caller (`401`), validated prefill (`400` with the<br>reason), provider failure `502` |
+| `POST /webhook/esign` | raw-body signature check (`401`), parse (`400`), `handleWebhookEvent` (`500` =<br>retry, `200 { received: true }`) |
+| `GET /signing/return` | the return-URL bridge for real DocuSign (postMessage protocol, nonce<br>CSP) |
 | `GET /signing/mock/:id`, `GET /signing/mock-webform/:id` | the mock provider's pages, when `mockPages` is given |
 
 The signing pages go out under `signingPageCsp(nonce)` with a
@@ -213,7 +213,7 @@ a framework-neutral host.
 
 | Variable | Setting | Notes |
 |---|---|---|
-| `DOCUSIGN_INTEGRATION_KEY`, `DOCUSIGN_USER_ID`, `DOCUSIGN_ACCOUNT_ID`, `DOCUSIGN_PRIVATE_KEY` | JWT grant | consent granted once per integration key |
+| `DOCUSIGN_INTEGRATION_KEY`, `DOCUSIGN_USER_ID`, `DOCUSIGN_ACCOUNT_ID`,<br>`DOCUSIGN_PRIVATE_KEY` | JWT grant | consent granted once per integration key |
 | `DOCUSIGN_WEBFORM_ID` | Web Forms | the form to mint instances of |
 | `DOCUSIGN_TEMPLATE_ID` | envelopes | only for template envelopes |
 | `DOCUSIGN_RETURN_URL` | both | default `returnUrl` for instances / signing views |

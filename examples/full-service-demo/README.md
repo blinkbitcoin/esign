@@ -98,8 +98,8 @@ instead (one function call, a Fetch handler, or the Express router).
 | `src/schema.ts` | Resolvers |
 | `src/providers/port.ts` | `ESignProvider` interface (the provider boundary) |
 | `src/providers/docusign/` / `src/providers/mock.ts` | Provider adapters (factory in `providers/index.ts`) |
-| `src/services.ts` / `src/store.ts` | Domain composition (`createEnvelopeService`) / the package's Knex `EnvelopeStore` over `src/db.ts` |
-| `src/app.ts` | Mounts the package's Express router (`/health`, signing pages, `/webform/instance`, `/webhook/esign`) with this service's auth, CORS and rate limits |
+| `src/services.ts` / `src/store.ts` | Domain composition (`createEnvelopeService`) / the package's Knex<br>`EnvelopeStore` over `src/db.ts` |
+| `src/app.ts` | Mounts the package's Express router (`/health`, signing pages,<br>`/webform/instance`, `/webhook/esign`) with this service's auth, CORS and<br>rate limits |
 | `src/auth.ts` | HS256 JWT verification, dev/prod split |
 | `src/migrate.ts` | Applies the package's migrations (`@blinkbitcoin/esign-server/knex`) |
 | `tests/` / `tests/e2e/` | Unit (mocked DB) / E2E (real DB) |

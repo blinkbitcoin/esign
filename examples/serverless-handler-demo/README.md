@@ -19,7 +19,7 @@ export const webhook = createWebhookHandler({ provider, envelopes });
 |---|---|
 | Next.js route handler | `app/api/webform/instance/route.ts`: `export const POST = mint;` |
 | Vercel function | `export default (req: Request) => mint(req);` |
-| Cloudflare Worker | `fetch(request) { return request.url.endsWith('/webhook/esign') ? webhook(request) : mint(request); }` |
+| Cloudflare Worker | `fetch(request)` routes by path: `/webhook/esign` → `webhook(request)`,<br>anything else → `mint(request)` |
 | Plain Node (this example) | `src/node.ts` adapts `IncomingMessage` to a `Request` and back |
 
 `authenticate` is the host's session check - the bearer token is taken as the

@@ -176,6 +176,11 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   `CONTRIBUTING.md`
 - Change code and the relevant `docs/` page in the same change; the CI Docs
   check (`make docs-check`) flags architecture-relevant diffs without one
+- **README tables**: GitHub sizes columns by content, so one long cell
+  squeezes the first column until `make coverage-badge` wraps word by word.
+  Every table cell line stays at or under 72 visible characters, broken with
+  `<br>`; `make docs-check` (`scripts/ci/docs-tables.mjs`) fails otherwise -
+  the rule is enforced, not remembered.
 - Shell that CI or the Makefile runs lives in `scripts/{ci,e2e,release}/`,
   never inline in a workflow; `make check-ci` runs actionlint + shellcheck
 - `graphql` is pinned to 16.x repo-wide (Apollo Server 5's peer range) - do

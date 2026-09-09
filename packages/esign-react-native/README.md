@@ -162,11 +162,11 @@ from the Apollo-free `/webform` subpath.
 
 | Export | What it is |
 |--------|------------|
-| `ESignature` | The signing flow component (state machine: idle → loading → signing → success, plus error/offline). Takes a `source` prop, plus `theme` / `styles` / `labels` for the built-in screens. |
-| `useESignature(options)` | The headless state machine behind `ESignature`: `status`, `error`, `isSessionExpired`, `isCheckingConnection`, `sign` / `cancel` / `retry` / `restart` / `checkConnection`, and `webViewProps` to spread onto your own `WebView`. Same options as the component minus the look props. |
+| `ESignature` | The signing flow component (state machine: idle → loading → signing →<br>success, plus error/offline). Takes a `source` prop, plus `theme` / `styles` /<br>`labels` for the built-in screens. |
+| `useESignature(options)` | The headless state machine behind `ESignature`: `status`, `error`,<br>`isSessionExpired`, `isCheckingConnection`, `sign` / `cancel` / `retry` /<br>`restart` / `checkConnection`, and `webViewProps` to spread onto your own<br>`WebView`. Same options as the component minus the look props. |
 | `createProxySigningSource` / `createWebFormsSource` / `createPublicUrlSource` | The three signing modes (`SigningSource`). Only the proxy is restartable. |
-| `createESignApolloClient({ uri, getAuthToken })` | Apollo Client factory — host owns endpoint + token retrieval (proxy mode only) |
-| `SigningSource`, `SigningSession`, `SigningEvent`, `isRestartable`, `SigningSourceError` | The abstraction, for writing a custom mode (`start()` rejects with a `SigningSourceError`: an `Error` carrying a `code`) |
+| `createESignApolloClient({ uri, getAuthToken })` | Apollo Client factory — host owns endpoint + token retrieval (proxy mode<br>only) |
+| `SigningSource`, `SigningSession`, `SigningEvent`, `isRestartable`,<br>`SigningSourceError` | The abstraction, for writing a custom mode (`start()` rejects with a<br>`SigningSourceError`: an `Error` carrying a `code`) |
 | `ErrorCode` (enum) / `ErrorCodes` (map) | The backend wire contract — generated from the service's GraphQL schema |
 | `getErrorMessage(code, serverMessage?)` | Error-code → user-friendly copy |
 | `CREATE_ENVELOPE_MUTATION`, `GET_SIGNING_URL_MUTATION` + types | The GraphQL operations, types generated from the schema |

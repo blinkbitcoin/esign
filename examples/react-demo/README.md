@@ -23,8 +23,8 @@ passthrough treats as the userId.
 |------|-------|
 | `src/App.tsx` | Minimal host wiring + outcome reporting around the component |
 | `src/apollo.ts` | `createESignApolloClient({ uri, getAuthToken })` — the host owns both |
-| `src/HookSigning.tsx` | Hook-driven custom signing UI (`useESignature` + the host's own buttons and iframe); toggled from the toolbar, default UI stays the E2E target |
-| `vite.config.ts` | Resolves the library to source while serving (dev, vitest) and to its built `dist` when building - the E2E suites build + preview, so they test what a consumer installs |
+| `src/HookSigning.tsx` | Hook-driven custom signing UI (`useESignature` + the host's own buttons<br>and iframe); toggled from the toolbar, default UI stays the E2E target |
+| `vite.config.ts` | Resolves the library to source while serving (dev, vitest) and to its<br>built `dist` when building - the E2E suites build + preview, so they test<br>what a consumer installs |
 
 ## Testing
 
