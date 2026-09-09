@@ -1,8 +1,12 @@
 {
   "name": "esign-monorepo",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "workspaces": ["packages/*", "examples/*", "scripts"],
+  "workspaces": [
+    "packages/*",
+    "examples/*",
+    "scripts"
+  ],
   "scripts": {
     "start": "npm run start -w examples/react-native-demo",
     "ios": "npm run ios -w examples/react-native-demo",
