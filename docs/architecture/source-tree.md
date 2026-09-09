@@ -17,11 +17,12 @@ esign/
 │       │   ├── signing/           # SigningSource abstraction + machine.ts (the state machine) + labels.ts
 │       │   │   ├── bridge.ts      #   interpretBridgeEvent: the neutral `{ event }` protocol the bridge/mock pages post
 │       │   │   ├── hostedForm/    #   provider-neutral hosted-form source, minter, public-URL source (interpreter injectable)
-│       │   │   └── ...            #   proxySource (Apollo) + the DocuSign-bound Web Forms sources / interpreter
+│       │   │   └── ...            #   proxySource (Apollo) + deprecated shims at the old DocuSign paths
+│       │   ├── providers/docusign/# DocuSign: interpretDocuSignEvent, the prefill contract, the Web Forms sources
 │       │   ├── client.ts          # createESignApolloClient + ErrorCodes
 │       │   ├── operations.ts      # GraphQL mutations (wire contract)
 │       │   ├── generated/         # Codegen output (from examples/full-service-demo schema)
-│       │   └── __tests__/         # incl. webform-entry Apollo-free guard
+│       │   └── __tests__/         # incl. the webform-entry Apollo-free guard + the signing/ ↛ providers/ guard
 │       ├── codegen.ts             # GraphQL Codegen config
 │       └── dist/                  # tsup output (gitignored)
 │

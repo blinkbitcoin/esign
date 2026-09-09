@@ -7,12 +7,12 @@ import type {
   WebFormPhoneNumber as ServerPhoneNumber,
   WebFormPrefill as ServerPrefill,
   WebFormPrefillValue as ServerValue,
-} from '../../../../esign-server/src/types';
+} from '../../../../../esign-server/src/types';
 import type {
   WebFormPhoneNumber,
   WebFormPrefill,
   WebFormPrefillValue,
-} from '../mint';
+} from '../prefill';
 
 // Mutual assignability = identical shapes
 type Equals<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;

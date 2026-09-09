@@ -37,7 +37,6 @@ export { resolveLabelsWith } from './labels';
 export type { ESignatureLabels, LabelDefaults } from './labels';
 
 export { interpretBridgeEvent, interpretProxyEvent } from './bridge';
-export { interpretDocuSignEvent } from './events';
 export { getErrorMessage } from './messages';
 
 export { createProxySigningSource, getApolloErrorCode } from './proxySource';
@@ -63,21 +62,24 @@ export type {
 export { createHostedFormPublicUrlSource } from './hostedForm/publicUrlSource';
 export type { HostedFormPublicUrlSourceOptions } from './hostedForm/publicUrlSource';
 
-export { createWebFormsSource, resolveCreateInstance } from './webFormsSource';
-export type {
-  WebFormsSigningSourceOptions,
-  WebFormsCreateInstanceOptions,
-  WebFormsMintOptions,
-  WebFormsInstance,
-} from './webFormsSource';
-
-export { createWebFormsMinter } from './mint';
+// DocuSign's sources, interpreter and prefill contract live in
+// providers/docusign; re-exported here for the old module path.
+/** @deprecated Import from '@blinkbitcoin/esign-core' (providers/docusign) */
+export {
+  createPublicUrlSource,
+  createWebFormsMinter,
+  createWebFormsSource,
+  interpretDocuSignEvent,
+  resolveCreateInstance,
+} from '../providers/docusign';
 export type {
   MintWebFormsInstanceOptions,
+  PublicUrlSigningSourceOptions,
+  WebFormPhoneNumber,
   WebFormPrefill,
   WebFormPrefillValue,
-  WebFormPhoneNumber,
-} from './mint';
-
-export { createPublicUrlSource } from './publicUrlSource';
-export type { PublicUrlSigningSourceOptions } from './publicUrlSource';
+  WebFormsCreateInstanceOptions,
+  WebFormsInstance,
+  WebFormsMintOptions,
+  WebFormsSigningSourceOptions,
+} from '../providers/docusign';

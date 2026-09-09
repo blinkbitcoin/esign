@@ -1,40 +1,20 @@
-// Minting a DocuSign Web Forms instance through the host's own backend: the
-// hosted-form minter (./hostedForm/mint) bound to the DocuSign prefill
-// contract. The backend holds the DocuSign credentials
-// (@blinkbitcoin/esign-server does the DocuSign call); this is only the
-// client half. No Apollo/GraphQL dependency.
+// Deprecated path: the Web Forms minter moved to providers/docusign/webFormsSource
+// and the prefill contract to providers/docusign/prefill; the neutral minter is
+// ./hostedForm/mint. Kept so the old module path keeps resolving; carries no
+// logic of its own.
 
-import { createHostedFormMinter } from './hostedForm/mint';
+import { createWebFormsMinter as canonicalCreateWebFormsMinter } from '../providers/docusign/webFormsSource';
 
-import type {
-  HostedFormInstance,
-  MintHostedFormOptions,
-} from './hostedForm/mint';
+import type * as Prefill from '../providers/docusign/prefill';
+import type * as WebForms from '../providers/docusign/webFormsSource';
 
-// The prefill contract, mirroring @blinkbitcoin/esign-server (parity-tested):
-// keys are field API reference names, the value shape follows the field type.
-// Number → number (unquoted), CheckboxGroup → string[], PhoneNumber → object.
-export interface WebFormPhoneNumber {
-  countryCode?: string;
-  nationalNumber: string;
-}
-export type WebFormPrefillValue =
-  | string
-  | number
-  | string[]
-  | WebFormPhoneNumber;
-export type WebFormPrefill = Record<string, WebFormPrefillValue>;
-
-/** The mint endpoint options; the same shape as `MintHostedFormOptions`. */
-export type MintWebFormsInstanceOptions = MintHostedFormOptions;
-
-/**
- * Build the `createInstance` call for createWebFormsSource from an endpoint
- * and a prefill. Mint right before opening the form: the instance token in
- * the returned URL lives about five minutes.
- */
-export const createWebFormsMinter = (
-  mint: MintWebFormsInstanceOptions,
-  prefill: WebFormPrefill = {},
-): (() => Promise<HostedFormInstance>) =>
-  createHostedFormMinter<WebFormPrefill>(mint, prefill);
+/** @deprecated Import from '@blinkbitcoin/esign-core' (providers/docusign/prefill) */
+export type WebFormPhoneNumber = Prefill.WebFormPhoneNumber;
+/** @deprecated Import from '@blinkbitcoin/esign-core' (providers/docusign/prefill) */
+export type WebFormPrefillValue = Prefill.WebFormPrefillValue;
+/** @deprecated Import from '@blinkbitcoin/esign-core' (providers/docusign/prefill) */
+export type WebFormPrefill = Prefill.WebFormPrefill;
+/** @deprecated Import from '@blinkbitcoin/esign-core' (providers/docusign/webFormsSource) */
+export type MintWebFormsInstanceOptions = WebForms.MintWebFormsInstanceOptions;
+/** @deprecated Import from '@blinkbitcoin/esign-core' (providers/docusign/webFormsSource) */
+export const createWebFormsMinter = canonicalCreateWebFormsMinter;

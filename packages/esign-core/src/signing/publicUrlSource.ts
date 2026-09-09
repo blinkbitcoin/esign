@@ -1,24 +1,13 @@
-// Public-URL signing source: a published DocuSign Web Form link, prefilled via
-// URL query parameters - the hosted-form public-URL source
-// (./hostedForm/publicUrlSource) bound to the DocuSign event interpreter.
-// No backend, no credentials. Note prefilled values ride in the URL, so
-// avoid it for sensitive data (see docs/security notes).
+// Deprecated path: the DocuSign-bound public-URL source moved to
+// providers/docusign/webFormsSource; the neutral one is ./hostedForm/publicUrlSource.
+// Kept so the old module path keeps resolving; carries no logic of its own.
 
-import { interpretDocuSignEvent } from './events';
-import { createHostedFormPublicUrlSource } from './hostedForm/publicUrlSource';
+import { createPublicUrlSource as canonicalCreatePublicUrlSource } from '../providers/docusign/webFormsSource';
 
-import type { HostedFormPublicUrlSourceOptions } from './hostedForm/publicUrlSource';
-import type { SigningSource } from './types';
+import type * as WebForms from '../providers/docusign/webFormsSource';
 
-export type PublicUrlSigningSourceOptions = Omit<
-  HostedFormPublicUrlSourceOptions,
-  'interpret'
->;
-
-export const createPublicUrlSource = (
-  options: PublicUrlSigningSourceOptions,
-): SigningSource =>
-  createHostedFormPublicUrlSource({
-    ...options,
-    interpret: interpretDocuSignEvent,
-  });
+/** @deprecated Import from '@blinkbitcoin/esign-core' (providers/docusign/webFormsSource) */
+export type PublicUrlSigningSourceOptions =
+  WebForms.PublicUrlSigningSourceOptions;
+/** @deprecated Import from '@blinkbitcoin/esign-core' (providers/docusign/webFormsSource) */
+export const createPublicUrlSource = canonicalCreatePublicUrlSource;

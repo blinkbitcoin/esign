@@ -1,5 +1,4 @@
-import { interpretDocuSignEvent, interpretProxyEvent } from '../events';
-import { interpretBridgeEvent } from '../bridge';
+import { interpretDocuSignEvent } from '../events';
 
 describe('interpretDocuSignEvent', () => {
   describe('accepted shapes', () => {
@@ -133,11 +132,5 @@ describe('interpretDocuSignEvent', () => {
     ])('returns null for %o', message => {
       expect(interpretDocuSignEvent(message)).toBeNull();
     });
-  });
-});
-
-describe('the bridge interpreter, re-exported', () => {
-  it('interpretProxyEvent is interpretBridgeEvent', () => {
-    expect(interpretProxyEvent).toBe(interpretBridgeEvent);
   });
 });

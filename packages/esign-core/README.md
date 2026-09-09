@@ -41,6 +41,9 @@ authenticated POST; the prefill shape is a generic a provider narrows) and
 bridge and mock pages post (`interpretProxyEvent` is its deprecated name);
 `createWebFormsSource` / `createPublicUrlSource` bind `interpretDocuSignEvent`
 instead. Another hosted-form provider is a source built the same way.
+DocuSign's pieces live under `src/providers/docusign/`; `src/signing/` is
+provider-neutral and never imports from `providers/` (guard-tested). The old
+`signing/*` module paths of the DocuSign modules remain as deprecated shims.
 
 Adding a provider = implementing `SigningSource` (`start()` + `interpret()`);
 the platform components never change. Optional capabilities are extra

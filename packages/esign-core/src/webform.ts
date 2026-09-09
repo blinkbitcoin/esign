@@ -35,30 +35,27 @@ export type {
 export { createHostedFormPublicUrlSource } from './signing/hostedForm/publicUrlSource';
 export type { HostedFormPublicUrlSourceOptions } from './signing/hostedForm/publicUrlSource';
 
+// The DocuSign provider: its sources, interpreter and prefill contract
 export {
+  createPublicUrlSource,
+  createWebFormsMinter,
   createWebFormsSource,
+  interpretDocuSignEvent,
   resolveCreateInstance,
-} from './signing/webFormsSource';
-export type {
-  WebFormsSigningSourceOptions,
-  WebFormsCreateInstanceOptions,
-  WebFormsMintOptions,
-  WebFormsInstance,
-} from './signing/webFormsSource';
-
-export { createWebFormsMinter } from './signing/mint';
+} from './providers/docusign';
 export type {
   MintWebFormsInstanceOptions,
+  PublicUrlSigningSourceOptions,
+  WebFormPhoneNumber,
   WebFormPrefill,
   WebFormPrefillValue,
-  WebFormPhoneNumber,
-} from './signing/mint';
-
-export { createPublicUrlSource } from './signing/publicUrlSource';
-export type { PublicUrlSigningSourceOptions } from './signing/publicUrlSource';
+  WebFormsCreateInstanceOptions,
+  WebFormsInstance,
+  WebFormsMintOptions,
+  WebFormsSigningSourceOptions,
+} from './providers/docusign';
 
 export { interpretBridgeEvent, interpretProxyEvent } from './signing/bridge';
-export { interpretDocuSignEvent } from './signing/events';
 export { getErrorMessage } from './signing/messages';
 export { isRestartable, isMountable } from './signing/types';
 export {
