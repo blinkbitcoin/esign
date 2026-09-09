@@ -112,7 +112,7 @@ esign/
 │   └── examples/mint-only-demo/
 │       ├── src/
 │       │   ├── quote.ts           # The host's own data → prefill of the read-only fields
-│       │   ├── mint.ts            # The one package call (createWebFormInstance; mock swap)
+│       │   ├── mint.ts            # hostedFormMint(providerFromEnv(...)): DocuSign or the mock by ESIGN_PROVIDER
 │       │   ├── schema.ts          # The host's schema with investSigningUrl added
 │       │   ├── server.ts          # Apollo Server + the host's session in the context
 │       │   └── index.ts           # Bootstrap (PORT, default 4100)
@@ -122,7 +122,7 @@ esign/
 │   │
 │   └── examples/serverless-handler-demo/
 │       ├── src/
-│       │   ├── handlers.ts        # createWebFormInstanceHandler + createWebhookHandler from env
+│       │   ├── handlers.ts        # createWebFormInstanceHandler + createWebhookHandler over providerFromEnv(defaultRegistry)
 │       │   ├── node.ts            # IncomingMessage ⇄ Request/Response adapter + route table
 │       │   └── index.ts           # Bootstrap (PORT, default 4200)
 │       └── tests/                 # Vitest, 100% enforced
@@ -155,7 +155,7 @@ esign/
 │       │   │
 │       │   ├── providers/         # The package's adapters wired to this service ⭐
 │       │   │   ├── port.ts        #   Re-exports ESignProvider + supportsWebForms
-│       │   │   ├── index.ts       #   factory/singleton (tracing-wrapped)
+│       │   │   ├── index.ts       #   registry + providerFromEnv, singleton (tracing-wrapped)
 │       │   │   ├── mock.ts        #   mock adapter handle (pages served by the router)
 │       │   │   └── docusign/      #   DocuSign adapter handle + env config
 │       │   │
@@ -238,7 +238,7 @@ esign/
 | `examples/full-service-demo/src/schema.ts` | GraphQL API |
 | `examples/full-service-demo/src/webhook.ts` | Generic webhook processing |
 | `examples/full-service-demo/src/types.ts` | ESignProvider interface |
-| `examples/full-service-demo/src/providers/index.ts` | Provider factory + singleton |
+| `examples/full-service-demo/src/providers/index.ts` | Provider registry (providerFromEnv) + singleton |
 | `packages/esign-server/src/knex/migrations.ts` | Database schema (programmatic Knex migration source) |
 | `examples/full-service-demo/tests/e2e/` | E2E tests |
 

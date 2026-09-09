@@ -10,14 +10,13 @@
 
 import {
   bearerToken,
-  createDocuSignProvider,
   createEnvelopeService,
   createMemoryEnvelopeStore,
-  createMockProvider,
   createWebFormInstanceHandler,
   createWebhookHandler,
-  docuSignConfigFromEnv,
+  defaultRegistry,
   type ESignProvider,
+  providerFromEnv as selectProvider,
 } from '@blinkbitcoin/esign-server';
 
 export type Handler = (request: Request) => Promise<Response>;
@@ -32,23 +31,16 @@ export interface Handlers {
 export const authenticate = (request: Request): string | null =>
   bearerToken(request.headers.get('authorization'));
 
-export const providerFromEnv = (env: NodeJS.ProcessEnv): ESignProvider => {
-  const docusign = createDocuSignProvider({
-    config: docuSignConfigFromEnv(env),
-    webhook: {
-      hmacKey: () => env.DOCUSIGN_HMAC_KEY,
-      // Only the mock is allowed to run unsigned
-      allowMissingKey: () => env.ESIGN_PROVIDER === 'mock',
-    },
-  });
-  if (env.ESIGN_PROVIDER !== 'mock') {
-    return docusign;
-  }
-  return createMockProvider({
-    baseUrl: () => env.MOCK_PAGES_ORIGIN || 'http://localhost:4000',
-    webhook: docusign,
-  });
-};
+// The provider ESIGN_PROVIDER selects out of the package's registry: DocuSign
+// unless `mock` is set. Only the mock is allowed to run unsigned webhooks.
+export const providerFromEnv = (env: NodeJS.ProcessEnv): ESignProvider =>
+  selectProvider(
+    env,
+    defaultRegistry(env, {
+      webhook: { allowMissingKey: () => env.ESIGN_PROVIDER === 'mock' },
+    }),
+    { default: 'docusign' },
+  );
 
 export const createHandlers = (
   env: NodeJS.ProcessEnv = process.env,
