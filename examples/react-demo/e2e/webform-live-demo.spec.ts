@@ -99,6 +99,11 @@ test('live web form inside the component: submission completes', async ({
   page.on('response', response => {
     if (response.url().includes('/actions/')) {
       submitStatus = response.status();
+      // What DocuSign support needs to look a refusal up server-side
+      const headers = response.headers();
+      console.log(
+        `[live-demo] submission trace: x-docusign-tracetoken=${headers['x-docusign-tracetoken']} x-request-id=${headers['x-request-id']?.split(',')[0]} at ${new Date().toISOString()}`,
+      );
     }
   });
   await frame.getByRole('button', { name: 'Next' }).click();

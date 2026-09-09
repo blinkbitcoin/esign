@@ -275,6 +275,31 @@ differently; that is unverified. Still open: the same test on a
 template-built form with one field made read-only (needs the builder),
 and a production account.
 
+**What DocuSign says, and what its response carries.** DocuSign's own
+guide ("Populate Read-Only Fields on a Web Form", support center) documents
+exactly our approach: read-only values "must be set either through the API
+or by assigning a default value", with the Web Forms API named for
+person-specific fields. So this is a documented feature failing, not a
+misuse. Other integrators report the same symptom - a community thread,
+"Issues with Read-Only Field" (esignature-api-63/22268), describes
+read-only fields preset from a CRM erroring at start and at submission,
+unresolved as of January 2025, with DocuSign staff pointing to a support
+case. The 422 body carries no reason, but the response headers carry the
+identifiers DocuSign support uses to look the failure up server-side:
+
+| Header | Value on 2026-09-09 12:01:42 UTC (instance `a6cdef2e-27a0-4cd1-a70b-0ae082343eea`) |
+|---|---|
+| `x-docusign-tracetoken` | `8650d36b92bcc0a135bb24c609facf56` |
+| `x-request-id` | `1a23d44f-e790-9f38-b2d8-d5dbc73484ea` |
+| form / account | `1228ee55-ce36-4b87-8646-39c93d50ee69` / `9a18f197-c01b-4813-8f7c-040b4e3a245a` (demo) |
+
+The form player's own telemetry after the failure says only "Player form
+submission error" with the same message. A DocuSign support case with the
+trace token, the instance id and the table above is the next step (the
+community's other fix, re-uploading the form's JSON from the builder, is
+worth one try first). Every `make e2e-live` prints a fresh trace token
+from the expected-failure test's response when needed.
+
 **Consequences for a host that needs locked terms today:**
 
 - The proxy flow locks values reliably: `createEnvelopeFromTemplate` can
