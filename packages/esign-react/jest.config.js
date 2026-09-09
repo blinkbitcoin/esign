@@ -19,6 +19,8 @@ module.exports = {
     // Pure re-export barrels - no executable logic
     'src/index\\.ts$',
     'src/docusign\\.ts$',
+    // Pure re-export barrel - nothing to cover
+    'src/providers/docusign/index\\.ts$',
   ],
   // json-summary feeds scripts/coverage-badge.mjs (README badge + HTML report)
   coverageReporters: ['text', 'lcov', 'json-summary'],
