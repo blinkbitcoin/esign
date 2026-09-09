@@ -52,6 +52,12 @@ npm run --silent docusign:check -w "$SERVICE"
 echo "== api live test (Web Forms)"
 npm run --silent "$LIVE_TEST" -w "$SERVICE" -- tests/live/webforms.live.test.ts
 
+# The proxy journey persists envelopes: the E2E Postgres (tmpfs, :5433)
+echo "== test database"
+make test-db-up > /dev/null
+export DATABASE_URL="postgresql://test:test@localhost:5433/esign_test"
+npm run --silent migrate -w "$SERVICE" > /dev/null
+
 echo "== service on :$LIVE_PORT (DocuSign provider)"
 # Never adopt a listener already on the port (a stale run, a foreign server)
 if lsof -t -iTCP:"$LIVE_PORT" -sTCP:LISTEN > /dev/null 2>&1; then
@@ -66,6 +72,7 @@ PID=$!
 stop_service() {
   lsof -t -iTCP:"$LIVE_PORT" -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true
   kill "$PID" 2>/dev/null || true
+  make test-db-down > /dev/null 2>&1 || true
 }
 trap stop_service EXIT
 for _ in $(seq 1 30); do
@@ -79,6 +86,9 @@ E2E_LIVE_API_ORIGIN="http://localhost:$LIVE_PORT" npm run --silent test:e2e:webf
 
 echo "== playwright: the real form inside the web component (iframe)"
 E2E_LIVE_API_ORIGIN="http://localhost:$LIVE_PORT" npm run --silent test:e2e:webform:live:demo -w examples/react-demo
+
+echo "== playwright: proxy mode - a real signature inside the web component"
+E2E_LIVE_API_ORIGIN="http://localhost:$LIVE_PORT" npm run --silent test:e2e:proxy:live:demo -w examples/react-demo
 
 echo "== the mint-only and serverless examples mint real instances"
 PROVIDER=docusign MINT_PORT="${MINT_PORT:-4110}" HANDLER_PORT="${HANDLER_PORT:-4210}" bash scripts/e2e/server-demos-smoke.sh

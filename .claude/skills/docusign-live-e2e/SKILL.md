@@ -13,8 +13,10 @@ Everything lives behind three targets (`scripts/e2e/live.sh`,
 make docusign-check    # JWT grant + GET the form (?state=active) → name, state, field ids
 make docusign-template # proxy-flow template from the fixture PDF (role signer), WRITE=1 → .env
 make test-live         # both live API suites: envelopes (needs that template) + Web Forms
-make e2e-live          # check → Web Forms live API test → service on :4010 (DocuSign provider)
-                       #   → Playwright walks the real form, tampers with the locked fields
+make e2e-live          # check → Web Forms live API test → E2E Postgres → service on :4010
+                       #   → Playwright: raw form walk + tamper; the form inside the web
+                       #   component (webform mode); a REAL SIGNATURE in proxy mode (ceremony
+                       #   in the iframe → bridge → success screen)
                        #   → mint-only + serverless examples mint real instances → stop
 ```
 
@@ -38,6 +40,22 @@ Web Forms scopes, the packages built (`npm run build`) for Playwright.
 | walker stuck on page A, later "prefill X should be displayed" | required editable fields empty (Signer_name, Signer_email, country) - the form refuses Next | prefill every required editable field (runner defaults do) |
 | `toBeVisible` on inputs times out at 80% | the Summary page has no inputs | walker stops on a page without inputs |
 | date prefill "should be displayed" | minted `2026-09-10`, rendered `2026/09/10` | dates compare on digits |
+
+## Proxy-mode ceremony, headless
+
+DocuSign's embedded ceremony drives fine in headless Chromium: disclosure
+checkbox (`click({ force: true })`, a plain `check` fails) + Continue, the
+tab is `button "Required - Sign Here"`, then `Adopt and Sign` (Full Name is
+prefilled), then the first `Finish`. Both the disclosure and the adoption
+are skipped by DocuSign for a recipient who did them on an earlier
+envelope (same name/email/clientUserId), so the spec treats both as
+optional. After Finish the frame navigates to DOCUSIGN_RETURN_URL; from a
+public site to localhost Chrome answers
+ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS unless Chromium runs with
+`--disable-features=LocalNetworkAccessChecks` (the live configs do). Two
+`Finish` buttons exist - use `.first()`. The envelope must be persisted, so
+the runner brings up the E2E Postgres and exports its DATABASE_URL before
+migrating (dotenv-cli never overrides an existing variable).
 
 ## Submission is refused for the fixture form (demo env)
 

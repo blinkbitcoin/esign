@@ -2,17 +2,17 @@ import { defineConfig } from '@playwright/test';
 
 import { liveViteDevServer, baseURL, retries } from './e2e/ports';
 
-// The web demo (webform mode) against a REAL DocuSign Web Form: the demo
-// mints through the live service at E2E_LIVE_API_ORIGIN (ESIGN_PROVIDER=
+// The web demo (proxy mode) against REAL DocuSign: the demo creates an
+// envelope through the live service at E2E_LIVE_API_ORIGIN (ESIGN_PROVIDER=
 // docusign, already running - make e2e-live starts it), embeds the real
-// form in the component's iframe, and the spec drives it there. Without
-// E2E_LIVE_API_ORIGIN the suite skips itself. See docs/integration/webforms.md.
+// signing ceremony in the component's iframe, and the spec signs there.
+// Without E2E_LIVE_API_ORIGIN the suite skips itself.
 const apiOrigin = process.env.E2E_LIVE_API_ORIGIN;
 
 export default defineConfig({
   testDir: 'e2e',
-  testMatch: '**/webform-live-demo.spec.ts',
-  timeout: 120_000,
+  testMatch: '**/proxy-live-demo.spec.ts',
+  timeout: 180_000,
   retries,
   use: {
     // DocuSign (a public site) redirects the iframe to the service's
@@ -20,10 +20,10 @@ export default defineConfig({
     // blocks that navigation (ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS).
     // A deployed service has a public return URL; here, lift the check.
     launchOptions: { args: ['--disable-features=LocalNetworkAccessChecks'] },
-    baseURL: baseURL('webform'),
-    viewport: { width: 600, height: 1100 },
+    baseURL: baseURL('proxy'),
+    viewport: { width: 1000, height: 1100 },
   },
   webServer: apiOrigin
-    ? [liveViteDevServer(apiOrigin, process.env.E2E_LIVE_PREFILL)]
+    ? [liveViteDevServer(apiOrigin, undefined, 'proxy')]
     : [],
 });

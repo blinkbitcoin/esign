@@ -173,8 +173,14 @@ make docusign-check   # JWT grant + the form is reachable (names the consent URL
 make e2e-live         # service on DocuSign (LIVE_PORT, default 4010) → API live test → Playwright locked-fields check → stop
 ```
 
-`make e2e-live` also boots the mint-only and serverless examples on the
-DocuSign provider and has each mint a real instance. It mints with the
+`make e2e-live` also runs the web demo against the live service in a real
+browser twice - webform mode (the real form inside the component's
+iframe, walked to its Summary) and proxy mode (an envelope from the
+template, DocuSign's signing ceremony inside the iframe, a real signature
+adopted and applied, Finish, the return-URL bridge posting completion, the
+demo's success screen; the E2E Postgres holds the envelope) - and boots
+the mint-only and serverless examples on the DocuSign provider to mint
+real instances. It mints with the
 capability test form's group C values plus
 every required editable field (the form refuses Next while one is empty, so
 the walker could not reach the locked pages otherwise) and asserts the six
