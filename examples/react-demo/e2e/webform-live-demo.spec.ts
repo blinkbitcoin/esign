@@ -3,10 +3,12 @@
 // loads the real form, and this spec drives it in the frame - proving what
 // no other run does: DocuSign allows framing an instance, the component's
 // mint path works against the real service from a browser (CORS included),
-// and the locked terms arrive inside the frame. Opt-in (E2E_LIVE_API_ORIGIN,
-// see playwright.webform-live-demo.config.ts).
+// the locked terms arrive inside the frame, and the submission goes
+// through to a signed envelope. Opt-in (E2E_LIVE_API_ORIGIN, see
+// playwright.webform-live-demo.config.ts).
 
 import { test, expect, type FrameLocator, type Page } from '@playwright/test';
+import { signInCeremony } from './liveCeremony';
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -64,7 +66,7 @@ test('live web form inside the component: minted, framed, walked', async ({
   for (const value of [
     'E2E-0001',
     '1000',
-    '0.01',
+    '0.01268231',
     '78850',
     '2026-09-08 10:44',
   ]) {
@@ -76,21 +78,17 @@ test('live web form inside the component: minted, framed, walked', async ({
   });
 });
 
-// KNOWN LIMITATION, encoded so a change is noticed: DocuSign's demo
-// environment refuses to complete a form that has read-only fields (422
-// UNPROCESSABLE_ERROR on the form's own submit request, whatever the values
-// - docs/integration/webforms.md, "Submitting a form with read-only
-// fields"). This test asserts a completed signing and is marked as an
-// expected failure: the run stays green while DocuSign refuses, and turns
-// RED the day the submission goes through - at which point the annotation
-// comes off and locked Web Forms are proven end to end.
-test('live web form inside the component: submission completes', async ({
+// The whole Web Forms journey with locked terms, end to end: Summary → Next
+// submits the form (DocuSign creates the envelope from the form's template
+// and opens its signing ceremony in the same frame), the signer signs,
+// Finish sends the frame to the return-URL bridge, the bridge posts
+// completion and the component resolves. The fixture form types its locked
+// amounts as TEXT fields: DocuSign's demo environment answers 422 to the
+// submission of a form with read-only NUMBER fields
+// (docs/integration/webforms.md, "Submitting a form with read-only fields").
+test('live web form inside the component: submitted, signed, completed', async ({
   page,
 }) => {
-  test.fail(
-    true,
-    'DocuSign (demo env) answers 422 to the submission of a form with read-only fields',
-  );
   await page.goto('/');
   await page.getByTestId('sign-document-button').click();
   const frame = signingFrame(page);
@@ -110,7 +108,13 @@ test('live web form inside the component: submission completes', async ({
   await expect.poll(() => submitStatus, { timeout: 30_000 }).not.toBe(0);
   console.log(`[live-demo] submission answered ${submitStatus}`);
   expect(submitStatus, 'the form submission is accepted').toBeLessThan(400);
+  await signInCeremony(frame);
   await expect(page.getByTestId('success-screen')).toBeVisible({
     timeout: 60_000,
+  });
+  await expect(page.getByTestId('outcome')).toContainText('Document signed!');
+  await page.screenshot({
+    path: 'test-results/webform-live-demo-signed.png',
+    fullPage: true,
   });
 });

@@ -35,7 +35,7 @@ cp .env.example .env
 make dev                     # http://localhost:4200 (PORT overrides), mock provider
 curl -s -X POST http://localhost:4200/webform/instance \
   -H 'content-type: application/json' -H 'authorization: Bearer user-1' \
-  -d '{"prefill":{"number_of_units":10}}'
+  -d '{"prefill":{"number_of_units":"10"}}'
 ```
 
 With `ESIGN_PROVIDER=docusign`, the JWT-grant credentials and
