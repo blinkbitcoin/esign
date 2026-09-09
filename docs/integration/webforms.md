@@ -257,6 +257,13 @@ form's own network responses):
 | … with the read-only fields' template tabs made optional | 422 |
 | … with the read-only fields stripped from the submission | 400 "The field is required" for each of them |
 
+The live suite encodes this: `webform-live-demo.spec.ts` has a
+"submission completes" test marked as an **expected failure**
+(`test.fail`). The run stays green while DocuSign refuses and turns red
+the day a submission goes through - the signal to drop the annotation and
+call locked Web Forms proven. `make e2e-live` prints the limitation at the
+end of every run.
+
 So: embedded instances, API prefill and locked *display* all work; what the
 demo environment refuses is completing a form that has read-only fields
 at all, whatever their values. The submission must carry the read-only
