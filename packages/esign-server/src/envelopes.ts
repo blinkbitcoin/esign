@@ -18,6 +18,7 @@ import { noopTracing, type Tracing } from './tracing';
 import type {
   CreateEnvelopeInput,
   EnvelopeResult,
+  EnvelopeStatus,
   GetSigningUrlInput,
   SigningUrlResult,
   WebhookEvent,
@@ -51,6 +52,7 @@ export type WebhookOutcome =
   | 'unknown_envelope'
   | 'unchanged'
   | 'rejected_terminal'
+  | 'rejected_no_transition'
   | 'updated';
 
 export interface EnvelopeService {
@@ -74,9 +76,31 @@ export interface EnvelopeService {
   handleWebhookEvent(event: WebhookEvent): Promise<WebhookOutcome>;
 }
 
+// The audit action a webhook transition records, per status a webhook may
+// move an envelope to. 'sent' is deliberately absent: a webhook never moves
+// an envelope back to sent, so the type forbids it here and the runtime
+// rejects it before any write. A new EnvelopeStatus has to be added here
+// before it can reach audit().
+const WEBHOOK_AUDIT_ACTION: Record<
+  Exclude<EnvelopeStatus, 'sent'>,
+  AuditAction
+> = {
+  completed: 'completed',
+  voided: 'voided',
+  declined: 'declined',
+};
+
+type WebhookStatus = keyof typeof WEBHOOK_AUDIT_ACTION;
+
 // Terminal statuses: no transition out of them (blocks a replayed older
-// signed webhook from downgrading a finished envelope)
-const TERMINAL_STATUSES = new Set<string>(['completed', 'voided', 'declined']);
+// signed webhook from downgrading a finished envelope). Same set as the
+// statuses a webhook may move to.
+const TERMINAL_STATUSES: ReadonlySet<string> = new Set(
+  Object.keys(WEBHOOK_AUDIT_ACTION),
+);
+
+const isWebhookStatus = (status: EnvelopeStatus): status is WebhookStatus =>
+  TERMINAL_STATUSES.has(status);
 
 export const createEnvelopeService = (
   deps: EnvelopeServiceDeps,
@@ -260,10 +284,18 @@ export const createEnvelopeService = (
           }
 
           // Past the guards the only transitions are sent -> completed |
-          // voided | declined, each a valid audit action
+          // voided | declined, each mapped to its audit action. A status
+          // outside that table ('sent' is where an envelope starts, a webhook
+          // never moves one back there) is refused before any write
+          if (!isWebhookStatus(newStatus)) {
+            logger.warn(
+              `Webhook ignored: ${newStatus} is not a transition for envelope ${envelope.id}`,
+            );
+            return finish('rejected_no_transition');
+          }
           await store.transaction(async tx => {
             await tx.updateEnvelopeStatus(envelope.id, newStatus);
-            await audit(tx, envelope.id, newStatus as AuditAction, {
+            await audit(tx, envelope.id, WEBHOOK_AUDIT_ACTION[newStatus], {
               source: 'webhook',
             });
           });
