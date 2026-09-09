@@ -17,23 +17,26 @@ import { createApp } from '../src/app';
 import { provider } from '../src/providers';
 import { clearTokenCache, DocuSignProvider } from '../src/providers/docusign';
 import { clearEnvelopes, getWebFormPrefill, MockProvider } from '../src/providers/mock';
-import { supportsWebForms } from '../src/providers/port';
+import { supportsHostedForms, supportsWebForms } from '../src/providers/port';
 
 const { privateKey: testPrivateKey } = generateKeyPairSync('rsa', {
   modulusLength: 2048,
   privateKeyEncoding: { type: 'pkcs1', format: 'pem' },
 });
 
-describe('supportsWebForms', () => {
+describe('supportsHostedForms', () => {
   it('is true for the mock and DocuSign providers', () => {
+    expect(supportsHostedForms(MockProvider)).toBe(true);
+    expect(supportsHostedForms(DocuSignProvider)).toBe(true);
+    // the deprecated alias answers the same
     expect(supportsWebForms(MockProvider)).toBe(true);
-    expect(supportsWebForms(DocuSignProvider)).toBe(true);
   });
 
-  it('is false for a provider without the method', () => {
+  it('is false for a provider without the method (under either port name)', () => {
     const minimal = { ...MockProvider };
     delete (minimal as { createWebFormInstance?: unknown }).createWebFormInstance;
-    expect(supportsWebForms(minimal)).toBe(false);
+    delete (minimal as { createHostedFormInstance?: unknown }).createHostedFormInstance;
+    expect(supportsHostedForms(minimal)).toBe(false);
   });
 });
 

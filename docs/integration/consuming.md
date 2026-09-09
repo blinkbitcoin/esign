@@ -72,6 +72,9 @@ import {
   createWebFormsSource,   // API-embedded: your backend mints the instance URL
   createPublicUrlSource,  // OR: a published public form URL, no backend
 } from '@blinkbitcoin/esign-react-native/webform';
+// `/webform` is the Apollo-free alias; the DocuSign adapter's canonical entry
+// is `@blinkbitcoin/esign-react-native/docusign` (same surface). The neutral
+// hosted-form layer (createHostedFormSource, interpretBridgeEvent) is on both.
 
 // Shape 1 - API-embedded (recommended: prefill stays server-side, read-only
 // fields come back locked). Your backend mints with @blinkbitcoin/esign-server

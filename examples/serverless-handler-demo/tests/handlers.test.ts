@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { authenticate, createHandlers, providerFromEnv } from '../src/handlers';
 
 const post = (
@@ -41,6 +42,19 @@ describe('providerFromEnv', () => {
   it('is the DocuSign provider otherwise, refusing unsigned webhooks', () => {
     const provider = providerFromEnv({ DOCUSIGN_HMAC_KEY: 'k' });
     expect(provider.verifyWebhook({}, '{}')).toBe(false);
+  });
+
+  it('warns and stays on DocuSign for an unknown name', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const provider = providerFromEnv({
+      ESIGN_PROVIDER: 'adobe',
+      DOCUSIGN_HMAC_KEY: 'k',
+    });
+    expect(provider.verifyWebhook({}, '{}')).toBe(false);
+    expect(warn).toHaveBeenCalledWith(
+      'Unknown ESIGN_PROVIDER: adobe, falling back to docusign',
+    );
+    warn.mockRestore();
   });
 });
 

@@ -12,8 +12,8 @@ import {
   type GetSigningUrlInput,
   type GetSigningUrlResult,
 } from '../operations';
+import { interpretBridgeEvent } from './bridge';
 import { SigningSourceError, isSigningSourceError } from './errors';
-import { interpretProxyEvent } from './events';
 
 import type { ApolloClient } from '@apollo/client';
 import type { RecipientData } from '../types';
@@ -117,5 +117,6 @@ export const createProxySigningSource = (
     }
   },
 
-  interpret: interpretProxyEvent,
+  // The backend's return-URL bridge posts the `{ event }` protocol
+  interpret: interpretBridgeEvent,
 });

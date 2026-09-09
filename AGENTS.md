@@ -71,9 +71,12 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
   hand-maintained and CI's Docs check flags architecture changes without one
 - Shell that CI or the Makefile runs lives in `scripts/{ci,e2e,release}/`,
   not inline in workflows; it is shellcheck'd by `make check-ci`
-- The `ESignProvider` port (`examples/full-service-demo/src/providers/port.ts`) is the provider
-  boundary - nothing DocuSign-specific outside `examples/full-service-demo/src/providers/docusign/`
-  and the `@blinkbitcoin/esign-server` package it is built on
+- The `ESignProvider` port is the provider boundary - nothing provider-specific
+  outside a `providers/<name>/` directory: `packages/esign-server/src/docusign/`,
+  `packages/esign-core/src/providers/docusign/`, `packages/esign-react/src/providers/docusign/`
+  and `examples/full-service-demo/src/providers/docusign/`; generic layers never
+  import a provider (guard tests), and providers are selected through
+  `providerFromEnv` (`ESIGN_PROVIDER`)
 - GraphQL error codes are a wire contract: the `ErrorCode` enum in
   `examples/full-service-demo/schema.graphql` (emitted from `src/typeDefs.ts`) and the generated
   client types in `packages/esign-core/src/generated/` - run `make codegen`

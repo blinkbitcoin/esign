@@ -12,7 +12,7 @@ import type {
   SigningMachineState,
   SigningSession,
   SigningSourceError,
-} from '@blinkbitcoin/esign-core';
+} from '@blinkbitcoin/esign-core/webform';
 
 import {
   acquireSession,
@@ -21,7 +21,7 @@ import {
   isMountable,
   resolveRestart,
   transition,
-} from '@blinkbitcoin/esign-core';
+} from '@blinkbitcoin/esign-core/webform';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   ESignatureEmbed,

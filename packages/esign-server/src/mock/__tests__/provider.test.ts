@@ -116,6 +116,14 @@ describe('createMockProvider', () => {
   });
 
   describe('createWebFormInstance', () => {
+    it('is the hosted-form capability under both port names', () => {
+      const { provider } = setup();
+      expect(typeof provider.createHostedFormInstance).toBe('function');
+      expect(provider.createWebFormInstance).toBe(
+        provider.createHostedFormInstance,
+      );
+    });
+
     it('mints an instance url under the base url and remembers the prefill', async () => {
       const { provider } = setup();
       const prefill = { number_of_units: 1000, reference: 'E2E-0001' };

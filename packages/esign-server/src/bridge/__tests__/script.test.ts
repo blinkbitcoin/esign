@@ -4,10 +4,8 @@
 
 /* eslint-disable no-new-func */
 
-import {
-  POST_SESSION_END_SCRIPT,
-  POST_SIGNING_EVENT_SCRIPT,
-} from '../bridgeScript';
+import { POST_SESSION_END_SCRIPT } from '../../docusign/mockWebFormPage';
+import { POST_SIGNING_EVENT_SCRIPT } from '../script';
 
 interface FakeWindow {
   ReactNativeWebView?: { postMessage?: (body: string) => void };

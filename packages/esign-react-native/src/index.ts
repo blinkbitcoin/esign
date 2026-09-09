@@ -10,6 +10,7 @@
 //
 //   // DocuSign Web Forms (API-embedded) / public Web Form URL:
 //   createWebFormsSource({ createInstance }) · createPublicUrlSource({ url })
+//   (Apollo-free from the ./docusign subpath; ./webform is its alias)
 //
 // The signing abstraction, sources, Apollo factory, and operations come from
 // @blinkbitcoin/esign-core and are re-exported here for convenience.
@@ -21,6 +22,13 @@ export type {
   GetAuthToken,
   GetSigningUrlInput,
   GetSigningUrlResult,
+  HostedFormCreateInstanceOptions,
+  HostedFormInstance,
+  HostedFormMintOptions,
+  HostedFormPrefill,
+  HostedFormPublicUrlSourceOptions,
+  HostedFormSourceOptions,
+  MintHostedFormOptions,
   MintWebFormsInstanceOptions,
   ProxySigningSourceOptions,
   PublicUrlSigningSourceOptions,
@@ -42,6 +50,11 @@ export {
   CREATE_ENVELOPE_MUTATION,
   createAuthContextSetter,
   createESignApolloClient,
+  createHostedFormMinter,
+  createHostedFormPublicUrlSource,
+  createHostedFormSource,
+  interpretBridgeEvent,
+  resolveHostedFormCreateInstance,
   createProxySigningSource,
   createPublicUrlSource,
   createWebFormsMinter,

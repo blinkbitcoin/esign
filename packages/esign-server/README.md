@@ -101,6 +101,15 @@ if (!event) return 400;
 await envelopes.handleWebhookEvent(event); // idempotent; terminal statuses never downgrade
 ```
 
+`providerFromEnv(env, defaultRegistry(env))` selects the adapter the way the
+three example hosts do: `ESIGN_PROVIDER=docusign` or `mock` (the default; an
+unknown name warns once and falls back), each entry built lazily so the mock
+never reads `DOCUSIGN_*`. A host with its own adapter spreads another entry
+into the registry. `hostedFormMint(provider)` is the provider's mint as a
+plain function (`undefined` without the capability; `supportsHostedForms`
+is the guard), accepting adapters that still implement the deprecated
+`createWebFormInstance` name.
+
 Every failure is an `ESignError` with a `code` (`UNAUTHORIZED`,
 `ENVELOPE_NOT_FOUND`, `VALIDATION_ERROR`, `ENVELOPE_CREATION_FAILED`,
 `PROVIDER_UNAVAILABLE`, `PERSISTENCE_FAILED`, `SESSION_EXPIRED`) and a
@@ -154,7 +163,12 @@ export const POST = createWebFormInstanceHandler({
 ```
 
 `createWebhookHandler({ provider, envelopes, clientIp? })` is the webhook
-counterpart. Both answer the same status codes as the Express router
+counterpart. The mint handler's target is a `{ provider }`, a `{ mint }`
+function (`hostedFormMint(provider)`, `mintFromDocuSign({ config })`, or
+your own) or, as above, DocuSign's config/client directly;
+`createHostedFormInstanceHandler` is the provider-neutral spelling and takes
+a `parsePrefill` for a provider with another prefill contract (the default
+stays DocuSign's, so the `400` reasons do not change). Both answer the same status codes as the Express router
 (`401`, `400` with the reason, `502` / `500`), because both call the same
 `mintWebFormInstanceHttp` / `processWebhookHttp` decision functions. Runs
 on Node runtimes (needs `node:crypto`); not on edge runtimes.
@@ -188,7 +202,7 @@ optional peer - only this subpath imports it.
 import { createESignRouter } from '@blinkbitcoin/esign-server/express';
 import { createESignGraphQL } from '@blinkbitcoin/esign-server';
 
-app.use(createESignRouter({
+app.use(createESignRouter({ // mounts DocuSign's pages via mountDocuSignPages (also exported here)
   envelopes, provider,
   authenticate: req => yourAuth(req.headers.authorization), // user id or null
   mockPages: provider === mock ? { getWebFormPrefill: mock.getWebFormPrefill } : undefined,
@@ -208,6 +222,28 @@ const { typeDefs, resolvers } = createESignGraphQL({ envelopes }); // → your A
 The signing pages go out under `signingPageCsp(nonce)` with a
 `signingPageNonce()` per response - the same CSP `signingPageResponse` gives
 a framework-neutral host.
+
+## The DocuSign adapter (`@blinkbitcoin/esign-server/docusign`)
+
+Everything DocuSign-specific is also on its own entry, peer-free: the
+client, `docuSignConfigFromEnv` and the `DOCUSIGN_*` mapping,
+`createDocuSignProvider`, `createWebFormInstance`, the prefill contract
+(`parseWebFormPrefill`, `WebFormPrefill`), the return-URL bridge
+(`renderSigningReturnBridge`, `mapDocuSignReturnEvent`), the mock Web Forms
+page and `mintFromDocuSign`. The root entry keeps re-exporting all of it;
+the subpath is the canonical import for DocuSign names going forward
+(`mountDocuSignPages` stays on `./express`, which needs the peer).
+
+```ts
+import { createDocuSignProvider, docuSignConfigFromEnv } from '@blinkbitcoin/esign-server/docusign';
+```
+
+| Entry | What | Peer |
+|---|---|---|
+| `@blinkbitcoin/esign-server` | everything: domain, ports, registry, handlers, pages, DocuSign + mock<br>adapters | none |
+| `@blinkbitcoin/esign-server/docusign` | the DocuSign adapter | none |
+| `@blinkbitcoin/esign-server/express` | `createESignRouter`, `mountDocuSignPages` | `express` |
+| `@blinkbitcoin/esign-server/knex` | the Postgres store + migrations | `knex` (types only) |
 
 ## Configuration
 

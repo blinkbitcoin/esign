@@ -449,6 +449,14 @@ describe('createDocuSignProvider', () => {
   describe('createWebFormInstance', () => {
     const prefill = { number_of_units: 1000 };
 
+    it('is the hosted-form capability under both port names', () => {
+      const { provider } = setup();
+      expect(typeof provider.createHostedFormInstance).toBe('function');
+      expect(provider.createWebFormInstance).toBe(
+        provider.createHostedFormInstance,
+      );
+    });
+
     it('fails with VALIDATION_ERROR when no form id is configured, before creating a client', async () => {
       const { provider, createClient } = setup(
         {},

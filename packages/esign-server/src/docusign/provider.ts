@@ -7,14 +7,14 @@ import { Errors } from '../errors';
 import { validateHmac } from '../hmac';
 import { isClientError, isNotFoundError, withRetry } from '../http';
 import type { Logger } from '../log';
-import { WebFormPrefillError } from '../prefill';
+import { WebFormPrefillError } from './prefill';
 import type { ESignProvider } from '../provider';
 import type {
   EnvelopeResult,
   EnvelopeStatus,
   RecipientData,
+  HostedFormInstanceResult,
   SigningUrlResult,
-  WebFormInstanceResult,
   WebFormPrefill,
   WebhookEvent,
   WebhookHeaders,
@@ -133,6 +133,35 @@ export const createDocuSignProvider = (
     return client;
   };
 
+  // Prefilled Web Forms instance; needs the form id. The instance carries
+  // the configured returnUrl so a plain WebView/iframe host gets the
+  // outcome without DocuSign.js. Errors map like createEnvelope. Exposed
+  // under both port names.
+  const createHostedFormInstance = async (
+    userId: string,
+    prefill: WebFormPrefill,
+  ): Promise<HostedFormInstanceResult> => {
+    if (!getConfig().webFormId) {
+      throw Errors.validationError('DOCUSIGN_WEBFORM_ID is not configured');
+    }
+    try {
+      return await createWebFormInstance({
+        client: getClient(),
+        userId,
+        prefill,
+      });
+    } catch (error) {
+      // A prefill outside the contract is the caller's error, not the provider's
+      if (error instanceof WebFormPrefillError) {
+        throw Errors.validationError(error.message);
+      }
+      if (isClientError(error)) {
+        throw Errors.envelopeCreationFailed();
+      }
+      throw Errors.providerUnavailable();
+    }
+  };
+
   return {
     reset() {
       client = null;
@@ -216,32 +245,7 @@ export const createDocuSignProvider = (
       return parseDocuSignWebhook(rawBody);
     },
 
-    // Prefilled Web Forms instance; needs the form id. The instance carries
-    // the configured returnUrl so a plain WebView/iframe host gets the
-    // outcome without DocuSign.js. Errors map like createEnvelope.
-    async createWebFormInstance(
-      userId: string,
-      prefill: WebFormPrefill,
-    ): Promise<WebFormInstanceResult> {
-      if (!getConfig().webFormId) {
-        throw Errors.validationError('DOCUSIGN_WEBFORM_ID is not configured');
-      }
-      try {
-        return await createWebFormInstance({
-          client: getClient(),
-          userId,
-          prefill,
-        });
-      } catch (error) {
-        // A prefill outside the contract is the caller's error, not the provider's
-        if (error instanceof WebFormPrefillError) {
-          throw Errors.validationError(error.message);
-        }
-        if (isClientError(error)) {
-          throw Errors.envelopeCreationFailed();
-        }
-        throw Errors.providerUnavailable();
-      }
-    },
+    createHostedFormInstance,
+    createWebFormInstance: createHostedFormInstance,
   };
 };

@@ -13,12 +13,17 @@ esign/
 │   └── packages/esign-core/
 │       ├── src/
 │       │   ├── index.ts           # Full entry (incl. Apollo factory) ⭐
-│       │   ├── webform.ts         # Apollo-free entry (./webform) ⭐
-│       │   ├── signing/           # SigningSource abstraction + 3 sources + machine.ts (the state machine) + labels.ts
+│       │   ├── docusign.ts        # The DocuSign entry, Apollo-free (./docusign) ⭐
+│       │   ├── webform.ts         # Alias of ./docusign (./webform) ⭐
+│       │   ├── signing/           # SigningSource abstraction + machine.ts (the state machine) + labels.ts
+│       │   │   ├── bridge.ts      #   interpretBridgeEvent: the neutral `{ event }` protocol the bridge/mock pages post
+│       │   │   ├── hostedForm/    #   provider-neutral hosted-form source, minter, public-URL source (interpreter injectable)
+│       │   │   └── ...            #   proxySource (Apollo) + deprecated shims at the old DocuSign paths
+│       │   ├── providers/docusign/# DocuSign: interpretDocuSignEvent, the prefill contract, the Web Forms sources
 │       │   ├── client.ts          # createESignApolloClient + ErrorCodes
 │       │   ├── operations.ts      # GraphQL mutations (wire contract)
 │       │   ├── generated/         # Codegen output (from examples/full-service-demo schema)
-│       │   └── __tests__/         # incl. webform-entry Apollo-free guard
+│       │   └── __tests__/         # incl. the webform-entry Apollo-free guard + the signing/ ↛ providers/ guard
 │       ├── codegen.ts             # GraphQL Codegen config
 │       └── dist/                  # tsup output (gitignored)
 │
@@ -29,23 +34,27 @@ esign/
 │       │   ├── index.ts           # Public API: client, domain, handlers, prefill ⭐
 │       │   ├── express.ts         # ./express entry: createESignRouter, pages via signingPage.ts (express is a peer) ⭐
 │       │   ├── knex.ts            # ./knex entry: Knex EnvelopeStore + migration source (knex is a peer) ⭐
+│       │   ├── docusign.ts        # ./docusign entry: the DocuSign adapter on its own (peer-free) ⭐
 │       │   ├── knex/              #   store.ts, migrations.ts (ESIGN_MIGRATIONS, programmatic source)
 │       │   ├── envelopes.ts       # createEnvelopeService: rules, audit, webhook state machine ⭐
-│       │   ├── provider.ts        # ESignProvider port
+│       │   ├── provider.ts        # ESignProvider port (+ hosted-form capability: supportsHostedForms, hostedFormMint)
+│       │   ├── registry.ts        # providerFromEnv + defaultRegistry: ESIGN_PROVIDER → adapter, lazily
 │       │   ├── store.ts           # EnvelopeStore port + in-memory implementation
-│       │   ├── handlers.ts        # Fetch-API mint + webhook handlers (serverless) ⭐
-│       │   ├── signingPage.ts     # Signing-page CSP + nonce; signingPageResponse (Fetch), shared by express.ts
+│       │   ├── handlers.ts        # Fetch-API mint + webhook handlers (serverless); MintTarget = provider | mint fn ⭐
+│       │   ├── signingPage.ts     # Signing-page CSP + nonce; signingPageResponse (Fetch); signingPageExpress.ts is its Express spelling
 │       │   ├── graphql.ts         # SDL + resolvers factory (createESignGraphQL)
-│       │   ├── pages.ts           # Mock signing/Web Forms pages + return-URL bridge
-│       │   ├── bridgeScript.ts    # postMessage helpers the pages ship, run in tests ⭐
+│       │   ├── pages.ts           # Mock signing page + the neutral mock-form renderer (renderMockFormPage)
+│       │   ├── bridge/script.ts   # postMessage helper the pages ship + CLIENT_EVENTS, run in tests ⭐
 │       │   ├── html.ts            # escapeHtml / sanitizeId / jsonForScript
-│       │   ├── prefill.ts         # Web Forms prefill validation + formatting
 │       │   ├── auth.ts            # bearerToken: the Authorization header → token (the meaning stays the host's)
 │       │   ├── hmac.ts / validation.ts / audit.ts / errors.ts / log.ts / tracing.ts / http.ts
-│       │   ├── docusign/          # DocuSign adapter: auth (JWT grant), client, config, webforms, provider
+│       │   ├── prefill.ts / bridgeScript.ts  # deprecated shims over docusign/ and bridge/
+│       │   ├── docusign/          # DocuSign adapter: auth (JWT grant), client, config, webforms, provider,
+│       │   │                      #   types (prefill contract), prefill, bridge (return-URL page), mockWebFormPage,
+│       │   │                      #   handlers (mintFromDocuSign), express (mountDocuSignPages), index (barrel)
 │       │   ├── mock/              # Mock adapter (mirrors DocuSign locally)
 │       │   └── __tests__/         # Jest, 100% enforced
-│       ├── tsup.config.ts         # ESM + CJS + d.ts build (two entries)
+│       ├── tsup.config.ts         # ESM + CJS + d.ts build (four entries: index, express, knex, docusign)
 │       └── dist/                  # Build output (gitignored)
 │
 ├── 📦 LIBRARY - THE PRODUCT
@@ -57,7 +66,8 @@ esign/
 │       │
 │       ├── src/
 │       │   ├── index.ts           # Public API (full; re-exports core) ⭐
-│       │   ├── webform.ts         # Apollo-free entry (./webform subpath) ⭐
+│       │   ├── docusign.ts        # The DocuSign entry, Apollo-free (./docusign subpath) ⭐
+│       │   ├── webform.ts         # Alias of ./docusign (./webform subpath) ⭐
 │       │   ├── useESignature.ts   # Headless hook: runs core's signing machine (NetInfo, WebView transport, embed) ⭐
 │       │   ├── ESignature.tsx     # Default UI over the hook (source-driven) ⭐
 │       │   ├── theme.ts           # Base styles/copy + theme/styles/labels resolvers
@@ -75,7 +85,8 @@ esign/
 │       │   ├── useESignature.ts   #   Headless hook (embed: iframe | mount)
 │       │   ├── ESignature.tsx     #   Default UI over the hook
 │       │   ├── theme.ts           #   Base styles/copy + theme/styles/labels resolvers
-│       │   ├── docusignWebForms.ts# DocuSign.js SDK source (web-only)
+│       │   ├── docusign.ts        #   The DocuSign entry (./docusign subpath) ⭐
+│       │   ├── providers/docusign/#   DocuSign.js SDK source (web-only); docusignWebForms.ts is its deprecated shim
 │       │   └── types.ts
 │       ├── tsup.config.ts         # ESM + CJS + d.ts build
 │       └── dist/                  # Build output (gitignored)
@@ -108,7 +119,7 @@ esign/
 │   └── examples/mint-only-demo/
 │       ├── src/
 │       │   ├── quote.ts           # The host's own data → prefill of the read-only fields
-│       │   ├── mint.ts            # The one package call (createWebFormInstance; mock swap)
+│       │   ├── mint.ts            # hostedFormMint(providerFromEnv(...)): DocuSign or the mock by ESIGN_PROVIDER
 │       │   ├── schema.ts          # The host's schema with investSigningUrl added
 │       │   ├── server.ts          # Apollo Server + the host's session in the context
 │       │   └── index.ts           # Bootstrap (PORT, default 4100)
@@ -118,7 +129,7 @@ esign/
 │   │
 │   └── examples/serverless-handler-demo/
 │       ├── src/
-│       │   ├── handlers.ts        # createWebFormInstanceHandler + createWebhookHandler from env
+│       │   ├── handlers.ts        # createWebFormInstanceHandler + createWebhookHandler over providerFromEnv(defaultRegistry)
 │       │   ├── node.ts            # IncomingMessage ⇄ Request/Response adapter + route table
 │       │   └── index.ts           # Bootstrap (PORT, default 4200)
 │       └── tests/                 # Vitest, 100% enforced
@@ -150,8 +161,8 @@ esign/
 │       │   ├── tracing.ts         # OTel spans for the service + providers
 │       │   │
 │       │   ├── providers/         # The package's adapters wired to this service ⭐
-│       │   │   ├── port.ts        #   Re-exports ESignProvider + supportsWebForms
-│       │   │   ├── index.ts       #   factory/singleton (tracing-wrapped)
+│       │   │   ├── port.ts        #   Re-exports ESignProvider + supportsHostedForms
+│       │   │   ├── index.ts       #   registry + providerFromEnv, singleton (tracing-wrapped)
 │       │   │   ├── mock.ts        #   mock adapter handle (pages served by the router)
 │       │   │   └── docusign/      #   DocuSign adapter handle + env config
 │       │   │
@@ -234,7 +245,7 @@ esign/
 | `examples/full-service-demo/src/schema.ts` | GraphQL API |
 | `examples/full-service-demo/src/webhook.ts` | Generic webhook processing |
 | `examples/full-service-demo/src/types.ts` | ESignProvider interface |
-| `examples/full-service-demo/src/providers/index.ts` | Provider factory + singleton |
+| `examples/full-service-demo/src/providers/index.ts` | Provider registry (providerFromEnv) + singleton |
 | `packages/esign-server/src/knex/migrations.ts` | Database schema (programmatic Knex migration source) |
 | `examples/full-service-demo/tests/e2e/` | E2E tests |
 

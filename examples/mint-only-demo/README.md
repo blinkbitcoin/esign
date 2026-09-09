@@ -22,7 +22,7 @@ app opens url in <ESignature source={createWebFormsSource({ mint: ... })}>
   amounts are Text fields on the form (a read-only Number or Date field
   makes DocuSign refuse the submission, and Number fields take at most two
   decimals anyway - [webforms.md](../../docs/integration/webforms.md)).
-- `src/mint.ts` - the one package call. `ESIGN_PROVIDER=mock` swaps in the
+- `src/mint.ts` - `hostedFormMint(providerFromEnv(...))`, the one package call. `ESIGN_PROVIDER=mock` swaps in the
   mock provider so the mutation runs with no DocuSign account (the URL
   points at the full-service demo's mock Web Forms page).
 - `src/schema.ts`, `src/server.ts` - stand-ins for what the host already has:

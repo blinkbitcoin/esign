@@ -1,6 +1,11 @@
 module.exports = {
   testEnvironment: 'jsdom',
   moduleNameMapper: {
+    '^@blinkbitcoin/esign-react/docusign$': '<rootDir>/src/docusign.ts',
+    '^@blinkbitcoin/esign-core/docusign$':
+      '<rootDir>/../esign-core/src/docusign.ts',
+    '^@blinkbitcoin/esign-core/webform$':
+      '<rootDir>/../esign-core/src/webform.ts',
     '^@blinkbitcoin/esign-core$': '<rootDir>/../esign-core/src/index.ts',
   },
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
@@ -11,8 +16,11 @@ module.exports = {
     'src/generated/',
     // Type-only file - no executable code to cover
     'src/types\\.ts$',
-    // Pure re-export barrel - no executable logic
+    // Pure re-export barrels - no executable logic
     'src/index\\.ts$',
+    'src/docusign\\.ts$',
+    // Pure re-export barrel - nothing to cover
+    'src/providers/docusign/index\\.ts$',
   ],
   // json-summary feeds scripts/coverage-badge.mjs (README badge + HTML report)
   coverageReporters: ['text', 'lcov', 'json-summary'],

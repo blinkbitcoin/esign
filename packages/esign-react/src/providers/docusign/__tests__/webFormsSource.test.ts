@@ -7,7 +7,7 @@ import {
   type DocuSignSdk,
   type DocuSignSigning,
   isMountable,
-} from '../docusignWebForms';
+} from '../webFormsSource';
 
 // A fake DocuSign.js SDK so the wiring (load → signing → on → mount) is tested
 // without the real bundle.js.

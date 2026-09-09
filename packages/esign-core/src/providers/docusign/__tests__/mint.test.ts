@@ -1,5 +1,8 @@
-import { createWebFormsMinter } from '../mint';
-import { createWebFormsSource, resolveCreateInstance } from '../webFormsSource';
+import {
+  createWebFormsMinter,
+  createWebFormsSource,
+  resolveCreateInstance,
+} from '../webFormsSource';
 
 const reply = (status: number, json: unknown) =>
   ({ ok: status < 300, status, json: async () => json }) as Response;

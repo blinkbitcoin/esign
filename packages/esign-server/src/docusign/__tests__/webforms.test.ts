@@ -1,7 +1,7 @@
 import { createDocuSignClient } from '../client';
 import { DocuSignConfigError } from '../config';
 import { HttpError } from '../../http';
-import { WebFormPrefillError } from '../../prefill';
+import { WebFormPrefillError } from '../prefill';
 import { clientFor, createWebFormInstance } from '../webforms';
 import {
   fail,

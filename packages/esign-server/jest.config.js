@@ -9,6 +9,10 @@ module.exports = {
     '/node_modules/',
     'src/index\\.ts$',
     'src/knex\\.ts$', // re-exports only, like index.ts
+    'src/docusign\\.ts$',
+    // Deprecated re-export shims at the old paths - nothing to cover
+    'src/bridgeScript\\.ts$',
+    'src/prefill\\.ts$', // the ./docusign entry barrel (anchored: not src/docusign/)
     'src/types\\.ts$',
     // Test helpers are not product code
     '/__tests__/support\\.ts$',

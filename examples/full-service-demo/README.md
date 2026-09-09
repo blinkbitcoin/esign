@@ -31,8 +31,8 @@ semantics of `DOCUSIGN_HMAC_KEY` and `JWT_SECRET`).
 - **Provider boundary**: all DocuSign-specific code lives in
   `src/providers/docusign/` behind the `ESignProvider` port
   (`src/providers/port.ts`) — including webhook verification/parsing and the
-  optional Web Forms capability. New providers = an adapter + a factory case
-  in `src/providers/index.ts`.
+  optional Web Forms capability. New providers = an adapter + a registry entry
+  in `src/providers/index.ts` (selected by the package's `providerFromEnv`).
 - **Wire contract**: the `ErrorCode` enum in `schema.graphql` (emitted from
   `src/typeDefs.ts` via `make schema-emit`). Client packages codegen from it;
   parity tests + a CI step fail on drift.
@@ -97,7 +97,7 @@ instead (one function call, a Fetch handler, or the Express router).
 | `src/typeDefs.ts` → `schema.graphql` | GraphQL SDL → emitted schema artifact |
 | `src/schema.ts` | Resolvers |
 | `src/providers/port.ts` | `ESignProvider` interface (the provider boundary) |
-| `src/providers/docusign/` / `src/providers/mock.ts` | Provider adapters (factory in `providers/index.ts`) |
+| `src/providers/docusign/` / `src/providers/mock.ts` | Provider adapters (registry in `providers/index.ts`) |
 | `src/services.ts` / `src/store.ts` | Domain composition (`createEnvelopeService`) / the package's Knex<br>`EnvelopeStore` over `src/db.ts` |
 | `src/app.ts` | Mounts the package's Express router (`/health`, signing pages,<br>`/webform/instance`, `/webhook/esign`) with this service's auth, CORS and<br>rate limits |
 | `src/auth.ts` | HS256 JWT verification, dev/prod split |

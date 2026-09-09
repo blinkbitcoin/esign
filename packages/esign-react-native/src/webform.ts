@@ -8,6 +8,13 @@
 //   import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/webform';
 
 export type {
+  HostedFormCreateInstanceOptions,
+  HostedFormInstance,
+  HostedFormMintOptions,
+  HostedFormPrefill,
+  HostedFormPublicUrlSourceOptions,
+  HostedFormSourceOptions,
+  MintHostedFormOptions,
   MintWebFormsInstanceOptions,
   PublicUrlSigningSourceOptions,
   RestartableSigningSource,
@@ -24,6 +31,11 @@ export type {
   WebFormsSigningSourceOptions,
 } from '@blinkbitcoin/esign-core/webform';
 export {
+  createHostedFormMinter,
+  createHostedFormPublicUrlSource,
+  createHostedFormSource,
+  interpretBridgeEvent,
+  resolveHostedFormCreateInstance,
   createPublicUrlSource,
   createWebFormsMinter,
   createWebFormsSource,

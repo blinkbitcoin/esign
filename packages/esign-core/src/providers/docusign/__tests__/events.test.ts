@@ -1,48 +1,4 @@
-import { interpretProxyEvent, interpretDocuSignEvent } from '../events';
-
-describe('interpretProxyEvent', () => {
-  it.each([
-    ['signing_complete', 'complete'],
-    ['cancel', 'cancel'],
-    ['decline', 'decline'],
-    ['session_timeout', 'sessionExpired'],
-  ])('maps %s to %s', (event, type) => {
-    expect(interpretProxyEvent({ event })).toMatchObject({ type });
-  });
-
-  it('maps exception to a normalized error with the raw message', () => {
-    expect(
-      interpretProxyEvent({ event: 'exception', message: 'boom' }),
-    ).toEqual({
-      type: 'error',
-      code: 'SIGNING_ERROR',
-      message: 'boom',
-    });
-  });
-
-  it('exception without a string message omits the message', () => {
-    expect(interpretProxyEvent({ event: 'exception' })).toEqual({
-      type: 'error',
-      code: 'SIGNING_ERROR',
-      message: undefined,
-    });
-  });
-
-  it('accepts JSON-string payloads', () => {
-    expect(interpretProxyEvent('{"event":"cancel"}')).toEqual({
-      type: 'cancel',
-    });
-  });
-
-  it('returns null for unknown, malformed, or non-object input', () => {
-    expect(interpretProxyEvent({ event: 'whatever' })).toBeNull();
-    expect(interpretProxyEvent({ nope: true })).toBeNull();
-    expect(interpretProxyEvent('not json')).toBeNull();
-    expect(interpretProxyEvent('123')).toBeNull(); // parses to a number, not an object
-    expect(interpretProxyEvent(null)).toBeNull();
-    expect(interpretProxyEvent(42)).toBeNull();
-  });
-});
+import { interpretDocuSignEvent } from '../events';
 
 describe('interpretDocuSignEvent', () => {
   describe('accepted shapes', () => {

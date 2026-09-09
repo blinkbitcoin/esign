@@ -8,8 +8,11 @@ flowchart TB
         MACHINE[signing machine<br/>transition / effects]
         SRC{SigningSource}
         PROXY[createProxySigningSource<br/>Apollo - proxy mode only]
-        WF[createWebFormsSource]
-        PUB[createPublicUrlSource]
+        HF[createHostedFormSource<br/>neutral hosted forms]
+        subgraph CoreDS["providers/docusign (./docusign entry)"]
+            WF[createWebFormsSource]
+            PUB[createPublicUrlSource]
+        end
     end
 
     subgraph Backend["Backend on esign-server: full-service-demo (all modes) - or your own API with one mutation (mint-only) / route handlers (serverless)"]
@@ -18,8 +21,9 @@ flowchart TB
         WH[/"POST /webhook/esign"/]
         SP[/"signing pages + return-URL bridge"/]
         PROV{ESignProvider}
-        DS[DocuSignProvider]
+        DS["DocuSignProvider<br/>(src/docusign/, ./docusign entry)"]
         MOCK[MockProvider]
+        REG{providerFromEnv<br/>ESIGN_PROVIDER}
         KNEX[Knex.js]
     end
 
@@ -32,12 +36,14 @@ flowchart TB
     WEB --> MACHINE
     RN --> SRC
     WEB --> SRC
-    SRC --> PROXY & WF & PUB
+    SRC --> PROXY & HF
+    HF --> WF & PUB
     PROXY -->|GraphQL| GQL
     WF -->|one mint call| WFI
     GQL --> PROV
     WFI --> PROV
-    PROV --> DS & MOCK
+    PROV --> REG
+    REG --> DS & MOCK
     DS -->|REST| DOCU
     DOCU -->|webhooks| WH
     GQL --> KNEX

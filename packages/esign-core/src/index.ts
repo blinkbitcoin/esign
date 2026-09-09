@@ -13,10 +13,10 @@ export type {
 // Signing sources + the abstraction they satisfy
 export {
   createProxySigningSource,
-  createWebFormsSource,
-  createWebFormsMinter,
-  resolveCreateInstance,
-  createPublicUrlSource,
+  createHostedFormSource,
+  createHostedFormMinter,
+  createHostedFormPublicUrlSource,
+  resolveHostedFormCreateInstance,
   isRestartable,
   isMountable,
   SigningSourceError,
@@ -24,8 +24,8 @@ export {
   toSigningSourceError,
   withTimeout,
   isAllowedOrigin,
+  interpretBridgeEvent,
   interpretProxyEvent,
-  interpretDocuSignEvent,
   getErrorMessage,
   getApolloErrorCode,
   acquireSession,
@@ -51,16 +51,34 @@ export type {
   SigningSession,
   SigningEvent,
   ProxySigningSourceOptions,
-  WebFormsSigningSourceOptions,
-  WebFormsCreateInstanceOptions,
-  WebFormsMintOptions,
-  WebFormsInstance,
+  HostedFormSourceOptions,
+  HostedFormCreateInstanceOptions,
+  HostedFormMintOptions,
+  HostedFormPrefill,
+  HostedFormInstance,
+  MintHostedFormOptions,
+  HostedFormPublicUrlSourceOptions,
+} from './signing';
+
+// The DocuSign provider: its sources, interpreter and prefill contract
+export {
+  createPublicUrlSource,
+  createWebFormsMinter,
+  createWebFormsSource,
+  interpretDocuSignEvent,
+  resolveCreateInstance,
+} from './providers/docusign';
+export type {
   MintWebFormsInstanceOptions,
+  PublicUrlSigningSourceOptions,
+  WebFormPhoneNumber,
   WebFormPrefill,
   WebFormPrefillValue,
-  WebFormPhoneNumber,
-  PublicUrlSigningSourceOptions,
-} from './signing';
+  WebFormsCreateInstanceOptions,
+  WebFormsInstance,
+  WebFormsMintOptions,
+  WebFormsSigningSourceOptions,
+} from './providers/docusign';
 
 // Apollo client factory + error-code contract
 export {

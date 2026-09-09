@@ -36,27 +36,50 @@ export type {
 export { resolveLabelsWith } from './labels';
 export type { ESignatureLabels, LabelDefaults } from './labels';
 
-export { interpretProxyEvent, interpretDocuSignEvent } from './events';
+export { interpretBridgeEvent, interpretProxyEvent } from './bridge';
 export { getErrorMessage } from './messages';
 
 export { createProxySigningSource, getApolloErrorCode } from './proxySource';
 export type { ProxySigningSourceOptions } from './proxySource';
 
-export { createWebFormsSource, resolveCreateInstance } from './webFormsSource';
+// The provider-neutral hosted-form layer (a provider binds its interpreter +
+// prefill contract on top - the Web Forms sources below are DocuSign's)
+export {
+  createHostedFormSource,
+  resolveHostedFormCreateInstance,
+} from './hostedForm/source';
 export type {
-  WebFormsSigningSourceOptions,
-  WebFormsCreateInstanceOptions,
-  WebFormsMintOptions,
-  WebFormsInstance,
-} from './webFormsSource';
+  HostedFormSourceOptions,
+  HostedFormCreateInstanceOptions,
+  HostedFormMintOptions,
+} from './hostedForm/source';
+export { createHostedFormMinter } from './hostedForm/mint';
+export type {
+  HostedFormPrefill,
+  HostedFormInstance,
+  MintHostedFormOptions,
+} from './hostedForm/mint';
+export { createHostedFormPublicUrlSource } from './hostedForm/publicUrlSource';
+export type { HostedFormPublicUrlSourceOptions } from './hostedForm/publicUrlSource';
 
-export { createWebFormsMinter } from './mint';
+// DocuSign's sources, interpreter and prefill contract live in
+// providers/docusign; re-exported here for the old module path.
+/** @deprecated Import from '@blinkbitcoin/esign-core' (providers/docusign) */
+export {
+  createPublicUrlSource,
+  createWebFormsMinter,
+  createWebFormsSource,
+  interpretDocuSignEvent,
+  resolveCreateInstance,
+} from '../providers/docusign';
 export type {
   MintWebFormsInstanceOptions,
+  PublicUrlSigningSourceOptions,
+  WebFormPhoneNumber,
   WebFormPrefill,
   WebFormPrefillValue,
-  WebFormPhoneNumber,
-} from './mint';
-
-export { createPublicUrlSource } from './publicUrlSource';
-export type { PublicUrlSigningSourceOptions } from './publicUrlSource';
+  WebFormsCreateInstanceOptions,
+  WebFormsInstance,
+  WebFormsMintOptions,
+  WebFormsSigningSourceOptions,
+} from '../providers/docusign';

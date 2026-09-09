@@ -1,43 +1,13 @@
 // The embedded signing pages: they speak the postMessage protocol the client
 // components listen for, under a strict nonce-based CSP, and never let a URL
-// value break out of the markup.
+// value break out of the markup. (DocuSign's bridge and mock Web Forms page
+// are tested under docusign/__tests__.)
 
 import {
-  CLIENT_EVENTS,
-  LOCKED_FIELDS_HINT,
-  type MockWebFormField,
-  mapDocuSignReturnEvent,
-  mockWebFormFields,
+  type MockFormPage,
+  renderMockFormPage,
   renderMockSigningPage,
-  renderMockWebFormPage,
-  renderSigningReturnBridge,
 } from '../pages';
-
-describe('mapDocuSignReturnEvent', () => {
-  it.each([
-    ['signing_complete', 'signing_complete'],
-    ['cancel', 'cancel'],
-    ['decline', 'decline'],
-    ['session_timeout', 'session_timeout'],
-    ['ttl_expired', 'session_timeout'],
-  ])('maps DocuSign %s to %s', (docusign, ours) => {
-    expect(mapDocuSignReturnEvent(docusign)).toBe(ours);
-  });
-
-  it('maps unknown, missing and malicious values to exception', () => {
-    expect(mapDocuSignReturnEvent('viewing_complete')).toBe('exception');
-    expect(mapDocuSignReturnEvent(undefined)).toBe('exception');
-    expect(mapDocuSignReturnEvent('<script>alert(1)</script>')).toBe(
-      'exception',
-    );
-  });
-
-  it('only ever returns events the client components handle', () => {
-    for (const raw of ['signing_complete', 'ttl_expired', 'garbage', '']) {
-      expect(CLIENT_EVENTS).toContain(mapDocuSignReturnEvent(raw));
-    }
-  });
-});
 
 describe('renderMockSigningPage', () => {
   it('speaks the full client event protocol via both host mechanisms', () => {
@@ -68,118 +38,51 @@ describe('renderMockSigningPage', () => {
   });
 });
 
-describe('renderSigningReturnBridge', () => {
-  it('forwards the mapped event as a postMessage on load', () => {
-    const html = renderSigningReturnBridge('signing_complete');
-    expect(html).toContain('postSigningEvent("signing_complete")');
-    expect(html).toContain('window.ReactNativeWebView.postMessage');
-    expect(html).toContain('window.parent.postMessage');
-    expect(html).toContain('<title>Signing Complete</title>');
-  });
+describe('renderMockFormPage', () => {
+  const page: MockFormPage = {
+    title: 'Mock Form',
+    label: 'DEMONSTRATION FORM',
+    instanceId: 'inst-1',
+    description: 'A provider-neutral mock.',
+    fields: [],
+    lockedHint: 'Locked.',
+    buttons: [
+      { event: 'done', label: 'Finish', primary: true },
+      { event: 'quit', label: 'Leave' },
+    ],
+    script: 'function postSigningEvent(e) {}',
+  };
 
-  it('never interpolates raw query input, and escapes < in the embedded JSON', () => {
-    const html = renderSigningReturnBridge(
-      '"></script><script>alert(1)</script>',
-      'n',
-    );
-    expect(html).not.toContain('alert(1)');
-    expect(html).toContain('postSigningEvent("exception")');
-    expect(html).toContain('<title>Signing Finished</title>');
-    expect(html).toContain('<script nonce="n">');
-  });
-});
-
-describe('renderMockWebFormPage', () => {
-  it('emits the real DocuSign sessionEnd vocabulary via both hosts', () => {
-    const html = renderMockWebFormPage('inst-1');
-    for (const event of [
-      'signingResult',
-      'cancel',
-      'decline',
-      'sessionTimeout',
-    ]) {
-      expect(html).toContain(`data-event="${event}"`);
-    }
-    expect(html).toContain("event: 'sessionEnd'");
-    expect(html).toContain('window.ReactNativeWebView.postMessage');
-    expect(html).toContain('window.parent.postMessage');
+  it('renders the provider vocabulary it is given, with no fields block when empty', () => {
+    const html = renderMockFormPage(page);
+    expect(html).toContain('<title>Mock Form</title>');
+    expect(html).toContain('<h1>Mock Form</h1>');
+    expect(html).toContain('<strong>DEMONSTRATION FORM</strong>');
     expect(html).toContain('Instance inst-1');
+    expect(html).toContain('A provider-neutral mock.');
+    expect(html).toContain(
+      '<button class="sign" data-event="done">Finish</button>',
+    );
+    expect(html).toContain(
+      '<button class="plain" data-event="quit">Leave</button>',
+    );
+    expect(html).toContain('function postSigningEvent(e) {}');
     expect(html).not.toContain('<form');
+    expect(html).toContain('<script>');
   });
 
-  it('sanitizes the instance id', () => {
-    expect(renderMockWebFormPage('<img onerror=alert(1)>')).toContain(
-      'Instance unknown',
-    );
-  });
-
-  it('renders locked fields read-only and editable fields plain, with the hint', () => {
-    const fields: MockWebFormField[] = [
-      { name: 'units', value: '1000', locked: true },
-      { name: 'country', value: 'Honduras', locked: false },
-    ];
-    const html = renderMockWebFormPage('inst-1', 'n', fields);
-    expect(html).toContain('<label for="field-0">units</label>');
+  it('sanitizes the instance id, applies the nonce and the locked hint', () => {
+    const html = renderMockFormPage({
+      ...page,
+      instanceId: '<img onerror=alert(1)>',
+      nonce: 'n',
+      fields: [{ name: 'units', value: '1', locked: true }],
+    });
+    expect(html).toContain('Instance unknown');
+    expect(html).toContain('<script nonce="n">');
+    expect(html).toContain('<p class="hint">Locked.</p>');
     expect(html).toContain(
-      '<input id="field-0" name="units" value="1000" readonly data-locked="true" />',
+      '<input id="field-0" name="units" value="1" readonly data-locked="true" />',
     );
-    expect(html).toContain('<label for="field-1">country</label>');
-    expect(html).toContain(
-      '<input id="field-1" name="country" value="Honduras" />',
-    );
-    expect(html).toContain(`<p class="hint">${LOCKED_FIELDS_HINT}</p>`);
-  });
-
-  it('omits the hint when no field is locked', () => {
-    const html = renderMockWebFormPage('inst-1', '', [
-      { name: 'country', value: 'Honduras', locked: false },
-    ]);
-    expect(html).toContain('<form');
-    expect(html).not.toContain(LOCKED_FIELDS_HINT);
-  });
-
-  it('escapes field names and values (no HTML/attribute injection)', () => {
-    const html = renderMockWebFormPage('inst-1', '', [
-      {
-        name: 'x" onfocus="alert(1)',
-        value: '<script>alert(1)</script>',
-        locked: true,
-      },
-      { name: "it's", value: 'a & b', locked: false },
-    ]);
-    expect(html).not.toContain('<script>alert');
-    expect(html).not.toContain('onfocus="alert');
-    expect(html).toContain('x&quot; onfocus=&quot;alert(1)');
-    expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
-    expect(html).toContain('it&#39;s');
-    expect(html).toContain('a &amp; b');
-  });
-});
-
-describe('mockWebFormFields', () => {
-  it('locks instance prefill and keeps URL prefill editable', () => {
-    expect(
-      mockWebFormFields(
-        { units: 1000, phone: { countryCode: '1', nationalNumber: '5551234' } },
-        { country: 'Honduras' },
-      ),
-    ).toEqual([
-      { name: 'units', value: '1000', locked: true },
-      { name: 'phone', value: '+1 5551234', locked: true },
-      { name: 'country', value: 'Honduras', locked: false },
-    ]);
-  });
-
-  it('is empty for an unknown instance with no query', () => {
-    expect(mockWebFormFields(undefined, {})).toEqual([]);
-  });
-
-  it('ignores non-string query values and lets the instance value win a name clash', () => {
-    expect(
-      mockWebFormFields(
-        { units: 1000 },
-        { units: '1', tags: ['a', 'b'], nested: { a: 1 } },
-      ),
-    ).toEqual([{ name: 'units', value: '1000', locked: true }]);
   });
 });

@@ -10,11 +10,10 @@ import { resolveLabels, resolveStyles } from './theme';
 import type { ESignatureProps } from './types';
 import { useESignature } from './useESignature';
 
-// Re-exported for backwards-compatible imports; canonical home is signing/.
-export {
-  getApolloErrorCode,
-  getErrorMessage,
-} from '@blinkbitcoin/esign-core';
+// Re-exported for backwards-compatible imports; canonical home is core's
+// signing/. (getApolloErrorCode is Apollo-bound and re-exported by the root
+// entry only, so this module - and the ./docusign entry - stay Apollo-free.)
+export { getErrorMessage } from '@blinkbitcoin/esign-core/webform';
 
 /**
  * ESignature component for the document signing flow on web (iframe-embedded).

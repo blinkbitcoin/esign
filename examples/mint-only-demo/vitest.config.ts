@@ -3,13 +3,24 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
-    alias: {
-      // The workspace package straight from source (no build needed)
-      '@blinkbitcoin/esign-server': path.resolve(
-        __dirname,
-        '../../packages/esign-server/src/index.ts',
-      ),
-    },
+    alias: [
+      // The workspace package straight from source (no build needed); the
+      // subpath first so the bare name does not swallow it
+      {
+        find: '@blinkbitcoin/esign-server/docusign',
+        replacement: path.resolve(
+          __dirname,
+          '../../packages/esign-server/src/docusign.ts',
+        ),
+      },
+      {
+        find: '@blinkbitcoin/esign-server',
+        replacement: path.resolve(
+          __dirname,
+          '../../packages/esign-server/src/index.ts',
+        ),
+      },
+    ],
   },
   test: {
     environment: 'node',

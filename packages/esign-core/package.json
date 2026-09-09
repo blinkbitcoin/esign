@@ -30,6 +30,17 @@
         "default": "./dist/webform.cjs"
       }
     },
+    "./docusign": {
+      "react-native": "./src/docusign.ts",
+      "import": {
+        "types": "./dist/docusign.d.mts",
+        "default": "./dist/docusign.mjs"
+      },
+      "require": {
+        "types": "./dist/docusign.d.ts",
+        "default": "./dist/docusign.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "files": ["src", "dist", "!**/__tests__"],

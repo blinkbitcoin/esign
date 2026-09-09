@@ -57,8 +57,8 @@ examples/full-service-demo/src/
 ├── db.ts             # Knex instance (fail-fast on missing DATABASE_URL)
 ├── auth.ts           # JWT verification (HS256) with dev/prod split
 ├── providers/        # Hexagonal provider layer
-│   ├── port.ts       #   ESignProvider port + supportsWebForms
-│   ├── index.ts      #   Factory (ESIGN_PROVIDER) + tracing-wrapped singleton
+│   ├── port.ts       #   ESignProvider port + supportsHostedForms (supportsWebForms kept as alias)
+│   ├── index.ts      #   Registry + providerFromEnv (ESIGN_PROVIDER) + tracing-wrapped singleton
 │   ├── mock.ts       #   The package's mock adapter, wired to this service's pages
 │   └── docusign/     #   The package's DocuSign adapter wired to the service's
 │                     #   config (config.ts) and webhook policy
@@ -99,9 +99,11 @@ interface ESignProvider {
   // Parse a verified webhook body into a normalized event (null = malformed)
   parseWebhookEvent(rawBody: string): WebhookEvent | null;
 
-  // Optional capability: mint a prefilled DocuSign Web Forms instance
-  // (callers gate on supportsWebForms(provider))
-  createWebFormInstance?(userId: string, prefill: WebFormPrefill): Promise<WebFormInstanceResult>;
+  // Optional capability: mint a prefilled hosted-form instance (DocuSign:
+  // a Web Forms instance). Callers gate on supportsHostedForms(provider) or
+  // mint through hostedFormMint(provider), which also honours the deprecated
+  // createWebFormInstance name.
+  createHostedFormInstance?(userId: string, prefill: HostedFormPrefill): Promise<HostedFormInstanceResult>;
 }
 ```
 
@@ -117,7 +119,8 @@ Selecting `docusign` with missing `DOCUSIGN_*` configuration **throws at
 startup** (fail-fast) rather than failing per-request.
 
 Adding a new provider: implement the five interface methods in one file, add
-a case to the factory in `providers/index.ts`. No schema, client, or HTTP-layer
+an entry to the registry in `providers/index.ts` (the package's
+`providerFromEnv` selects it by `ESIGN_PROVIDER`). No schema, client, or HTTP-layer
 changes required.
 
 ## GraphQL API
@@ -224,7 +227,7 @@ Domain spans (`src/tracing.ts`, zero-cost no-ops when tracing is off):
 | `esign.webhook.process` | webhook handler | `esign.webhook.status`, `esign.webhook.outcome` (`updated` / `unchanged` / `unknown_envelope` / `ignored_unknown_status` / `rejected_terminal` / `rejected_no_transition`) |
 | (request span) | GraphQL context | `enduser.id` on every authenticated request |
 
-The provider spans are applied **in the factory** (`instrumentProvider` in
+The provider spans are applied **in the registry entries** (`instrumentProvider` in
 `providers/index.ts`), so future adapters are instrumented by construction. Span
 attributes follow the audit-metadata PII discipline: ids, types, and
 statuses only - never recipient names, emails, or document content.

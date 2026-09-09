@@ -23,6 +23,13 @@ export type {
   GetAuthToken,
   GetSigningUrlInput,
   GetSigningUrlResult,
+  HostedFormCreateInstanceOptions,
+  HostedFormInstance,
+  HostedFormMintOptions,
+  HostedFormPrefill,
+  HostedFormPublicUrlSourceOptions,
+  HostedFormSourceOptions,
+  MintHostedFormOptions,
   MintWebFormsInstanceOptions,
   ProxySigningSourceOptions,
   PublicUrlSigningSourceOptions,
@@ -44,6 +51,9 @@ export {
   CREATE_ENVELOPE_MUTATION,
   createAuthContextSetter,
   createESignApolloClient,
+  createHostedFormMinter,
+  createHostedFormPublicUrlSource,
+  createHostedFormSource,
   createProxySigningSource,
   createPublicUrlSource,
   createWebFormsMinter,
@@ -51,11 +61,15 @@ export {
   ErrorCode,
   ErrorCodes,
   GET_SIGNING_URL_MUTATION,
+  getApolloErrorCode,
   handleApolloErrors,
+  interpretBridgeEvent,
   interpretDocuSignEvent,
   interpretProxyEvent,
   isRestartable,
+  resolveHostedFormCreateInstance,
 } from '@blinkbitcoin/esign-core';
+export { ESignature, getErrorMessage } from './ESignature';
 export type {
   DocuSignSdk,
   DocuSignSigning,
@@ -64,11 +78,13 @@ export type {
   DocuSignWebFormsSourceOptions,
   LoadDocuSign,
   MountableSigningSource,
-} from './docusignWebForms';
-
+} from './providers/docusign';
 // Web-only: DocuSign.js-backed Web Forms source (real embedded Web Forms).
-export { createDocuSignWebFormsSource, isMountable } from './docusignWebForms';
-export { ESignature, getApolloErrorCode, getErrorMessage } from './ESignature';
+// Also on the ./docusign subpath, with the rest of the DocuSign provider.
+export {
+  createDocuSignWebFormsSource,
+  isMountable,
+} from './providers/docusign';
 export type {
   ESignatureEmbed,
   ESignatureError,
