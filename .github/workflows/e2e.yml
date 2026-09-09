@@ -139,16 +139,19 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install chromium --with-deps
 
-      - name: JWT grant, live mint, locked fields in a real browser
+      - name: JWT grant, live mints, the real form and a real signature in a browser
         run: bash scripts/e2e/live.sh
 
-      # The screenshot only; the service log carries minted instance URLs
-      - name: Upload the form screenshot
+      # The screenshots only; the service log carries minted instance URLs
+      - name: Upload the screenshots
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: live-docusign-webform
-          path: examples/react-demo/test-results/webform-live.png
+          name: live-docusign-screenshots
+          path: |
+            examples/react-demo/test-results/webform-live.png
+            examples/react-demo/test-results/webform-live-demo-summary.png
+            examples/react-demo/test-results/proxy-live-signed.png
           if-no-files-found: ignore
           retention-days: 7
 

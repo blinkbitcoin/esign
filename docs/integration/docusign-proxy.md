@@ -120,6 +120,17 @@ unless DocuSign Connect can reach the backend:
 
 ## 5. Live smoke-test checklist (first real run)
 
+Items 1-3 below are automated by `make e2e-live` since 2026-09-09
+(`examples/react-demo/e2e/proxy-live-demo.spec.ts`): the web demo creates
+the envelope through the live service, signs inside the component's iframe
+(disclosure, Sign Here, adopt, Finish), DocuSign redirects the frame to
+the bridge and the demo reaches its success screen. One local-only detail:
+DocuSign is a public site and the bridge is on localhost, which Chrome's
+Local Network Access policy blocks; the live Playwright configs launch
+Chromium with `--disable-features=LocalNetworkAccessChecks`. A deployed
+service has a public return URL and needs nothing.
+
+
 All test suites are hermetic: they prove our half of every DocuSign contract
 against payload shapes taken from DocuSign's docs, never against a live
 account. Whoever first runs against a real demo account should confirm those

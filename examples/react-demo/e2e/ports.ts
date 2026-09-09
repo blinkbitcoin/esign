@@ -115,9 +115,10 @@ export const viteDevServer = (mode: Mode) => ({
 export const liveViteDevServer = (
   apiOrigin: string,
   prefill: string | undefined,
+  mode: Mode = 'webform',
 ) => ({
-  command: `VITE_API_ORIGIN=${apiOrigin} VITE_ESIGN_MODE=webform VITE_ESIGN_PREFILL='${(prefill ?? '{}').replace(/'/g, '')}' npm run dev -- --port ${PORTS.vite.webform} --strictPort`,
-  url: viteOrigin('webform'),
+  command: `VITE_API_ORIGIN=${apiOrigin} VITE_ESIGN_MODE=${mode} VITE_ESIGN_PREFILL='${(prefill ?? '{}').replace(/'/g, '')}' npm run dev -- --port ${PORTS.vite[mode]} --strictPort`,
+  url: viteOrigin(mode),
   reuseExistingServer: false,
   timeout: 30_000,
 });
