@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BadgeError,
-  PLACEHOLDERS,
-  STATUS_RESULTS,
-  WORKSPACES,
   aggregate,
+  BadgeError,
   colorFor,
   escapeHtml,
   formatPercent,
   metricCell,
+  PLACEHOLDERS,
   parseStatus,
   renderBadgeSvg,
   renderReportHtml,
+  STATUS_RESULTS,
+  WORKSPACES,
 } from './badge.mjs';
 
 describe('colorFor', () => {
