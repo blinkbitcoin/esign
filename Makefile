@@ -62,6 +62,7 @@ diagrams-check: ## Fail if docs/diagrams/README.md is stale relative to src/*.mm
 
 docs-check: ## Warn when architecture-relevant changes (vs origin/main) ship without a docs/ update; fail on stale diagram SVGs
 	bash scripts/ci/docs-freshness.sh
+	node scripts/ci/docs-tables.mjs
 
 release: ## Merge the open release PR (release-please opens it after a feat/fix lands on main); needs one approval first
 	@pr=$$(gh pr list --state open --label 'autorelease: pending' --json number,title -q '.[0] // empty | "\(.number) \(.title)"'); \

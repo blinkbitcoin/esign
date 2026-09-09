@@ -47,7 +47,7 @@ one-line description. The ones you will reach for:
 | `make check-ci` | actionlint on the workflows + shellcheck on `scripts/**` |
 | `make codegen` | Regenerate `schema.graphql` + client types after editing the SDL in `packages/esign-server/src/graphql.ts` |
 | `make diagrams` | Re-render `docs/diagrams/dist/*.svg` from `src/*.mmd` (CI fails on drift) |
-| `make docs-check` | Warn when architecture-relevant changes ship without a `docs/` update |
+| `make docs-check` | Warn when architecture-relevant changes ship without a `docs/` update;<br>fail on a README table cell line wider than 72 characters (break with `<br>`) |
 | `make db-up migrate backend` | Dev Postgres, migrations, backend dev server |
 | `make e2e-backend` / `make e2e-web` | Backend E2E against real Postgres / Playwright browser E2E |
 | `make start` / `make ios` / `make android` / `make web` | Demo apps |
