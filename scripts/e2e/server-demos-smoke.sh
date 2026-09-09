@@ -54,6 +54,10 @@ BODY=$(curl -fsS "http://127.0.0.1:$MINT_PORT/" -H 'content-type: application/js
   -d '{"query":"mutation { investSigningUrl(units: 10) { url } }"}')
 expect_match "mint-only refuses anonymous" '"Unauthenticated"' "$BODY"
 
+# The return-URL bridge the mint-only host serves for its Web Forms
+BODY=$(curl -fsS "http://127.0.0.1:$MINT_PORT/signing/return?event=signing_complete")
+expect_match "mint-only return bridge" 'signing_complete' "$BODY"
+
 # serverless-handler-demo: the Fetch handlers behind plain Node
 BODY=$(curl -fsS -X POST "http://127.0.0.1:$HANDLER_PORT/webform/instance" \
   -H 'content-type: application/json' -H 'authorization: Bearer smoke-user' \

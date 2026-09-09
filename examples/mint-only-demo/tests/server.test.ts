@@ -78,4 +78,24 @@ describe('createServer', () => {
       await server.stop();
     }
   });
+
+  it('serves the return-URL bridge, which posts the outcome DocuSign sent back', async () => {
+    const { server, start } = createServer(mint);
+    const { url } = await start(0);
+    try {
+      const complete = await fetch(
+        `${url}signing/return?event=signing_complete`,
+      );
+      expect(complete.headers.get('content-type')).toMatch(/text\/html/);
+      expect(complete.headers.get('content-security-policy')).toMatch(
+        /script-src 'nonce-[0-9a-f-]+'/,
+      );
+      expect(await complete.text()).toContain('signing_complete');
+      // No event (or a non-string one) still renders the bridge
+      const none = await fetch(`${url}signing/return?event=a&event=b`);
+      expect(none.status).toBe(200);
+    } finally {
+      await server.stop();
+    }
+  });
 });
