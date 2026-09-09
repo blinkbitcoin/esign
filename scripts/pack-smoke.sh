@@ -58,10 +58,10 @@ console.log('pack smoke: esign-server loads on plain Node');
 assert.equal(typeof server.providerFromEnv, 'function');
 assert.equal(typeof server.hostedFormMint, 'function');
 // The /docusign subpath: the adapter on its own, no peers
-const docusign = require('@blinkbitcoin/esign-server/docusign');
-assert.equal(typeof docusign.createDocuSignClient, 'function');
-assert.equal(typeof docusign.createWebFormInstance, 'function');
-assert.equal(typeof docusign.mintFromDocuSign, 'function');
+const serverDocusign = require('@blinkbitcoin/esign-server/docusign');
+assert.equal(typeof serverDocusign.createDocuSignClient, 'function');
+assert.equal(typeof serverDocusign.createWebFormInstance, 'function');
+assert.equal(typeof serverDocusign.mintFromDocuSign, 'function');
 console.log('pack smoke: esign-server/docusign loads without peers; providerFromEnv on the root');
 // The /express subpath needs the optional express peer: without it the
 // require must fail loudly (the boundary that keeps the main entry framework-free)
