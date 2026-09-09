@@ -16,7 +16,7 @@ see.
 | Environment `docusign-demo`, secret | `DOCUSIGN_USER_ID` | the impersonated user's User ID (GUID) |
 | Environment `docusign-demo`, secret | `DOCUSIGN_ACCOUNT_ID` | the API Account ID (GUID) |
 | Environment `docusign-demo`, secret | `DOCUSIGN_PRIVATE_KEY` | the private half of the app's RSA keypair, the PEM verbatim (multi-line secrets are fine) |
-| Repository variable | `DOCUSIGN_TEMPLATE_ID` | any template id in the account (the service requires one; `a38ac4df-…` today) |
+| Repository variable | `DOCUSIGN_TEMPLATE_ID` | the proxy-flow template: `make docusign-template` creates it in the account from the fixture PDF and prints the id |
 | Repository variable | `DOCUSIGN_WEBFORM_ID` | the capability test form: `1228ee55-ce36-4b87-8646-39c93d50ee69` |
 | Repository variable | `E2E_LIVE` | `true` to run on every main push, release and dispatch; unset or anything else = off |
 

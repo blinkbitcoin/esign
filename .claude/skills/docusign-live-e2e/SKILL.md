@@ -10,9 +10,12 @@ Everything lives behind three targets (`scripts/e2e/live.sh`,
 `docs/integration/webforms.md`):
 
 ```sh
-make docusign-check   # JWT grant + GET the form (?state=active) → name, state, field ids
-make e2e-live         # check → Web Forms live API test → service on :4010 (DocuSign provider)
-                      #   → Playwright walks the real form, asserts the locked fields → stop
+make docusign-check    # JWT grant + GET the form (?state=active) → name, state, field ids
+make docusign-template # proxy-flow template from the fixture PDF (role signer), WRITE=1 → .env
+make test-live         # both live API suites: envelopes (needs that template) + Web Forms
+make e2e-live          # check → Web Forms live API test → service on :4010 (DocuSign provider)
+                       #   → Playwright walks the real form, tampers with the locked fields
+                       #   → mint-only + serverless examples mint real instances → stop
 ```
 
 In CI the same runner reads the DocuSign values from the environment
@@ -48,7 +51,7 @@ field (click, type, `fill` and `selectOption` with `force`), asserting the
 value is unchanged. Controls are found with `getByRole('textbox'|'combobox', { name })`,
 not `getByLabel` - DocuSign names them through aria. Radio/checkbox values are the option
 values (`yes`/`no`), never checked state, so assert them via the Summary
-text if needed. Number fields carry at most two decimals (`settlement_amount_btc`
+text if needed. Number fields carry at most two decimals: the API accepts more but the form flags a locked field invalid and the signer is stranded (`settlement_amount_btc`
 is minted as `0.01`). Instance tokens expire ~5 min after minting: never
 reuse a URL across runs.
 

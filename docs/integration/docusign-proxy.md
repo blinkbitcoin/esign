@@ -42,9 +42,13 @@ adapter works internally.
    `examples/full-service-demo/src/providers/docusign/` requests in its JWT assertion.
 4. From the Apps and Keys page, note the **API Account ID** and your
    **User ID** (both GUIDs).
-5. **Create a template**: upload any PDF, add a recipient **role named
-   exactly `signer`** - this must match `roleName: 'signer'` in
-   `providers/docusign/` - place a Sign Here tab, save, and copy the **template ID**.
+5. **Create a template** with a recipient **role named exactly `signer`**
+   (what `createEnvelopeFromTemplate` fills). `make docusign-template`
+   creates one through the API from the capability test form PDF - role
+   `signer`, Sign Here and Date Signed tabs anchored on the PDF text - and
+   prints its id (`WRITE=1` sets `DOCUSIGN_TEMPLATE_ID` in `.env`); rerunning
+   reuses it. By hand: upload any PDF, add the `signer` role, place a Sign
+   Here tab, save, copy the template id.
 
 ## 2. Backend Configuration (`examples/full-service-demo/.env`)
 

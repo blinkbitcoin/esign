@@ -16,8 +16,11 @@ app opens url in <ESignature source={createWebFormsSource({ mint: ... })}>
 ```
 
 - `src/quote.ts` - the host's own data (a subscription quote) becomes the
-  prefill of the form's read-only fields. Number fields carry at most two
-  decimals, so the BTC amount is text.
+  prefill of the form's read-only fields. Number fields must be sent as
+  numbers (a string is rejected) with at most two decimals: more is
+  accepted by the API but the form then marks the locked field invalid and
+  the signer cannot proceed. Make an 8-decimal amount a Text field in a
+  real form.
 - `src/mint.ts` - the one package call. `ESIGN_PROVIDER=mock` swaps in the
   mock provider so the mutation runs with no DocuSign account (the URL
   points at the full-service demo's mock Web Forms page).
