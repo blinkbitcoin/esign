@@ -9,9 +9,16 @@ import { withRetry, type RetryConfig } from '../http';
 import { assertWebFormPrefill } from '../prefill';
 import type { WebFormInstanceOptions, WebFormInstanceResult } from '../types';
 
+// What createWebFormInstance needs of a client: its configuration and the
+// one request. A host's own client (or a test double) needs nothing more.
+export type WebFormsClient = Pick<
+  DocuSignClient,
+  'config' | 'createWebFormInstanceRequest'
+>;
+
 export interface CreateWebFormInstanceParams extends WebFormInstanceOptions {
   // Either a client the host keeps (token cache lives there) ...
-  client?: DocuSignClient;
+  client?: WebFormsClient;
   // ... or a configuration; clients are cached per config object, so a host
   // holding one config object gets one token cache too
   config?: DocuSignConfig;
@@ -34,7 +41,7 @@ export const clientFor = (config: DocuSignConfig): DocuSignClient => {
   return client;
 };
 
-const resolveClient = (params: CreateWebFormInstanceParams): DocuSignClient => {
+const resolveClient = (params: CreateWebFormInstanceParams): WebFormsClient => {
   if (params.client) {
     return params.client;
   }

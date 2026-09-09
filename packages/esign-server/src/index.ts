@@ -3,7 +3,10 @@
 // call a host needs for locked prefill, createWebFormInstance. Node only.
 
 export { createWebFormInstance, clientFor } from './docusign/webforms';
-export type { CreateWebFormInstanceParams } from './docusign/webforms';
+export type {
+  CreateWebFormInstanceParams,
+  WebFormsClient,
+} from './docusign/webforms';
 
 // --- Domain: the envelope service over a provider port and a store port ----
 export { createEnvelopeService } from './envelopes';

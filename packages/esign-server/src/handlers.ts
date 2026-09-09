@@ -149,7 +149,8 @@ const headersOf = (request: Request): WebhookHeaders => {
 export type MintTarget =
   // Mint with a provider (the service's way)
   | { provider: ESignProvider }
-  // Mint straight from a DocuSign config/client (the serverless way)
+  // Mint straight from a DocuSign config, or a client narrowed to what the
+  // mint needs (WebFormsClient) - the serverless way
   | Pick<
       CreateWebFormInstanceParams,
       'config' | 'client' | 'returnUrl' | 'expirationOffsetHours'
