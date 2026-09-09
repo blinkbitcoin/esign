@@ -39,6 +39,14 @@ assert.equal(typeof server.createWebFormInstance, 'function');
 assert.equal(typeof server.createDocuSignClient, 'function');
 assert.equal(typeof server.parseWebFormPrefill, 'function');
 console.log('pack smoke: esign-server loads on plain Node');
+assert.equal(typeof server.providerFromEnv, 'function');
+assert.equal(typeof server.hostedFormMint, 'function');
+// The /docusign subpath: the adapter on its own, no peers
+const docusign = require('@blinkbitcoin/esign-server/docusign');
+assert.equal(typeof docusign.createDocuSignClient, 'function');
+assert.equal(typeof docusign.createWebFormInstance, 'function');
+assert.equal(typeof docusign.mintFromDocuSign, 'function');
+console.log('pack smoke: esign-server/docusign loads without peers; providerFromEnv on the root');
 // The /express subpath needs the optional express peer: without it the
 // require must fail loudly (the boundary that keeps the main entry framework-free)
 let expressLoaded = false;
@@ -61,5 +69,10 @@ NODE_OPTIONS="" node --input-type=module -e "
 import { createWebFormInstance } from '@blinkbitcoin/esign-server';
 if (typeof createWebFormInstance !== 'function') process.exit(1);
 console.log('pack smoke: ESM import of esign-server works');
+"
+NODE_OPTIONS="" node --input-type=module -e "
+import { createDocuSignProvider } from '@blinkbitcoin/esign-server/docusign';
+if (typeof createDocuSignProvider !== 'function') process.exit(1);
+console.log('pack smoke: ESM import of esign-server/docusign works');
 "
 echo "PACK SMOKE PASSED"

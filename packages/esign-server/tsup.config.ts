@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/express.ts', 'src/knex.ts'],
+  entry: ['src/index.ts', 'src/express.ts', 'src/knex.ts', 'src/docusign.ts'],
   external: ['express', 'knex'],
   format: ['esm', 'cjs'],
   platform: 'node',

@@ -223,6 +223,28 @@ The signing pages go out under `signingPageCsp(nonce)` with a
 `signingPageNonce()` per response - the same CSP `signingPageResponse` gives
 a framework-neutral host.
 
+## The DocuSign adapter (`@blinkbitcoin/esign-server/docusign`)
+
+Everything DocuSign-specific is also on its own entry, peer-free: the
+client, `docuSignConfigFromEnv` and the `DOCUSIGN_*` mapping,
+`createDocuSignProvider`, `createWebFormInstance`, the prefill contract
+(`parseWebFormPrefill`, `WebFormPrefill`), the return-URL bridge
+(`renderSigningReturnBridge`, `mapDocuSignReturnEvent`), the mock Web Forms
+page and `mintFromDocuSign`. The root entry keeps re-exporting all of it;
+the subpath is the canonical import for DocuSign names going forward
+(`mountDocuSignPages` stays on `./express`, which needs the peer).
+
+```ts
+import { createDocuSignProvider, docuSignConfigFromEnv } from '@blinkbitcoin/esign-server/docusign';
+```
+
+| Entry | What | Peer |
+|---|---|---|
+| `@blinkbitcoin/esign-server` | everything: domain, ports, registry, handlers, pages, DocuSign + mock adapters | none |
+| `@blinkbitcoin/esign-server/docusign` | the DocuSign adapter | none |
+| `@blinkbitcoin/esign-server/express` | `createESignRouter`, `mountDocuSignPages` | `express` |
+| `@blinkbitcoin/esign-server/knex` | the Postgres store + migrations | `knex` (types only) |
+
 ## Configuration
 
 | Variable | Setting | Notes |

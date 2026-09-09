@@ -29,6 +29,7 @@ esign/
 │       │   ├── index.ts           # Public API: client, domain, handlers, prefill ⭐
 │       │   ├── express.ts         # ./express entry: createESignRouter, pages via signingPage.ts (express is a peer) ⭐
 │       │   ├── knex.ts            # ./knex entry: Knex EnvelopeStore + migration source (knex is a peer) ⭐
+│       │   ├── docusign.ts        # ./docusign entry: the DocuSign adapter on its own (peer-free) ⭐
 │       │   ├── knex/              #   store.ts, migrations.ts (ESIGN_MIGRATIONS, programmatic source)
 │       │   ├── envelopes.ts       # createEnvelopeService: rules, audit, webhook state machine ⭐
 │       │   ├── provider.ts        # ESignProvider port (+ hosted-form capability: supportsHostedForms, hostedFormMint)
@@ -48,7 +49,7 @@ esign/
 │       │   │                      #   handlers (mintFromDocuSign), express (mountDocuSignPages), index (barrel)
 │       │   ├── mock/              # Mock adapter (mirrors DocuSign locally)
 │       │   └── __tests__/         # Jest, 100% enforced
-│       ├── tsup.config.ts         # ESM + CJS + d.ts build (two entries)
+│       ├── tsup.config.ts         # ESM + CJS + d.ts build (four entries: index, express, knex, docusign)
 │       └── dist/                  # Build output (gitignored)
 │
 ├── 📦 LIBRARY - THE PRODUCT
