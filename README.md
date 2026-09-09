@@ -25,6 +25,17 @@ The GraphQL backend, Apollo wiring, and provider adapters in this repo exist
 for **mode 3 only**. If you need modes 1 or 2, none of that ships with you -
 the [Integration](#integration) section walks each mode from simplest up.
 
+**Which mode?** Nothing to lock and no per-signer data: mode 1. Values the
+signer must not change (amounts, rates, dates set by you): mode 2 - the
+only mode that locks fields, and it needs one call on your backend. A
+document workflow with per-recipient sessions, restarts and status
+tracking: mode 3. **Reading path for mode 2 (the invest flow):**
+[docs/integration/invest-flow.md](docs/integration/invest-flow.md) (the
+recipe, API + app) → [docs/integration/docusign-lessons.md](docs/integration/docusign-lessons.md)
+(the rules, one page) → [docs/integration/webforms.md](docs/integration/webforms.md)
+(the details) → [`examples/mint-only-demo`](examples/mint-only-demo/README.md)
+(the API side, runnable).
+
 ## Integration
 
 Every mode drives the **same component with the same callbacks** - the only
@@ -61,10 +72,15 @@ your callbacks fire on completion/cancel/error.
 
 ### 2. Web Forms instances - adds per-signer prefill (one backend endpoint)
 
-**Use when:** you want each signer's data prefilled into the form, or need to
-know *which* signer completed it. DocuSign requires minting a short-lived
-**instance URL** per signer, and that API call carries your DocuSign
-credentials - so it belongs on a backend, not in the app.
+**Use when:** you want each signer's data prefilled into the form, need
+values **the signer cannot change** (the fields marked read-only in the
+builder show the minted values locked), or need to know *which* signer
+completed it. DocuSign requires minting a short-lived **instance URL** per
+signer, and that API call carries your DocuSign credentials - so it belongs
+on a backend, not in the app. One rule from the live runs: locked fields
+must be **Text** (or Dropdown) fields fed strings - a read-only Number or
+Date field makes DocuSign refuse the submission
+([lessons](docs/integration/docusign-lessons.md)).
 
 1. Add **one authenticated endpoint to your own backend** that calls
    DocuSign's `createInstance` with the signer's `clientUserId` + prefill
@@ -81,9 +97,15 @@ const source = createWebFormsSource({
   // your endpoint + the app's own session token; the backend mints with
   // @blinkbitcoin/esign-server, so read-only fields come back locked
   mint: { url: 'https://your-backend.example.com/webform/instance', getAuthToken },
-  prefill: { number_of_units: 1000, settlement_amount_btc: '0.01268231' },
+  prefill: { number_of_units: '1000', settlement_amount_btc: '0.01268231' }, // locked fields: strings
 });
+// A GraphQL mutation instead of a POST endpoint: createWebFormsSource({ createInstance })
 ```
+
+Completion reaches the app through the instance's return URL: your backend
+serves the small bridge page (`renderSigningReturnBridge`) that the
+component listens to - no DocuSign.js, works in a plain WebView. The whole
+recipe, API and app: [docs/integration/invest-flow.md](docs/integration/invest-flow.md).
 
 Modes 1 and 2 import from the `/webform` subpath, which is **Apollo-free by
 construction** (a guard test walks the import graph to keep it that way).
