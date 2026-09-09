@@ -20,15 +20,15 @@ describe('quoteFor', () => {
 });
 
 describe('prefillFromQuote', () => {
-  it('maps the quote onto the form fields: numbers as numbers, at most two decimals', () => {
+  it('maps the quote onto the form fields: amounts as text, BTC with eight decimals', () => {
     const prefill = prefillFromQuote(
       quoteFor(1000, new Date('2026-09-09T10:00:00Z')),
     );
     expect(prefill).toEqual({
-      number_of_units: 1000,
-      total_subscription_usd: 100000,
-      settlement_amount_btc: 1.27,
-      btc_usd_rate: 78_850.5,
+      number_of_units: '1000',
+      total_subscription_usd: '100000.00',
+      settlement_amount_btc: '1.26822278',
+      btc_usd_rate: '78850.50',
       rate_timestamp: '2026-09-09T10:00:00.000Z',
     });
   });
@@ -40,6 +40,6 @@ describe('prefillFromQuote', () => {
       btcUsdRate: 50_000,
       quotedAt: new Date(0),
     });
-    expect(prefill.total_subscription_usd).toBe(100);
+    expect(prefill.total_subscription_usd).toBe('100.00');
   });
 });

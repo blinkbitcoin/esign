@@ -43,8 +43,8 @@ describe('createServer', () => {
       expect(mint).toHaveBeenCalledWith(
         'user-1',
         expect.objectContaining({
-          number_of_units: 10,
-          total_subscription_usd: 1000,
+          number_of_units: '10',
+          total_subscription_usd: '1000.00',
         }),
       );
     } finally {
