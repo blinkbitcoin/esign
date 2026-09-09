@@ -16,8 +16,8 @@ import {
   waitFor,
 } from '@testing-library/react';
 import React from 'react';
-import { ESignature, getApolloErrorCode, getErrorMessage } from '../ESignature';
-import { useESignature } from '../index';
+import { ESignature, getErrorMessage } from '../ESignature';
+import { getApolloErrorCode, useESignature } from '../index';
 import type { UseESignatureOptions } from '../types';
 
 const okSession: SigningSession = {

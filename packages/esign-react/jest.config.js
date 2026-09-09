@@ -4,6 +4,8 @@ module.exports = {
     '^@blinkbitcoin/esign-react/docusign$': '<rootDir>/src/docusign.ts',
     '^@blinkbitcoin/esign-core/docusign$':
       '<rootDir>/../esign-core/src/docusign.ts',
+    '^@blinkbitcoin/esign-core/webform$':
+      '<rootDir>/../esign-core/src/webform.ts',
     '^@blinkbitcoin/esign-core$': '<rootDir>/../esign-core/src/index.ts',
   },
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],

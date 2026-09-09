@@ -18,7 +18,7 @@ Peer dependencies: `react` (>=18) — plus `@apollo/client` · `graphql` (16.x) 
 | Import | Contents |
 |--------|----------|
 | `@blinkbitcoin/esign-react` | Everything: the component + hook, all sources (proxy, Web Forms, public<br>URL, DocuSign.js), the Apollo factory |
-| `@blinkbitcoin/esign-react/docusign` | The DocuSign provider: `createWebFormsSource`, `createPublicUrlSource`,<br>`createDocuSignWebFormsSource`, `interpretDocuSignEvent`, the prefill<br>contract — plus the neutral signing layer (`createHostedFormSource`, …),<br>the component and the hook. No proxy source. |
+| `@blinkbitcoin/esign-react/docusign` | The DocuSign provider: `createWebFormsSource`, `createPublicUrlSource`,<br>`createDocuSignWebFormsSource`, `interpretDocuSignEvent`, the prefill<br>contract — plus the neutral signing layer (`createHostedFormSource`, …),<br>the component and the hook. No proxy source. **Apollo-free by<br>construction** (guard-tested): no `@apollo/client` / `graphql` needed. |
 
 The DocuSign.js source lives in `src/providers/docusign/`; its old
 `docusignWebForms` module path remains as a deprecated shim.

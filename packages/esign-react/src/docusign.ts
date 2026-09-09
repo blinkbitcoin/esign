@@ -36,15 +36,16 @@ export {
   createHostedFormMinter,
   createHostedFormPublicUrlSource,
   createHostedFormSource,
-  interpretBridgeEvent,
-  resolveHostedFormCreateInstance,
   createPublicUrlSource,
   createWebFormsMinter,
   createWebFormsSource,
+  interpretBridgeEvent,
   interpretDocuSignEvent,
   interpretProxyEvent,
   isRestartable,
+  resolveHostedFormCreateInstance,
 } from '@blinkbitcoin/esign-core/docusign';
+export { ESignature, getErrorMessage } from './ESignature';
 export type {
   DocuSignSdk,
   DocuSignSigning,
@@ -58,7 +59,6 @@ export {
   createDocuSignWebFormsSource,
   isMountable,
 } from './providers/docusign';
-export { ESignature, getErrorMessage } from './ESignature';
 export type {
   ESignatureEmbed,
   ESignatureError,

@@ -16,12 +16,12 @@ import type {
   SigningSession,
   WebFormPrefill,
   WebFormsInstance,
-} from '@blinkbitcoin/esign-core';
+} from '@blinkbitcoin/esign-core/docusign';
 import {
   interpretDocuSignEvent,
   resolveCreateInstance,
   toSigningSourceError,
-} from '@blinkbitcoin/esign-core';
+} from '@blinkbitcoin/esign-core/docusign';
 
 // Minimal shape of the DocuSign.js SDK we rely on.
 export interface DocuSignSigning {
@@ -37,7 +37,7 @@ export type LoadDocuSign = (integrationKey: string) => Promise<DocuSignSdk>;
 // The core capability, with the web's container: a source that embeds via an
 // SDK (mount) rather than a plain iframe URL. The guard is core's isMountable.
 export type MountableSigningSource = CoreMountableSigningSource<HTMLElement>;
-export { isMountable } from '@blinkbitcoin/esign-core';
+export { isMountable } from '@blinkbitcoin/esign-core/docusign';
 
 const BUNDLE_URLS = {
   demo: 'https://js-d.docusign.com/bundle.js',

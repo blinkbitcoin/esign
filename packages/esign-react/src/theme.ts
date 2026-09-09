@@ -3,7 +3,7 @@
 // Precedence: base style < theme-derived color < styles[key].
 // Mirrors the RN component's StyleSheet (WCAG AA colors).
 
-import { resolveLabelsWith } from '@blinkbitcoin/esign-core';
+import { resolveLabelsWith } from '@blinkbitcoin/esign-core/webform';
 import type React from 'react';
 
 import type {

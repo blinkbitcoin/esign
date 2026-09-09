@@ -12,10 +12,11 @@
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "ignoreDeprecations": "6.0",
-    "types": ["jest"],
+    "types": ["jest", "node"],
     "paths": {
       "@blinkbitcoin/esign-core": ["../esign-core/src/index.ts"],
       "@blinkbitcoin/esign-core/docusign": ["../esign-core/src/docusign.ts"],
+      "@blinkbitcoin/esign-core/webform": ["../esign-core/src/webform.ts"],
       "@blinkbitcoin/esign-react/docusign": ["./src/docusign.ts"]
     }
   },

@@ -1,12 +1,11 @@
 // Deprecated path: the DocuSign.js source moved to providers/docusign/webFormsSource.
 // Kept so the old module path keeps resolving; carries no logic of its own.
 
+import type * as DocuSign from './providers/docusign/webFormsSource';
 import {
   createDocuSignWebFormsSource as canonicalCreateDocuSignWebFormsSource,
   isMountable as canonicalIsMountable,
 } from './providers/docusign/webFormsSource';
-
-import type * as DocuSign from './providers/docusign/webFormsSource';
 
 /** @deprecated Import from '@blinkbitcoin/esign-react/docusign' */
 export type DocuSignSigning = DocuSign.DocuSignSigning;

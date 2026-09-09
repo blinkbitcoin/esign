@@ -2,7 +2,6 @@
 // Web Forms). The URL-embedded sources and the interpreter come from core's
 // providers/docusign, re-exported by @blinkbitcoin/esign-core/docusign.
 
-export { createDocuSignWebFormsSource, isMountable } from './webFormsSource';
 export type {
   DocuSignSdk,
   DocuSignSigning,
@@ -12,3 +11,4 @@ export type {
   LoadDocuSign,
   MountableSigningSource,
 } from './webFormsSource';
+export { createDocuSignWebFormsSource, isMountable } from './webFormsSource';

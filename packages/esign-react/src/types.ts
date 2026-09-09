@@ -6,7 +6,7 @@ import type {
   ESignatureStatus,
   ESignatureTheme,
   UseESignatureOptions,
-} from '@blinkbitcoin/esign-core';
+} from '@blinkbitcoin/esign-core/webform';
 import type React from 'react';
 
 // The contracts shared with React Native come from core; only the embed
@@ -19,7 +19,7 @@ export type {
   ESignatureTheme,
   RecipientData,
   UseESignatureOptions,
-} from '@blinkbitcoin/esign-core';
+} from '@blinkbitcoin/esign-core/webform';
 
 /**
  * How to embed the active session. Plain sources get an iframe; DocuSign.js
