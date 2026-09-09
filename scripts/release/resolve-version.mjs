@@ -15,11 +15,12 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseVersionTag } from '../lib/semver.mjs';
 import {
   ResolveVersionError,
   resolveVersion,
 } from '../lib/resolve-version.mjs';
+import { parseVersionTag } from '../lib/semver.mjs';
+import { dependencyStamps, PUBLISHED_PACKAGES } from '../lib/workspaces.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 process.chdir(root);
@@ -85,23 +86,17 @@ try {
 const { version: VERSION, disttag: DISTTAG } = result;
 
 if (!DRY_RUN) {
-  for (const p of [
-    'packages/esign-core',
-    'packages/esign-server',
-    'packages/esign-react-native',
-    'packages/esign-react',
-  ]) {
+  for (const p of PUBLISHED_PACKAGES) {
     execFileSync('npm', ['pkg', 'set', `version=${VERSION}`], {
       cwd: p,
       stdio: 'inherit',
     });
   }
-  for (const p of ['packages/esign-react-native', 'packages/esign-react']) {
-    execFileSync(
-      'npm',
-      ['pkg', 'set', `dependencies.@blinkbitcoin/esign-core=${VERSION}`],
-      { cwd: p, stdio: 'inherit' },
-    );
+  // Every workspace that depends on a published package by version follows
+  // it (the examples on esign-server, the platform packages on core), or
+  // `npm ci` in the service image asks the registry for the stamped version
+  for (const { dir, args } of dependencyStamps(VERSION)) {
+    execFileSync('npm', args, { cwd: dir, stdio: 'inherit' });
   }
 }
 
