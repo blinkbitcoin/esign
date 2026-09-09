@@ -78,6 +78,14 @@ read the response; the spec logs the `x-docusign-tracetoken` /
 does not capture the submission (it is not made with the user's
 credentials).
 
+## Recording proof
+
+`E2E_LIVE_VIDEO=1` on the webform/proxy live-demo Playwright configs turns
+on per-test video and a 600 ms slowMo (docs/integration/webforms.md shows
+the exact command and the ffmpeg lines). Run the spec by hand only after
+`. scripts/e2e/live-service.sh; live_env` - without `E2E_LIVE_PREFILL`
+exported the Vite dev server gets no prefill and the form comes up empty.
+
 ## The React Native run (`make e2e-ios-live`)
 
 `scripts/e2e/ios-live.sh` shares the service bootstrap with `live.sh`
