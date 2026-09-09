@@ -45,11 +45,8 @@ live_service_up
 echo "== metro (webform mode, backend :$LIVE_PORT, live prefill)"
 ( cd "$RN" && ESIGN_MODE=webform ESIGN_BACKEND_PORT="$LIVE_PORT" ESIGN_PREFILL="$E2E_LIVE_PREFILL" npm start -- --reset-cache > "$METRO_LOG" 2>&1 ) &
 METRO_PID=$!
-for _ in $(seq 1 60); do
-  curl -fsS http://127.0.0.1:8081/status 2>/dev/null | grep -q running && break
-  sleep 1
-done
-curl -fsS http://127.0.0.1:8081/status 2>/dev/null | grep -q running || { echo "::error::Metro did not start"; tail -30 "$METRO_LOG"; exit 1; }
+metro_running() { curl -fsS http://127.0.0.1:8081/status 2> /dev/null | grep -q running; }
+wait_for Metro 60 1 "$METRO_LOG" metro_running
 
 # A cold launch through simctl, not Maestro: the running app must load the
 # bundle from THIS Metro (ESIGN_*), and Maestro's iOS driver misreads a
