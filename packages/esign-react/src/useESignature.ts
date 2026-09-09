@@ -7,7 +7,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { getErrorMessage, isRestartable } from '@blinkbitcoin/esign-core';
+import {
+  getErrorMessage,
+  isAllowedOrigin,
+  isRestartable,
+} from '@blinkbitcoin/esign-core';
 import { isMountable } from './docusignWebForms';
 import type {
   SigningEvent,
@@ -154,8 +158,7 @@ export const useESignature = ({
   // posts to window.parent). The session's allowedOrigin pins the sender.
   const handleSigningMessage = useCallback(
     (messageEvent: MessageEvent) => {
-      const allowedOrigin = sessionRef.current?.allowedOrigin;
-      if (allowedOrigin && messageEvent.origin !== allowedOrigin) {
+      if (!isAllowedOrigin(sessionRef.current, messageEvent.origin)) {
         return; // Ignore messages from unexpected origins
       }
       const signingEvent = source.interpret(messageEvent.data);

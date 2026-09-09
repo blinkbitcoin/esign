@@ -37,6 +37,9 @@ the platform components never change. `start()` / `restart()` reject with a
 normalizes any rejection into one, `isSigningSourceError` narrows).
 `withTimeout(run, ms, onTimeout)` is the watchdog `createWebFormsSource` puts
 around its mint call, for a custom source with the same need.
+`isAllowedOrigin(session, origin)` is the postMessage origin guard the web
+hook applies (`SigningSession.allowedOrigin`); a React Native WebView message
+carries no origin, so the pin is a web-only defence.
 
 ## Development (in this monorepo)
 

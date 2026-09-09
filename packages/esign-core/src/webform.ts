@@ -43,6 +43,7 @@ export {
   toSigningSourceError,
 } from './signing/errors';
 export { withTimeout } from './signing/withTimeout';
+export { isAllowedOrigin } from './signing/origin';
 export type {
   SigningSource,
   RestartableSigningSource,
