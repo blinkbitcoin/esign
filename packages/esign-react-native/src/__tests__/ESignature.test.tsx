@@ -6,24 +6,22 @@
  * the hook's actions, and that theme / styles / labels reach the markup.
  */
 
+import type { SigningSession, SigningSource } from '@blinkbitcoin/esign-core';
+import { interpretProxyEvent } from '@blinkbitcoin/esign-core';
 import React from 'react';
-import ReactTestRenderer from 'react-test-renderer';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-
+import ReactTestRenderer from 'react-test-renderer';
+import NetInfo, {
+  resetMockNetworkState,
+  setMockNetworkState,
+} from '../../__mocks__/@react-native-community/netinfo';
+import {
+  resetWebViewMock,
+  simulateWebViewMessage,
+} from '../../__mocks__/react-native-webview';
 import { ESignature, getErrorMessage } from '../ESignature';
 import { getApolloErrorCode, useESignature } from '../index';
-import { interpretProxyEvent } from '@blinkbitcoin/esign-core';
-import {
-  simulateWebViewMessage,
-  resetWebViewMock,
-} from '../../__mocks__/react-native-webview';
-import NetInfo, {
-  setMockNetworkState,
-  resetMockNetworkState,
-} from '../../__mocks__/@react-native-community/netinfo';
-
-import type { SigningSource, SigningSession } from '@blinkbitcoin/esign-core';
 import type { UseESignatureOptions } from '../types';
 
 const okSession: SigningSession = {
