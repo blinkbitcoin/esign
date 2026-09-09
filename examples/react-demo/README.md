@@ -34,7 +34,8 @@ make e2e           # Playwright browser E2E in real Chromium (proxy mode;
                    #   needs the test DB and the libraries built - or run
                    #   `make e2e-web` at the repo root, which does both)
                    # Web Forms / public-URL variants: make e2e-web-webform /
-                   #   e2e-web-publicurl at the repo root
+                   #   e2e-web-publicurl at the repo root; against a REAL
+                   #   DocuSign form: make e2e-web-webform-live (E2E_LIVE_* env)
 make build         # production build sanity check
 ```
 

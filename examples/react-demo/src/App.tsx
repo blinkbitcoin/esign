@@ -19,6 +19,18 @@ import { HookSigning } from './HookSigning';
 
 export const DEMO_RECIPIENT = { name: 'Test User', email: 'test@example.com' };
 
+// Prefill minted with the Web Forms instance (webform mode). Values minted
+// this way land in the form LOCKED - the signer sees them but cannot change
+// them - which is how a host pins the terms of a document (amounts, rates).
+// Numbers travel unquoted (DocuSign Number fields); keys are the form's field
+// API reference names.
+export const DEMO_PREFILL = {
+  full_name: DEMO_RECIPIENT.name,
+  email: DEMO_RECIPIENT.email,
+  units: 10,
+  total_usd: 1000.5,
+};
+
 // Build the signing source for the configured mode (VITE_ESIGN_MODE). The
 // component and callbacks are identical across modes.
 export const buildSource = (): SigningSource => {
@@ -32,12 +44,7 @@ export const buildSource = (): SigningSource => {
               'content-type': 'application/json',
               authorization: `Bearer ${getAuthToken()}`,
             },
-            body: JSON.stringify({
-              prefill: {
-                full_name: DEMO_RECIPIENT.name,
-                email: DEMO_RECIPIENT.email,
-              },
-            }),
+            body: JSON.stringify({ prefill: DEMO_PREFILL }),
           });
           if (!res.ok) {
             throw new Error(`Could not start signing (HTTP ${res.status})`);

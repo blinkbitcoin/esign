@@ -1,6 +1,6 @@
 # DocuSign Web Forms Mode
 
-**Updated:** 2026-07-06
+**Updated:** 2026-09-08
 
 The signing component supports three modes via its `SigningSource` (see the
 package READMEs). This doc covers the **DocuSign Web Forms** mode: a prefilled,
@@ -36,6 +36,85 @@ lives outside the DocuSign adapter (`apps/api/src/providers/docusign/`).
 
 Both default to `proxy`.
 
+## Locking prefilled values (read-only fields)
+
+A form typically mixes values the signer enters (country of residence) with
+terms the sender has already fixed (number of units, amounts, an FX rate and
+its timestamp). The fixed terms must not be editable in the form, or the
+signed document can disagree with what the backend settles.
+
+DocuSign's rules (verified against the Web Forms docs, 2026-09):
+
+- A field marked **Read only** in the Web Forms builder can only be populated
+  by a builder **default value** or by the `formValues` of an
+  **`Instances:createInstance`** request. Prefill by URL (`#field=value`) and
+  prefill through Docusign JS **cannot** populate read-only fields.
+- A required read-only field left empty makes the submission fail
+  ("Request sent is well formed but otherwise invalid").
+- A field hidden by a rule is dropped from the submission - its value never
+  reaches the document.
+
+So the recipe is: mark the fixed fields Read only (keep Required) in the
+builder, and mint every instance through the backend with those values in the
+prefill. That is what `POST /webform/instance` does:
+
+```json
+{ "prefill": { "number_of_units": 1000, "total_subscription_usd": 1000,
+               "settlement_amount_btc": 0.01268231, "rate_timestamp": "2026-09-08 10:44" } }
+```
+
+Keys are the fields' API reference names; the value shape follows the field
+type (`apps/api/src/types.ts`): text / email / date (`yyyy-mm-dd`) / dropdown /
+radio → string, **Number → a JSON number** (unquoted, `.` decimal, no
+thousands separators), checkbox group → string array, phone →
+`{ countryCode?, nationalNumber }`. The endpoint validates that contract at the
+edge (`apps/api/src/webFormPrefill.ts`) and answers 400 with a reason for
+anything else, before the provider is called. Mint the instance right before
+opening it: the instance token expires about five minutes after creation.
+
+### How we got here (2026-09-08)
+
+The invest flow's first test against a published form showed every computed
+field editable. Two builder-side fixes were tried and both fail, for reasons
+that are documented DocuSign behaviour, not bugs to work around:
+
+| Tried | Result | Why |
+|---|---|---|
+| Mark the fields **Read only** in the builder, keep prefilling by URL | fields render disabled but **empty**; submit fails with "Request sent is well formed but otherwise invalid" | URL prefill cannot populate read-only fields, and the fields are required |
+| **Hide** the fields with a rule | the values never reach the document | hidden fields are dropped from the submission |
+
+Options considered:
+
+1. Ship v1 with the fields editable - rejected: the signer could sign a
+   document whose amounts, rate and timestamp differ from what the backend
+   settles.
+2. eSignature envelopes from a template with locked tabs - workable, but a
+   different product surface (no form step, DocuSign.js not involved) and a
+   second integration to maintain next to Web Forms.
+3. **Web Forms `createInstance` with `formValues`** - chosen: it is the one
+   documented way to populate read-only fields, the backend already exposed it
+   (`POST /webform/instance`), and the host only has to build the prefill
+   from the values it already computed.
+
+Sources (DocuSign, read 2026-09-08):
+[Prefill web form instance fields](https://developers.docusign.com/docs/web-forms-api/plan-integration/prefill-instance-fields/)
+("If supplied in an Instances:createInstance request, prefill values can be
+used to populate read-only fields. If supplied with Docusign JS, prefill values
+cannot"),
+[Populate Read-Only Fields on a Web Form](https://support.docusign.com/s/document-item?language=en_US&bundleId=gmi1660583110357&topicId=hty1709929728541.html)
+("Their values must be set either through the API or by assigning a default
+value"),
+[Prefill a Web Form By URL](https://support.docusign.com/s/document-item?language=en_US&bundleId=gmi1660583110357&topicId=kup1721242003741.html),
+[Web form instance URLs](https://developers.docusign.com/docs/web-forms-api/plan-integration/instance-urls/)
+(instance token expires five minutes after generation).
+
+The **mock web-form page** models both prefill channels so the guarantee is
+testable without credentials: values minted with the instance render as
+locked (`readonly`) inputs, values arriving in the URL (public-form style)
+render editable. The browser E2E (`e2e/webform.spec.ts`, `e2e/publicurl.spec.ts`),
+the Maestro webform flow and the backend E2E (`tests/e2e/webform.e2e.test.ts`)
+assert exactly that.
+
 ## Running the E2E
 
 ```sh
@@ -50,7 +129,9 @@ make e2e-web-webform
 
 Both exercise `createWebFormsSource` + `interpretDocuSignEvent` against a page
 emitting the real DocuSign event names — so a green run proves the actual
-protocol, not a lenient stand-in.
+protocol, not a lenient stand-in. The web suites pick their ports per git
+worktree (`examples/react-demo/e2e/ports.ts`; `E2E_PORT_OFFSET=0` for the
+canonical :4000 / :5174), so parallel sessions never collide.
 
 ## Live run against real DocuSign
 
@@ -71,14 +152,133 @@ protocol, not a lenient stand-in.
    `createInstance` call, asserting the response shape and that the minted
    URL is served. Skips itself when the `DOCUSIGN_*` env vars are unset, so
    it is safe to leave in place (it is excluded from `npm test` and CI).
-5. Run a demo in webform mode; it now embeds the real form.
+   Set `DOCUSIGN_LIVE_PREFILL='{"number_of_units": 1000, ...}'` to also mint
+   a typed-prefill instance for the configured form.
+5. Verify the locked fields in a real browser: `make e2e-web-webform-live`
+   runs `examples/react-demo/e2e/webform-live.spec.ts` against the real form
+   (Playwright, no mock, no web servers started). It skips itself unless one
+   of the first two variables is set:
 
-## Verified against DocuSign docs (2026-07)
+   | Variable | Meaning |
+   |---|---|
+   | `E2E_LIVE_WEBFORM_URL` | An already-minted instance URL (`formUrl#instanceToken=...`, valid ~5 min) - opened as is |
+   | `E2E_LIVE_API_ORIGIN` | Otherwise: a running backend (`ESIGN_PROVIDER=docusign`) the spec mints through |
+   | `E2E_LIVE_AUTH_TOKEN` | Bearer for `POST /webform/instance` (default `e2e-live`, the dev passthrough userId) |
+   | `E2E_LIVE_PREFILL` | JSON object of field API reference name → value to mint with |
+   | `E2E_LIVE_LOCKED_LABELS` | JSON object of form label → expected value for the read-only fields |
+
+   ```sh
+   E2E_LIVE_API_ORIGIN=http://localhost:4000 \
+   E2E_LIVE_PREFILL='{"number_of_units":1000,"settlement_amount_btc":0.01268231}' \
+   E2E_LIVE_LOCKED_LABELS='{"Number of Units":"1000","Settlement Amount (BTC)":"0.01268231"}' \
+   make e2e-web-webform-live
+   ```
+
+   It asserts every scalar prefill value is displayed, every labelled field
+   shows the minted value and is read-only or disabled, and saves
+   `examples/react-demo/test-results/webform-live.png`.
+6. Run a demo in webform mode; it now embeds the real form.
+
+## The capability test form (live E2E fixture)
+
+One generic Web Form in the DocuSign demo account, **"esign capability test
+form"** (form id `1228ee55-ce36-4b87-8646-39c93d50ee69`, built 2026-09-08 via
+"Convert PDF document" from the AcroForm PDF checked into
+`docs/assets/esign-capability-test-form.pdf`; its template was generated
+alongside). It exercises every prefill shape the backend accepts and every
+lock mode the component can meet, so a single live run covers the whole
+surface. Rebuild it from this table if it is ever lost (labels are what the
+signer sees, API reference names are the prefill keys):
+
+| Group | Label | API reference name | Type | Required | Read only | Live prefill |
+|---|---|---|---|---|---|---|
+| recipient | Name | `Signer_name` | Text (recipient name) | yes | no | `"Test User"` |
+| recipient | Email Address | `Signer_email` | Email (recipient email) | yes | no | `"test@example.com"` |
+| A signer-entered | Full Name | `full_name` | Text | yes | no | `"Test User"` |
+| A signer-entered | Email Address | `email` | Email | yes | no | `"test@example.com"` |
+| A signer-entered | Country of Residence | `country` | Text | yes | no | (none, signer types) |
+| A signer-entered | Preferred Contact Method | `preferred_contact` | Checkbox group (option API values from the builder) | no | no | see below |
+| B prefilled, editable | Newsletter Subscription | `newsletter` | Radio: `yes`, `no` | no | no | `"yes"` |
+| C locked terms | Registration Reference | `reference` | Text | yes | **yes** | `"E2E-0001"` |
+| C locked terms | Subscription Plan | `plan` | Dropdown: Seed, Series A | yes | **yes** | `"seed"` |
+| C locked terms | Number of Units | `number_of_units` | Number | yes | **yes** | `1000` |
+| C locked terms | Total Subscription (USD) | `total_subscription_usd` | Number | yes | **yes** | `1000` |
+| C locked terms | Settlement Amount (BTC) | `settlement_amount_btc` | Number (**max 2 decimals**, see notes) | yes | **yes** | `0.01` |
+| C locked terms | BTC/USD Conversion Rate | `btc_usd_rate` | Number | yes | **yes** | `78850` |
+| C locked terms | Rate Timestamp | `rate_timestamp` | Text | yes | **yes** | `"2026-09-08 10:44"` |
+| C locked terms | Settlement Date | `settlement_date` | Date (yyyy/mm/dd display) | yes | **yes** | `"2026-09-10"` |
+| D optional | Phone Number | `phone` | Text | no | no | `"+1 555 123 4567"` |
+| D optional | Additional Notes | `notes` | Text | no | no | (none) |
+
+Notes from the build:
+
+- **Number fields accept at most 2 decimal places** (the form shows "Number
+  can have at most 2 decimal places" and blocks Next). A BTC amount with 8
+  decimals therefore cannot go into a Number field: send it as a Text field
+  (string) or as an integer amount in sats. The fixture keeps
+  `settlement_amount_btc` as a Number to document the limit; the live prefill
+  uses `0.01`. Field **types cannot be changed after the form has been
+  activated** (the Field Type selector disappears), so this stays as built.
+- **Demo vs production prefill by URL.** On the demo environment the public
+  form URL with `#field=value` DOES populate read-only fields, and DocuSign
+  shows a toast on the form: "Note that read-only fields must be populated
+  via API in a Production environment." So a demo-account public URL is a
+  handy manual smoke test, but it does not reproduce production behaviour;
+  only `createInstance` does.
+- **The public form URL is protected by a CAPTCHA**, which does not load in a
+  headless browser ("Unable to load CAPTCHA verification"), so Next never
+  works and the public URL cannot be driven by Playwright. API-minted
+  instances (`formUrl#instanceToken=…`) are what the live suite must open.
+
+- The two **recipient** fields (`Signer_name`, `Signer_email`) are what the
+  builder adds to feed the envelope's signer; they are mapped under
+  Signature → Recipient Connections and must be prefilled (or typed) or the
+  envelope cannot be created.
+- The builder offers only Text / Email / Number / Date types for a
+  **template-based** form, so the phone field is plain text here. The
+  `{ countryCode, nationalNumber }` phone shape the backend accepts is for
+  standalone forms and is covered by the unit tests only.
+- Option API values of the checkbox group and dropdown are assigned by the
+  builder and cannot be edited there; read them from
+  `GET /v1.1/accounts/{accountId}/forms/{formId}` (`Configurations:getForm`)
+  before prefilling `preferred_contact` / `plan`.
+- Signature settings: "Initiate signing session from email" **off** (embedded
+  signing), "Enable document field editing" **off** (the submitted values are
+  final; the signer cannot re-open the locked terms on the document).
+- Nothing is hidden by a rule (a hidden field never reaches the document).
+
+What each group proves in the live run: A the signer can still enter values;
+B a minted value can be shown yet remain editable; C every value shape
+(integer, decimals, text, date, dropdown) can be locked by minting; D optional
+fields are accepted without blocking submit.
+
+```sh
+# Local live run against the fixture (backend on :4000 with ESIGN_PROVIDER=docusign
+# and DOCUSIGN_WEBFORM_ID=1228ee55-ce36-4b87-8646-39c93d50ee69)
+E2E_LIVE_API_ORIGIN=http://localhost:4000 \
+E2E_LIVE_PREFILL='{"Signer_name":"Test User","Signer_email":"test@example.com","full_name":"Test User","email":"test@example.com","country":"Sweden","newsletter":"yes","reference":"E2E-0001","number_of_units":1000,"total_subscription_usd":1000,"settlement_amount_btc":0.01,"btc_usd_rate":78850,"rate_timestamp":"2026-09-08 10:44","settlement_date":"2026-09-10"}' \
+E2E_LIVE_LOCKED_LABELS='{"Registration Reference":"E2E-0001","Number of Units":"1000","Total Subscription (USD)":"1000","Settlement Amount (BTC)":"0.01","BTC/USD Conversion Rate":"78850","Rate Timestamp":"2026-09-08 10:44","Settlement Date":"2026/09/10"}' \
+make e2e-web-webform-live
+```
+
+The spec walks the form the way a signer does (Start, then Next page by
+page), collecting every field's label, value and read-only state, so labels
+can live on any page. A Date field displays in the format chosen in the
+builder (`yyyy/mm/dd` here, hence `"2026/09/10"` in the labels while the
+prefill is `"2026-09-10"`); dropdown and checkbox values display as their
+option labels.
+
+## Verified against DocuSign docs (2026-07, prefill rules 2026-09)
 
 - **createInstance** — endpoint `…/webforms/v1.1/accounts/{id}/forms/{formId}/instances`,
   body `{ clientUserId (REQUIRED, ≤100 chars), formValues }`, response
   `{ formUrl, instanceToken }` (token ~5 min TTL). Implemented in
   `providers/docusign/client.ts`. ✓
+- **Read-only fields** — populated only by a builder default or by
+  `createInstance` `formValues`; prefill by URL / Docusign JS is ignored for
+  them ("Prefill web form instance fields", "Populate Read-Only Fields on a
+  Web Form"). Number fields take unquoted numbers, dates `yyyy-mm-dd`,
+  checkbox groups string arrays, phone `{ countryCode, nationalNumber }`. ✓
 - **Event model** — real DocuSign delivers a single **`sessionEnd`** event via
   DocuSign.js, with the outcome in a discriminator: `signingResult` /
   `formConfirmation` (done), `sessionTimeout` (timeout). `interpretDocuSignEvent`

@@ -41,6 +41,36 @@ test('webform happy path: complete signing via the real DocuSign event', async (
   });
 });
 
+test('webform prefill: values minted with the instance are locked in the form', async ({
+  page,
+}) => {
+  await startSigning(page);
+  const frame = signingFrame(page);
+
+  // The demo mints the instance with DEMO_PREFILL (src/App.tsx); the form
+  // shows every value read-only - the signer cannot change the terms
+  await expect(frame.getByLabel('full_name')).toHaveValue('Test User');
+  await expect(frame.getByLabel('email')).toHaveValue('test@example.com');
+  const units = frame.getByLabel('units');
+  await expect(units).toHaveValue('10');
+  await expect(units).toHaveJSProperty('readOnly', true);
+  await expect(frame.getByLabel('total_usd')).toHaveValue('1000.5');
+  await expect(frame.getByLabel('total_usd')).toHaveJSProperty(
+    'readOnly',
+    true,
+  );
+  await expect(
+    frame.getByText(
+      'Locked fields were set by the sender and cannot be edited.',
+    ),
+  ).toBeVisible();
+
+  // Typing into a locked field changes nothing
+  await units.click();
+  await page.keyboard.type('999');
+  await expect(units).toHaveValue('10');
+});
+
 test('webform cancel: returns to idle', async ({ page }) => {
   await startSigning(page);
 

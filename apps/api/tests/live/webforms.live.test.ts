@@ -58,4 +58,26 @@ describe.runIf(missing.length === 0)('DocuSign Web Forms API (live, demo account
     // open this URL to observe sessionEnd events / return-URL behavior.
     console.log(`[live] Minted Web Forms instance (token expires ~5 min):\n${result.url}`);
   }, 30_000);
+
+  // Prefill against the real form: DOCUSIGN_LIVE_PREFILL is a JSON object of
+  // field API reference name → value for the configured form (numbers unquoted
+  // for Number fields). Proves the API accepts the typed formValues; open the
+  // logged URL to see the read-only fields populated (or run the browser
+  // live E2E: make e2e-web-webform-live).
+  const livePrefill = process.env.DOCUSIGN_LIVE_PREFILL;
+  it.runIf(livePrefill)(
+    'mints an instance with typed prefill values',
+    async () => {
+      const prefill = JSON.parse(livePrefill as string) as Record<string, unknown>;
+      const accessToken = await getAccessToken();
+      const result = await createWebFormInstanceRequest(
+        accessToken,
+        `live-prefill-${Date.now()}`,
+        prefill as Parameters<typeof createWebFormInstanceRequest>[2]
+      );
+      expect(new URL(result.url).hash).toMatch(/^#instanceToken=.+/);
+      console.log(`[live] Minted prefilled instance (token expires ~5 min):\n${result.url}`);
+    },
+    30_000
+  );
 });

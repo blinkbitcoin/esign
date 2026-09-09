@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-import { App, outcomeText, makeOutcomeHandlers } from '../App';
+import { App, DEMO_PREFILL, outcomeText, makeOutcomeHandlers } from '../App';
 import { getAuthToken, apolloClient } from '../apollo';
 
 describe('demo App', () => {
@@ -27,6 +27,14 @@ describe('demo App', () => {
     fireEvent.click(screen.getByTestId('cancel-button'));
     expect(screen.getByTestId('outcome').textContent).toBe(
       'Signing was cancelled.',
+    );
+  });
+});
+
+describe('DEMO_PREFILL', () => {
+  it('sends numeric terms as numbers (DocuSign Number fields reject strings)', () => {
+    expect(JSON.stringify({ prefill: DEMO_PREFILL })).toBe(
+      '{"prefill":{"full_name":"Test User","email":"test@example.com","units":10,"total_usd":1000.5}}',
     );
   });
 });

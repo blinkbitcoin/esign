@@ -51,7 +51,12 @@ describe('buildSource', () => {
           authorization: 'Bearer mock-jwt-token',
         }),
         body: JSON.stringify({
-          prefill: { full_name: 'Test User', email: 'test@example.com' },
+          prefill: {
+            full_name: 'Test User',
+            email: 'test@example.com',
+            units: 10,
+            total_usd: 1000.5,
+          },
         }),
       }),
     );
