@@ -55,8 +55,10 @@ DocuSign's rules (verified against the Web Forms docs, 2026-09):
   reaches the document.
 
 So the recipe is: mark the fixed fields Read only (keep Required) in the
-builder, and mint every instance server-side with those values in the
-prefill. That mint is one call from `@blinkbitcoin/esign-server`, which any
+builder - **as Text (or Dropdown) fields**: a read-only Number or Date
+field makes DocuSign refuse the form's submission, see "Submitting a form
+with read-only fields" below - and mint every instance server-side with
+those values in the prefill. That mint is one call from `@blinkbitcoin/esign-server`, which any
 Node backend can make (the values are usually computed there anyway):
 
 ```ts
@@ -66,7 +68,7 @@ const docusign = docuSignConfigFromEnv(); // once; DOCUSIGN_* env
 const { url } = await createWebFormInstance({
   config: docusign,
   userId: session.userId,
-  prefill: { number_of_units: 1000, settlement_amount_btc: '0.01268231', rate_timestamp: '2026-09-08 10:44' },
+  prefill: { number_of_units: '1000', settlement_amount_btc: '0.01268231', rate_timestamp: '2026-09-08 10:44' },
 });
 ```
 
@@ -77,7 +79,7 @@ On the app side the source does the authenticated POST itself:
 ```tsx
 const source = createWebFormsSource({
   mint: { url: 'https://api.example.com/webform/instance', getAuthToken }, // the app's session token
-  prefill: { number_of_units: 1000, settlement_amount_btc: '0.01268231' },
+  prefill: { number_of_units: '1000', settlement_amount_btc: '0.01268231' },
 });
 <ESignature source={source} onComplete onCancel onError />
 ```
@@ -88,14 +90,15 @@ reports its outcome through the same postMessage protocol as the mock -
 no DocuSign.js needed on React Native. The request body is:
 
 ```json
-{ "prefill": { "number_of_units": 1000, "total_subscription_usd": 1000,
-               "settlement_amount_btc": 0.01268231, "rate_timestamp": "2026-09-08 10:44" } }
+{ "prefill": { "number_of_units": "1000", "total_subscription_usd": "1000",
+               "settlement_amount_btc": "0.01268231", "rate_timestamp": "2026-09-08 10:44" } }
 ```
 
 Keys are the fields' API reference names; the value shape follows the field
 type (`examples/full-service-demo/src/types.ts`): text / email / date (`yyyy-mm-dd`) / dropdown /
 radio → string, **Number → a JSON number** (unquoted, `.` decimal, no
-thousands separators), checkbox group → string array, phone →
+thousands separators; for *editable* Number fields - locked amounts and
+dates are Text fields, hence the strings above), checkbox group → string array, phone →
 `{ countryCode?, nationalNumber }`. The endpoint validates that contract at the
 edge (`examples/full-service-demo/src/webFormPrefill.ts`) and answers 400 with a reason for
 anything else, before the provider is called. Mint the instance right before
@@ -175,12 +178,14 @@ make e2e-live         # service on DocuSign (LIVE_PORT, default 4010) → API li
 
 `make e2e-live` also runs the web demo against the live service in a real
 browser twice - webform mode (the real form inside the component's
-iframe, walked to its Summary) and proxy mode (an envelope from the
-template, DocuSign's signing ceremony inside the iframe, a real signature
-adopted and applied, Finish, the return-URL bridge posting completion, the
-demo's success screen; the E2E Postgres holds the envelope) - and boots
-the mint-only and serverless examples on the DocuSign provider to mint
-real instances. It mints with the
+iframe, walked to its Summary with the locked terms, **submitted**, the
+envelope DocuSign creates from it signed in the same iframe, Finish, the
+return-URL bridge posting completion, the demo's success screen) and proxy
+mode (an envelope from the template, DocuSign's signing ceremony inside
+the iframe, a real signature adopted and applied, Finish, the bridge, the
+success screen; the E2E Postgres holds the envelope) - and boots the
+mint-only and serverless examples on the DocuSign provider to mint real
+instances. It mints with the
 capability test form's group C values plus
 every required editable field (the form refuses Next while one is empty, so
 the walker could not reach the locked pages otherwise) and asserts the six
@@ -200,7 +205,7 @@ enabled and disables its options); dates render as `yyyy/mm/dd`. Step by step:
 3. Configure the backend (`examples/full-service-demo/.env`):
    ```env
    ESIGN_PROVIDER=docusign
-   DOCUSIGN_WEBFORM_ID=<form id>
+   DOCUSIGN_WEBFORM_ID=<form id>   # the capability test form v2 for the live suite
    DOCUSIGN_WEBFORMS_BASE_URL=https://apps-d.docusign.com/api/webforms/v1.1
    # + the standard DOCUSIGN_* JWT config (see docusign-proxy.md)
    ```
@@ -226,7 +231,7 @@ enabled and disables its options); dates render as `yyyy/mm/dd`. Step by step:
 
    ```sh
    E2E_LIVE_API_ORIGIN=http://localhost:4000 \
-   E2E_LIVE_PREFILL='{"number_of_units":1000,"settlement_amount_btc":0.01268231}' \
+   E2E_LIVE_PREFILL='{"number_of_units":"1000","settlement_amount_btc":"0.01268231"}' \
    E2E_LIVE_LOCKED_LABELS='{"Number of Units":"1000","Settlement Amount (BTC)":"0.01268231"}' \
    make e2e-web-webform-live
    ```
@@ -238,90 +243,85 @@ enabled and disables its options); dates render as `yyyy/mm/dd`. Step by step:
 
 ## Submitting a form with read-only fields (verified 2026-09-09, demo env)
 
-The one thing the live runs do **not** prove is a completed signing: on
-the capability test form, DocuSign refuses the submission itself. Every
-API-minted instance walks fine and shows the locked values, and then
-`Summary → Next` posts the form's values to
-`…/forms/<slug>/actions/ESignAction_…` and gets **422
-`UNPROCESSABLE_ERROR` "Request sent is well formed but otherwise
-invalid"** - the message the invest-flow team first saw. Measured, not
-guessed (scratch Playwright runs that mint, walk, submit and read the
-form's own network responses):
+**Finding: a read-only Number or Date field makes DocuSign refuse the
+form's submission; read-only Text and Dropdown fields submit and their
+values land on the document.** So locked amounts and locked dates must be
+Text fields (a dropdown works for a locked choice). That is also the
+cleaner contract for money: the string the backend formats is exactly
+what the signer sees and what the document carries, with no two-decimal
+ceiling (Number fields take at most two decimals).
 
-| Experiment | Result |
-|---|---|
-| Joinder / Subscription Agreement forms (template-built, no read-only), embedded instance, no prefill | **200**, envelope created, signing URL returned |
-| Subscription Agreement form with every field API-prefilled but editable | **200** |
-| Capability test form (8 read-only fields), full prefill, with or without `returnUrl` | 422 |
-| … with the date sent back as ISO, or omitted; numbers as numbers; the dropdown label | 422 |
-| … with the read-only fields' template tabs made optional | 422 |
-| … with the read-only fields stripped from the submission | 400 "The field is required" for each of them |
+How it was found. The first capability test form (v1, four locked Number
+fields among its eight read-only fields) walked fine and showed every
+minted value, and then `Summary → Next` - which posts the form's values to
+`…/forms/<slug>/actions/ESignAction_…` - got **422 `UNPROCESSABLE_ERROR`
+"Request sent is well formed but otherwise invalid"**, the message the
+invest-flow team first saw. The 422 body says nothing else; the form
+player's telemetry only logs "Player form submission error". Rewriting
+the multipart `formValues` in flight (Playwright `page.route()`) ruled the
+values out: date sent back as ISO or omitted, numbers as numbers, the
+dropdown label, the template tabs made optional, with or without
+`returnUrl` - all 422; stripping the read-only values gives 400 "The
+field is required". So the bisect moved to the builder, on copies (field
+types are frozen once a form is active):
 
-The live suite encodes this: `webform-live-demo.spec.ts` has a
-"submission completes" test marked as an **expected failure**
-(`test.fail`). The run stays green while DocuSign refuses and turns red
-the day a submission goes through - the signal to drop the annotation and
-call locked Web Forms proven. `make e2e-live` prints the limitation at the
-end of every run.
+| Form (copy) | Read-only fields | Submission |
+|---|---|---|
+| Joinder Agreement (template-built, no read-only) | none | 200, envelope, signing URL |
+| Subscription Agreement, every field API-prefilled | none | 200 |
+| Joinder copy, `full_name` made read-only | 1 Text | **200**, envelope `e9302713…`, value on the document |
+| Capability form copy, only `reference` + `rate_timestamp` read-only | 2 Text | **200**, envelope `f8d725a3…` |
+| … plus the three amounts read-only | 2 Text + 3 Number | 422 |
+| … everything editable | none | 200 |
+| Capability form v1 | 2 Text, 4 Number, 1 Date, 1 Dropdown | 422 |
+| Capability form v2 (amounts retyped as Text) | 6 Text, 1 Date, 1 Dropdown | 422 |
+| **Capability form v2, the Date field made editable** | 6 Text, 1 Dropdown | **200**, envelope `a8df290d…` - the live suite's fixture |
 
-So: embedded instances, API prefill and locked *display* all work; what the
-demo environment refuses is completing a form that has read-only fields
-at all, whatever their values. The submission must carry the read-only
-values (the backend does not fill them from the instance) and then rejects
-the request without saying why. DocuSign's own toast on URL-prefilled
-read-only fields ("read-only fields must be populated via API in a
-Production environment") suggests the production environment behaves
-differently; that is unverified. Still open: the same test on a
-template-built form with one field made read-only (needs the builder),
-and a production account.
+DocuSign's own guide ("Populate Read-Only Fields on a Web Form", support
+center) documents the approach - read-only values "must be set either
+through the API or by assigning a default value" - and a community thread
+("Issues with Read-Only Field", esignature-api-63/22268) describes the
+same symptom, unresolved as of January 2025, so this is a documented
+feature with one broken field type, not a misuse. When a submission is
+refused, the response headers carry what DocuSign support looks a failure
+up by (the live spec logs them as `[live-demo] submission trace: …`):
 
-**What DocuSign says, and what its response carries.** DocuSign's own
-guide ("Populate Read-Only Fields on a Web Form", support center) documents
-exactly our approach: read-only values "must be set either through the API
-or by assigning a default value", with the Web Forms API named for
-person-specific fields. So this is a documented feature failing, not a
-misuse. Other integrators report the same symptom - a community thread,
-"Issues with Read-Only Field" (esignature-api-63/22268), describes
-read-only fields preset from a CRM erroring at start and at submission,
-unresolved as of January 2025, with DocuSign staff pointing to a support
-case. The 422 body carries no reason, but the response headers carry the
-identifiers DocuSign support uses to look the failure up server-side:
-
-| Header | Value on 2026-09-09 12:01:42 UTC (instance `a6cdef2e-27a0-4cd1-a70b-0ae082343eea`) |
+| Header | Value on 2026-09-09 12:01:42 UTC (v1 form, instance `a6cdef2e-27a0-4cd1-a70b-0ae082343eea`) |
 |---|---|
 | `x-docusign-tracetoken` | `8650d36b92bcc0a135bb24c609facf56` |
 | `x-request-id` | `1a23d44f-e790-9f38-b2d8-d5dbc73484ea` |
 | form / account | `1228ee55-ce36-4b87-8646-39c93d50ee69` / `9a18f197-c01b-4813-8f7c-040b4e3a245a` (demo) |
 
-The form player's own telemetry after the failure says only "Player form
-submission error" with the same message. A DocuSign support case with the
-trace token, the instance id and the table above is the next step (the
-community's other fix, re-uploading the form's JSON from the builder, is
-worth one try first). Every `make e2e-live` prints a fresh trace token
-from the expected-failure test's response when needed.
+**Consequences for a host that needs locked terms:**
 
-**Consequences for a host that needs locked terms today:**
-
-- The proxy flow locks values reliably: `createEnvelopeFromTemplate` can
-  pass tab values marked `locked` on the template role, DocuSign renders
-  them read-only in the signing ceremony, and nothing is submitted by a
-  form. The data-collection part of a Web Form then lives in the app.
-- A Web Form with read-only fields cannot be completed in the demo
-  environment; treat "read-only in the builder" as unverified for
-  production until a production account confirms it.
+- Web Forms with locked terms work end to end **as long as every read-only
+  field is a Text or Dropdown field**: `make e2e-live` submits the v2
+  fixture inside the web component, signs the envelope DocuSign creates
+  from it and completes through the bridge (verified 2026-09-09, demo env;
+  the production environment is assumed to match).
+- Never make a Number or Date field read-only. Format amounts and dates
+  server-side as the string the signer should see, and prefill them as
+  text (a locked date as `yyyy-mm-dd` text is what the document carries).
+- The proxy flow (`createEnvelopeFromTemplate` with `locked` tab values)
+  remains the alternative when the data-collection step lives in the app.
 - Prefilling *editable* fields works everywhere; it is a suggestion, not
   a lock.
 
 ## The capability test form (live E2E fixture)
 
 One generic Web Form in the DocuSign demo account, **"esign capability test
-form"** (form id `1228ee55-ce36-4b87-8646-39c93d50ee69`, built 2026-09-08 via
-"Convert PDF document" from the AcroForm PDF checked into
-`docs/assets/esign-capability-test-form.pdf`; its template was generated
-alongside). It exercises every prefill shape the backend accepts and every
-lock mode the component can meet, so a single live run covers the whole
-surface. Rebuild it from this table if it is ever lost (labels are what the
-signer sees, API reference names are the prefill keys):
+form v2 (text amounts)"** (form id `c640d957-a2d0-4e36-9975-5374afb02b54`,
+a copy of the v1 form `1228ee55-ce36-4b87-8646-39c93d50ee69` built
+2026-09-08 via "Convert PDF document" from the AcroForm PDF checked into
+`docs/assets/esign-capability-test-form.pdf`, its template generated
+alongside; v2 retypes the four locked amounts as Text and leaves the
+Date field editable, 2026-09-09, because field types are frozen once a
+form is active and a read-only Number or Date field breaks the
+submission). It exercises every prefill shape the backend
+accepts and every lock mode the component can meet, so a single live run
+covers the whole surface. Rebuild it from this table if it is ever lost
+(labels are what the signer sees, API reference names are the prefill
+keys):
 
 | Group | Label | API reference name | Type | Required | Read only | Live prefill |
 |---|---|---|---|---|---|---|
@@ -334,28 +334,30 @@ signer sees, API reference names are the prefill keys):
 | B prefilled, editable | Newsletter Subscription | `newsletter` | Radio: `yes`, `no` | no | no | `"yes"` |
 | C locked terms | Registration Reference | `reference` | Text | yes | **yes** | `"E2E-0001"` |
 | C locked terms | Subscription Plan | `plan` | Dropdown: Seed, Series A | yes | **yes** | `"seed"` |
-| C locked terms | Number of Units | `number_of_units` | Number | yes | **yes** | `1000` |
-| C locked terms | Total Subscription (USD) | `total_subscription_usd` | Number | yes | **yes** | `1000` |
-| C locked terms | Settlement Amount (BTC) | `settlement_amount_btc` | Number (**max 2 decimals** - a locked value with more STRANDS the signer, see notes) | yes | **yes** | `0.01` |
-| C locked terms | BTC/USD Conversion Rate | `btc_usd_rate` | Number | yes | **yes** | `78850` |
+| C locked terms | Number of Units | `number_of_units` | Text (Number in v1 - see notes) | yes | **yes** | `"1000"` |
+| C locked terms | Total Subscription (USD) | `total_subscription_usd` | Text (Number in v1) | yes | **yes** | `"1000"` |
+| C locked terms | Settlement Amount (BTC) | `settlement_amount_btc` | Text (Number in v1) | yes | **yes** | `"0.01268231"` |
+| C locked terms | BTC/USD Conversion Rate | `btc_usd_rate` | Text (Number in v1) | yes | **yes** | `"78850"` |
 | C locked terms | Rate Timestamp | `rate_timestamp` | Text | yes | **yes** | `"2026-09-08 10:44"` |
-| C locked terms | Settlement Date | `settlement_date` | Date (yyyy/mm/dd display) | yes | **yes** | `"2026-09-10"` |
+| C locked terms | Settlement Date | `settlement_date` | Date (yyyy/mm/dd display) | yes | no (read-only in v1 - see notes) | `"2026-09-10"` |
 | D optional | Phone Number | `phone` | Text | no | no | `"+1 555 123 4567"` |
 | D optional | Additional Notes | `notes` | Text | no | no | (none) |
 
 Notes from the build:
 
-- **Number fields accept at most 2 decimal places** (the form shows "Number
-  can have at most 2 decimal places" and blocks Next). A BTC amount with 8
-  decimals therefore cannot go into a Number field: send it as a Text field
-  (verified live 2026-09-09: the Web Forms API *accepts* `0.00380467` for
-  the locked Number field and the form renders it, then flags the field
-  invalid and refuses Next - and because it is read-only the signer cannot
-  fix it. The live spec reports such a field as "invalid (locked!)")
-  (string) or as an integer amount in sats. The fixture keeps
-  `settlement_amount_btc` as a Number to document the limit; the live prefill
-  uses `0.01`. Field **types cannot be changed after the form has been
-  activated** (the Field Type selector disappears), so this stays as built.
+- **The locked amounts are Text fields, and the Date field is editable**
+  (v2). A read-only Number or Date field makes DocuSign refuse the
+  submission (previous section; the Date stays in the fixture, prefilled
+  but editable, to keep the date shape covered), and Number
+  fields accept at most 2 decimal places anyway (the form shows "Number
+  can have at most 2 decimal places" and blocks Next; verified live
+  2026-09-09 on v1: the Web Forms API *accepts* `0.00380467` for a locked
+  Number field and the form renders it, then flags the field invalid and
+  refuses Next - and because it is read-only the signer cannot fix it. The
+  live spec reports such a field as "invalid (locked!)"). Field **types
+  cannot be changed after the form has been activated** (the Field Type
+  selector disappears), which is why v2 is a copy of v1 rather than an
+  edit; copy the form again for any further type change.
 - **Demo vs production prefill by URL.** On the demo environment the public
   form URL with `#field=value` DOES populate read-only fields, and DocuSign
   shows a toast on the form: "Note that read-only fields must be populated
@@ -385,25 +387,26 @@ Notes from the build:
 - Nothing is hidden by a rule (a hidden field never reaches the document).
 
 What each group proves in the live run: A the signer can still enter values;
-B a minted value can be shown yet remain editable; C every value shape
-(integer, decimals, text, date, dropdown) can be locked by minting; D optional
-fields are accepted without blocking submit.
+B a minted value can be shown yet remain editable; C every lockable value
+shape (amounts as text, free text, dropdown) is locked by minting and the
+form still submits, and the date shows why the date is not locked; D
+optional fields are accepted without blocking submit.
 
 ```sh
 # Local live run against the fixture (backend on :4000 with ESIGN_PROVIDER=docusign
-# and DOCUSIGN_WEBFORM_ID=1228ee55-ce36-4b87-8646-39c93d50ee69)
+# and DOCUSIGN_WEBFORM_ID=c640d957-a2d0-4e36-9975-5374afb02b54)
 E2E_LIVE_API_ORIGIN=http://localhost:4000 \
-E2E_LIVE_PREFILL='{"Signer_name":"Test User","Signer_email":"test@example.com","full_name":"Test User","email":"test@example.com","country":"Sweden","newsletter":"yes","reference":"E2E-0001","number_of_units":1000,"total_subscription_usd":1000,"settlement_amount_btc":0.01,"btc_usd_rate":78850,"rate_timestamp":"2026-09-08 10:44","settlement_date":"2026-09-10"}' \
-E2E_LIVE_LOCKED_LABELS='{"Registration Reference":"E2E-0001","Number of Units":"1000","Total Subscription (USD)":"1000","Settlement Amount (BTC)":"0.01","BTC/USD Conversion Rate":"78850","Rate Timestamp":"2026-09-08 10:44","Settlement Date":"2026/09/10"}' \
+E2E_LIVE_PREFILL='{"Signer_name":"Test User","Signer_email":"test@example.com","full_name":"Test User","email":"test@example.com","country":"Sweden","newsletter":"yes","reference":"E2E-0001","plan":"seed","number_of_units":"1000","total_subscription_usd":"1000","settlement_amount_btc":"0.01268231","btc_usd_rate":"78850","rate_timestamp":"2026-09-08 10:44","settlement_date":"2026-09-10"}' \
+E2E_LIVE_LOCKED_LABELS='{"Registration Reference":"E2E-0001","Number of Units":"1000","Total Subscription (USD)":"1000","Settlement Amount (BTC)":"0.01268231","BTC/USD Conversion Rate":"78850","Rate Timestamp":"2026-09-08 10:44"}' \
 make e2e-web-webform-live
 ```
 
 The spec walks the form the way a signer does (Start, then Next page by
 page), collecting every field's label, value and read-only state, so labels
 can live on any page. A Date field displays in the format chosen in the
-builder (`yyyy/mm/dd` here, hence `"2026/09/10"` in the labels while the
-prefill is `"2026-09-10"`); dropdown and checkbox values display as their
-option labels.
+builder (`yyyy/mm/dd` here, so a locked-label expectation for a date
+would read `"2026/09/10"` while the prefill is `"2026-09-10"`); dropdown
+and checkbox values display as their option labels.
 
 ## Verified against DocuSign docs (2026-07, prefill rules 2026-09)
 

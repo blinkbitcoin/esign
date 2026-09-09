@@ -57,18 +57,26 @@ ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS unless Chromium runs with
 the runner brings up the E2E Postgres and exports its DATABASE_URL before
 migrating (dotenv-cli never overrides an existing variable).
 
-## Submission is refused for the fixture form (demo env)
+## Read-only Number and Date fields break the submission (demo env)
 
-`Summary → Next` on the capability test form answers 422
-`UNPROCESSABLE_ERROR`; template-built forms without read-only fields submit
-fine through the same embedded path (200 + envelope). Diagnosed with scratch
-Playwright scripts that `page.route()` the `/actions/ESignAction_…` POST to
-rewrite the multipart `formValues` and read the response: date format,
-number types, dropdown label, optional template tabs and `returnUrl` all
-ruled out; the read-only values must be submitted (stripping them → 400
-required). See docs/integration/webforms.md "Submitting a form with
-read-only fields". DocuSign's API request logging does not capture the
-submission (it is not made with the user's credentials).
+`Summary → Next` on a form with a read-only NUMBER or DATE field answers
+422 `UNPROCESSABLE_ERROR`; read-only Text/Dropdown fields submit fine
+(200 + envelope, values on the document). Bisected 2026-09-09 on builder
+copies and on v2 itself (field types are frozen once a form is active, so
+retyping means copying the form; the Read only toggle can still be
+changed on an active form: Edit Form → toggle → Activate → "Activate and
+Replace"). The live fixture is therefore v2
+(`c640d957-a2d0-4e36-9975-5374afb02b54`), whose four amounts are Text
+fields prefilled as strings and whose Date field is editable; the
+in-iframe spec submits it, signs the resulting envelope and completes
+through the bridge. Diagnosis tools if it
+regresses: scratch Playwright scripts that `page.route()` the
+`/actions/ESignAction_…` POST to rewrite the multipart `formValues` and
+read the response; the spec logs the `x-docusign-tracetoken` /
+`x-request-id` of the submission. See docs/integration/webforms.md
+"Submitting a form with read-only fields". DocuSign's API request logging
+does not capture the submission (it is not made with the user's
+credentials).
 
 ## What the walker expects from the fixture form
 
@@ -82,9 +90,10 @@ field (click, type, `fill` and `selectOption` with `force`), asserting the
 value is unchanged. Controls are found with `getByRole('textbox'|'combobox', { name })`,
 not `getByLabel` - DocuSign names them through aria. Radio/checkbox values are the option
 values (`yes`/`no`), never checked state, so assert them via the Summary
-text if needed. Number fields carry at most two decimals: the API accepts more but the form flags a locked field invalid and the signer is stranded (`settlement_amount_btc`
-is minted as `0.01`). Instance tokens expire ~5 min after minting: never
-reuse a URL across runs.
+text if needed. Locked amounts are Text fields minted as strings
+(`settlement_amount_btc` is `"0.01268231"`); Number and Date fields must
+never be read-only (a Number field also carries at most two decimals). Instance tokens expire ~5 min
+after minting: never reuse a URL across runs.
 
 The live service log is `$RUNNER_TEMP/esign-live.log` (or `/tmp`); the
 Playwright screenshot is `examples/react-demo/test-results/webform-live.png`
