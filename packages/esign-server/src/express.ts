@@ -7,7 +7,6 @@
 //
 // `express` is an optional peer: only this entry imports it.
 
-import { randomBytes } from 'node:crypto';
 import express, {
   type Request,
   type RequestHandler,
@@ -24,6 +23,7 @@ import {
   renderSigningReturnBridge,
 } from './pages';
 import type { ESignProvider } from './provider';
+import { signingPageCsp, signingPageNonce } from './signingPage';
 import type { WebFormPrefill } from './types';
 
 export interface ESignRouterMiddleware {
@@ -53,24 +53,13 @@ export interface ESignRouterOptions {
   logger?: Logger;
 }
 
-// The signing pages are HTML meant to be embedded (WebView/iframe) and run
-// a small inline script. A per-response nonce keeps a strict CSP (no
-// 'unsafe-inline') while allowing that one script. frame-ancestors stays
-// open: the pages carry no secrets (the event payload is a fixed enum) and
-// must be embeddable by any host integrating the SDK.
-const signingPageCsp = (nonce: string): string =>
-  [
-    "default-src 'none'",
-    `script-src 'nonce-${nonce}'`,
-    `style-src 'nonce-${nonce}'`,
-    'frame-ancestors *',
-  ].join('; ');
-
+// The signing pages share one CSP + nonce recipe with the Fetch-native
+// signingPageResponse (signingPage.ts); this is its Express spelling
 const sendSigningPage = (
   res: Response,
   render: (nonce: string) => string,
 ): void => {
-  const nonce = randomBytes(16).toString('base64');
+  const nonce = signingPageNonce();
   res.setHeader('Content-Security-Policy', signingPageCsp(nonce));
   res.type('html').send(render(nonce));
 };

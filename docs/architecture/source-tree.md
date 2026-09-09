@@ -27,13 +27,14 @@ esign/
 │   └── packages/esign-server/
 │       ├── src/
 │       │   ├── index.ts           # Public API: client, domain, handlers, prefill ⭐
-│       │   ├── express.ts         # ./express entry: createESignRouter (express is a peer) ⭐
+│       │   ├── express.ts         # ./express entry: createESignRouter, pages via signingPage.ts (express is a peer) ⭐
 │       │   ├── knex.ts            # ./knex entry: Knex EnvelopeStore + migration source (knex is a peer) ⭐
 │       │   ├── knex/              #   store.ts, migrations.ts (ESIGN_MIGRATIONS, programmatic source)
 │       │   ├── envelopes.ts       # createEnvelopeService: rules, audit, webhook state machine ⭐
 │       │   ├── provider.ts        # ESignProvider port
 │       │   ├── store.ts           # EnvelopeStore port + in-memory implementation
 │       │   ├── handlers.ts        # Fetch-API mint + webhook handlers (serverless) ⭐
+│       │   ├── signingPage.ts     # Signing-page CSP + nonce; signingPageResponse (Fetch), shared by express.ts
 │       │   ├── graphql.ts         # SDL + resolvers factory (createESignGraphQL)
 │       │   ├── pages.ts           # Mock signing/Web Forms pages + return-URL bridge
 │       │   ├── bridgeScript.ts    # postMessage helpers the pages ship, run in tests ⭐
