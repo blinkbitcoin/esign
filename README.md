@@ -29,9 +29,9 @@ the [Integration](#integration) section walks each mode from simplest up.
 signer must not change (amounts, rates, dates set by you): mode 2 - the
 only mode that locks fields, and it needs one call on your backend. A
 document workflow with per-recipient sessions, restarts and status
-tracking: mode 3. **Reading path for mode 2 (the invest flow):**
-[docs/integration/invest-flow.md](docs/integration/invest-flow.md) (the
-recipe, API + app) → [docs/integration/docusign-lessons.md](docs/integration/docusign-lessons.md)
+tracking: mode 3. **Reading path for mode 2 (locked terms):**
+[docs/integration/locked-terms.md](docs/integration/locked-terms.md) (the
+recipe, backend + app) → [docs/integration/docusign-lessons.md](docs/integration/docusign-lessons.md)
 (the rules, one page) → [docs/integration/webforms.md](docs/integration/webforms.md)
 (the details) → [`examples/mint-only-demo`](examples/mint-only-demo/README.md)
 (the API side, runnable).
@@ -105,7 +105,7 @@ const source = createWebFormsSource({
 Completion reaches the app through the instance's return URL: your backend
 serves the small bridge page (`renderSigningReturnBridge`) that the
 component listens to - no DocuSign.js, works in a plain WebView. The whole
-recipe, API and app: [docs/integration/invest-flow.md](docs/integration/invest-flow.md).
+recipe, backend and app: [docs/integration/locked-terms.md](docs/integration/locked-terms.md).
 
 Modes 1 and 2 import from the `/webform` subpath, which is **Apollo-free by
 construction** (a guard test walks the import graph to keep it that way).

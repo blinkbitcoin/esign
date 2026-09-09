@@ -1,9 +1,11 @@
-# The invest flow: locked terms, end to end (the Blink recipe)
+# Locked terms with Web Forms: the recipe, API + app
 
-Everything an engineer needs to ship "the customer signs an agreement whose
-terms we set and they cannot change" into an existing GraphQL API and a
-React Native app. Mode 2 of the README (Web Forms instances). Every step
-below is what `examples/mint-only-demo` (the API side) and
+Everything an engineer needs to ship "the signer completes an agreement
+whose terms the host sets and they cannot change" into an existing backend
+(any GraphQL or REST API on Node) and a React Native or React app. Mode 2 of
+the README (Web Forms instances). The running example is a subscription
+quote (units, amounts, a rate, a settlement date); swap in your own terms.
+Every step below is what `examples/mint-only-demo` (the API side) and
 `examples/react-native-demo` in webform mode (the app side) do, and what
 `make e2e-live` / `make e2e-ios-live` verify against real DocuSign.
 
@@ -13,7 +15,7 @@ that are not obvious, one page).
 ## The shape
 
 ```
-app                    your API                          DocuSign
+app                    your backend                      DocuSign
  |  mutation (session)  |                                   |
  |--------------------->|  createWebFormInstance(prefill)   |
  |                      |---------------------------------->|
@@ -28,8 +30,8 @@ app                    your API                          DocuSign
  |  onComplete({ envelopeId })                              |
 ```
 
-Three parts: the DocuSign account and form (once), one mutation plus one
-route in the API, one source in the app.
+Three parts: the DocuSign account and form (once), one mutation (or
+endpoint) plus one route in the backend, one source in the app.
 
 ## 1. DocuSign account and form (once, by whoever owns the account)
 
@@ -56,7 +58,7 @@ route in the API, one source in the app.
 3. Note the form id and each field's **API reference name** (the prefill
    keys) from the builder, or from `GET …/forms/{formId}`.
 
-## 2. The API side (Node, any GraphQL server)
+## 2. The backend side (Node; a GraphQL mutation or a REST endpoint)
 
 Install `@blinkbitcoin/esign-server` (Node only; registry setup in
 [consuming.md](consuming.md)). Environment (server secrets):
@@ -68,9 +70,9 @@ Install `@blinkbitcoin/esign-server` (Node only; registry setup in
 | `DOCUSIGN_RETURN_URL` | `https://<your api>/signing/return` - the bridge route below |
 | `DOCUSIGN_BASE_URL`, `DOCUSIGN_OAUTH_URL`, `DOCUSIGN_WEBFORMS_BASE_URL` | defaults are the demo environment; set the production hosts in production |
 
-**One mutation.** Authenticate the caller with the API's own session
-(the package never sees the token), compute the terms from the API's own
-data, format them as the strings the signer must see, mint:
+**One mutation (or endpoint).** Authenticate the caller with the backend's
+own session (the package never sees the token), compute the terms from the
+backend's own data, format them as the strings the signer must see, mint:
 
 ```ts
 import { createWebFormInstance, docuSignConfigFromEnv, assertDocuSignConfig } from '@blinkbitcoin/esign-server';
@@ -78,7 +80,7 @@ import { createWebFormInstance, docuSignConfigFromEnv, assertDocuSignConfig } fr
 const docusign = docuSignConfigFromEnv();  // once, at startup
 assertDocuSignConfig(docusign);            // fails fast on a missing variable
 
-// resolver of e.g. investSigningUrl(units: Int!): { url, instanceId }
+// e.g. the resolver of a `signingUrl(units: Int!): { url, instanceId }` mutation
 const { url, instanceId } = await createWebFormInstance({
   config: docusign,
   userId: session.userId,        // becomes DocuSign's clientUserId: a stable id per signer, <= 100 chars
@@ -121,7 +123,7 @@ app.get('/signing/return', (req, res) => {
 (Express hosts can mount `createESignRouter` from
 `@blinkbitcoin/esign-server/express` instead, which serves the same route.)
 Without this route the form completes on DocuSign's side and the app never
-hears about it. The whole API side, runnable: `examples/mint-only-demo`
+hears about it. The whole backend side, runnable: `examples/mint-only-demo`
 (`make e2e-server-demos` on the mock provider, `make e2e-live` on DocuSign).
 
 ## 3. The app side (React Native; web is the same with `@blinkbitcoin/esign-react`)
@@ -133,19 +135,19 @@ needed by the library:
 npm i @blinkbitcoin/esign-react-native react-native-webview @react-native-community/netinfo
 ```
 
-Mint through the API's own client (the mutation above), then hand the
-component a source whose `createInstance` is that call:
+Mint through the app's existing API client (the mutation above), then
+hand the component a source whose `createInstance` is that call:
 
 ```tsx
 import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/webform';
 
 const source = createWebFormsSource({
   createInstance: async () => {
-    const { data } = await apollo.mutate({ mutation: INVEST_SIGNING_URL, variables: { units } });
-    return { url: data.investSigningUrl.url, envelopeId: data.investSigningUrl.instanceId };
+    const { data } = await apollo.mutate({ mutation: SIGNING_URL, variables: { units } });
+    return { url: data.signingUrl.url, envelopeId: data.signingUrl.instanceId };
   },
   // Do NOT set allowedOrigin to DocuSign's domain here: on web the
-  // completion message comes from the bridge page, i.e. your API's origin.
+  // completion message comes from the bridge page, i.e. your backend's origin.
   // allowedOrigin: 'https://api.example.com'  (web; React Native ignores it)
 });
 
@@ -157,8 +159,8 @@ const source = createWebFormsSource({
 />
 ```
 
-(If the API exposes a plain `POST` endpoint returning `{ url }` instead of
-a mutation, `mint: { url, getAuthToken }` does the request for you;
+(If the backend exposes a plain `POST` endpoint returning `{ url }` instead
+of a mutation, `mint: { url, getAuthToken }` does the request for you;
 `getAuthToken` returns the app's own session token for that endpoint.)
 
 What the app can expect:
@@ -190,5 +192,5 @@ What the app can expect:
 - No new service, no database, no webhooks for this flow: the envelope
   status lives in DocuSign; `onComplete` is the app's signal. (Webhooks and
   envelope persistence are mode 3, [docusign-proxy.md](docusign-proxy.md).)
-- No `JWT_SECRET`: that belongs to this repo's full service. Your API
+- No `JWT_SECRET`: that belongs to this repo's full service. Your backend
   verifies its own session however it already does.

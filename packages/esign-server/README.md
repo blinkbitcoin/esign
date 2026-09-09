@@ -32,7 +32,7 @@ everything else about Web Forms (form UI, validation, document, signing) does
 not. Details: [docs/integration/webforms.md](../../docs/integration/webforms.md);
 the end-to-end recipe for a GraphQL API + app, including the builder checklist
 and the return-URL bridge route every Web Forms host must serve:
-[docs/integration/invest-flow.md](../../docs/integration/invest-flow.md).
+[docs/integration/locked-terms.md](../../docs/integration/locked-terms.md).
 Authentication of the caller is the host's own (this package never sees the
 session token); the `JWT_SECRET` of this repo's service is not part of it.
 
