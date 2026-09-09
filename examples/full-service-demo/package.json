@@ -19,7 +19,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "schema:emit": "tsx scripts/emit-schema.ts",
     "docusign:check": "tsx scripts/docusign-check.ts",
-    "test:live:env": "vitest run --config vitest.live.config.ts"
+    "test:live:env": "vitest run --config vitest.live.config.ts",
+    "docusign:template": "tsx scripts/docusign-template.ts"
   },
   "keywords": [],
   "author": "",

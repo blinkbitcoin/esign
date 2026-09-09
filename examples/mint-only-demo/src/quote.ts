@@ -9,14 +9,18 @@ export interface Quote {
   quotedAt: Date;
 }
 
-// Field API reference names are the form's (docs/integration/webforms.md);
-// Number fields carry at most two decimals, so the BTC amount is text.
+// Field API reference names are the form's (docs/integration/webforms.md).
+// Number fields take numbers (a string is rejected with VALIDATION_FAILED)
+// and at most TWO decimals: the API accepts more, but the form then marks
+// the locked field invalid and the signer is stuck (verified live
+// 2026-09-09). The fixture form types the BTC amount as Number, so it is
+// rounded here; a real form should make an 8-decimal amount a Text field.
 export const prefillFromQuote = (quote: Quote) => {
   const totalUsd = Math.round(quote.units * quote.unitPriceUsd * 100) / 100;
   return {
     number_of_units: quote.units,
     total_subscription_usd: totalUsd,
-    settlement_amount_btc: (totalUsd / quote.btcUsdRate).toFixed(8),
+    settlement_amount_btc: Number((totalUsd / quote.btcUsdRate).toFixed(2)),
     btc_usd_rate: quote.btcUsdRate,
     rate_timestamp: quote.quotedAt.toISOString(),
   };

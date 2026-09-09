@@ -73,6 +73,9 @@ interface SeenField {
   name: string;
   value: string;
   locked: boolean;
+  // The form's own validation flagged it (e.g. a locked Number with three
+  // decimals - the signer can never fix that one)
+  invalid: boolean;
 }
 
 // The fields on the current page: label (from <label for>, aria-label or
@@ -109,6 +112,7 @@ const fieldsOnPage = (page: Page): Promise<SeenField[]> =>
         name: el.name,
         value: el.value,
         locked: el.readOnly || el.disabled || optionsLocked,
+        invalid: el.getAttribute('aria-invalid') === 'true',
       };
     }),
   );
@@ -145,11 +149,18 @@ const walkForm = async (page: Page, url: string): Promise<SeenField[]> => {
         .poll(() => page.title(), { timeout: 10_000 })
         .not.toBe(before);
     } catch {
-      const blocking = (await fieldsOnPage(page))
+      const onPage = await fieldsOnPage(page);
+      const empty = onPage
         .filter(field => field.value === '' && !field.locked)
         .map(field => field.label || field.name);
+      const invalid = onPage
+        .filter(field => field.invalid)
+        .map(
+          field =>
+            `${field.label || field.name}${field.locked ? ' (locked!)' : ''}`,
+        );
       throw new Error(
-        `the form did not advance past "${before}"; empty editable fields on that page: ${blocking.join(', ')} - prefill the required ones (E2E_LIVE_PREFILL)`,
+        `the form did not advance past "${before}"; empty editable fields: ${empty.join(', ') || 'none'}; fields the form marked invalid: ${invalid.join(', ') || 'none'} - fix E2E_LIVE_PREFILL (a locked invalid field means the minted value breaks the form's own validation, e.g. more than two decimals in a Number)`,
       );
     }
   }

@@ -173,7 +173,9 @@ make docusign-check   # JWT grant + the form is reachable (names the consent URL
 make e2e-live         # service on DocuSign (LIVE_PORT, default 4010) → API live test → Playwright locked-fields check → stop
 ```
 
-`make e2e-live` mints with the capability test form's group C values plus
+`make e2e-live` also boots the mint-only and serverless examples on the
+DocuSign provider and has each mint a real instance. It mints with the
+capability test form's group C values plus
 every required editable field (the form refuses Next while one is empty, so
 the walker could not reach the locked pages otherwise) and asserts the six
 locked labels (`scripts/e2e/live.sh` holds the defaults;
@@ -252,7 +254,7 @@ signer sees, API reference names are the prefill keys):
 | C locked terms | Subscription Plan | `plan` | Dropdown: Seed, Series A | yes | **yes** | `"seed"` |
 | C locked terms | Number of Units | `number_of_units` | Number | yes | **yes** | `1000` |
 | C locked terms | Total Subscription (USD) | `total_subscription_usd` | Number | yes | **yes** | `1000` |
-| C locked terms | Settlement Amount (BTC) | `settlement_amount_btc` | Number (**max 2 decimals**, see notes) | yes | **yes** | `0.01` |
+| C locked terms | Settlement Amount (BTC) | `settlement_amount_btc` | Number (**max 2 decimals** - a locked value with more STRANDS the signer, see notes) | yes | **yes** | `0.01` |
 | C locked terms | BTC/USD Conversion Rate | `btc_usd_rate` | Number | yes | **yes** | `78850` |
 | C locked terms | Rate Timestamp | `rate_timestamp` | Text | yes | **yes** | `"2026-09-08 10:44"` |
 | C locked terms | Settlement Date | `settlement_date` | Date (yyyy/mm/dd display) | yes | **yes** | `"2026-09-10"` |
@@ -264,6 +266,10 @@ Notes from the build:
 - **Number fields accept at most 2 decimal places** (the form shows "Number
   can have at most 2 decimal places" and blocks Next). A BTC amount with 8
   decimals therefore cannot go into a Number field: send it as a Text field
+  (verified live 2026-09-09: the Web Forms API *accepts* `0.00380467` for
+  the locked Number field and the form renders it, then flags the field
+  invalid and refuses Next - and because it is read-only the signer cannot
+  fix it. The live spec reports such a field as "invalid (locked!)")
   (string) or as an integer amount in sats. The fixture keeps
   `settlement_amount_btc` as a Number to document the limit; the live prefill
   uses `0.01`. Field **types cannot be changed after the form has been

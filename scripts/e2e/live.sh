@@ -15,6 +15,11 @@ SERVICE=examples/full-service-demo
 # the non-secret service settings get local-dev defaults here.
 if [ -f "$SERVICE/.env" ]; then
   LIVE_TEST="test:live"
+  # The small examples read the environment, not the service's .env
+  set -a
+  # shellcheck disable=SC1091
+  . "$SERVICE/.env"
+  set +a
 elif [ -n "${DOCUSIGN_INTEGRATION_KEY:-}" ]; then
   : "${DOCUSIGN_USER_ID:?}" "${DOCUSIGN_ACCOUNT_ID:?}" "${DOCUSIGN_PRIVATE_KEY:?}" \
     "${DOCUSIGN_TEMPLATE_ID:?}" "${DOCUSIGN_WEBFORM_ID:?}"
@@ -68,4 +73,7 @@ curl -fsS "http://127.0.0.1:$LIVE_PORT/health" > /dev/null || { echo "::error::s
 
 echo "== playwright: locked fields on the real form"
 E2E_LIVE_API_ORIGIN="http://localhost:$LIVE_PORT" npm run --silent test:e2e:webform:live -w examples/react-demo
+
+echo "== the mint-only and serverless examples mint real instances"
+PROVIDER=docusign MINT_PORT="${MINT_PORT:-4110}" HANDLER_PORT="${HANDLER_PORT:-4210}" bash scripts/e2e/server-demos-smoke.sh
 echo "live run: all ok (screenshot: examples/react-demo/test-results/webform-live.png)"
