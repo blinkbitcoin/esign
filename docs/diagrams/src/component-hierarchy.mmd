@@ -5,7 +5,7 @@ flowchart TB
 
         subgraph Content["AppContent"]
             ES[ESignature source=SigningSource]
-            HOOK["useESignature (state machine)"]
+            HOOK["useESignature<br/>runs the core signing machine<br/>(esign-core signing/machine.ts)"]
 
             subgraph States["Component states"]
                 IDLE[idle: Sign button]
