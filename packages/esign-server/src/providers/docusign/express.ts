@@ -5,7 +5,7 @@
 // ./express entry reaches this module.
 
 import type { Router } from 'express';
-import { sendSigningPage } from '../signingPageExpress';
+import { sendSigningPage } from '../../signingPageExpress';
 import { renderSigningReturnBridge } from './bridge';
 import { mockWebFormFields, renderMockWebFormPage } from './mockWebFormPage';
 import type { WebFormPrefill } from './types';

@@ -97,7 +97,7 @@ npm run migrate:test         # Same against the .env.test database
   (`src/providers/index.ts`). **Provider boundary, everywhere:** nothing
   provider-specific outside a `providers/<name>/` directory - in the packages
   (`packages/esign-core/src/providers/docusign/`,
-  `packages/esign-react/src/providers/docusign/`, `packages/esign-server/src/docusign/`)
+  `packages/esign-react/src/providers/docusign/`, `packages/esign-server/src/providers/docusign/`)
   and in the service. The generic layers (`signing/`, the port, the pages, the
   handlers) never import a provider; guard tests enforce it. DocuSign code is
   reached through the `./docusign` subpaths; `./webform` stays as an alias.

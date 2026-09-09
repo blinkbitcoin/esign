@@ -1,11 +1,11 @@
 // The prefill contract: what reaches DocuSign, and how a value displays.
 
 import {
-  MAX_PREFILL_FIELDS,
-  WebFormPrefillError,
   assertWebFormPrefill,
   formatPrefillValue,
+  MAX_PREFILL_FIELDS,
   parseWebFormPrefill,
+  WebFormPrefillError,
 } from '../prefill';
 
 describe('assertWebFormPrefill', () => {

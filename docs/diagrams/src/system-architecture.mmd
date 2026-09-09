@@ -21,8 +21,8 @@ flowchart TB
         WH[/"POST /webhook/esign"/]
         SP[/"signing pages + return-URL bridge"/]
         PROV{ESignProvider}
-        DS["DocuSignProvider<br/>(src/docusign/, ./docusign entry)"]
-        MOCK[MockProvider]
+        DS["DocuSignProvider<br/>(src/providers/docusign/, ./docusign entry)"]
+        MOCK["MockProvider<br/>(src/providers/mock/)"]
         REG{providerFromEnv<br/>ESIGN_PROVIDER}
         KNEX[Knex.js]
     end

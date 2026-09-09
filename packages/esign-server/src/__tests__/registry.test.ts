@@ -3,10 +3,10 @@
 
 import type { ESignProvider } from '../provider';
 import {
-  ESIGN_PROVIDER_ENV,
   defaultRegistry,
-  providerFromEnv,
+  ESIGN_PROVIDER_ENV,
   type ProviderRegistry,
+  providerFromEnv,
 } from '../registry';
 
 const stub = (name: string): ESignProvider =>

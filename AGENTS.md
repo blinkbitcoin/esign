@@ -72,7 +72,7 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
 - Shell that CI or the Makefile runs lives in `scripts/{ci,e2e,release}/`,
   not inline in workflows; it is shellcheck'd by `make check-ci`
 - The `ESignProvider` port is the provider boundary - nothing provider-specific
-  outside a `providers/<name>/` directory: `packages/esign-server/src/docusign/`,
+  outside a `providers/<name>/` directory: `packages/esign-server/src/providers/docusign/`,
   `packages/esign-core/src/providers/docusign/`, `packages/esign-react/src/providers/docusign/`
   and `examples/full-service-demo/src/providers/docusign/`; generic layers never
   import a provider (guard tests), and providers are selected through

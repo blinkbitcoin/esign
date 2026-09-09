@@ -4,4 +4,4 @@
 // page and the handlers' DocuSign mint target. Peer-free; the Express pieces
 // (mountDocuSignPages) are on ./express.
 
-export * from './docusign/index';
+export * from './providers/docusign/index';

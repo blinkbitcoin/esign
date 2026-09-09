@@ -1,24 +1,24 @@
 // The DocuSign adapter: implements the ESignProvider port over the client,
 // maps DocuSign statuses and Connect webhooks onto the normalized vocabulary.
 
-import { createDocuSignClient, type DocuSignClient } from './client';
-import type { DocuSignConfig } from './config';
-import { Errors } from '../errors';
-import { validateHmac } from '../hmac';
-import { isClientError, isNotFoundError, withRetry } from '../http';
-import type { Logger } from '../log';
-import { WebFormPrefillError } from './prefill';
-import type { ESignProvider } from '../provider';
+import { Errors } from '../../errors';
+import { validateHmac } from '../../hmac';
+import { isClientError, isNotFoundError, withRetry } from '../../http';
+import type { Logger } from '../../log';
+import type { ESignProvider } from '../../provider';
 import type {
   EnvelopeResult,
   EnvelopeStatus,
-  RecipientData,
   HostedFormInstanceResult,
+  RecipientData,
   SigningUrlResult,
   WebFormPrefill,
   WebhookEvent,
   WebhookHeaders,
-} from '../types';
+} from '../../types';
+import { createDocuSignClient, type DocuSignClient } from './client';
+import type { DocuSignConfig } from './config';
+import { WebFormPrefillError } from './prefill';
 import { createWebFormInstance } from './webforms';
 
 // --- Status + webhook mapping -----------------------------------------------

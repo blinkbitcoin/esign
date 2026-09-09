@@ -48,11 +48,12 @@ esign/
 │       │   ├── html.ts            # escapeHtml / sanitizeId / jsonForScript
 │       │   ├── auth.ts            # bearerToken: the Authorization header → token (the meaning stays the host's)
 │       │   ├── hmac.ts / validation.ts / audit.ts / errors.ts / log.ts / tracing.ts / http.ts
-│       │   ├── prefill.ts / bridgeScript.ts  # deprecated shims over docusign/ and bridge/
-│       │   ├── docusign/          # DocuSign adapter: auth (JWT grant), client, config, webforms, provider,
-│       │   │                      #   types (prefill contract), prefill, bridge (return-URL page), mockWebFormPage,
-│       │   │                      #   handlers (mintFromDocuSign), express (mountDocuSignPages), index (barrel)
-│       │   ├── mock/              # Mock adapter (mirrors DocuSign locally)
+│       │   ├── prefill.ts / bridgeScript.ts  # deprecated shims over providers/docusign/ and bridge/
+│       │   ├── providers/         # One directory per adapter of the ESignProvider port (guard test) ⭐
+│       │   │   ├── docusign/      #   auth (JWT grant), client, config, webforms, provider, types (prefill
+│       │   │   │                  #   contract), prefill, bridge (return-URL page), mockWebFormPage,
+│       │   │   │                  #   handlers (mintFromDocuSign), express (mountDocuSignPages), index (barrel)
+│       │   │   └── mock/          #   Mock adapter (mirrors DocuSign locally)
 │       │   └── __tests__/         # Jest, 100% enforced
 │       ├── tsup.config.ts         # ESM + CJS + d.ts build (four entries: index, express, knex, docusign)
 │       └── dist/                  # Build output (gitignored)

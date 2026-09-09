@@ -4,8 +4,8 @@
 // full webhook path runs without credentials.
 
 import { randomUUID } from 'node:crypto';
-import { Errors } from '../errors';
-import type { ESignProvider } from '../provider';
+import { Errors } from '../../errors';
+import type { ESignProvider } from '../../provider';
 import type {
   EnvelopeResult,
   EnvelopeStatus,
@@ -15,7 +15,7 @@ import type {
   WebFormPrefill,
   WebhookEvent,
   WebhookHeaders,
-} from '../types';
+} from '../../types';
 
 export interface MockProviderOptions {
   // Where the mock signing pages are served (read per call: the port may

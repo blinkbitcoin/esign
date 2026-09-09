@@ -5,8 +5,8 @@ import {
   createVerify,
   generateKeyPairSync,
 } from 'node:crypto';
-import type { DocuSignConfig } from '../docusign/config';
-import { DOCUSIGN_DEMO_URLS } from '../docusign/config';
+import type { DocuSignConfig } from '../providers/docusign/config';
+import { DOCUSIGN_DEMO_URLS } from '../providers/docusign/config';
 import type { FetchLike } from '../types';
 
 export const { privateKey: testPrivateKey } = generateKeyPairSync('rsa', {
