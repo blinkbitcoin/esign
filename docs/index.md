@@ -53,6 +53,7 @@ Organized by namespace - pick by what you're doing:
 | Doc | Covers |
 |-----|--------|
 | [consuming.md](integration/consuming.md) | Registry setup (GitHub Packages) + the minimal Web Forms-only install |
+| [docusign-lessons.md](integration/docusign-lessons.md) | **Start here for locked terms:** every lesson from the live DocuSign runs on one page - the Text-only rule for read-only fields, why the mint is server-side, completion without DocuSign.js, account gotchas |
 | [webforms.md](integration/webforms.md) | Modes 1-2 (public URL + Web Forms instances): mock and live runs, event model, embedding options |
 | [docusign-proxy.md](integration/docusign-proxy.md) | Mode 3 (proxy envelopes): real-DocuSign setup, return-URL bridge, webhooks, live smoke-test checklist |
 | [error-codes.md](integration/error-codes.md) | Every `onError` code, which layer produces it, and the sensible host reaction |

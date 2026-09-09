@@ -243,6 +243,9 @@ enabled and disables its options); dates render as `yyyy/mm/dd`. Step by step:
 
 ## Submitting a form with read-only fields (verified 2026-09-09, demo env)
 
+(The one-page digest of this and every other live finding is
+[docusign-lessons.md](docusign-lessons.md).)
+
 **Finding: a read-only Number or Date field makes DocuSign refuse the
 form's submission; read-only Text and Dropdown fields submit and their
 values land on the document.** So locked amounts and locked dates must be
