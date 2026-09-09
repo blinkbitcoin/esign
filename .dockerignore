@@ -1,0 +1,18 @@
+# Build context for examples/full-service-demo/Dockerfile (built from the repo root)
+**/node_modules
+**/dist
+**/lib
+**/coverage
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+**/test-results
+**/playwright-report
+.git
+.github
+docs
+examples/react-native-demo/android
+examples/react-native-demo/ios
+**/__tests__
+**/tests

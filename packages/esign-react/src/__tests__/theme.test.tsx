@@ -4,8 +4,8 @@
  */
 
 import {
-  DEFAULT_LABELS,
   baseStyles,
+  DEFAULT_LABELS,
   resolveLabels,
   resolveStyles,
 } from '../theme';

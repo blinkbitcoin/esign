@@ -1,6 +1,6 @@
 # DocuSign Web Forms Mode
 
-**Updated:** 2026-09-08
+**Updated:** 2026-09-09
 
 The signing component supports three modes via its `SigningSource` (see the
 package READMEs). This doc covers the **DocuSign Web Forms** mode: a prefilled,
@@ -25,7 +25,7 @@ The embedded page reports back via postMessage
 
 The backend endpoint is provider-agnostic (`POST /webform/instance`,
 authenticated); the mode is chosen by `ESIGN_PROVIDER`. Nothing DocuSign-specific
-lives outside the DocuSign adapter (`apps/api/src/providers/docusign/`).
+lives outside the DocuSign adapter (`examples/full-service-demo/src/providers/docusign/`).
 
 ## Toggling the demos
 
@@ -55,26 +55,58 @@ DocuSign's rules (verified against the Web Forms docs, 2026-09):
   reaches the document.
 
 So the recipe is: mark the fixed fields Read only (keep Required) in the
-builder, and mint every instance through the backend with those values in the
-prefill. That is what `POST /webform/instance` does:
+builder - **as Text (or Dropdown) fields**: a read-only Number or Date
+field makes DocuSign refuse the form's submission, see "Submitting a form
+with read-only fields" below - and mint every instance server-side with
+those values in the prefill. That mint is one call from `@blinkbitcoin/esign-server`, which any
+Node backend can make (the values are usually computed there anyway):
+
+```ts
+import { createWebFormInstance, docuSignConfigFromEnv } from '@blinkbitcoin/esign-server';
+
+const docusign = docuSignConfigFromEnv(); // once; DOCUSIGN_* env
+const { url } = await createWebFormInstance({
+  config: docusign,
+  userId: session.userId,
+  prefill: { number_of_units: '1000', settlement_amount_btc: '0.01268231', rate_timestamp: '2026-09-08 10:44' },
+});
+```
+
+Hosts without a backend of their own run this repo's service instead, whose
+`POST /webform/instance` is that same call behind an authenticated endpoint.
+On the app side the source does the authenticated POST itself:
+
+```tsx
+const source = createWebFormsSource({
+  mint: { url: 'https://api.example.com/webform/instance', getAuthToken }, // the app's session token
+  prefill: { number_of_units: '1000', settlement_amount_btc: '0.01268231' },
+});
+<ESignature source={source} onComplete onCancel onError />
+```
+
+The instance also carries a `returnUrl` (the service's `/signing/return`
+bridge by default), so a real form finishing in a plain WebView or iframe
+reports its outcome through the same postMessage protocol as the mock -
+no DocuSign.js needed on React Native. The request body is:
 
 ```json
-{ "prefill": { "number_of_units": 1000, "total_subscription_usd": 1000,
-               "settlement_amount_btc": 0.01268231, "rate_timestamp": "2026-09-08 10:44" } }
+{ "prefill": { "number_of_units": "1000", "total_subscription_usd": "1000",
+               "settlement_amount_btc": "0.01268231", "rate_timestamp": "2026-09-08 10:44" } }
 ```
 
 Keys are the fields' API reference names; the value shape follows the field
-type (`apps/api/src/types.ts`): text / email / date (`yyyy-mm-dd`) / dropdown /
+type (`examples/full-service-demo/src/types.ts`): text / email / date (`yyyy-mm-dd`) / dropdown /
 radio → string, **Number → a JSON number** (unquoted, `.` decimal, no
-thousands separators), checkbox group → string array, phone →
+thousands separators; for *editable* Number fields - locked amounts and
+dates are Text fields, hence the strings above), checkbox group → string array, phone →
 `{ countryCode?, nationalNumber }`. The endpoint validates that contract at the
-edge (`apps/api/src/webFormPrefill.ts`) and answers 400 with a reason for
+edge (`examples/full-service-demo/src/webFormPrefill.ts`) and answers 400 with a reason for
 anything else, before the provider is called. Mint the instance right before
 opening it: the instance token expires about five minutes after creation.
 
 ### How we got here (2026-09-08)
 
-The invest flow's first test against a published form showed every computed
+The first host's test against a published form showed every computed
 field editable. Two builder-side fixes were tried and both fail, for reasons
 that are documented DocuSign behaviour, not bugs to work around:
 
@@ -135,19 +167,70 @@ canonical :4000 / :5174), so parallel sessions never collide.
 
 ## Live run against real DocuSign
 
+The one-command version, once `.env` exists (`make docusign-env`, see
+[docusign-proxy.md](docusign-proxy.md)); the same run in GitHub Actions is
+[operations/live-e2e-ci.md](../operations/live-e2e-ci.md):
+
+```sh
+make docusign-check   # JWT grant + the form is reachable (names the consent URL otherwise)
+make e2e-live         # service on DocuSign (LIVE_PORT, default 4010) → API live test → Playwright locked-fields check → stop
+make e2e-ios-live     # the same journey in the React Native demo's WebView (booted simulator with the app installed, Maestro)
+```
+
+To record the web journey as proof (a `video.webm` per test under
+`examples/react-demo/test-results/`, actions paced so each page is
+readable), run the in-iframe spec with `E2E_LIVE_VIDEO=1` while the live
+service is up:
+
+```sh
+# service on :4010 (what make e2e-live starts), then:
+. scripts/e2e/live-service.sh; live_env   # exports the fixture prefill
+cd examples/react-demo && E2E_LIVE_VIDEO=1 E2E_LIVE_API_ORIGIN=http://localhost:4010 \
+  npx playwright test -c playwright.webform-live-demo.config.ts -g "submitted, signed, completed"
+# MP4 / GIF: ffmpeg -i test-results/*/video.webm -c:v libx264 -pix_fmt yuv420p out.mp4
+#            ffmpeg -i test-results/*/video.webm -vf "fps=8,scale=480:-1" out.gif
+```
+
+`make e2e-live` also runs the web demo against the live service in a real
+browser twice - webform mode (the real form inside the component's
+iframe, walked to its Summary with the locked terms, **submitted**, the
+envelope DocuSign creates from it signed in the same iframe, Finish, the
+return-URL bridge posting completion, the demo's success screen) and proxy
+mode (an envelope from the template, DocuSign's signing ceremony inside
+the iframe, a real signature adopted and applied, Finish, the bridge, the
+success screen; the E2E Postgres holds the envelope) - and boots the
+mint-only and serverless examples on the DocuSign provider to mint real
+instances. `make e2e-ios-live` (`scripts/e2e/ios-live.sh`) repeats the
+Web Form journey in the React Native demo: the service on DocuSign, a
+Metro bundled with `ESIGN_MODE=webform`, `ESIGN_BACKEND_PORT` and the
+fixture's `ESIGN_PREFILL`, and the Maestro flow `webform-live.yaml`
+driving the real form in the WebView to a signed envelope (tagged `live`,
+excluded from the default suites; the ceremony's Sign and Finish are
+tapped by position, so it is pinned to the iPhone 16 Pro simulator). It mints with the
+capability test form's group C values plus
+every required editable field (the form refuses Next while one is empty, so
+the walker could not reach the locked pages otherwise) and asserts the six
+locked labels (`scripts/e2e/live.sh` holds the defaults;
+`E2E_LIVE_PREFILL` / `E2E_LIVE_LOCKED_LABELS` override them). Verified
+green against the real form on 2026-09-09: every minted value is displayed;
+the walk then reopens the locked-terms page and tries to change each of
+the eight group C fields the way a signer would (click, type, fill, pick),
+and every one keeps its minted value (a locked dropdown keeps the select
+enabled and disables its options); dates render as `yyyy/mm/dd`. Step by step:
+
 1. Complete the DocuSign account + JWT setup in
    [docusign-proxy.md](docusign-proxy.md) (consent, keys, account/user IDs).
 2. Build and **publish a Web Form** in the DocuSign Web Forms builder, mapped to
    a template; note its **form id** and the fields' **API reference names**
    (these are the `formValues`/prefill keys).
-3. Configure the backend (`apps/api/.env`):
+3. Configure the backend (`examples/full-service-demo/.env`):
    ```env
    ESIGN_PROVIDER=docusign
-   DOCUSIGN_WEBFORM_ID=<form id>
+   DOCUSIGN_WEBFORM_ID=<form id>   # the capability test form v2 for the live suite
    DOCUSIGN_WEBFORMS_BASE_URL=https://apps-d.docusign.com/api/webforms/v1.1
    # + the standard DOCUSIGN_* JWT config (see docusign-proxy.md)
    ```
-4. Verify the API contract without a UI: `make test-live` in `apps/api` runs
+4. Verify the API contract without a UI: `make test-live` in `examples/full-service-demo` runs
    `tests/live/webforms.live.test.ts` — real JWT auth + a real
    `createInstance` call, asserting the response shape and that the minted
    URL is served. Skips itself when the `DOCUSIGN_*` env vars are unset, so
@@ -169,7 +252,7 @@ canonical :4000 / :5174), so parallel sessions never collide.
 
    ```sh
    E2E_LIVE_API_ORIGIN=http://localhost:4000 \
-   E2E_LIVE_PREFILL='{"number_of_units":1000,"settlement_amount_btc":0.01268231}' \
+   E2E_LIVE_PREFILL='{"number_of_units":"1000","settlement_amount_btc":"0.01268231"}' \
    E2E_LIVE_LOCKED_LABELS='{"Number of Units":"1000","Settlement Amount (BTC)":"0.01268231"}' \
    make e2e-web-webform-live
    ```
@@ -179,16 +262,90 @@ canonical :4000 / :5174), so parallel sessions never collide.
    `examples/react-demo/test-results/webform-live.png`.
 6. Run a demo in webform mode; it now embeds the real form.
 
+## Submitting a form with read-only fields (verified 2026-09-09, demo env)
+
+(The one-page digest of this and every other live finding is
+[docusign-lessons.md](docusign-lessons.md).)
+
+**Finding: a read-only Number or Date field makes DocuSign refuse the
+form's submission; read-only Text and Dropdown fields submit and their
+values land on the document.** So locked amounts and locked dates must be
+Text fields (a dropdown works for a locked choice). That is also the
+cleaner contract for money: the string the backend formats is exactly
+what the signer sees and what the document carries, with no two-decimal
+ceiling (Number fields take at most two decimals).
+
+How it was found. The first capability test form (v1, four locked Number
+fields among its eight read-only fields) walked fine and showed every
+minted value, and then `Summary → Next` - which posts the form's values to
+`…/forms/<slug>/actions/ESignAction_…` - got **422 `UNPROCESSABLE_ERROR`
+"Request sent is well formed but otherwise invalid"**, the message the
+first host team saw. The 422 body says nothing else; the form
+player's telemetry only logs "Player form submission error". Rewriting
+the multipart `formValues` in flight (Playwright `page.route()`) ruled the
+values out: date sent back as ISO or omitted, numbers as numbers, the
+dropdown label, the template tabs made optional, with or without
+`returnUrl` - all 422; stripping the read-only values gives 400 "The
+field is required". So the bisect moved to the builder, on copies (field
+types are frozen once a form is active):
+
+| Form (copy) | Read-only fields | Submission |
+|---|---|---|
+| Joinder Agreement (template-built, no read-only) | none | 200, envelope, signing URL |
+| Subscription Agreement, every field API-prefilled | none | 200 |
+| Joinder copy, `full_name` made read-only | 1 Text | **200**, envelope `e9302713…`, value on the document |
+| Capability form copy, only `reference` + `rate_timestamp` read-only | 2 Text | **200**, envelope `f8d725a3…` |
+| … plus the three amounts read-only | 2 Text + 3 Number | 422 |
+| … everything editable | none | 200 |
+| Capability form v1 | 2 Text, 4 Number, 1 Date, 1 Dropdown | 422 |
+| Capability form v2 (amounts retyped as Text) | 6 Text, 1 Date, 1 Dropdown | 422 |
+| **Capability form v2, the Date field made editable** | 6 Text, 1 Dropdown | **200**, envelope `a8df290d…` - the live suite's fixture |
+
+DocuSign's own guide ("Populate Read-Only Fields on a Web Form", support
+center) documents the approach - read-only values "must be set either
+through the API or by assigning a default value" - and a community thread
+("Issues with Read-Only Field", esignature-api-63/22268) describes the
+same symptom, unresolved as of January 2025, so this is a documented
+feature with one broken field type, not a misuse. When a submission is
+refused, the response headers carry what DocuSign support looks a failure
+up by (the live spec logs them as `[live-demo] submission trace: …`):
+
+| Header | Value on 2026-09-09 12:01:42 UTC (v1 form, instance `a6cdef2e-27a0-4cd1-a70b-0ae082343eea`) |
+|---|---|
+| `x-docusign-tracetoken` | `8650d36b92bcc0a135bb24c609facf56` |
+| `x-request-id` | `1a23d44f-e790-9f38-b2d8-d5dbc73484ea` |
+| form / account | `1228ee55-ce36-4b87-8646-39c93d50ee69` / `9a18f197-c01b-4813-8f7c-040b4e3a245a` (demo) |
+
+**Consequences for a host that needs locked terms:**
+
+- Web Forms with locked terms work end to end **as long as every read-only
+  field is a Text or Dropdown field**: `make e2e-live` submits the v2
+  fixture inside the web component, signs the envelope DocuSign creates
+  from it and completes through the bridge (verified 2026-09-09, demo env;
+  the production environment is assumed to match).
+- Never make a Number or Date field read-only. Format amounts and dates
+  server-side as the string the signer should see, and prefill them as
+  text (a locked date as `yyyy-mm-dd` text is what the document carries).
+- The proxy flow (`createEnvelopeFromTemplate` with `locked` tab values)
+  remains the alternative when the data-collection step lives in the app.
+- Prefilling *editable* fields works everywhere; it is a suggestion, not
+  a lock.
+
 ## The capability test form (live E2E fixture)
 
 One generic Web Form in the DocuSign demo account, **"esign capability test
-form"** (form id `1228ee55-ce36-4b87-8646-39c93d50ee69`, built 2026-09-08 via
-"Convert PDF document" from the AcroForm PDF checked into
-`docs/assets/esign-capability-test-form.pdf`; its template was generated
-alongside). It exercises every prefill shape the backend accepts and every
-lock mode the component can meet, so a single live run covers the whole
-surface. Rebuild it from this table if it is ever lost (labels are what the
-signer sees, API reference names are the prefill keys):
+form v2 (text amounts)"** (form id `c640d957-a2d0-4e36-9975-5374afb02b54`,
+a copy of the v1 form `1228ee55-ce36-4b87-8646-39c93d50ee69` built
+2026-09-08 via "Convert PDF document" from the AcroForm PDF checked into
+`docs/assets/esign-capability-test-form.pdf`, its template generated
+alongside; v2 retypes the four locked amounts as Text and leaves the
+Date field editable, 2026-09-09, because field types are frozen once a
+form is active and a read-only Number or Date field breaks the
+submission). It exercises every prefill shape the backend
+accepts and every lock mode the component can meet, so a single live run
+covers the whole surface. Rebuild it from this table if it is ever lost
+(labels are what the signer sees, API reference names are the prefill
+keys):
 
 | Group | Label | API reference name | Type | Required | Read only | Live prefill |
 |---|---|---|---|---|---|---|
@@ -201,24 +358,30 @@ signer sees, API reference names are the prefill keys):
 | B prefilled, editable | Newsletter Subscription | `newsletter` | Radio: `yes`, `no` | no | no | `"yes"` |
 | C locked terms | Registration Reference | `reference` | Text | yes | **yes** | `"E2E-0001"` |
 | C locked terms | Subscription Plan | `plan` | Dropdown: Seed, Series A | yes | **yes** | `"seed"` |
-| C locked terms | Number of Units | `number_of_units` | Number | yes | **yes** | `1000` |
-| C locked terms | Total Subscription (USD) | `total_subscription_usd` | Number | yes | **yes** | `1000` |
-| C locked terms | Settlement Amount (BTC) | `settlement_amount_btc` | Number (**max 2 decimals**, see notes) | yes | **yes** | `0.01` |
-| C locked terms | BTC/USD Conversion Rate | `btc_usd_rate` | Number | yes | **yes** | `78850` |
+| C locked terms | Number of Units | `number_of_units` | Text (Number in v1 - see notes) | yes | **yes** | `"1000"` |
+| C locked terms | Total Subscription (USD) | `total_subscription_usd` | Text (Number in v1) | yes | **yes** | `"1000"` |
+| C locked terms | Settlement Amount (BTC) | `settlement_amount_btc` | Text (Number in v1) | yes | **yes** | `"0.01268231"` |
+| C locked terms | BTC/USD Conversion Rate | `btc_usd_rate` | Text (Number in v1) | yes | **yes** | `"78850"` |
 | C locked terms | Rate Timestamp | `rate_timestamp` | Text | yes | **yes** | `"2026-09-08 10:44"` |
-| C locked terms | Settlement Date | `settlement_date` | Date (yyyy/mm/dd display) | yes | **yes** | `"2026-09-10"` |
+| C locked terms | Settlement Date | `settlement_date` | Date (yyyy/mm/dd display) | yes | no (read-only in v1 - see notes) | `"2026-09-10"` |
 | D optional | Phone Number | `phone` | Text | no | no | `"+1 555 123 4567"` |
 | D optional | Additional Notes | `notes` | Text | no | no | (none) |
 
 Notes from the build:
 
-- **Number fields accept at most 2 decimal places** (the form shows "Number
-  can have at most 2 decimal places" and blocks Next). A BTC amount with 8
-  decimals therefore cannot go into a Number field: send it as a Text field
-  (string) or as an integer amount in sats. The fixture keeps
-  `settlement_amount_btc` as a Number to document the limit; the live prefill
-  uses `0.01`. Field **types cannot be changed after the form has been
-  activated** (the Field Type selector disappears), so this stays as built.
+- **The locked amounts are Text fields, and the Date field is editable**
+  (v2). A read-only Number or Date field makes DocuSign refuse the
+  submission (previous section; the Date stays in the fixture, prefilled
+  but editable, to keep the date shape covered), and Number
+  fields accept at most 2 decimal places anyway (the form shows "Number
+  can have at most 2 decimal places" and blocks Next; verified live
+  2026-09-09 on v1: the Web Forms API *accepts* `0.00380467` for a locked
+  Number field and the form renders it, then flags the field invalid and
+  refuses Next - and because it is read-only the signer cannot fix it. The
+  live spec reports such a field as "invalid (locked!)"). Field **types
+  cannot be changed after the form has been activated** (the Field Type
+  selector disappears), which is why v2 is a copy of v1 rather than an
+  edit; copy the form again for any further type change.
 - **Demo vs production prefill by URL.** On the demo environment the public
   form URL with `#field=value` DOES populate read-only fields, and DocuSign
   shows a toast on the form: "Note that read-only fields must be populated
@@ -248,25 +411,26 @@ Notes from the build:
 - Nothing is hidden by a rule (a hidden field never reaches the document).
 
 What each group proves in the live run: A the signer can still enter values;
-B a minted value can be shown yet remain editable; C every value shape
-(integer, decimals, text, date, dropdown) can be locked by minting; D optional
-fields are accepted without blocking submit.
+B a minted value can be shown yet remain editable; C every lockable value
+shape (amounts as text, free text, dropdown) is locked by minting and the
+form still submits, and the date shows why the date is not locked; D
+optional fields are accepted without blocking submit.
 
 ```sh
 # Local live run against the fixture (backend on :4000 with ESIGN_PROVIDER=docusign
-# and DOCUSIGN_WEBFORM_ID=1228ee55-ce36-4b87-8646-39c93d50ee69)
+# and DOCUSIGN_WEBFORM_ID=c640d957-a2d0-4e36-9975-5374afb02b54)
 E2E_LIVE_API_ORIGIN=http://localhost:4000 \
-E2E_LIVE_PREFILL='{"Signer_name":"Test User","Signer_email":"test@example.com","full_name":"Test User","email":"test@example.com","country":"Sweden","newsletter":"yes","reference":"E2E-0001","number_of_units":1000,"total_subscription_usd":1000,"settlement_amount_btc":0.01,"btc_usd_rate":78850,"rate_timestamp":"2026-09-08 10:44","settlement_date":"2026-09-10"}' \
-E2E_LIVE_LOCKED_LABELS='{"Registration Reference":"E2E-0001","Number of Units":"1000","Total Subscription (USD)":"1000","Settlement Amount (BTC)":"0.01","BTC/USD Conversion Rate":"78850","Rate Timestamp":"2026-09-08 10:44","Settlement Date":"2026/09/10"}' \
+E2E_LIVE_PREFILL='{"Signer_name":"Test User","Signer_email":"test@example.com","full_name":"Test User","email":"test@example.com","country":"Sweden","newsletter":"yes","reference":"E2E-0001","plan":"seed","number_of_units":"1000","total_subscription_usd":"1000","settlement_amount_btc":"0.01268231","btc_usd_rate":"78850","rate_timestamp":"2026-09-08 10:44","settlement_date":"2026-09-10"}' \
+E2E_LIVE_LOCKED_LABELS='{"Registration Reference":"E2E-0001","Number of Units":"1000","Total Subscription (USD)":"1000","Settlement Amount (BTC)":"0.01268231","BTC/USD Conversion Rate":"78850","Rate Timestamp":"2026-09-08 10:44"}' \
 make e2e-web-webform-live
 ```
 
 The spec walks the form the way a signer does (Start, then Next page by
 page), collecting every field's label, value and read-only state, so labels
 can live on any page. A Date field displays in the format chosen in the
-builder (`yyyy/mm/dd` here, hence `"2026/09/10"` in the labels while the
-prefill is `"2026-09-10"`); dropdown and checkbox values display as their
-option labels.
+builder (`yyyy/mm/dd` here, so a locked-label expectation for a date
+would read `"2026/09/10"` while the prefill is `"2026-09-10"`); dropdown
+and checkbox values display as their option labels.
 
 ## Verified against DocuSign docs (2026-07, prefill rules 2026-09)
 
@@ -315,10 +479,16 @@ Actionable one-pass checklist (capture points + where to fix mismatches):
   → `.mount()`) and its wiring is unit-tested with a fake SDK, but the precise
   method signatures are marked to confirm against a live account (the loader is
   `istanbul ignore`d). The `sessionEnd` discriminator **field name** (`type` vs
-  `sessionEndType` vs `returnValue`) is handled defensively - the interpreter
-  scans all three.
-- **Mobile.** DocuSign.js has no React Native equivalent, so **real Web Forms is
-  web-only**; the RN Web Forms path works against the mock but has no real-DocuSign
-  embedding. Reinforces the "Web Forms is web-first" conclusion.
+  `sessionEndType` vs `returnValue`, `event` or `status`) is handled
+  defensively - inside a `sessionEnd` envelope the interpreter reads all five.
+  Outside it, only a DocuSign vocabulary word (`signingResult`,
+  `signing_complete`, `ttl_expired`, ...) in `type` / `returnValue` / `event`
+  counts - the bridge's `{ event }` included - so an unrelated
+  `{ status: 'error' }` or `{ type: 'error' }` from another embed or an
+  extension cannot end the signing flow.
+- **Mobile.** DocuSign.js has no React Native equivalent, but it is not
+  needed: the instance's `returnUrl` and the backend's bridge page deliver
+  completion into a plain WebView. Verified against the real form on the iOS
+  simulator (`make e2e-ios-live`, 2026-09-09).
 - **Entitlement.** Web Forms may require a specific account plan/feature even in
   the demo environment.

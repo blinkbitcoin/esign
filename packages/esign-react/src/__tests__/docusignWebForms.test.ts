@@ -1,10 +1,13 @@
 import {
+  createPublicUrlSource,
+  SigningSourceError,
+} from '@blinkbitcoin/esign-core';
+import {
   createDocuSignWebFormsSource,
-  isMountable,
-  type DocuSignSigning,
   type DocuSignSdk,
+  type DocuSignSigning,
+  isMountable,
 } from '../docusignWebForms';
-import { createPublicUrlSource } from '@blinkbitcoin/esign-core';
 
 // A fake DocuSign.js SDK so the wiring (load → signing → on → mount) is tested
 // without the real bundle.js.
@@ -58,8 +61,11 @@ describe('createDocuSignWebFormsSource', () => {
     const { source } = makeSource({
       createInstance: jest.fn().mockRejectedValue(new Error('http 500')),
     });
-    await expect(source.start()).rejects.toMatchObject({
+    const rejection = await source.start().catch(e => e);
+    expect(rejection).toBeInstanceOf(SigningSourceError);
+    expect(rejection).toMatchObject({
       code: 'ENVELOPE_CREATION_FAILED',
+      message: 'http 500',
     });
   });
 
@@ -115,9 +121,9 @@ describe('createDocuSignWebFormsSource', () => {
     const { source } = makeSource({
       createInstance: jest.fn().mockRejectedValue('nope'),
     });
-    await expect(source.start()).rejects.toEqual({
+    await expect(source.start()).rejects.toMatchObject({
       code: 'ENVELOPE_CREATION_FAILED',
-      message: undefined,
+      message: '',
     });
   });
 

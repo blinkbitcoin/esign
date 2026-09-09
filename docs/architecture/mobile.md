@@ -25,9 +25,12 @@
 **Provider-agnostic component over a `SigningSource` strategy** (the
 abstraction lives in `@blinkbitcoin/esign-core`). Nothing here talks to
 Apollo/DocuSign directly - a source owns URL acquisition and the event
-protocol. The **`useESignature` hook owns the state machine** (status
-transitions, offline handling, session-expiry restart, the success delay)
-and hands back the WebView props for the active session; the
+protocol. The **state machine lives in core** (`signing/machine.ts`:
+`transition(state, action)` → `{ state, effects }`, shared with the web
+package and table-tested once); the **`useESignature` hook runs it** -
+the NetInfo connectivity probe, the WebView message transport, the success
+delay, and the WebView props for the active session are the React Native
+parts; the
 **`ESignature` component is the default UI** over that hook (theme /
 styles / labels for the built-in screens). A host that wants its own
 screens uses the hook directly.
@@ -40,8 +43,8 @@ App.tsx (host)
 │     createPublicUrlSource       (published public form URL; no backend)
 └── ESignature Component (default UI; theme / styles / labels)
     └── useESignature hook (headless; also usable on its own)
-        ├── State Machine (idle → loading → signing → success/error/offline)
-        ├── source.start()/restart() for URL acquisition
+        ├── core signing machine (idle → loading → signing → success/error/offline; transition + effects)
+        ├── source.start()/restart() for URL acquisition (acquireSession / resolveRestart)
         └── webViewProps → WebView → postMessage → source.interpret() → normalized events
 ```
 
@@ -149,7 +152,12 @@ See [../integration/consuming.md](../integration/consuming.md).
 ### E2E Tests (Maestro)
 - `examples/react-native-demo/.maestro/` - happy path, cancel-from-page,
   session-timeout→restart, webform-happy-path (tagged `webform`; needs
-  `ESIGN_MODE=webform` Metro)
+  `ESIGN_MODE=webform` Metro), webform-live (tagged `live`; the real
+  DocuSign form in the WebView to a signed envelope, run by
+  `make e2e-ios-live` which starts the live service and a Metro carrying
+  `ESIGN_MODE`/`ESIGN_BACKEND_PORT`/`ESIGN_PREFILL` and relaunches the app
+  through `simctl` - the ceremony exposes no text, so its taps are by
+  position; [integration/docusign-lessons.md](../integration/docusign-lessons.md))
 - TestID-based element selection
 - One app launch per run: `app-launch` (pinned first in `config.yaml`)
   boots the app with a retried launch + wait; every later flow keeps the

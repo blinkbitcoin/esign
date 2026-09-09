@@ -44,7 +44,7 @@ import {
 } from '@blinkbitcoin/esign-react-native';
 import { ApolloProvider } from '@apollo/client/react';
 
-// Mode 1 - Proxy: backend creates an envelope and returns an embedded URL.
+// Mode 3 (README numbering) - Proxy: backend creates an envelope and returns an embedded URL.
 const client = createESignApolloClient({
   uri: 'https://your-backend.example.com/graphql',
   getAuthToken: () => readTokenFromSecureStorage(), // sync or async, optional
@@ -70,12 +70,23 @@ Other modes swap only the source (the component and callbacks are identical):
 ```tsx
 // Mode 2 - DocuSign Web Forms (API-embedded): a thin backend mints the URL.
 const source = createWebFormsSource({
-  createInstance: () =>
-    fetch('/onboarding/webform', { method: 'POST' }).then((r) => r.json()), // { url }
-  allowedOrigin: 'https://apps.docusign.com',
+  // Your backend mints the instance (one call from @blinkbitcoin/esign-server);
+  // getAuthToken returns the app's own session token for THAT backend, which
+  // verifies it and uses the user as DocuSign's clientUserId. Fields marked
+  // read-only in the builder come back locked with the prefill - as Text
+  // fields fed strings (a read-only Number or Date field breaks the submit).
+  mint: { url: 'https://api.example.com/webform/instance', getAuthToken },
+  prefill: { number_of_units: '1000', settlement_amount_btc: '0.01268231' },
+  // Completion arrives through the return-URL bridge your backend serves, so
+  // on web allowedOrigin (if set) is your backend's origin, not DocuSign's.
+  // React Native does not filter by origin.
 });
+// A GraphQL mutation instead: createWebFormsSource({ createInstance: async () => ({ url, envelopeId }) })
+// Recipe with both sides: docs/integration/locked-terms.md. DocuSign's signing
+// ceremony asks for the device's location; on iOS the prompt appears when the
+// app holds location access - declining does not affect signing.
 
-// Mode 3 - Public Web Form URL (no backend; prefill via query params):
+// Mode 1 - Public Web Form URL (no backend; prefill via query params, nothing locked):
 const source = createPublicUrlSource({ url, allowedOrigin: 'https://apps.docusign.com' });
 ```
 
@@ -151,11 +162,11 @@ from the Apollo-free `/webform` subpath.
 
 | Export | What it is |
 |--------|------------|
-| `ESignature` | The signing flow component (state machine: idle → loading → signing → success, plus error/offline). Takes a `source` prop, plus `theme` / `styles` / `labels` for the built-in screens. |
-| `useESignature(options)` | The headless state machine behind `ESignature`: `status`, `error`, `isSessionExpired`, `isCheckingConnection`, `sign` / `cancel` / `retry` / `restart` / `checkConnection`, and `webViewProps` to spread onto your own `WebView`. Same options as the component minus the look props. |
+| `ESignature` | The signing flow component (state machine: idle → loading → signing →<br>success, plus error/offline). Takes a `source` prop, plus `theme` / `styles` /<br>`labels` for the built-in screens. |
+| `useESignature(options)` | The headless state machine behind `ESignature`: `status`, `error`,<br>`isSessionExpired`, `isCheckingConnection`, `sign` / `cancel` / `retry` /<br>`restart` / `checkConnection`, and `webViewProps` to spread onto your own<br>`WebView`. Same options as the component minus the look props. |
 | `createProxySigningSource` / `createWebFormsSource` / `createPublicUrlSource` | The three signing modes (`SigningSource`). Only the proxy is restartable. |
-| `createESignApolloClient({ uri, getAuthToken })` | Apollo Client factory — host owns endpoint + token retrieval (proxy mode only) |
-| `SigningSource`, `SigningSession`, `SigningEvent`, `isRestartable` | The abstraction, for writing a custom mode |
+| `createESignApolloClient({ uri, getAuthToken })` | Apollo Client factory — host owns endpoint + token retrieval (proxy mode<br>only) |
+| `SigningSource`, `SigningSession`, `SigningEvent`, `isRestartable`,<br>`SigningSourceError` | The abstraction, for writing a custom mode (`start()` rejects with a<br>`SigningSourceError`: an `Error` carrying a `code`) |
 | `ErrorCode` (enum) / `ErrorCodes` (map) | The backend wire contract — generated from the service's GraphQL schema |
 | `getErrorMessage(code, serverMessage?)` | Error-code → user-friendly copy |
 | `CREATE_ENVELOPE_MUTATION`, `GET_SIGNING_URL_MUTATION` + types | The GraphQL operations, types generated from the schema |
@@ -167,6 +178,11 @@ Component behaviors worth knowing:
   envelope).
 - **Offline**: connectivity is checked (NetInfo) before any API call;
   offline is a state with a "Check Connection" action, not an error.
+- **`allowedOrigin` is web-only**: a WebView `postMessage` carries no
+  origin, so the source's `allowedOrigin` is never consulted here (the web
+  package applies it via core's `isAllowedOrigin`). Setting it is harmless
+  and keeps one source config for both platforms; rely on the WebView
+  loading only your signing URL instead.
 - **testIDs**: every state exposes stable testIDs
   (`sign-document-button`, `loading-indicator`, `signing-webview`,
   `success-screen`, `error-message`, …) for E2E tooling.
@@ -175,7 +191,7 @@ Component behaviors worth knowing:
 
 ```sh
 make test        # 74 Jest tests, 100% coverage (enforced threshold)
-make codegen     # regenerate types from ../../apps/api/schema.graphql
+make codegen     # regenerate types from ../../examples/full-service-demo/schema.graphql
 make build       # react-native-builder-bob (CJS + ESM + types)
 ```
 

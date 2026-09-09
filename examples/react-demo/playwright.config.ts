@@ -1,6 +1,11 @@
 import { defineConfig } from '@playwright/test';
 
-import { backendServer, baseURL, vitePreviewServer } from './e2e/ports';
+import {
+  backendServer,
+  baseURL,
+  retries,
+  vitePreviewServer,
+} from './e2e/ports';
 
 // Browser E2E for the proxy (envelope) mode: the demo is built and previewed
 // against the packages' dist, and drives the backend's real mock signing page
@@ -9,7 +14,7 @@ export default defineConfig({
   testDir: 'e2e',
   testMatch: '**/signing.spec.ts',
   timeout: 30_000,
-  retries: 0,
+  retries,
   use: {
     baseURL: baseURL('proxy'),
   },

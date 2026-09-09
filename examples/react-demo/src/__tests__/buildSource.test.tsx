@@ -10,6 +10,7 @@ const loadApp = async (mode: EsignMode) => {
     GRAPHQL_URL: 'http://localhost:4000/graphql',
     WEBFORM_INSTANCE_URL: 'http://localhost:4000/webform/instance',
     PUBLIC_FORM_URL: 'http://localhost:4000/signing/public-demo',
+    PREFILL_OVERRIDE: undefined,
   }));
   return import('../App');
 };

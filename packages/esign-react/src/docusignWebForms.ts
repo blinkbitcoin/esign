@@ -9,13 +9,17 @@
 // real loader is the only unverified surface (marked below) - confirm the exact
 // DocuSign.js API (loadDocuSign / signing() / on / mount) against a live account.
 
-import { interpretDocuSignEvent } from '@blinkbitcoin/esign-core';
-
 import type {
-  SigningEvent,
+  MountableSigningSource as CoreMountableSigningSource,
+  MintWebFormsInstanceOptions,
   SigningSession,
-  SigningSourceError,
+  WebFormPrefill,
   WebFormsInstance,
+} from '@blinkbitcoin/esign-core';
+import {
+  interpretDocuSignEvent,
+  resolveCreateInstance,
+  toSigningSourceError,
 } from '@blinkbitcoin/esign-core';
 
 // Minimal shape of the DocuSign.js SDK we rely on.
@@ -29,25 +33,10 @@ export interface DocuSignSdk {
 }
 export type LoadDocuSign = (integrationKey: string) => Promise<DocuSignSdk>;
 
-// A source that embeds via an SDK (mount) rather than a plain iframe URL.
-export interface MountableSigningSource {
-  start(): Promise<SigningSession>;
-  interpret(message: unknown): SigningEvent | null;
-  /**
-   * Mount the signing UI into `container` and forward normalized events to
-   * `onEvent`. Resolves with a cleanup function (call on unmount).
-   */
-  mount(
-    container: HTMLElement,
-    onEvent: (event: SigningEvent) => void,
-  ): Promise<() => void>;
-}
-
-// Capability check used by the component to pick the mount vs iframe path.
-export const isMountable = (
-  source: unknown,
-): source is MountableSigningSource =>
-  typeof (source as MountableSigningSource | null)?.mount === 'function';
+// The core capability, with the web's container: a source that embeds via an
+// SDK (mount) rather than a plain iframe URL. The guard is core's isMountable.
+export type MountableSigningSource = CoreMountableSigningSource<HTMLElement>;
+export { isMountable } from '@blinkbitcoin/esign-core';
 
 const BUNDLE_URLS = {
   demo: 'https://js-d.docusign.com/bundle.js',
@@ -79,9 +68,7 @@ const defaultLoadDocuSign =
     return sdk.loadDocuSign(integrationKey);
   };
 
-export interface DocuSignWebFormsSourceOptions {
-  /** Host-provided call that mints a prefilled Web Forms instance URL. */
-  createInstance: () => Promise<WebFormsInstance>;
+interface DocuSignWebFormsSourceBase {
   /** DocuSign integration key (needed by the SDK loader). */
   integrationKey: string;
   /** 'demo' (default) or 'production' - picks the bundle.js host. */
@@ -92,25 +79,42 @@ export interface DocuSignWebFormsSourceOptions {
   loadDocuSign?: LoadDocuSign;
 }
 
+/** The host brings its own backend client. */
+export interface DocuSignWebFormsCreateInstanceOptions
+  extends DocuSignWebFormsSourceBase {
+  /** Host-provided call that mints a prefilled Web Forms instance URL. */
+  createInstance: () => Promise<WebFormsInstance>;
+}
+
+/** The host names its mint endpoint and the prefill; the source does the call. */
+export interface DocuSignWebFormsMintOptions
+  extends DocuSignWebFormsSourceBase {
+  mint: MintWebFormsInstanceOptions;
+  /** Values minted with the instance; read-only fields show them locked. */
+  prefill?: WebFormPrefill;
+}
+
+export type DocuSignWebFormsSourceOptions =
+  | DocuSignWebFormsCreateInstanceOptions
+  | DocuSignWebFormsMintOptions;
+
 export const createDocuSignWebFormsSource = (
   options: DocuSignWebFormsSourceOptions,
 ): MountableSigningSource => {
   /* istanbul ignore next -- the default loader path needs the real SDK (not CI) */
   const load =
     options.loadDocuSign ?? defaultLoadDocuSign(options.environment ?? 'demo');
+  const createInstance = resolveCreateInstance(options);
   let resolvedUrl: string | undefined;
 
   return {
     async start(): Promise<SigningSession> {
       try {
-        const instance = await options.createInstance();
+        const instance = await createInstance();
         resolvedUrl = instance.url;
         return { url: instance.url, envelopeId: instance.envelopeId };
       } catch (error) {
-        throw {
-          code: 'ENVELOPE_CREATION_FAILED',
-          message: error instanceof Error ? error.message : undefined,
-        } as SigningSourceError;
+        throw toSigningSourceError(error, 'ENVELOPE_CREATION_FAILED');
       }
     },
 

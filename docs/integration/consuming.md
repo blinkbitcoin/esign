@@ -2,7 +2,7 @@
 
 **Updated:** 2026-09-01
 
-The three client packages publish to **GitHub Packages** under the
+The four packages publish to **GitHub Packages** under the
 `blinkbitcoin` org:
 
 | Package | For |
@@ -10,9 +10,10 @@ The three client packages publish to **GitHub Packages** under the
 | `@blinkbitcoin/esign-react-native` | React Native apps |
 | `@blinkbitcoin/esign-react` | React web apps |
 | `@blinkbitcoin/esign-core` | (transitive dependency of both; also usable standalone) |
+| `@blinkbitcoin/esign-server` | Your Node backend, in one of three shapes (each has a worked example under `examples/`): one mutation that mints locked Web Forms instances (`mint-only-demo`), the Fetch handlers behind a route (`serverless-handler-demo`), or the whole service with the `/express` router and `/knex` store (`full-service-demo`) |
 
 Publishing has two channels (both gated on the full test fleet - unit
-coverage thresholds + all three E2E suites):
+coverage thresholds + every E2E suite: backend, browser, Android, iOS - and the service image smoke):
 
 - **Stable** (`latest`): merge the open `chore(release): X.Y.Z` pull request
   that release-please keeps up to date (`make release`). That tags `vX.Y.Z`,
@@ -72,18 +73,15 @@ import {
   createPublicUrlSource,  // OR: a published public form URL, no backend
 } from '@blinkbitcoin/esign-react-native/webform';
 
-// Shape 1 - API-embedded (recommended: prefill stays server-side)
+// Shape 1 - API-embedded (recommended: prefill stays server-side, read-only
+// fields come back locked). Your backend mints with @blinkbitcoin/esign-server
+// (createWebFormInstance); the app sends its own session token.
 const source = createWebFormsSource({
-  createInstance: async () => {
-    const res = await fetch('https://your-backend.example.com/webform/instance', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-      body: JSON.stringify({ prefill: { full_name: user.name, email: user.email } }),
-    });
-    if (!res.ok) throw new Error(`Could not start signing (HTTP ${res.status})`);
-    return res.json(); // { url }
-  },
+  mint: { url: 'https://your-backend.example.com/webform/instance', getAuthToken },
+  prefill: { number_of_units: '1000', settlement_amount_btc: '0.01268231' }, // locked fields: strings
 });
+// Bring your own client instead (e.g. a GraphQL mutation):
+// createWebFormsSource({ createInstance: async () => ({ url, envelopeId }) })
 
 // Shape 2 - public form URL (no backend; prefill rides in the URL - avoid PII)
 // const source = createPublicUrlSource({ url: publishedFormUrlWithParams });
@@ -101,12 +99,16 @@ from the package root and additionally install `@apollo/client` + `graphql`.
 
 ## Caveats for real DocuSign Web Forms in React Native
 
-- Event delivery from a **real** DocuSign Web Form inside a plain RN WebView is
-  **unverified**: DocuSign delivers completion events via their DocuSign.js
-  SDK (web-only, no RN equivalent). What is E2E-proven is the protocol path
-  (this repo's mock emits the real `sessionEnd` vocabulary) and the
-  return-URL bridge alternative. Validate against a live form before shipping.
-  See [webforms.md](webforms.md).
+- Completion from a **real** DocuSign Web Form inside a plain RN WebView is
+  **verified** (2026-09-09, demo account, `make e2e-ios-live`): DocuSign
+  redirects the WebView to the instance's return URL, your backend's bridge
+  page posts the outcome, `onComplete` fires with the envelope id. DocuSign.js
+  (web-only) is not needed. The backend must serve that bridge route:
+  [locked-terms.md](locked-terms.md). Locked fields must be Text fields:
+  [docusign-lessons.md](docusign-lessons.md).
+- DocuSign's signing ceremony requests the device's location; on iOS the
+  system prompt shows when the app holds location access. Declining does not
+  affect signing.
 - The instance URL's token expires ~5 minutes after minting - create the
   instance when the user opens the screen, not in advance.
 

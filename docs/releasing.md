@@ -16,10 +16,10 @@ one thing a human does along the way: merge the release PR.
 4. Approve it and merge it: `make release`, or the Merge button. That is the
    release. release-please tags `vX.Y.Z`, creates the GitHub Release with the
    changelog entry as its body, and starts the release run of `ci.yml`, which
-   stamps the version into the three packages, runs the full gate, waits for
+   stamps the version into the four packages, runs the full gate, waits for
    the commit's main run to be green, and publishes under `latest`.
 
-Nothing else is edited by hand. `package.json` in the three publishable
+Nothing else is edited by hand. `package.json` in the four publishable
 packages stays at `0.0.0-development`; the root `package.json` carries the
 released version because release-please maintains it.
 
@@ -105,11 +105,13 @@ changes the bump class).
    The explicit dispatch exists because GitHub never triggers workflows
    from events the workflow token created; a release made by the bot would
    not fire the `release:` trigger.
-3. That release run stamps `X.Y.Z` into the three packages, builds, runs
-   Checks, Unit and every E2E suite, then the Publish job waits for the
-   commit's push-to-`main` run to be green (fails on a red one) and publishes
-   under `latest`. Verify installs what was published and asserts the
-   consumer contract.
+3. That release run stamps `X.Y.Z` into the four packages, builds them and
+   the service image, runs Checks, Unit and every E2E suite, then the
+   Publish job waits for the commit's push-to-`main` run to be green (fails
+   on a red one) and publishes under `latest`: the four packages to GitHub
+   Packages and the image to GHCR as `ghcr.io/blinkbitcoin/esign-api:X.Y.Z`
+   (+ `:latest`). Verify installs the published packages, pulls the
+   published image and asserts the consumer contract on both.
 4. If the main run was red (a flaky E2E job), re-run its failed job
    (`gh run rerun <id> --failed`); `release.yml`'s retry job re-runs the blocked
    Publish as soon as main is green. Nothing to re-tag.
@@ -122,7 +124,7 @@ tagged run executes the full pipeline before anything ships.
 
 `make release-rc V=X.Y.Z-rc.1` creates a `vX.Y.Z-rc.1` tag and prerelease
 by hand. It goes through the `release:` trigger and ships under `next`
-(`npm i @blinkbitcoin/esign-react@next`). release-please ignores such tags;
+(`npm i @blinkbitcoin/esign-react@next`, `ghcr.io/blinkbitcoin/esign-api:next`). release-please ignores such tags;
 the next stable release is still computed from the last `vX.Y.Z`.
 
 ## When something goes wrong
@@ -130,7 +132,9 @@ the next stable release is still computed from the last `vX.Y.Z`.
 - **The release run failed after tagging.** GitHub Packages never accepts a
   version twice, so a partially published version cannot be re-shipped: fix
   forward, merge, and the next release PR bumps again. A run that failed
-  *before* Publish can simply be re-run.
+  *before* Publish can simply be re-run. (Container tags on GHCR can be
+  overwritten, so a failure after the packages but before the image is
+  also fix-forward: the next version ships both.)
 - **No release PR appears.** Nothing releasable has merged since the last
   tag (only `ci:` / `docs:` / `chore:`), or the `Release` workflow
   run on `main` failed. Check the two setup dependencies below.
@@ -165,6 +169,7 @@ GitHub Pages is off by design: the README badges are read from the
 - `.release-please-manifest.json`: the last released version per component.
 - `.github/workflows/release.yml`: the workflow described above (release
   PR / tag job on push, retry job on a completed CI run).
-- `scripts/release/resolve-version.sh`: unchanged; a release run is
+- `scripts/release/resolve-version.mjs`: a thin CLI over the pure
+  `scripts/lib/resolve-version.mjs` module; a release run is
   `EVENT=release TAG=vX.Y.Z`, whether it came from a `release` event or a
   `release_tag` dispatch.

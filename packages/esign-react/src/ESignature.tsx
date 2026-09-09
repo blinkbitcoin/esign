@@ -6,15 +6,14 @@
 // replace entirely by using the hook directly.
 
 import React, { useMemo } from 'react';
-
-import { useESignature } from './useESignature';
 import { resolveLabels, resolveStyles } from './theme';
 import type { ESignatureProps } from './types';
+import { useESignature } from './useESignature';
 
 // Re-exported for backwards-compatible imports; canonical home is signing/.
 export {
-  getErrorMessage,
   getApolloErrorCode,
+  getErrorMessage,
 } from '@blinkbitcoin/esign-core';
 
 /**

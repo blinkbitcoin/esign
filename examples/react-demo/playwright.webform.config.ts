@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 
-import { backendServer, baseURL, viteDevServer } from './e2e/ports';
+import { backendServer, baseURL, retries, viteDevServer } from './e2e/ports';
 
 // Browser E2E for the DocuSign Web Forms mode. Same real stack as the proxy
 // E2E, but the demo runs in webform mode (VITE_ESIGN_MODE=webform) on its own
@@ -14,7 +14,7 @@ export default defineConfig({
   testDir: 'e2e',
   testMatch: '**/webform.spec.ts',
   timeout: 30_000,
-  retries: 0,
+  retries,
   use: {
     baseURL: baseURL('webform'),
   },

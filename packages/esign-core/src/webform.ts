@@ -10,24 +10,66 @@
 //   - createWebFormsSource: API-embedded (a backend mints the instance URL)
 //   - createPublicUrlSource: a published public form URL (no backend)
 
-export type { RecipientData } from './types';
+export type {
+  RecipientData,
+  ESignatureTheme,
+  UseESignatureOptions,
+} from './types';
 
-export { createWebFormsSource } from './signing/webFormsSource';
+export {
+  createWebFormsSource,
+  resolveCreateInstance,
+} from './signing/webFormsSource';
 export type {
   WebFormsSigningSourceOptions,
+  WebFormsCreateInstanceOptions,
+  WebFormsMintOptions,
   WebFormsInstance,
 } from './signing/webFormsSource';
+
+export { createWebFormsMinter } from './signing/mint';
+export type {
+  MintWebFormsInstanceOptions,
+  WebFormPrefill,
+  WebFormPrefillValue,
+  WebFormPhoneNumber,
+} from './signing/mint';
 
 export { createPublicUrlSource } from './signing/publicUrlSource';
 export type { PublicUrlSigningSourceOptions } from './signing/publicUrlSource';
 
 export { interpretDocuSignEvent, interpretProxyEvent } from './signing/events';
 export { getErrorMessage } from './signing/messages';
-export { isRestartable } from './signing/types';
+export { isRestartable, isMountable } from './signing/types';
+export {
+  SigningSourceError,
+  isSigningSourceError,
+  toSigningSourceError,
+} from './signing/errors';
+export { withTimeout } from './signing/withTimeout';
+export { isAllowedOrigin } from './signing/origin';
+export {
+  acquireSession,
+  initialSigningState,
+  resolveRestart,
+  transition,
+} from './signing/machine';
+export type {
+  ESignatureError,
+  ESignatureResult,
+  ESignatureStatus,
+  SigningAction,
+  SigningCallbacks,
+  SigningEffect,
+  SigningMachineState,
+  SigningStateSeed,
+} from './signing/machine';
+export { resolveLabelsWith } from './signing/labels';
+export type { ESignatureLabels, LabelDefaults } from './signing/labels';
 export type {
   SigningSource,
   RestartableSigningSource,
+  MountableSigningSource,
   SigningSession,
   SigningEvent,
-  SigningSourceError,
 } from './signing/types';

@@ -1,0 +1,104 @@
+{
+  "name": "@blinkbitcoin/esign-server",
+  "version": "0.0.0-development",
+  "description": "Server-side e-signature for Node: DocuSign client (JWT grant, envelopes, Web Forms), createWebFormInstance (the one call that locks read-only fields), the envelope domain over provider + store ports, an optional Express router, and a Knex/Postgres store with its migrations.",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "source": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./express": {
+      "import": {
+        "types": "./dist/express.d.mts",
+        "default": "./dist/express.mjs"
+      },
+      "require": {
+        "types": "./dist/express.d.ts",
+        "default": "./dist/express.cjs"
+      }
+    },
+    "./knex": {
+      "import": {
+        "types": "./dist/knex.d.mts",
+        "default": "./dist/knex.mjs"
+      },
+      "require": {
+        "types": "./dist/knex.d.ts",
+        "default": "./dist/knex.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["src", "dist", "!**/__tests__"],
+  "sideEffects": false,
+  "scripts": {
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsup",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "e-signature",
+    "docusign",
+    "web-forms",
+    "server",
+    "express",
+    "knex",
+    "postgres"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/preset-env": "^7.29.7",
+    "@babel/preset-typescript": "^7.29.0",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.4.0",
+    "@types/supertest": "^7.2.1",
+    "express": "^5.2.1",
+    "jest": "^30.5.0",
+    "knex": "^3.3.0",
+    "knex-mock-client": "^3.0.2",
+    "supertest": "^7.2.2",
+    "tsup": "^8.5.0",
+    "typescript": "^6.0.3"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blinkbitcoin/esign.git",
+    "directory": "packages/esign-server"
+  },
+  "homepage": "https://github.com/blinkbitcoin/esign#readme",
+  "bugs": {
+    "url": "https://github.com/blinkbitcoin/esign/issues"
+  },
+  "type": "commonjs",
+  "engines": {
+    "node": ">= 18"
+  },
+  "peerDependencies": {
+    "express": ">=4.18.0",
+    "knex": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "express": {
+      "optional": true
+    },
+    "knex": {
+      "optional": true
+    }
+  }
+}

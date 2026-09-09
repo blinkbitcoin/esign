@@ -4,28 +4,61 @@
 // generated types. No React/DOM/WebView - the platform packages layer the
 // ESignature component on top.
 
-export type { RecipientData } from './types';
+export type {
+  RecipientData,
+  ESignatureTheme,
+  UseESignatureOptions,
+} from './types';
 
 // Signing sources + the abstraction they satisfy
 export {
   createProxySigningSource,
   createWebFormsSource,
+  createWebFormsMinter,
+  resolveCreateInstance,
   createPublicUrlSource,
   isRestartable,
+  isMountable,
+  SigningSourceError,
+  isSigningSourceError,
+  toSigningSourceError,
+  withTimeout,
+  isAllowedOrigin,
   interpretProxyEvent,
   interpretDocuSignEvent,
   getErrorMessage,
   getApolloErrorCode,
+  acquireSession,
+  initialSigningState,
+  resolveRestart,
+  transition,
+  resolveLabelsWith,
 } from './signing';
 export type {
+  ESignatureError,
+  ESignatureResult,
+  ESignatureStatus,
+  ESignatureLabels,
+  LabelDefaults,
+  SigningAction,
+  SigningCallbacks,
+  SigningEffect,
+  SigningMachineState,
+  SigningStateSeed,
   SigningSource,
   RestartableSigningSource,
+  MountableSigningSource,
   SigningSession,
   SigningEvent,
-  SigningSourceError,
   ProxySigningSourceOptions,
   WebFormsSigningSourceOptions,
+  WebFormsCreateInstanceOptions,
+  WebFormsMintOptions,
   WebFormsInstance,
+  MintWebFormsInstanceOptions,
+  WebFormPrefill,
+  WebFormPrefillValue,
+  WebFormPhoneNumber,
   PublicUrlSigningSourceOptions,
 } from './signing';
 

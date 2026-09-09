@@ -36,41 +36,40 @@ Express Router
 │          └── MockProvider                 │
 └───────────────────────────────────────────┘
     ↓
-Repository functions (envelope.ts, audit.ts)
+Envelope service (@blinkbitcoin/esign-server: rules, audit, webhook state machine)
     ↓
-Knex → PostgreSQL
+EnvelopeStore port → Knex store (store.ts) → PostgreSQL
 ```
 
 ## Source Structure
 
 ```
-apps/api/src/
+examples/full-service-demo/src/
 ├── index.ts          # Bootstrap (dotenv + startServer)
 ├── server.ts         # HTTP server startup (testable startServer factory)
-├── app.ts            # Express + Apollo setup (createApp factory)
-├── schema.ts         # GraphQL typeDefs + resolvers
+├── app.ts            # Express + Apollo setup (createApp factory): this service's policy
+│                     #   (helmet, CORS, rate limits, JWT auth) around the package's
+│                     #   Express router (/health, signing pages, /webform/instance,
+│                     #   /webhook/esign) and GraphQL schema
+├── schema.ts         # typeDefs + resolvers = createESignGraphQL({ envelopes }) from the package
+├── services.ts       # Composition root: createEnvelopeService({ provider, store, tracing })
+├── store.ts          # Knex implementation of the package's EnvelopeStore port
 ├── db.ts             # Knex instance (fail-fast on missing DATABASE_URL)
 ├── auth.ts           # JWT verification (HS256) with dev/prod split
 ├── providers/        # Hexagonal provider layer
 │   ├── port.ts       #   ESignProvider port + supportsWebForms
 │   ├── index.ts      #   Factory (ESIGN_PROVIDER) + tracing-wrapped singleton
-│   ├── mock.ts       #   Mock adapter (mirrors DocuSign locally)
-│   └── docusign/     #   DocuSign adapter split: index (adapter),
-│                     #   client (JWT/OAuth+retry+HTTP), mapping, config
-├── signingPages.ts   # Mock signing/web-form pages + return-URL bridge
+│   ├── mock.ts       #   The package's mock adapter, wired to this service's pages
+│   └── docusign/     #   The package's DocuSign adapter wired to the service's
+│                     #   config (config.ts) and webhook policy
 ├── config.ts         # Boot-time security validation (fail-closed)
 ├── tracing.ts        # OTel domain spans + provider instrumentation
-├── log.ts            # CRLF-safe log sanitizer
-├── envelope.ts       # Envelope repository (Knex CRUD)
-├── webhook.ts        # Generic webhook processing (HMAC policy + status sync)
-├── audit.ts          # Audit logging repository
-├── errors.ts         # GraphQL error factories with typed codes
-├── types.ts          # Shared types incl. ESignProvider interface
+├── errors.ts         # Re-exports the package's coded errors (extensions.code)
+├── types.ts          # Re-exports the package's domain types + GraphQLContext
 └── __mocks__/
     └── db.ts         # knex-mock-client instance for unit tests
 
-apps/api/migrations/    # Knex migrations (TypeScript, run via tsx)
-apps/api/knexfile.ts    # Knex CLI configuration
+├── migrate.ts        # Applies the package's migrations (@blinkbitcoin/esign-server/knex)
 ```
 
 ## Provider Pattern
@@ -222,7 +221,7 @@ Domain spans (`src/tracing.ts`, zero-cost no-ops when tracing is off):
 | `esign.provider.create_envelope` | provider boundary | `esign.provider`, `esign.contract_type`, `enduser.id`, `esign.provider_envelope_id` |
 | `esign.provider.get_signing_url` / `get_envelope_status` | provider boundary | `esign.provider`, `esign.provider_envelope_id`, `esign.envelope_status` |
 | `esign.provider.verify_webhook` / `parse_webhook_event` | provider boundary | `esign.webhook.verified` / `esign.webhook.malformed` |
-| `esign.webhook.process` | webhook handler | `esign.webhook.status`, `esign.webhook.outcome` (`updated` / `unchanged` / `unknown_envelope` / `ignored_unknown_status`) |
+| `esign.webhook.process` | webhook handler | `esign.webhook.status`, `esign.webhook.outcome` (`updated` / `unchanged` / `unknown_envelope` / `ignored_unknown_status` / `rejected_terminal` / `rejected_no_transition`) |
 | (request span) | GraphQL context | `enduser.id` on every authenticated request |
 
 The provider spans are applied **in the factory** (`instrumentProvider` in
@@ -232,8 +231,9 @@ statuses only - never recipient names, emails, or document content.
 
 ## Database Schema
 
-Managed by Knex migrations in `apps/api/migrations/` (see
-[data-models.md](data-models.md) for full details).
+Defined by the package's programmatic migration source
+(`@blinkbitcoin/esign-server/knex`, applied by `src/migrate.ts`); see
+[data-models.md](data-models.md) for full details.
 
 ### Envelope
 | Column | Type | Notes |
@@ -256,14 +256,14 @@ Managed by Knex migrations in `apps/api/migrations/` (see
 
 ## Testing Strategy
 
-### Unit Tests (`apps/api/tests/`)
+### Unit Tests (`examples/full-service-demo/tests/`)
 - Vitest; 100% statement/branch/function/line coverage enforced culture
-- Database globally mocked (`tests/setup.ts` auto-mocks `src/db`); repository
-  tests use `knex-mock-client` trackers, consumer tests mock the repository
-  modules
+- Database globally mocked (`tests/setup.ts` auto-mocks `src/db`); the Knex
+  store test uses a `knex-mock-client` tracker, resolver/route tests run the
+  real domain over the package's in-memory store (`vi.mock('../src/store')`)
 - `npm test`
 
-### E2E Tests (`apps/api/tests/e2e/`)
+### E2E Tests (`examples/full-service-demo/tests/e2e/`)
 - Real PostgreSQL via Docker Compose (tmpfs-backed, port 5433)
 - Separate config (`vitest.e2e.config.ts`, sequential execution)
 - Factory pattern for test data; env from `.env.test` via dotenv-cli
@@ -298,7 +298,7 @@ npm run test:e2e
 
 Full reference (every variable, incl. optional overrides and OTEL):
 [development-guide.md](../development-guide.md#environment-variables-reference);
-runnable template: `apps/api/.env.example`.
+runnable template: `examples/full-service-demo/.env.example`.
 
 ## Entry Points
 

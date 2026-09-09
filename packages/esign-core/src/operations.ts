@@ -1,6 +1,6 @@
 // GraphQL operations for e-signature flow.
 // The gql documents are duplicated across the client packages (KEPT IN SYNC);
-// all TYPES are generated from apps/api/schema.graphql - see codegen.ts.
+// all TYPES are generated from examples/full-service-demo/schema.graphql - see codegen.ts.
 
 import { gql } from '@apollo/client/core';
 

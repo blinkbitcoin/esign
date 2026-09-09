@@ -1,9 +1,10 @@
 import { CombinedGraphQLErrors } from '@apollo/client/errors';
 
+import { SigningSourceError } from '../errors';
 import { createProxySigningSource, getApolloErrorCode } from '../proxySource';
 import { createWebFormsSource } from '../webFormsSource';
 import { createPublicUrlSource } from '../publicUrlSource';
-import { isRestartable } from '../types';
+import { isMountable, isRestartable } from '../types';
 
 import type { ApolloClient } from '@apollo/client';
 
@@ -34,6 +35,27 @@ describe('getApolloErrorCode', () => {
       errors: [{ message: 'x' }],
     } as never);
     expect(getApolloErrorCode(error, 'FALLBACK')).toBe('FALLBACK');
+  });
+});
+
+describe('capability guards', () => {
+  const base = { start: jest.fn(), interpret: jest.fn() };
+
+  it('isRestartable is true only when restart() is implemented', () => {
+    const withRestart = { ...base, restart: jest.fn() };
+    const withField = { ...base, restart: 'later' };
+    expect(isRestartable(withRestart)).toBe(true);
+    expect(isRestartable(base)).toBe(false);
+    expect(isRestartable(withField)).toBe(false);
+  });
+
+  it('isMountable is true only when mount() is implemented', () => {
+    expect(isMountable({ ...base, mount: jest.fn() })).toBe(true);
+    expect(isMountable(base)).toBe(false);
+    expect(isMountable({ ...base, mount: true })).toBe(false);
+    expect(isMountable(null)).toBe(false);
+    expect(isMountable(undefined)).toBe(false);
+    expect(isMountable('mount')).toBe(false);
   });
 });
 
@@ -98,9 +120,9 @@ describe('createProxySigningSource', () => {
       contractType: 'c',
       recipient,
     });
-    await expect(source.start()).rejects.toMatchObject({
-      code: 'ENVELOPE_CREATION_FAILED',
-    });
+    const rejection = await source.start().catch(e => e);
+    expect(rejection).toBeInstanceOf(SigningSourceError);
+    expect(rejection).toMatchObject({ code: 'ENVELOPE_CREATION_FAILED' });
   });
 
   it('start() handles a non-Error, non-coded rejection', async () => {
@@ -109,9 +131,9 @@ describe('createProxySigningSource', () => {
       contractType: 'c',
       recipient,
     });
-    await expect(source.start()).rejects.toEqual({
+    await expect(source.start()).rejects.toMatchObject({
       code: 'ENVELOPE_CREATION_FAILED',
-      message: undefined,
+      message: '',
     });
   });
 
@@ -206,9 +228,23 @@ describe('createWebFormsSource', () => {
     const source = createWebFormsSource({
       createInstance: jest.fn().mockRejectedValue(new Error('http 500')),
     });
-    await expect(source.start()).rejects.toMatchObject({
+    const rejection = await source.start().catch(e => e);
+    expect(rejection).toBeInstanceOf(SigningSourceError);
+    expect(rejection).toMatchObject({
       code: 'ENVELOPE_CREATION_FAILED',
       message: 'http 500',
+    });
+  });
+
+  it('start() keeps the code of an already-coded createInstance rejection', async () => {
+    const source = createWebFormsSource({
+      createInstance: jest
+        .fn()
+        .mockRejectedValue(new SigningSourceError('UNAUTHORIZED', 'no')),
+    });
+    await expect(source.start()).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+      message: 'no',
     });
   });
 
@@ -216,9 +252,9 @@ describe('createWebFormsSource', () => {
     const source = createWebFormsSource({
       createInstance: jest.fn().mockRejectedValue('nope'),
     });
-    await expect(source.start()).rejects.toEqual({
+    await expect(source.start()).rejects.toMatchObject({
       code: 'ENVELOPE_CREATION_FAILED',
-      message: undefined,
+      message: '',
     });
   });
 
@@ -230,7 +266,9 @@ describe('createWebFormsSource', () => {
     });
     const started = source.start();
     jest.advanceTimersByTime(5000);
-    await expect(started).rejects.toMatchObject({
+    const rejection = await started.catch(e => e);
+    expect(rejection).toBeInstanceOf(SigningSourceError);
+    expect(rejection).toMatchObject({
       code: 'NETWORK_ERROR',
       message: expect.stringContaining('5000ms'),
     });

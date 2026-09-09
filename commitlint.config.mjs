@@ -12,10 +12,10 @@ export default {
       'always',
       [
         'core', // packages/esign-core
+        'server', // packages/esign-server
         'rn', // packages/esign-react-native
         'react', // packages/esign-react
-        'api', // apps/api
-        'demo', // examples/*
+        'demo', // examples/* (client demos and the three server examples)
         'e2e',
         'ci',
         'deps',

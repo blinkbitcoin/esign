@@ -2,8 +2,9 @@
 // resolvers that layer a host's theme / styles / labels on top.
 // Precedence: base style < theme-derived color < styles[key].
 
-import { StyleSheet } from 'react-native';
+import { resolveLabelsWith } from '@blinkbitcoin/esign-core/webform';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import type {
   ESignatureLabels,
@@ -118,20 +119,7 @@ export type ResolvedLabels = Required<ESignatureLabels>;
 export const resolveLabels = (
   label: string,
   labels?: ESignatureLabels,
-): ResolvedLabels => {
-  const resolved: ResolvedLabels = {
-    ...DEFAULT_LABELS,
-    title: label,
-    sign: label,
-  };
-  for (const key of Object.keys(labels ?? {}) as (keyof ESignatureLabels)[]) {
-    const value = labels?.[key];
-    if (value != null) {
-      resolved[key] = value;
-    }
-  }
-  return resolved;
-};
+): ResolvedLabels => resolveLabelsWith(DEFAULT_LABELS, label, labels);
 
 export type ResolvedStyles = Record<
   ESignatureStyleKey,

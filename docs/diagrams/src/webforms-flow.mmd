@@ -1,20 +1,26 @@
 sequenceDiagram
     participant App as Host app (RN or web)
-    participant BE as Backend (/webform/instance)
+    participant BE as Your backend (mutation or /webform/instance)
     participant PROV as ESignProvider
     participant DS as DocuSign Web Forms API
     participant WV as WebView / iframe
 
-    App->>BE: POST /webform/instance (Bearer token)
-    BE->>PROV: createWebFormInstance(userId, prefill)
+    App->>BE: mint with the session token - prefill computed server-side, locked fields as Text strings
+    BE->>PROV: createWebFormInstance(userId, prefill, returnUrl)
     alt mock provider
         PROV-->>BE: local mock web-form URL
     else DocuSign provider
-        PROV->>DS: createInstance(clientUserId, formValues)
+        PROV->>DS: createInstance(clientUserId, formValues, returnUrl)
         DS-->>PROV: formUrl + instanceToken (~5 min TTL)
         PROV-->>BE: formUrl#instanceToken=...
     end
     BE-->>App: { url }
-    App->>WV: embed url
-    WV-->>App: sessionEnd event (signingResult / formConfirmation / sessionTimeout)
+    App->>WV: embed url - locked terms shown read-only, the signer submits and signs the envelope
+    alt plain WebView / iframe (RN and web)
+        DS->>WV: redirect to returnUrl?event=...
+        WV->>BE: GET /signing/return (the bridge page)
+        WV-->>App: postMessage { event } from the bridge
+    else DocuSign.js (web only)
+        WV-->>App: sessionEnd event (signingResult / formConfirmation / sessionTimeout)
+    end
     Note over App: interpretDocuSignEvent normalizes to complete / cancel / sessionExpired

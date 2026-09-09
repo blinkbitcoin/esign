@@ -14,13 +14,39 @@ esign/
 │       ├── src/
 │       │   ├── index.ts           # Full entry (incl. Apollo factory) ⭐
 │       │   ├── webform.ts         # Apollo-free entry (./webform) ⭐
-│       │   ├── signing/           # SigningSource abstraction + 3 sources
+│       │   ├── signing/           # SigningSource abstraction + 3 sources + machine.ts (the state machine) + labels.ts
 │       │   ├── client.ts          # createESignApolloClient + ErrorCodes
 │       │   ├── operations.ts      # GraphQL mutations (wire contract)
-│       │   ├── generated/         # Codegen output (from apps/api schema)
+│       │   ├── generated/         # Codegen output (from examples/full-service-demo schema)
 │       │   └── __tests__/         # incl. webform-entry Apollo-free guard
 │       ├── codegen.ts             # GraphQL Codegen config
 │       └── dist/                  # tsup output (gitignored)
+│
+├── 🖥️ SERVER LIBRARY (Node-only; the backend is built on it)
+│   │
+│   └── packages/esign-server/
+│       ├── src/
+│       │   ├── index.ts           # Public API: client, domain, handlers, prefill ⭐
+│       │   ├── express.ts         # ./express entry: createESignRouter, pages via signingPage.ts (express is a peer) ⭐
+│       │   ├── knex.ts            # ./knex entry: Knex EnvelopeStore + migration source (knex is a peer) ⭐
+│       │   ├── knex/              #   store.ts, migrations.ts (ESIGN_MIGRATIONS, programmatic source)
+│       │   ├── envelopes.ts       # createEnvelopeService: rules, audit, webhook state machine ⭐
+│       │   ├── provider.ts        # ESignProvider port
+│       │   ├── store.ts           # EnvelopeStore port + in-memory implementation
+│       │   ├── handlers.ts        # Fetch-API mint + webhook handlers (serverless) ⭐
+│       │   ├── signingPage.ts     # Signing-page CSP + nonce; signingPageResponse (Fetch), shared by express.ts
+│       │   ├── graphql.ts         # SDL + resolvers factory (createESignGraphQL)
+│       │   ├── pages.ts           # Mock signing/Web Forms pages + return-URL bridge
+│       │   ├── bridgeScript.ts    # postMessage helpers the pages ship, run in tests ⭐
+│       │   ├── html.ts            # escapeHtml / sanitizeId / jsonForScript
+│       │   ├── prefill.ts         # Web Forms prefill validation + formatting
+│       │   ├── auth.ts            # bearerToken: the Authorization header → token (the meaning stays the host's)
+│       │   ├── hmac.ts / validation.ts / audit.ts / errors.ts / log.ts / tracing.ts / http.ts
+│       │   ├── docusign/          # DocuSign adapter: auth (JWT grant), client, config, webforms, provider
+│       │   ├── mock/              # Mock adapter (mirrors DocuSign locally)
+│       │   └── __tests__/         # Jest, 100% enforced
+│       ├── tsup.config.ts         # ESM + CJS + d.ts build (two entries)
+│       └── dist/                  # Build output (gitignored)
 │
 ├── 📦 LIBRARY - THE PRODUCT
 │   │
@@ -32,7 +58,7 @@ esign/
 │       ├── src/
 │       │   ├── index.ts           # Public API (full; re-exports core) ⭐
 │       │   ├── webform.ts         # Apollo-free entry (./webform subpath) ⭐
-│       │   ├── useESignature.ts   # Headless signing state machine (hook) ⭐
+│       │   ├── useESignature.ts   # Headless hook: runs core's signing machine (NetInfo, WebView transport, embed) ⭐
 │       │   ├── ESignature.tsx     # Default UI over the hook (source-driven) ⭐
 │       │   ├── theme.ts           # Base styles/copy + theme/styles/labels resolvers
 │       │   ├── types.ts           # Props/hook/theme/status/error types
@@ -60,7 +86,8 @@ esign/
 │       ├── index.html / src/main.tsx
 │       ├── src/App.tsx            # Host wiring around the web component
 │       ├── src/apollo.ts          # createESignApolloClient({uri, getAuthToken})
-│       └── vite.config.ts         # Vite + vitest; lib from source when serving, dist when building
+│       ├── vite.config.ts         # Vite + vitest; lib from source when serving, dist when building
+│       └── vite/libraries.ts      # requireBuiltLibraries + sourceAliases, unit-tested ⭐
 │
 ├── 📱 EXAMPLE APP (integration / E2E host)
 │   │
@@ -76,40 +103,60 @@ esign/
 │       ├── metro.config.js        # watchFolders -> workspace root
 │       └── Gemfile / .bundle/     # CocoaPods tooling
 │
-├── 🖥️ BACKEND (Express + Apollo)
+├── 🖥️ SERVER EXAMPLE 2 - one mutation on an existing API (the smallest footprint)
 │   │
-│   └── apps/api/
+│   └── examples/mint-only-demo/
+│       ├── src/
+│       │   ├── quote.ts           # The host's own data → prefill of the read-only fields
+│       │   ├── mint.ts            # The one package call (createWebFormInstance; mock swap)
+│       │   ├── schema.ts          # The host's schema with investSigningUrl added
+│       │   ├── server.ts          # Apollo Server + the host's session in the context
+│       │   └── index.ts           # Bootstrap (PORT, default 4100)
+│       └── tests/                 # Vitest, 100% enforced
+│
+├── 🖥️ SERVER EXAMPLE 3 - the Fetch handlers behind a route
+│   │
+│   └── examples/serverless-handler-demo/
+│       ├── src/
+│       │   ├── handlers.ts        # createWebFormInstanceHandler + createWebhookHandler from env
+│       │   ├── node.ts            # IncomingMessage ⇄ Request/Response adapter + route table
+│       │   └── index.ts           # Bootstrap (PORT, default 4200)
+│       └── tests/                 # Vitest, 100% enforced
+│
+├── 🖥️ SERVER EXAMPLE 1 - the whole service (Express + Apollo + Postgres)
+│   │
+│   └── examples/full-service-demo/
 │       ├── package.json           # Backend dependencies
 │       ├── tsconfig.json          # TypeScript configuration
-│       ├── knexfile.ts            # Knex CLI configuration
 │       ├── biome.json             # Biome lint + format configuration
 │       ├── vitest.config.ts       # Unit test config (with coverage)
 │       ├── vitest.e2e.config.ts   # E2E test config (sequential)
 │       ├── .env.example           # Documented environment variables
+│       ├── .env.docusign.example  # The live DocuSign layout, dummy values (make docusign-env writes the real one)
 │       ├── .env.test              # Test database connection (tracked)
-│       │
-│       ├── migrations/            # Knex migrations (TypeScript) ⭐
 │       │
 │       ├── src/
 │       │   ├── index.ts           # Bootstrap (dotenv + startServer)
 │       │   ├── server.ts          # startServer(port) - testable ⭐
-│       │   ├── app.ts             # Express + Apollo setup ⭐
-│       │   ├── schema.ts          # GraphQL schema + resolvers ⭐
+│       │   ├── app.ts             # Express + Apollo; mounts the package's router ⭐
+│       │   ├── schema.ts          # createESignGraphQL over the envelope service ⭐
+│       │   ├── typeDefs.ts        # Re-exports the package SDL (schema.graphql source)
+│       │   ├── services.ts        # Composition: createEnvelopeService(provider, store) ⭐
+│       │   ├── store.ts           # The package's Knex EnvelopeStore over db.ts
+│       │   ├── migrate.ts         # Applies the package's migrations (dist/migrate.js in the image)
 │       │   ├── db.ts              # Knex instance (fail-fast)
 │       │   ├── auth.ts            # JWT verification (HS256)
+│       │   ├── config.ts          # Boot-time security validation (fail-closed)
+│       │   ├── tracing.ts         # OTel spans for the service + providers
 │       │   │
-│       │   ├── providers/         # Port + factory + adapters ⭐
-│       │   │   ├── port.ts        #   ESignProvider + supportsWebForms
+│       │   ├── providers/         # The package's adapters wired to this service ⭐
+│       │   │   ├── port.ts        #   Re-exports ESignProvider + supportsWebForms
 │       │   │   ├── index.ts       #   factory/singleton (tracing-wrapped)
-│       │   │   ├── mock.ts        #   mock adapter
-│       │   │   └── docusign/      #   adapter + client + mapping + config
+│       │   │   ├── mock.ts        #   mock adapter handle (pages served by the router)
+│       │   │   └── docusign/      #   DocuSign adapter handle + env config
 │       │   │
-│       │   ├── envelope.ts        # Envelope repository (Knex)
-│       │   ├── webhook.ts         # Generic webhook processing ⭐
-│       │   ├── audit.ts           # Audit logging repository
-│       │   │
-│       │   ├── errors.ts          # GraphQL error factories
-│       │   ├── types.ts           # Shared types incl. ESignProvider
+│       │   ├── errors.ts          # Re-exports the package's coded errors
+│       │   ├── types.ts           # Re-exports the domain types + GraphQLContext
 │       │   │
 │       │   └── __mocks__/
 │       │       └── db.ts          # knex-mock-client for unit tests
@@ -128,8 +175,13 @@ esign/
 ├── 🔧 CONFIGURATION
 │   │
 │   ├── Makefile                   # Repo-wide dev entry points (make help);
-│   │                              # apps/, packages/, examples/ have fan-out
+│   │                              # packages/, examples/ have fan-out
 │   │                              # Makefiles; each workspace a local one
+│   ├── scripts/                   # the `tooling` npm workspace; pure logic in scripts/lib/*.mjs, Vitest-covered at 100% ⭐
+│   │   ├── {ci,e2e,release}/ , assemble-diagrams.mjs , coverage-badge.mjs , status-badge.mjs
+│   │   │   └── release/resolve-version.mjs  # thin CLI over scripts/lib/resolve-version.mjs
+│   │   ├── lib/*.mjs              # extracted, unit-tested logic behind the CLI entry scripts (semver, resolve-version, badge)
+│   │   └── __tests__/*.test.mjs   # shell-script tests (changed-class.sh, docs-freshness.sh) - shell out, not V8-covered
 │   ├── package.json               # Workspace root: orchestration scripts
 │   ├── .envrc                     # direnv: .env loading + use flake + workspace bins
 │   ├── flake.nix / flake.lock     # Nix dev shell: node 24, jdk 17, ruby 3.3, watchman
@@ -178,13 +230,13 @@ esign/
 
 | Path | Purpose |
 |------|---------|
-| `apps/api/src/app.ts` | Server factory |
-| `apps/api/src/schema.ts` | GraphQL API |
-| `apps/api/src/webhook.ts` | Generic webhook processing |
-| `apps/api/src/types.ts` | ESignProvider interface |
-| `apps/api/src/providers/index.ts` | Provider factory + singleton |
-| `apps/api/migrations/` | Database schema |
-| `apps/api/tests/e2e/` | E2E tests |
+| `examples/full-service-demo/src/app.ts` | Server factory |
+| `examples/full-service-demo/src/schema.ts` | GraphQL API |
+| `examples/full-service-demo/src/webhook.ts` | Generic webhook processing |
+| `examples/full-service-demo/src/types.ts` | ESignProvider interface |
+| `examples/full-service-demo/src/providers/index.ts` | Provider factory + singleton |
+| `packages/esign-server/src/knex/migrations.ts` | Database schema (programmatic Knex migration source) |
+| `examples/full-service-demo/tests/e2e/` | E2E tests |
 
 ## Integration Points
 

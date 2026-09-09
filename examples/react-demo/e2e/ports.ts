@@ -72,17 +72,31 @@ export const API_ORIGIN = `http://localhost:${PORTS.api}`;
 const viteOrigin = (mode: Mode): string =>
   `http://localhost:${PORTS.vite[mode]}`;
 
+// What CI changes about running the servers. In CI, a listener already on
+// a port is a foreign leftover from a previous job, never this suite's own
+// server - it must never be adopted, so CI always starts its own and fails
+// if the port is taken; locally, reusing a dev server already running on the
+// worktree's ports is the whole point. Retries: once in CI only, so a flaky
+// runner doesn't fail the suite while a real failure still fails fast
+// locally instead of being masked by a retry.
+export const ciPolicy = (env: Record<string, string | undefined>) => ({
+  reuseExistingServer: !env.CI,
+  retries: env.CI ? 1 : 0,
+});
+const { reuseExistingServer, retries } = ciPolicy(process.env);
+export { retries };
+
 // Playwright webServer entries. The backend gets its port and the demo
 // origins it must allow (CORS); the demo gets the backend origin.
 export const backendServer = () => ({
   command: [
     `PORT=${PORTS.api}`,
     `CORS_ALLOWED_ORIGINS=${MODES.map(viteOrigin).join(',')}`,
-    'ESIGN_PROVIDER=mock npx dotenv-cli -e apps/api/.env.test -- npm run dev -w apps/api',
+    'ESIGN_PROVIDER=mock npx dotenv-cli -e examples/full-service-demo/.env.test -- npm run dev -w examples/full-service-demo',
   ].join(' '),
   cwd: '../..',
   url: `${API_ORIGIN}/health`,
-  reuseExistingServer: true,
+  reuseExistingServer,
   timeout: 30_000,
 });
 
@@ -94,12 +108,27 @@ export const viteDevServer = (mode: Mode) => ({
   timeout: 30_000,
 });
 
+// Vite dev server for the LIVE webform run: the demo in webform mode against
+// an already-running service on the DocuSign provider (not this worktree's
+// mock backend), minting with the given prefill (JSON) - see
+// playwright.webform-live-demo.config.ts
+export const liveViteDevServer = (
+  apiOrigin: string,
+  prefill: string | undefined,
+  mode: Mode = 'webform',
+) => ({
+  command: `VITE_API_ORIGIN=${apiOrigin} VITE_ESIGN_MODE=${mode} VITE_ESIGN_PREFILL='${(prefill ?? '{}').replace(/'/g, '')}' npm run dev -- --port ${PORTS.vite[mode]} --strictPort`,
+  url: viteOrigin(mode),
+  reuseExistingServer: false,
+  timeout: 30_000,
+});
+
 // Production build + preview (proxy spec: bundles the demo against the
 // packages' dist, what CI's Web job verifies)
 export const vitePreviewServer = (mode: Mode) => ({
   command: `VITE_API_ORIGIN=${API_ORIGIN} npm run build -- --outDir dist/${mode} && npm run preview -- --outDir dist/${mode} --port ${PORTS.vite[mode]} --strictPort`,
   url: viteOrigin(mode),
-  reuseExistingServer: true,
+  reuseExistingServer,
   timeout: 30_000,
 });
 

@@ -10,7 +10,7 @@
 //   E2E_LIVE_AUTH_TOKEN     bearer for POST /webform/instance (default: e2e-live,
 //                           the dev passthrough userId)
 //   E2E_LIVE_PREFILL        JSON object: field API reference name → value
-//                           (numbers unquoted for Number fields)
+//                           (numbers unquoted for Number fields, strings for Text)
 //   E2E_LIVE_LOCKED_LABELS  JSON object: form label → expected displayed value
 //                           for the fields marked read-only in the builder
 //
@@ -73,6 +73,9 @@ interface SeenField {
   name: string;
   value: string;
   locked: boolean;
+  // The form's own validation flagged it (e.g. a locked Number with three
+  // decimals - the signer can never fix that one)
+  invalid: boolean;
 }
 
 // The fields on the current page: label (from <label for>, aria-label or
@@ -98,11 +101,18 @@ const fieldsOnPage = (page: Page): Promise<SeenField[]> =>
       )
         .replace(/\s*\*\s*$/, '')
         .trim();
+      // A locked dropdown keeps the select enabled and disables its options
+      const options = Array.from(
+        (el as unknown as HTMLSelectElement).options ?? [],
+      );
+      const optionsLocked =
+        options.length > 0 && options.every(option => option.disabled);
       return {
         label,
         name: el.name,
         value: el.value,
-        locked: el.readOnly || el.disabled,
+        locked: el.readOnly || el.disabled || optionsLocked,
+        invalid: el.getAttribute('aria-invalid') === 'true',
       };
     }),
   );
@@ -117,9 +127,13 @@ const walkForm = async (page: Page, url: string): Promise<SeenField[]> => {
 
   const seen: SeenField[] = [];
   for (let step = 0; step < 20; step++) {
-    await expect(page.locator('input, select, textarea').first()).toBeVisible({
-      timeout: 30_000,
-    });
+    // A field page shows inputs; the closing Summary page shows only headings
+    await expect(
+      page.locator('input, select, textarea, h1').first(),
+    ).toBeVisible({ timeout: 30_000 });
+    if ((await page.locator('input, select, textarea').count()) === 0) {
+      break;
+    }
     seen.push(...(await fieldsOnPage(page)));
     const next = page.getByRole('button', { name: 'Next' });
     if ((await next.count()) === 0) {
@@ -128,13 +142,26 @@ const walkForm = async (page: Page, url: string): Promise<SeenField[]> => {
     const before = await page.title();
     await next.click();
     // The page title carries the section name; a validation error keeps the
-    // page (title unchanged), so stop rather than loop forever
+    // page (title unchanged). Name the fields that blocked the walk rather
+    // than failing later on a misleading assertion.
     try {
       await expect
         .poll(() => page.title(), { timeout: 10_000 })
         .not.toBe(before);
     } catch {
-      break;
+      const onPage = await fieldsOnPage(page);
+      const empty = onPage
+        .filter(field => field.value === '' && !field.locked)
+        .map(field => field.label || field.name);
+      const invalid = onPage
+        .filter(field => field.invalid)
+        .map(
+          field =>
+            `${field.label || field.name}${field.locked ? ' (locked!)' : ''}`,
+        );
+      throw new Error(
+        `the form did not advance past "${before}"; empty editable fields: ${empty.join(', ') || 'none'}; fields the form marked invalid: ${invalid.join(', ') || 'none'} - fix E2E_LIVE_PREFILL (a locked invalid field means the minted value breaks the form's own validation, e.g. more than two decimals in a Number)`,
+      );
     }
   }
   return seen;
@@ -148,13 +175,22 @@ test('live web form: minted prefill is shown, read-only fields cannot be changed
   const fields = await walkForm(page, url);
   expect(fields.length).toBeGreaterThan(0);
 
-  // Every scalar prefill value is displayed somewhere in the form
+  // Every scalar prefill value is displayed somewhere in the form. Date
+  // fields are minted as ISO (2026-09-10) and rendered in the form's own
+  // format (2026/09/10), so dates compare on their digits.
+  const isIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const digits = (value: string) => value.replace(/\D/g, '');
   const shown = fields.map(field => field.value);
   for (const [name, value] of Object.entries(PREFILL)) {
     if (typeof value === 'string' || typeof value === 'number') {
-      expect(shown, `prefill "${name}" should be displayed`).toContain(
-        String(value),
-      );
+      const expected = String(value);
+      const displayed = isIsoDate(expected)
+        ? shown.some(candidate => digits(candidate) === digits(expected))
+        : shown.includes(expected);
+      expect(
+        displayed,
+        `prefill "${name}" (${expected}) should be displayed`,
+      ).toBe(true);
     }
   }
 
@@ -166,6 +202,48 @@ test('live web form: minted prefill is shown, read-only fields cannot be changed
     expect(field?.value, `field "${label}" value`).toBe(String(expected));
     expect(field?.locked, `field "${label}" should be read-only`).toBe(true);
   }
+
+  // Locked means locked: go back to the page that holds every field the
+  // walker saw as read-only (not only the labelled ones), try to change each
+  // one the way a signer would - click, type, fill, pick - and prove the
+  // minted value survives. The Summary's Edit button reopens the section.
+  const lockedLabels = [
+    ...new Set(
+      fields.filter(field => field.locked && field.label).map(f => f.label),
+    ),
+  ];
+  expect(lockedLabels.length).toBeGreaterThanOrEqual(
+    Object.keys(LOCKED_LABELS).length,
+  );
+  for (const label of Object.keys(LOCKED_LABELS)) {
+    expect(lockedLabels, 'locked fields seen').toContain(label);
+  }
+  await page
+    .getByRole('button', { name: /^Edit C\./ })
+    .first()
+    .click();
+  for (const label of lockedLabels) {
+    // DocuSign names its controls through aria, not <label>: match by role
+    const control = page
+      .getByRole('textbox', { name: label, exact: true })
+      .or(page.getByRole('combobox', { name: label, exact: true }))
+      .first();
+    await expect(control).toBeVisible();
+    const before = await control.inputValue();
+    const quick = { timeout: 1500, force: true } as const;
+    await control.click(quick).catch(() => undefined);
+    await page.keyboard.type('999').catch(() => undefined);
+    await control.fill('tampered', quick).catch(() => undefined);
+    await control.selectOption({ index: 1 }, quick).catch(() => undefined);
+    expect(
+      await control.inputValue(),
+      `locked field "${label}" must keep its minted value`,
+    ).toBe(before);
+    expect(before, `locked field "${label}" is populated`).not.toBe('');
+  }
+  console.log(
+    `[live] tamper-checked locked fields: ${lockedLabels.join(', ')}`,
+  );
 
   await page.screenshot({
     path: 'test-results/webform-live.png',

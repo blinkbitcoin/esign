@@ -19,17 +19,20 @@ make ios                          # or: make android
 
 The backend URL is resolved per-platform in `src/config.ts` — iOS simulators
 use `localhost`, Android emulators `10.0.2.2`; physical devices need your
-machine's LAN IP.
+machine's LAN IP. Three `ESIGN_*` variables are inlined into the bundle by
+Babel when Metro starts: `ESIGN_MODE` (`proxy` | `webform`),
+`ESIGN_BACKEND_PORT` (default 4000) and `ESIGN_PREFILL` (a JSON object
+replacing the demo's mock-form prefill, for a real form).
 
 ## What to Look At
 
 | File | Shows |
 |------|-------|
-| `App.tsx` | Minimal host wiring: `buildSource()` picks the mode via `ESIGN_MODE` (proxy / webform / publicurl; Apollo only in proxy mode) + outcome callbacks |
+| `App.tsx` | Minimal host wiring: `buildSource()` picks the mode via `ESIGN_MODE` (proxy /<br>webform / publicurl; Apollo only in proxy mode) + outcome callbacks |
 | `src/apollo.ts` | `createESignApolloClient({ uri, getAuthToken })` — the host owns both |
 | `src/config.ts` | Platform-aware dev URL resolution |
-| `src/HookSigning.tsx` | Hook-driven custom signing UI (`useESignature` + the host's own buttons and WebView); toggled from the toolbar, default UI stays the E2E target |
-| `.maestro/` | E2E flows: app-launch, happy path, cancel-from-signing-page, session-timeout→restart, webform-happy-path (tagged `webform`; needs an `ESIGN_MODE=webform` Metro). All drive real pages inside the WebView |
+| `src/HookSigning.tsx` | Hook-driven custom signing UI (`useESignature` + the host's own buttons<br>and WebView); toggled from the toolbar, default UI stays the E2E target |
+| `.maestro/` | E2E flows: app-launch, happy path, cancel-from-signing-page,<br>session-timeout→restart, webform-happy-path (tagged `webform`; needs an<br>`ESIGN_MODE=webform` Metro), webform-live (tagged `live`; the real DocuSign<br>form to a signed envelope, run by `make e2e-ios-live` from the repo root).<br>All drive real pages inside the WebView |
 
 ## Testing
 
@@ -37,6 +40,7 @@ machine's LAN IP.
 make test          # Jest unit tests (29); 100% coverage enforced - E2E drives the real WebView
 make e2e           # Maestro, iOS (needs backend running + app installed on a simulator)
 make e2e-android   # Maestro, Android (adb reverse handles Metro + backend ports)
+# repo root: make e2e-ios-live - the real DocuSign Web Form in the WebView, signed (needs the DocuSign .env)
 ```
 
 The demo sends a fixed dev bearer token; the backend's dev passthrough

@@ -115,7 +115,7 @@
   <g transform="translate(735 176)">
     <rect x="0" y="0" width="150" height="92" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-dasharray="5 4"/>
     <text x="75" y="24" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Backend service</text>
-    <text x="75" y="41" text-anchor="middle" font-size="11.5" fill="#64748b">apps/api · optional</text>
+    <text x="75" y="41" text-anchor="middle" font-size="11.5" fill="#64748b">examples/full-service-demo · optional</text>
     <text x="75" y="57" text-anchor="middle" font-size="11.5" fill="#64748b">GraphQL · webhooks</text>
     <!-- db cylinder -->
     <g transform="translate(58 64)">

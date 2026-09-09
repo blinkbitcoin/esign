@@ -12,6 +12,9 @@ name: Tests / E2E
 # Shell lives in scripts/e2e/*.sh (the E2E stack, runnable on a laptop: see
 # `make help`) and scripts/ci/*.sh (runner-only plumbing); steps here are
 # one-liners. `make shellcheck` lints them.
+#
+# Build Packages and Docker are the two builds of the deliverables (the npm
+# packages, the service image); Publish ships both unchanged.
 on:
   workflow_call:
     inputs:
@@ -27,6 +30,10 @@ on:
         description: vX.Y.Z tag this run releases (release-please dispatch); empty = not a release
         type: string
         default: ''
+      live:
+        description: Run the live DocuSign suite (needs the docusign-demo environment secrets; docs/operations/live-e2e-ci.md)
+        type: boolean
+        default: false
     outputs:
       version:
         description: The version stamped into the packages built by Build Packages (what Publish ships)
@@ -71,15 +78,107 @@ jobs:
 
       - name: Run database migrations
         run: npm run migrate:test
-        working-directory: apps/api
+        working-directory: examples/full-service-demo
 
       - name: Run E2E tests
         run: npm run test:e2e
-        working-directory: apps/api
+        working-directory: examples/full-service-demo
 
       - name: Stop test database
         if: always()
         run: make test-db-down
+
+  # Live DocuSign (opt-in, docs/operations/live-e2e-ci.md): the JWT grant,
+  # a real Web Forms instance mint, and Playwright walking the real
+  # capability test form and tampering with its locked fields. Secrets come
+  # from the `docusign-demo` environment; the caller decides when this runs
+  # (never for fork PRs - they get no secrets). Mints instances on the demo
+  # account, hence opt-in and serialized.
+  live:
+    name: Live DocuSign
+    if: inputs.live
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: docusign-demo
+    concurrency:
+      group: live-docusign
+      cancel-in-progress: false
+    env:
+      DOCUSIGN_INTEGRATION_KEY: ${{ secrets.DOCUSIGN_INTEGRATION_KEY }}
+      DOCUSIGN_USER_ID: ${{ secrets.DOCUSIGN_USER_ID }}
+      DOCUSIGN_ACCOUNT_ID: ${{ secrets.DOCUSIGN_ACCOUNT_ID }}
+      DOCUSIGN_PRIVATE_KEY: ${{ secrets.DOCUSIGN_PRIVATE_KEY }}
+      DOCUSIGN_TEMPLATE_ID: ${{ vars.DOCUSIGN_TEMPLATE_ID }}
+      DOCUSIGN_WEBFORM_ID: ${{ vars.DOCUSIGN_WEBFORM_ID }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies (workspace root)
+        run: npm ci --prefer-offline --no-audit
+
+      # The Playwright run previews the web demo against the packages' dist
+      - name: Build packages
+        run: npm run build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium --with-deps
+
+      - name: JWT grant, live mints, the real form and a real signature in a browser
+        run: bash scripts/e2e/live.sh
+
+      # The screenshots only; the service log carries minted instance URLs
+      - name: Upload the screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: live-docusign-screenshots
+          path: |
+            examples/react-demo/test-results/webform-live.png
+            examples/react-demo/test-results/webform-live-demo-summary.png
+            examples/react-demo/test-results/proxy-live-signed.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # The two small server examples, booted with the mock provider and called
+  # over HTTP: proves the Fetch handlers and the one-mutation shape in a real
+  # process (their unit suites run in Unit). No database, no browser.
+  server-demos:
+    name: Server demos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies (workspace root)
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Boot both examples and call their routes
+        run: bash scripts/e2e/server-demos-smoke.sh
 
   # The one build of the deliverable. Web bundles the demo against the dist
   # uploaded here (what a web consumer installs), and Publish ships the
@@ -122,7 +221,7 @@ jobs:
           EVENT: ${{ inputs.release-tag != '' && 'release' || github.event_name }}
           TAG: ${{ inputs.release-tag || github.event.release.tag_name }}
           RUN: ${{ github.run_number }}
-        run: bash scripts/release/resolve-version.sh # tag = version on release; -pre.<run>.<sha> otherwise
+        run: node scripts/release/resolve-version.mjs # tag = version on release; -pre.<run>.<sha> otherwise
 
       - name: Build packages (core first - the platform packages need its dist)
         run: npm run build
@@ -134,7 +233,7 @@ jobs:
         run: bash scripts/pack-smoke.sh
 
       - name: Pack the publishable tarballs
-        run: mkdir -p "$RUNNER_TEMP/tarballs" && npm pack -w packages/esign-core -w packages/esign-react-native -w packages/esign-react --pack-destination "$RUNNER_TEMP/tarballs"
+        run: mkdir -p "$RUNNER_TEMP/tarballs" && npm pack -w packages/esign-core -w packages/esign-server -w packages/esign-react-native -w packages/esign-react --pack-destination "$RUNNER_TEMP/tarballs"
 
       - name: Publish dist for the Web job
         uses: actions/upload-artifact@v7
@@ -142,6 +241,7 @@ jobs:
           name: packages-dist
           path: |
             packages/esign-core/dist
+            packages/esign-server/dist
             packages/esign-react/dist
             packages/esign-react-native/lib
           retention-days: 1 # only the Web job of this run needs it
@@ -155,6 +255,50 @@ jobs:
         with:
           name: packages-tarballs
           path: ${{ runner.temp }}/tarballs/*.tgz
+          retention-days: 7
+          overwrite: true
+          if-no-files-found: error
+
+  # The one build of the service image (examples/full-service-demo/Dockerfile): stamped with
+  # the same version Build Packages resolves, smoked (mock provider, /health)
+  # and saved as an artifact, so Publish ships the exact image that passed
+  # here. Sits in this stage for the same reason Build Packages does: nothing
+  # is built before Unit has passed.
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # tags: the prerelease base is derived from the latest v* tag
+
+      # npm pkg set only (no install): the version stamp lands in the image
+      - name: Resolve version and stamp it into the packages
+        id: ver
+        env:
+          EVENT: ${{ inputs.release-tag != '' && 'release' || github.event_name }}
+          TAG: ${{ inputs.release-tag || github.event.release.tag_name }}
+          RUN: ${{ github.run_number }}
+        run: node scripts/release/resolve-version.mjs
+
+      - name: Build the service image
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: bash scripts/ci/docker-build.sh esign-api "$RUNNER_TEMP/esign-api.tar.gz"
+
+      - name: Boot the image with the mock provider and hit /health
+        run: bash scripts/ci/docker-smoke.sh esign-api
+
+      # 7 days like the tarballs: a blocked release's Publish is re-run later
+      # from this same artifact.
+      - name: Publish the image for the Publish job
+        uses: actions/upload-artifact@v7
+        with:
+          name: service-image
+          path: ${{ runner.temp }}/esign-api.tar.gz
           retention-days: 7
           overwrite: true
           if-no-files-found: error
@@ -198,7 +342,7 @@ jobs:
         run: make test-db-up
 
       - name: Run migrations (test database)
-        run: npm run migrate:test -w apps/api
+        run: npm run migrate:test -w examples/full-service-demo
 
       - name: Run browser E2E (Playwright starts the backend, builds + previews the demo)
         run: npm run test:e2e -w examples/react-demo
@@ -351,7 +495,7 @@ jobs:
 
       - name: Run database migrations
         run: npm run migrate:test
-        working-directory: apps/api
+        working-directory: examples/full-service-demo
 
       - name: Start backend with mock provider
         run: make e2e-backend-up
@@ -528,7 +672,7 @@ jobs:
 
       - name: Run database migrations
         run: npm run migrate:test
-        working-directory: apps/api
+        working-directory: examples/full-service-demo
 
       - name: Start backend with mock provider
         run: make e2e-backend-up

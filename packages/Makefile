@@ -7,7 +7,7 @@ test: ## Unit tests in every package
 coverage: ## Coverage in every package (100% enforced)
 typecheck: ## tsc --noEmit in every package
 build: ## Build every publishable package
-codegen: ## Regenerate types in every package (from apps/api/schema.graphql)
+codegen: ## Regenerate types in every package (from examples/full-service-demo/schema.graphql)
 clean: ## Remove build output in every package
 
 test coverage typecheck build codegen clean:

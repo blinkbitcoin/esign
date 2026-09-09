@@ -97,10 +97,21 @@ describe('getRecipientData', () => {
 });
 
 describe('getDemoPrefill', () => {
-  it('sends numeric terms as numbers (DocuSign Number fields reject strings)', () => {
+  it('sends the mock form its terms (numbers for its Number fields)', () => {
     expect(JSON.stringify({ prefill: getDemoPrefill() })).toBe(
       '{"prefill":{"full_name":"Test User","email":"test@example.com","units":10,"total_usd":1000.5}}',
     );
+  });
+
+  it('uses the ESIGN_PREFILL override verbatim when one was inlined', () => {
+    jest.isolateModules(() => {
+      jest.doMock('../src/config', () => ({
+        ...jest.requireActual('../src/config'),
+        PREFILL_OVERRIDE: { number_of_units: '1000' },
+      }));
+      const { getDemoPrefill: withOverride } = require('../App');
+      expect(withOverride()).toEqual({ number_of_units: '1000' });
+    });
   });
 });
 

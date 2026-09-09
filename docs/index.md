@@ -1,7 +1,7 @@
 # Project Documentation Index
 
 **Project:** esign
-**Updated:** 2026-09-01
+**Updated:** 2026-09-09
 
 ---
 
@@ -9,29 +9,38 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Type** | Monorepo (npm workspaces): library + service + demo app |
+| **Type** | Monorepo (npm workspaces): four packages + service + two demo apps + tooling |
 | **Domain** | Fintech / E-Signature |
 | **Primary Language** | TypeScript |
-| **Architecture** | React Native + Express/Apollo |
+| **Architecture** | React Native / React (web) + Express/Apollo, hexagonal server library |
 
 ### Quick Reference
 
-#### Library (`packages/esign-react-native/`) - the product
-- **Type:** Publishable React Native library (react-native-builder-bob)
-- **Public API:** `src/index.ts` - `ESignature` component + `createESignApolloClient`
-- **Peers:** react, react-native, @apollo/client, graphql, webview, netinfo
+#### Libraries (`packages/`) - the product
+- **`esign-react-native/`:** publishable React Native library (react-native-builder-bob); `ESignature` (WebView) + `useESignature` over the core; peers react, react-native, @apollo/client, graphql, webview, netinfo
+- **`esign-react/`:** the same API for the browser (iframe embed, DocuSign.js source)
+- **`esign-core/`:** platform-agnostic `SigningSource` abstraction, sources (proxy / Web Forms / public URL), Apollo factory, codegen - a dependency of both
+- **`esign-server/`:** Node-only: DocuSign client (JWT grant), `createWebFormInstance` (locked prefill), the envelope domain over the `ESignProvider` + `EnvelopeStore` ports, Fetch handlers, `/express` router; the backend is built on it
 
 #### Demo app (`examples/react-native-demo/`) - integration/E2E host
 - **Framework:** React Native 0.86.0
 - **Entry Point:** `App.tsx` (hosts the library component)
 - **E2E:** `.maestro/` flows
 
-#### Backend
-- **Framework:** Express 5.2.x + Apollo Server 5.5.x
-- **Database:** PostgreSQL via Knex 3.3.x
-- **Entry Point:** `apps/api/src/index.ts`
-- **Role:** The main service - the library and demo exist to integrate with it
-- **API:** GraphQL at `/graphql`, Webhook at `/webhook/esign`
+#### Server examples (`examples/*-demo/`, the three shapes on `esign-server`)
+- **`full-service-demo/`:** the whole service, below
+- **`mint-only-demo/`:** an existing GraphQL API adds one mutation that mints a locked Web Forms instance (the smallest backend footprint)
+- **`serverless-handler-demo/`:** the Fetch handlers (mint + webhook) behind a route handler, plain Node adapter
+
+#### The service (`examples/full-service-demo/`)
+- **Framework:** Express 5.2.x + Apollo Server 5.5.x, composed from `@blinkbitcoin/esign-server`
+- **Database:** PostgreSQL via Knex 3.3.x (the Knex `EnvelopeStore`)
+- **Entry Point:** `examples/full-service-demo/src/index.ts`
+- **Role:** The reference host for mode 3 (and the Web Forms mint endpoint); the backend every E2E suite runs against; ships as a container image (`ghcr.io/blinkbitcoin/esign-api`)
+- **API:** GraphQL at `/graphql`, mint at `POST /webform/instance`, webhook at `/webhook/esign`
+
+#### Tooling (`scripts/`)
+- **Type:** `tooling` npm workspace: ci/, e2e/, release/ shell + node; `lib/*.mjs` Vitest-covered at 100%
 
 ---
 
@@ -44,6 +53,8 @@ Organized by namespace - pick by what you're doing:
 | Doc | Covers |
 |-----|--------|
 | [consuming.md](integration/consuming.md) | Registry setup (GitHub Packages) + the minimal Web Forms-only install |
+| [locked-terms.md](integration/locked-terms.md) | **The recipe for locked terms (mode 2), backend + app:** the form rules, the one mutation, the bridge route, the app source, what to verify |
+| [docusign-lessons.md](integration/docusign-lessons.md) | **The rules behind it:** every lesson from the live DocuSign runs on one page - the Text-only rule for read-only fields, why the mint is server-side, completion without DocuSign.js, account gotchas |
 | [webforms.md](integration/webforms.md) | Modes 1-2 (public URL + Web Forms instances): mock and live runs, event model, embedding options |
 | [docusign-proxy.md](integration/docusign-proxy.md) | Mode 3 (proxy envelopes): real-DocuSign setup, return-URL bridge, webhooks, live smoke-test checklist |
 | [error-codes.md](integration/error-codes.md) | Every `onError` code, which layer produces it, and the sensible host reaction |
@@ -60,13 +71,19 @@ Organized by namespace - pick by what you're doing:
 | [security.md](architecture/security.md) | Auth, webhook verification, rate limiting, fail-closed boot |
 | [source-tree.md](architecture/source-tree.md) | Annotated directory structure |
 
+### `operations/` - running the repository
+
+| Doc | Covers |
+|-----|--------|
+| [live-e2e-ci.md](operations/live-e2e-ci.md) | The live DocuSign suite in GitHub Actions: environment, secrets, variables, the CI integration key + consent, triggers, rotation, failure modes |
+
 ### Root
 
 | Doc | Covers |
 |-----|--------|
 | [development-guide.md](./development-guide.md) | Working on this repo: setup, commands, quality gates, CI |
 | [releasing.md](./releasing.md) | How a merged PR becomes a version: release-please, the release PR, the changelog, what merging it does |
-| [diagrams/](./diagrams/README.md) | All eight diagrams (render directly on GitHub) |
+| [diagrams/](./diagrams/README.md) | All nine diagrams (render directly on GitHub) |
 
 ---
 
