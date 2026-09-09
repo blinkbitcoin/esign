@@ -1,30 +1,25 @@
 // @blinkbitcoin/esign-server/express - the HTTP surface as a mountable
 // Express router: the Web Forms mint endpoint, the provider webhook, the
-// signing pages (mock pages + the real-DocuSign return-URL bridge) and a
-// health check. The host owns authentication, CORS, rate limits and its
-// GraphQL server (createESignGraphQL gives it the schema); this router owns
-// the HTTP semantics of the esign endpoints.
+// signing pages (the mock provider's, and DocuSign's return-URL bridge and
+// mock Web Forms page via mountDocuSignPages) and a health check. The host
+// owns authentication, CORS, rate limits and its GraphQL server
+// (createESignGraphQL gives it the schema); this router owns the HTTP
+// semantics of the esign endpoints.
 //
 // `express` is an optional peer: only this entry imports it.
 
-import express, {
-  type Request,
-  type RequestHandler,
-  type Response,
-  Router,
-} from 'express';
+import express, { type Request, type RequestHandler, Router } from 'express';
+import { mountDocuSignPages } from './docusign/express';
+import type { WebFormPrefill } from './docusign/types';
 import type { EnvelopeService } from './envelopes';
 import { mintWebFormInstanceHttp, processWebhookHttp } from './handlers';
 import type { Logger } from './log';
-import {
-  mockWebFormFields,
-  renderMockSigningPage,
-  renderMockWebFormPage,
-  renderSigningReturnBridge,
-} from './pages';
+import { renderMockSigningPage } from './pages';
 import { type ESignProvider, hostedFormMint } from './provider';
-import { signingPageCsp, signingPageNonce } from './signingPage';
-import type { WebFormPrefill } from './types';
+import { sendSigningPage } from './signingPageExpress';
+
+export { mountDocuSignPages } from './docusign/express';
+export type { DocuSignPagesOptions } from './docusign/express';
 
 export interface ESignRouterMiddleware {
   // Applied to POST /webform/instance (e.g. CORS, rate limit); the OPTIONS
@@ -53,17 +48,6 @@ export interface ESignRouterOptions {
   logger?: Logger;
 }
 
-// The signing pages share one CSP + nonce recipe with the Fetch-native
-// signingPageResponse (signingPage.ts); this is its Express spelling
-const sendSigningPage = (
-  res: Response,
-  render: (nonce: string) => string,
-): void => {
-  const nonce = signingPageNonce();
-  res.setHeader('Content-Security-Policy', signingPageCsp(nonce));
-  res.type('html').send(render(nonce));
-};
-
 export const createESignRouter = (options: ESignRouterOptions): Router => {
   const { envelopes, provider, authenticate } = options;
   const logger = options.logger;
@@ -75,34 +59,15 @@ export const createESignRouter = (options: ESignRouterOptions): Router => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // Return-URL bridge for REAL DocuSign: DocuSign redirects here with
-  // ?event=... (it never postMessages); the page forwards the event to the
-  // host app in the postMessage protocol the components expect.
-  router.get('/signing/return', (req, res) => {
-    const rawEvent =
-      typeof req.query.event === 'string' ? req.query.event : undefined;
-    sendSigningPage(res, nonce => renderSigningReturnBridge(rawEvent, nonce));
-  });
+  // DocuSign's pages: the return-URL bridge, and the mock Web Forms page
+  // when the mock pages are on
+  mountDocuSignPages(router, { mockPages: options.mockPages });
 
   if (options.mockPages) {
-    const { getWebFormPrefill } = options.mockPages;
-
     // The mock provider's embedded signing page
     router.get('/signing/mock/:envelopeId', (req, res) => {
       sendSigningPage(res, nonce =>
         renderMockSigningPage(req.params.envelopeId, nonce),
-      );
-    });
-
-    // The mock Web Forms instance page: minted prefill locked, query-string
-    // prefill (public-form style) editable
-    router.get('/signing/mock-webform/:instanceId', (req, res) => {
-      const fields = mockWebFormFields(
-        getWebFormPrefill(req.params.instanceId),
-        req.query,
-      );
-      sendSigningPage(res, nonce =>
-        renderMockWebFormPage(req.params.instanceId, nonce, fields),
       );
     });
   }

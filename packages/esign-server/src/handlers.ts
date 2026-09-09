@@ -4,20 +4,17 @@
 // Express. The decision logic (status codes, bodies) lives in the two
 // `*Http` functions and is shared with the Express router.
 
+import { mintFromDocuSign, type DocuSignMintTarget } from './docusign/handlers';
+import { parseWebFormPrefill } from './docusign/prefill';
 import type { EnvelopeService } from './envelopes';
 import { getErrorCode } from './errors';
 import { consoleLogger, type Logger } from './log';
-import { parseWebFormPrefill } from './prefill';
-import { type ESignProvider, hostedFormMint } from './provider';
-import type {
-  HostedFormInstanceResult,
-  WebFormPrefill,
-  WebhookHeaders,
-} from './types';
 import {
-  createWebFormInstance,
-  type CreateWebFormInstanceParams,
-} from './docusign/webforms';
+  type ESignProvider,
+  type HostedFormMint,
+  hostedFormMint,
+} from './provider';
+import type { HostedFormPrefill, WebhookHeaders } from './types';
 
 // An HTTP outcome, independent of the framework that sends it
 export interface HttpResult {
@@ -27,25 +24,36 @@ export interface HttpResult {
 
 // --- Mint --------------------------------------------------------------------
 
+// The mint call of a target: hostedFormMint(provider), or a package function
+// bound to a configuration (mintFromDocuSign)
+export type MintFn = HostedFormMint;
+
+// The outcome of validating a raw prefill: the prefill, or the reason
+export type ParsedPrefill =
+  | { ok: true; prefill: HostedFormPrefill }
+  | { ok: false; error: string };
+
+// A provider's prefill validation (the mint's 400 contract); the default is
+// DocuSign's parseWebFormPrefill
+export type PrefillParser = (input: unknown) => ParsedPrefill;
+
 export interface MintHttpInput {
   // The authenticated caller, or null (→ 401)
   userId: string | null;
   // The parsed JSON body, if any ({ prefill })
   body: unknown;
-  // How to mint for a user (hostedFormMint(provider), or the package's
-  // createWebFormInstance bound to a config)
-  mint:
-    | ((
-        userId: string,
-        prefill: WebFormPrefill,
-      ) => Promise<HostedFormInstanceResult>)
-    | undefined;
+  // How to mint for a user, or undefined when the provider cannot (→ 400)
+  mint: MintFn | undefined;
+  // Validation of the raw prefill before any provider call (default:
+  // DocuSign's contract - string, number, string[], phone object)
+  parsePrefill?: PrefillParser;
   logger?: Logger;
 }
 
-// POST /webform/instance semantics: 401 unauthenticated, 400 when Web Forms
-// are unsupported or the prefill is outside the contract (with the reason,
-// before any provider call), 502 when minting fails, else 200 + the instance
+// POST /webform/instance semantics: 401 unauthenticated, 400 when hosted
+// forms are unsupported or the prefill is outside the contract (with the
+// reason, before any provider call), 502 when minting fails, else 200 + the
+// instance
 export const mintWebFormInstanceHttp = async (
   input: MintHttpInput,
 ): Promise<HttpResult> => {
@@ -59,7 +67,7 @@ export const mintWebFormInstanceHttp = async (
       body: { error: 'Web Forms not supported by the configured provider' },
     };
   }
-  const parsed = parseWebFormPrefill(
+  const parsed = (input.parsePrefill ?? parseWebFormPrefill)(
     (input.body as { prefill?: unknown } | undefined)?.prefill,
   );
   if (!parsed.ok) {
@@ -146,34 +154,35 @@ const headersOf = (request: Request): WebhookHeaders => {
   return headers;
 };
 
+// What a mint handler mints with: a provider (the service's way), or a mint
+// function (hostedFormMint(provider), mintFromDocuSign(config), your own)
 export type MintTarget =
-  // Mint with a provider (the service's way)
   | { provider: ESignProvider }
-  // Mint straight from a DocuSign config, or a client narrowed to what the
-  // mint needs (WebFormsClient) - the serverless way
-  | Pick<
-      CreateWebFormInstanceParams,
-      'config' | 'client' | 'returnUrl' | 'expirationOffsetHours'
-    >;
+  | { mint: MintFn | undefined };
 
-export type WebFormInstanceHandlerOptions = MintTarget & {
+export interface HostedFormHandlerOptions {
   // The host's authentication: the caller's user id, or null (→ 401)
   authenticate: (request: Request) => string | null | Promise<string | null>;
+  // The provider's prefill validation (default: DocuSign's)
+  parsePrefill?: PrefillParser;
   logger?: Logger;
-};
+}
 
-// The mint call for either target
-const mintFor = (target: MintTarget): MintHttpInput['mint'] => {
-  if ('provider' in target) {
-    return hostedFormMint(target.provider);
-  }
-  return (userId, prefill) =>
-    createWebFormInstance({ ...target, userId, prefill });
-};
+export type HostedFormInstanceHandlerOptions = MintTarget &
+  HostedFormHandlerOptions;
 
-// POST /webform/instance as a Fetch API handler
-export const createWebFormInstanceHandler = (
-  options: WebFormInstanceHandlerOptions,
+// createWebFormInstanceHandler also takes DocuSign's own target: a config
+// or a client, the serverless way
+export type WebFormInstanceHandlerOptions = (MintTarget | DocuSignMintTarget) &
+  HostedFormHandlerOptions;
+
+// The mint call for a neutral target
+const mintFor = (target: MintTarget): MintFn | undefined =>
+  'provider' in target ? hostedFormMint(target.provider) : target.mint;
+
+// POST /webform/instance as a Fetch API handler, for any provider
+export const createHostedFormInstanceHandler = (
+  options: HostedFormInstanceHandlerOptions,
 ): ((request: Request) => Promise<Response>) => {
   const mint = mintFor(options);
   return async request => {
@@ -186,11 +195,23 @@ export const createWebFormInstanceHandler = (
         userId: await options.authenticate(request),
         body,
         mint,
+        parsePrefill: options.parsePrefill,
         logger: options.logger,
       }),
     );
   };
 };
+
+// POST /webform/instance as a Fetch API handler: a provider, a mint
+// function, or straight from a DocuSign config / client
+export const createWebFormInstanceHandler = (
+  options: WebFormInstanceHandlerOptions,
+): ((request: Request) => Promise<Response>) =>
+  createHostedFormInstanceHandler(
+    'provider' in options || 'mint' in options
+      ? options
+      : { ...options, mint: mintFromDocuSign(options) },
+  );
 
 export interface WebhookHandlerOptions {
   provider: Pick<ESignProvider, 'verifyWebhook' | 'parseWebhookEvent'>;

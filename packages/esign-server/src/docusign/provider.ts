@@ -7,7 +7,7 @@ import { Errors } from '../errors';
 import { validateHmac } from '../hmac';
 import { isClientError, isNotFoundError, withRetry } from '../http';
 import type { Logger } from '../log';
-import { WebFormPrefillError } from '../prefill';
+import { WebFormPrefillError } from './prefill';
 import type { ESignProvider } from '../provider';
 import type {
   EnvelopeResult,

@@ -71,31 +71,45 @@ export type { Tracing, SpanLike, SpanAttributes } from './tracing';
 
 // --- Wire layer pieces that need no framework --------------------------------
 export {
+  createHostedFormInstanceHandler,
   createWebFormInstanceHandler,
   createWebhookHandler,
   mintWebFormInstanceHttp,
   processWebhookHttp,
 } from './handlers';
 export type {
+  HostedFormHandlerOptions,
+  HostedFormInstanceHandlerOptions,
   HttpResult,
+  MintFn,
   MintHttpInput,
   MintTarget,
+  ParsedPrefill,
+  PrefillParser,
   WebFormInstanceHandlerOptions,
   WebhookHandlerOptions,
   WebhookHttpInput,
 } from './handlers';
+export { mintFromDocuSign } from './docusign/handlers';
+export type { DocuSignMintTarget } from './docusign/handlers';
 export { createESignGraphQL, typeDefs } from './graphql';
 export type { ESignGraphQLOptions, GraphQLContext } from './graphql';
+export { renderMockFormPage, renderMockSigningPage } from './pages';
+export type { MockFormButton, MockFormField, MockFormPage } from './pages';
+export { CLIENT_EVENTS, POST_SIGNING_EVENT_SCRIPT } from './bridge/script';
+export type { ClientEvent } from './bridge/script';
+// DocuSign's pages, also on the ./docusign entry
 export {
-  CLIENT_EVENTS,
-  LOCKED_FIELDS_HINT,
   mapDocuSignReturnEvent,
-  mockWebFormFields,
-  renderMockSigningPage,
-  renderMockWebFormPage,
   renderSigningReturnBridge,
-} from './pages';
-export type { ClientEvent, MockWebFormField } from './pages';
+} from './docusign/bridge';
+export {
+  LOCKED_FIELDS_HINT,
+  POST_SESSION_END_SCRIPT,
+  mockWebFormFields,
+  renderMockWebFormPage,
+} from './docusign/mockWebFormPage';
+export type { MockWebFormField } from './docusign/mockWebFormPage';
 export { escapeHtml, jsonForScript, sanitizeId } from './html';
 export {
   signingPageCsp,
@@ -145,8 +159,8 @@ export {
   formatPrefillValue,
   WebFormPrefillError,
   MAX_PREFILL_FIELDS,
-} from './prefill';
-export type { ParsedWebFormPrefill } from './prefill';
+} from './docusign/prefill';
+export type { ParsedWebFormPrefill } from './docusign/prefill';
 
 export {
   HttpError,

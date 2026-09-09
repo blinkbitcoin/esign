@@ -163,7 +163,12 @@ export const POST = createWebFormInstanceHandler({
 ```
 
 `createWebhookHandler({ provider, envelopes, clientIp? })` is the webhook
-counterpart. Both answer the same status codes as the Express router
+counterpart. The mint handler's target is a `{ provider }`, a `{ mint }`
+function (`hostedFormMint(provider)`, `mintFromDocuSign({ config })`, or
+your own) or, as above, DocuSign's config/client directly;
+`createHostedFormInstanceHandler` is the provider-neutral spelling and takes
+a `parsePrefill` for a provider with another prefill contract (the default
+stays DocuSign's, so the `400` reasons do not change). Both answer the same status codes as the Express router
 (`401`, `400` with the reason, `502` / `500`), because both call the same
 `mintWebFormInstanceHttp` / `processWebhookHttp` decision functions. Runs
 on Node runtimes (needs `node:crypto`); not on edge runtimes.
@@ -197,7 +202,7 @@ optional peer - only this subpath imports it.
 import { createESignRouter } from '@blinkbitcoin/esign-server/express';
 import { createESignGraphQL } from '@blinkbitcoin/esign-server';
 
-app.use(createESignRouter({
+app.use(createESignRouter({ // mounts DocuSign's pages via mountDocuSignPages (also exported here)
   envelopes, provider,
   authenticate: req => yourAuth(req.headers.authorization), // user id or null
   mockPages: provider === mock ? { getWebFormPrefill: mock.getWebFormPrefill } : undefined,

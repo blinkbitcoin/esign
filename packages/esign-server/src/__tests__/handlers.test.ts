@@ -5,6 +5,7 @@
 import { createDocuSignClient } from '../docusign/client';
 import { createEnvelopeService } from '../envelopes';
 import {
+  createHostedFormInstanceHandler,
   createWebFormInstanceHandler,
   createWebhookHandler,
   mintWebFormInstanceHttp,
@@ -156,6 +157,58 @@ describe('createWebFormInstanceHandler', () => {
       'Web Forms instance creation failed:',
       'PROVIDER_UNAVAILABLE',
     );
+  });
+});
+
+describe('createHostedFormInstanceHandler', () => {
+  it('mints through a mint function, with the prefill validation the host injects', async () => {
+    const mint = jest.fn().mockResolvedValue({ url: 'https://h/1' });
+    const parsePrefill = jest.fn((input: unknown) =>
+      input && typeof input === 'object' && 'ok' in input
+        ? { ok: true as const, prefill: input as Record<string, unknown> }
+        : { ok: false as const, error: 'nope' },
+    );
+    const handler = createHostedFormInstanceHandler({
+      mint,
+      parsePrefill,
+      authenticate: () => 'u',
+    });
+    // A value DocuSign's contract would refuse passes the host's parser
+    const accepted = await handler(
+      post('https://x/mint', JSON.stringify({ prefill: { ok: true } })),
+    );
+    expect(accepted.status).toBe(200);
+    expect(mint).toHaveBeenCalledWith('u', { ok: true });
+    const refused = await handler(
+      post('https://x/mint', JSON.stringify({ prefill: { units: 1 } })),
+    );
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({ error: 'Invalid prefill: nope' });
+  });
+
+  it('answers 400 for a mint target without a mint (a provider without the capability)', async () => {
+    const handler = createHostedFormInstanceHandler({
+      mint: undefined,
+      authenticate: () => 'u',
+    });
+    expect((await handler(post('https://x/mint'))).status).toBe(400);
+  });
+
+  it('keeps DocuSign prefill validation by default, also through createWebFormInstanceHandler with a mint', async () => {
+    const mint = jest.fn().mockResolvedValue({ url: 'https://h/1' });
+    for (const handler of [
+      createHostedFormInstanceHandler({ mint, authenticate: () => 'u' }),
+      createWebFormInstanceHandler({ mint, authenticate: () => 'u' }),
+    ]) {
+      const bad = await handler(
+        post('https://x/mint', JSON.stringify({ prefill: { units: true } })),
+      );
+      expect(bad.status).toBe(400);
+      expect(await bad.json()).toEqual({
+        error: 'Invalid prefill: unsupported value for field "units"',
+      });
+    }
+    expect(mint).not.toHaveBeenCalled();
   });
 });
 

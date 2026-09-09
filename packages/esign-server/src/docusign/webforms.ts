@@ -6,7 +6,7 @@
 import { createDocuSignClient, type DocuSignClient } from './client';
 import { assertDocuSignConfig, type DocuSignConfig } from './config';
 import { withRetry, type RetryConfig } from '../http';
-import { assertWebFormPrefill } from '../prefill';
+import { assertWebFormPrefill } from './prefill';
 import type { WebFormInstanceOptions, WebFormInstanceResult } from '../types';
 
 // What createWebFormInstance needs of a client: its configuration and the

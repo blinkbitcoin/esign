@@ -34,16 +34,18 @@ esign/
 │       │   ├── provider.ts        # ESignProvider port (+ hosted-form capability: supportsHostedForms, hostedFormMint)
 │       │   ├── registry.ts        # providerFromEnv + defaultRegistry: ESIGN_PROVIDER → adapter, lazily
 │       │   ├── store.ts           # EnvelopeStore port + in-memory implementation
-│       │   ├── handlers.ts        # Fetch-API mint + webhook handlers (serverless) ⭐
-│       │   ├── signingPage.ts     # Signing-page CSP + nonce; signingPageResponse (Fetch), shared by express.ts
+│       │   ├── handlers.ts        # Fetch-API mint + webhook handlers (serverless); MintTarget = provider | mint fn ⭐
+│       │   ├── signingPage.ts     # Signing-page CSP + nonce; signingPageResponse (Fetch); signingPageExpress.ts is its Express spelling
 │       │   ├── graphql.ts         # SDL + resolvers factory (createESignGraphQL)
-│       │   ├── pages.ts           # Mock signing/Web Forms pages + return-URL bridge
-│       │   ├── bridgeScript.ts    # postMessage helpers the pages ship, run in tests ⭐
+│       │   ├── pages.ts           # Mock signing page + the neutral mock-form renderer (renderMockFormPage)
+│       │   ├── bridge/script.ts   # postMessage helper the pages ship + CLIENT_EVENTS, run in tests ⭐
 │       │   ├── html.ts            # escapeHtml / sanitizeId / jsonForScript
-│       │   ├── prefill.ts         # Web Forms prefill validation + formatting
 │       │   ├── auth.ts            # bearerToken: the Authorization header → token (the meaning stays the host's)
 │       │   ├── hmac.ts / validation.ts / audit.ts / errors.ts / log.ts / tracing.ts / http.ts
-│       │   ├── docusign/          # DocuSign adapter: auth (JWT grant), client, config, webforms, provider
+│       │   ├── prefill.ts / bridgeScript.ts  # deprecated shims over docusign/ and bridge/
+│       │   ├── docusign/          # DocuSign adapter: auth (JWT grant), client, config, webforms, provider,
+│       │   │                      #   types (prefill contract), prefill, bridge (return-URL page), mockWebFormPage,
+│       │   │                      #   handlers (mintFromDocuSign), express (mountDocuSignPages), index (barrel)
 │       │   ├── mock/              # Mock adapter (mirrors DocuSign locally)
 │       │   └── __tests__/         # Jest, 100% enforced
 │       ├── tsup.config.ts         # ESM + CJS + d.ts build (two entries)
