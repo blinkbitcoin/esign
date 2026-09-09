@@ -10,18 +10,19 @@ export interface Quote {
 }
 
 // Field API reference names are the form's (docs/integration/webforms.md).
-// Number fields take numbers (a string is rejected with VALIDATION_FAILED)
-// and at most TWO decimals: the API accepts more, but the form then marks
-// the locked field invalid and the signer is stuck (verified live
-// 2026-09-09). The fixture form types the BTC amount as Number, so it is
-// rounded here; a real form should make an 8-decimal amount a Text field.
+// The locked amounts are TEXT fields on the form, so they are sent as
+// strings, formatted here once and for all: a read-only NUMBER (or DATE)
+// field makes DocuSign refuse the form's submission (422, verified live
+// 2026-09-09),
+// and a Number field takes at most two decimals anyway - no place for a
+// BTC amount. Text also keeps the exact string the signer sees.
 export const prefillFromQuote = (quote: Quote) => {
   const totalUsd = Math.round(quote.units * quote.unitPriceUsd * 100) / 100;
   return {
-    number_of_units: quote.units,
-    total_subscription_usd: totalUsd,
-    settlement_amount_btc: Number((totalUsd / quote.btcUsdRate).toFixed(2)),
-    btc_usd_rate: quote.btcUsdRate,
+    number_of_units: String(quote.units),
+    total_subscription_usd: totalUsd.toFixed(2),
+    settlement_amount_btc: (totalUsd / quote.btcUsdRate).toFixed(8),
+    btc_usd_rate: quote.btcUsdRate.toFixed(2),
     rate_timestamp: quote.quotedAt.toISOString(),
   };
 };
