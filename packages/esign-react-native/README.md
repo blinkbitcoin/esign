@@ -44,7 +44,7 @@ import {
 } from '@blinkbitcoin/esign-react-native';
 import { ApolloProvider } from '@apollo/client/react';
 
-// Mode 1 - Proxy: backend creates an envelope and returns an embedded URL.
+// Mode 3 (README numbering) - Proxy: backend creates an envelope and returns an embedded URL.
 const client = createESignApolloClient({
   uri: 'https://your-backend.example.com/graphql',
   getAuthToken: () => readTokenFromSecureStorage(), // sync or async, optional
@@ -71,15 +71,22 @@ Other modes swap only the source (the component and callbacks are identical):
 // Mode 2 - DocuSign Web Forms (API-embedded): a thin backend mints the URL.
 const source = createWebFormsSource({
   // Your backend mints the instance (one call from @blinkbitcoin/esign-server);
-  // the app sends its own session token. Read-only fields come back locked
-  // with the prefill; numbers stay numbers.
+  // getAuthToken returns the app's own session token for THAT backend, which
+  // verifies it and uses the user as DocuSign's clientUserId. Fields marked
+  // read-only in the builder come back locked with the prefill - as Text
+  // fields fed strings (a read-only Number or Date field breaks the submit).
   mint: { url: 'https://api.example.com/webform/instance', getAuthToken },
-  prefill: { number_of_units: 1000, settlement_amount_btc: '0.01268231' },
-  allowedOrigin: 'https://apps.docusign.com',
+  prefill: { number_of_units: '1000', settlement_amount_btc: '0.01268231' },
+  // Completion arrives through the return-URL bridge your backend serves, so
+  // on web allowedOrigin (if set) is your backend's origin, not DocuSign's.
+  // React Native does not filter by origin.
 });
-// (or bring your own client: createWebFormsSource({ createInstance: () => ... /* { url } */ }))
+// A GraphQL mutation instead: createWebFormsSource({ createInstance: async () => ({ url, envelopeId }) })
+// Recipe with both sides: docs/integration/invest-flow.md. DocuSign's signing
+// ceremony asks for the device's location; on iOS the prompt appears when the
+// app holds location access - declining does not affect signing.
 
-// Mode 3 - Public Web Form URL (no backend; prefill via query params):
+// Mode 1 - Public Web Form URL (no backend; prefill via query params, nothing locked):
 const source = createPublicUrlSource({ url, allowedOrigin: 'https://apps.docusign.com' });
 ```
 

@@ -1,6 +1,6 @@
 # DocuSign Web Forms Mode
 
-**Updated:** 2026-09-08
+**Updated:** 2026-09-09
 
 The signing component supports three modes via its `SigningSource` (see the
 package READMEs). This doc covers the **DocuSign Web Forms** mode: a prefilled,
@@ -467,8 +467,9 @@ Actionable one-pass checklist (capture points + where to fix mismatches):
   `istanbul ignore`d). The `sessionEnd` discriminator **field name** (`type` vs
   `sessionEndType` vs `returnValue`) is handled defensively - the interpreter
   scans all three.
-- **Mobile.** DocuSign.js has no React Native equivalent, so **real Web Forms is
-  web-only**; the RN Web Forms path works against the mock but has no real-DocuSign
-  embedding. Reinforces the "Web Forms is web-first" conclusion.
+- **Mobile.** DocuSign.js has no React Native equivalent, but it is not
+  needed: the instance's `returnUrl` and the backend's bridge page deliver
+  completion into a plain WebView. Verified against the real form on the iOS
+  simulator (`make e2e-ios-live`, 2026-09-09).
 - **Entitlement.** Web Forms may require a specific account plan/feature even in
   the demo environment.

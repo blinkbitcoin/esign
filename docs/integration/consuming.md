@@ -78,13 +78,10 @@ import {
 // (createWebFormInstance); the app sends its own session token.
 const source = createWebFormsSource({
   mint: { url: 'https://your-backend.example.com/webform/instance', getAuthToken },
-  prefill: { number_of_units: 1000, settlement_amount_btc: '0.01268231' },
+  prefill: { number_of_units: '1000', settlement_amount_btc: '0.01268231' }, // locked fields: strings
 });
-// Bring your own client instead: createWebFormsSource({ createInstance: () => ... /* { url } */ })
-    if (!res.ok) throw new Error(`Could not start signing (HTTP ${res.status})`);
-    return res.json(); // { url }
-  },
-});
+// Bring your own client instead (e.g. a GraphQL mutation):
+// createWebFormsSource({ createInstance: async () => ({ url, envelopeId }) })
 
 // Shape 2 - public form URL (no backend; prefill rides in the URL - avoid PII)
 // const source = createPublicUrlSource({ url: publishedFormUrlWithParams });
@@ -102,12 +99,16 @@ from the package root and additionally install `@apollo/client` + `graphql`.
 
 ## Caveats for real DocuSign Web Forms in React Native
 
-- Event delivery from a **real** DocuSign Web Form inside a plain RN WebView is
-  **unverified**: DocuSign delivers completion events via their DocuSign.js
-  SDK (web-only, no RN equivalent). What is E2E-proven is the protocol path
-  (this repo's mock emits the real `sessionEnd` vocabulary) and the
-  return-URL bridge alternative. Validate against a live form before shipping.
-  See [webforms.md](webforms.md).
+- Completion from a **real** DocuSign Web Form inside a plain RN WebView is
+  **verified** (2026-09-09, demo account, `make e2e-ios-live`): DocuSign
+  redirects the WebView to the instance's return URL, your backend's bridge
+  page posts the outcome, `onComplete` fires with the envelope id. DocuSign.js
+  (web-only) is not needed. The backend must serve that bridge route:
+  [invest-flow.md](invest-flow.md). Locked fields must be Text fields:
+  [docusign-lessons.md](docusign-lessons.md).
+- DocuSign's signing ceremony requests the device's location; on iOS the
+  system prompt shows when the app holds location access. Declining does not
+  affect signing.
 - The instance URL's token expires ~5 minutes after minting - create the
   instance when the user opens the screen, not in advance.
 

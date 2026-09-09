@@ -29,7 +29,12 @@ DocuSign populates a **read-only** Web Form field only from a
 the integration key's private key, and a locked value is only meaningful when
 minted by a party the signer does not control. So the mint runs server-side;
 everything else about Web Forms (form UI, validation, document, signing) does
-not. Details: [docs/integration/webforms.md](../../docs/integration/webforms.md).
+not. Details: [docs/integration/webforms.md](../../docs/integration/webforms.md);
+the end-to-end recipe for a GraphQL API + app, including the builder checklist
+and the return-URL bridge route every Web Forms host must serve:
+[docs/integration/invest-flow.md](../../docs/integration/invest-flow.md).
+Authentication of the caller is the host's own (this package never sees the
+session token); the `JWT_SECRET` of this repo's service is not part of it.
 
 ## Use
 
@@ -42,10 +47,10 @@ const docusign = docuSignConfigFromEnv();
 // Per request, for the authenticated user, with the values you computed
 const { url } = await createWebFormInstance({
   config: docusign,
-  userId: session.userId,                  // becomes clientUserId
+  userId: session.userId,                  // becomes clientUserId: stable per signer, <= 100 chars
   prefill: {                                // field API reference names → values
-    number_of_units: 1000,                  // read-only in the builder → shown locked
-    settlement_amount_btc: '0.01268231',    // locked amounts are Text fields (see the docs)
+    number_of_units: '1000',                // read-only in the builder → shown locked; locked fields are
+    settlement_amount_btc: '0.01268231',    //   Text fields fed strings (never read-only Number/Date)
     country: 'Sweden',                      // editable in the builder → a suggestion
   },
   returnUrl: 'https://api.example.com/signing/return', // optional; where DocuSign sends the signer after signing
