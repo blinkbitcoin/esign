@@ -71,6 +71,7 @@ Lower-level pieces, for hosts that need them:
 | `parseWebFormPrefill`, `assertWebFormPrefill`, `formatPrefillValue` | The prefill contract (string, number, string[], phone object) |
 | `withRetry`, `HttpError`, `isClientError`, `isNotFoundError` | Retry/backoff and error classification |
 | `createTokenProvider`, `createJwtAssertion` | The JWT grant on its own |
+| `bearerToken(header)` | The token of an `Authorization: Bearer …` header, or `null` (missing, another scheme, empty); what it means - a session to verify, a user id in a demo - stays the host's |
 
 ## The envelope domain (proxy mode without hosting the service)
 

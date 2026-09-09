@@ -9,6 +9,7 @@
 // example keeps nothing; a host with Postgres passes the /knex store instead.
 
 import {
+  bearerToken,
   createDocuSignProvider,
   createEnvelopeService,
   createMemoryEnvelopeStore,
@@ -28,15 +29,8 @@ export interface Handlers {
 
 // This example accepts `Authorization: Bearer <userId>` as-is; a real host
 // verifies its own session token here. The package never sees the token.
-export const authenticate = (request: Request): string | null => {
-  const header = request.headers.get('authorization');
-  if (!header?.startsWith('Bearer ')) {
-    return null;
-  }
-  // Headers strip the whitespace around values, so a token is never empty
-  // once the prefix matched
-  return header.slice('Bearer '.length).trim();
-};
+export const authenticate = (request: Request): string | null =>
+  bearerToken(request.headers.get('authorization'));
 
 export const providerFromEnv = (env: NodeJS.ProcessEnv): ESignProvider => {
   const docusign = createDocuSignProvider({
