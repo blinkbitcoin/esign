@@ -197,7 +197,7 @@ Ordered by how likely you are to need each part:
 | [`examples/full-service-demo/`](examples/full-service-demo/README.md) | Server shape for mode 3, the whole service: a GraphQL API that creates<br>envelopes through provider adapters (DocuSign and a mock),<br>persists status in PostgreSQL, and receives provider<br>webhooks. Not needed for modes 1 and 2. |
 | [`examples/react-native-demo/`](examples/react-native-demo/README.md) | A complete React Native app hosting the component. Used for<br>manual testing, and the mobile end-to-end suites drive it. |
 | [`examples/react-demo/`](examples/react-demo/README.md) | The same for the browser: a small React app hosting the web<br>component, driven by the browser end-to-end suites. |
-| `docs/` | Documentation of how everything currently works -<br>start at [docs/index.md](docs/index.md). |
+| `docs/` | Documentation of how everything currently works -<br>start at [docs/index.md](docs/index.md); upgrading notes in<br>[docs/upgrading.md](docs/upgrading.md). |
 | `scripts/` | The CI / E2E / release shell and node the Makefile and the<br>workflows run; its logic is a tested `tooling` workspace. |
 
 ## Development
