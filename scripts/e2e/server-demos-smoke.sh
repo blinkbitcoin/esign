@@ -8,6 +8,8 @@
 # HANDLER_PORT (4200).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+# shellcheck source=scripts/e2e/wait-lib.sh
+. scripts/e2e/wait-lib.sh
 LOG_DIR="${RUNNER_TEMP:-/tmp}"
 MINT_PORT="${MINT_PORT:-4100}"
 HANDLER_PORT="${HANDLER_PORT:-4200}"
@@ -26,14 +28,8 @@ start() { # <workspace> <port>
   ESIGN_PROVIDER="$PROVIDER" PORT="$2" npm run dev -w "examples/$1" > "$LOG_DIR/$1.log" 2>&1 &
   PIDS+=($!)
 }
-wait_for() { # <name> <url>
-  for _ in $(seq 1 30); do
-    if curl -fsS "$2" > /dev/null 2>&1 || curl -s -o /dev/null -w '%{http_code}' "$2" | grep -q '^[24]'; then
-      echo "$1 is up"; return 0
-    fi
-    sleep 1
-  done
-  echo "::error::$1 did not answer within 30s"; tail -30 "$LOG_DIR/$1.log" || true; exit 1
+up() { # <name> <url> - the demo answers (2xx, or 4xx from a route that exists)
+  wait_for "$1" 30 1 "$LOG_DIR/$1.log" http_answers "$2"
 }
 expect_match() { # <label> <pattern> <body>
   if printf '%s' "$3" | grep -Eq "$2"; then echo "server demos smoke: $1 ok"; else
@@ -42,8 +38,8 @@ expect_match() { # <label> <pattern> <body>
 
 start mint-only-demo "$MINT_PORT"
 start serverless-handler-demo "$HANDLER_PORT"
-wait_for mint-only-demo "http://127.0.0.1:$MINT_PORT/"
-wait_for serverless-handler-demo "http://127.0.0.1:$HANDLER_PORT/health"
+up mint-only-demo "http://127.0.0.1:$MINT_PORT/"
+up serverless-handler-demo "http://127.0.0.1:$HANDLER_PORT/health"
 
 # mint-only-demo: the mutation computes the amounts and mints onto the mock page
 BODY=$(curl -fsS "http://127.0.0.1:$MINT_PORT/" -H 'content-type: application/json' \

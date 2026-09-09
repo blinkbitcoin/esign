@@ -8,6 +8,8 @@
 #   live_service_down   stop the service and the database (trap it on EXIT)
 # Local only; the CI variant is docs/operations/live-e2e-ci.md.
 SERVICE=examples/full-service-demo
+# shellcheck source=scripts/e2e/wait-lib.sh
+. scripts/e2e/wait-lib.sh
 
 live_env() {
   # Two ways in: a local .env (make docusign-env), or the DocuSign values in
@@ -63,11 +65,7 @@ live_service_up() { # [extra env for the service, e.g. CORS_ALLOWED_ORIGINS=...]
   fi
   ( cd "$SERVICE" && env "$@" PORT="$LIVE_PORT" DOCUSIGN_RETURN_URL="http://localhost:$LIVE_PORT/signing/return" npm run dev > "$LOG" 2>&1 ) &
   SERVICE_PID=$!
-  for _ in $(seq 1 30); do
-    curl -fsS "http://127.0.0.1:$LIVE_PORT/health" > /dev/null 2>&1 && break
-    sleep 1
-  done
-  curl -fsS "http://127.0.0.1:$LIVE_PORT/health" > /dev/null || { echo "::error::service did not start"; tail -30 "$LOG"; exit 1; }
+  wait_for "service" 30 1 "$LOG" http_ok "http://127.0.0.1:$LIVE_PORT/health"
 }
 
 # npm wraps tsx wraps node: stop the process that actually listens, then the wrapper
