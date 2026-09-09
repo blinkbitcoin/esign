@@ -5,13 +5,14 @@ flowchart TB
     end
 
     subgraph Core["esign-core (shared)"]
+        MACHINE[signing machine<br/>transition / effects]
         SRC{SigningSource}
         PROXY[createProxySigningSource<br/>Apollo - proxy mode only]
         WF[createWebFormsSource]
         PUB[createPublicUrlSource]
     end
 
-    subgraph Backend["Backend (examples/full-service-demo) - proxy + Web Forms modes"]
+    subgraph Backend["Backend on esign-server: full-service-demo (all modes) - or your own API with one mutation (mint-only) / route handlers (serverless)"]
         GQL[/"GraphQL /graphql"/]
         WFI[/"POST /webform/instance"/]
         WH[/"POST /webhook/esign"/]
@@ -27,11 +28,13 @@ flowchart TB
         DB[(PostgreSQL)]
     end
 
+    RN --> MACHINE
+    WEB --> MACHINE
     RN --> SRC
     WEB --> SRC
     SRC --> PROXY & WF & PUB
     PROXY -->|GraphQL| GQL
-    WF -->|one REST call| WFI
+    WF -->|one mint call| WFI
     GQL --> PROV
     WFI --> PROV
     PROV --> DS & MOCK
@@ -40,4 +43,5 @@ flowchart TB
     GQL --> KNEX
     WH --> KNEX
     KNEX --> DB
-    RN -.->|embedded signing| SP
+    RN -.->|embedded signing + bridge| SP
+    WEB -.->|embedded signing + bridge| SP
