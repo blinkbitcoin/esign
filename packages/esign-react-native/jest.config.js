@@ -19,6 +19,7 @@ module.exports = {
     'src/generated/',
     // Type-only file - no executable code to cover
     'src/types\\.ts$',
+    'src/webform\\.ts$',
     // Pure re-export barrel - no executable logic (istanbul reports 0/0)
     'src/index\\.ts$',
   ],

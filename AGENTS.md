@@ -48,6 +48,7 @@ one-line description. The ones you will reach for:
 | `make codegen` | Regenerate `schema.graphql` + client types after editing the SDL in `packages/esign-server/src/graphql.ts` |
 | `make diagrams` | Re-render `docs/diagrams/dist/*.svg` from `src/*.mmd` (CI fails on drift) |
 | `make docs-check` | Warn when architecture-relevant changes ship without a `docs/` update;<br>fail on a README table cell line wider than 72 characters (break with `<br>`) |
+| `make coverage` | 100% enforced everywhere; also fails on a coverage row with nothing to<br>cover (re-export / type-only modules go in the workspace's exclude list) |
 | `make db-up migrate backend` | Dev Postgres, migrations, backend dev server |
 | `make e2e-backend` / `make e2e-web` | Backend E2E against real Postgres / Playwright browser E2E |
 | `make start` / `make ios` / `make android` / `make web` | Demo apps |

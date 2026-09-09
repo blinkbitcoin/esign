@@ -33,7 +33,16 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       // index.ts is the server bootstrap (binds a real port, never imported
       // by tests) and is not meaningfully unit-testable.
-      exclude: ['src/generated/**', 'src/index.ts'],
+      // ... plus the re-export / type-only modules (nothing to cover):
+      // errors, typeDefs, types and providers/port re-export the package
+      exclude: [
+        'src/generated/**',
+        'src/index.ts',
+        'src/errors.ts',
+        'src/typeDefs.ts',
+        'src/types.ts',
+        'src/providers/port.ts',
+      ],
       // json-summary feeds scripts/coverage-badge.mjs (README badge + HTML report)
       reporter: ['text', 'json-summary', 'html'],
       thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },
