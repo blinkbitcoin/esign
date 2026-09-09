@@ -35,6 +35,8 @@ Adding a provider = implementing `SigningSource` (`start()` + `interpret()`);
 the platform components never change. `start()` / `restart()` reject with a
 `SigningSourceError` (a real `Error` carrying a `code`; `toSigningSourceError`
 normalizes any rejection into one, `isSigningSourceError` narrows).
+`withTimeout(run, ms, onTimeout)` is the watchdog `createWebFormsSource` puts
+around its mint call, for a custom source with the same need.
 
 ## Development (in this monorepo)
 

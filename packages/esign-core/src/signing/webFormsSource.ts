@@ -7,6 +7,7 @@
 import { SigningSourceError, toSigningSourceError } from './errors';
 import { interpretDocuSignEvent } from './events';
 import { createWebFormsMinter } from './mint';
+import { withTimeout } from './withTimeout';
 
 import type { MintWebFormsInstanceOptions, WebFormPrefill } from './mint';
 import type { SigningSession, SigningSource } from './types';
@@ -65,21 +66,16 @@ export const createWebFormsSource = (
   return {
     async start(): Promise<SigningSession> {
       const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-      let timer: ReturnType<typeof setTimeout> | undefined;
       try {
-        const instance = await Promise.race([
-          createInstance(),
-          new Promise<never>((_, reject) => {
-            timer = setTimeout(() => {
-              reject(
-                new SigningSourceError(
-                  'NETWORK_ERROR',
-                  `Timed out creating the signing instance after ${timeoutMs}ms`,
-                ),
-              );
-            }, timeoutMs);
-          }),
-        ]);
+        const instance = await withTimeout(
+          createInstance,
+          timeoutMs,
+          () =>
+            new SigningSourceError(
+              'NETWORK_ERROR',
+              `Timed out creating the signing instance after ${timeoutMs}ms`,
+            ),
+        );
         return {
           url: instance.url,
           envelopeId: instance.envelopeId,
@@ -89,8 +85,6 @@ export const createWebFormsSource = (
         // The watchdog's NETWORK_ERROR passes through; a failed mint is
         // ENVELOPE_CREATION_FAILED with the reason
         throw toSigningSourceError(error, 'ENVELOPE_CREATION_FAILED');
-      } finally {
-        clearTimeout(timer);
       }
     },
 

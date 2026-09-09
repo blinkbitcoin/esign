@@ -42,6 +42,7 @@ export {
   isSigningSourceError,
   toSigningSourceError,
 } from './signing/errors';
+export { withTimeout } from './signing/withTimeout';
 export type {
   SigningSource,
   RestartableSigningSource,
