@@ -26,10 +26,13 @@ wait_for() {
   return 1
 }
 
+# Each probe is bounded: a server that accepts the connection but answers
+# slowly (tsx compiling on a starved runner) must not stretch the wait past
+# retries × sleep
 http_ok() { # <url>
-  curl -fsS "$1" > /dev/null
+  curl -fsS --max-time 5 "$1" > /dev/null
 }
 
 http_answers() { # <url>
-  http_ok "$1" || curl -s -o /dev/null -w '%{http_code}' "$1" | grep -q '^[24]'
+  http_ok "$1" || curl -s --max-time 5 -o /dev/null -w '%{http_code}' "$1" | grep -q '^[24]'
 }
