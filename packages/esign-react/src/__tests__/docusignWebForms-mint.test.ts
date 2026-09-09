@@ -1,9 +1,8 @@
 // The DocuSign.js source with the `mint` option: same endpoint contract as
 // createWebFormsSource, then the SDK mounts the minted URL.
 
-import { createDocuSignWebFormsSource } from '../docusignWebForms';
-
 import type { DocuSignSdk } from '../docusignWebForms';
+import { createDocuSignWebFormsSource } from '../docusignWebForms';
 
 const reply = (status: number, json: unknown) =>
   ({ ok: status < 300, status, json: async () => json }) as Response;

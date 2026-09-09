@@ -9,18 +9,17 @@
 // real loader is the only unverified surface (marked below) - confirm the exact
 // DocuSign.js API (loadDocuSign / signing() / on / mount) against a live account.
 
+import type {
+  MountableSigningSource as CoreMountableSigningSource,
+  MintWebFormsInstanceOptions,
+  SigningSession,
+  WebFormPrefill,
+  WebFormsInstance,
+} from '@blinkbitcoin/esign-core';
 import {
   interpretDocuSignEvent,
   resolveCreateInstance,
   toSigningSourceError,
-} from '@blinkbitcoin/esign-core';
-
-import type {
-  MintWebFormsInstanceOptions,
-  MountableSigningSource as CoreMountableSigningSource,
-  SigningSession,
-  WebFormPrefill,
-  WebFormsInstance,
 } from '@blinkbitcoin/esign-core';
 
 // Minimal shape of the DocuSign.js SDK we rely on.
