@@ -66,7 +66,7 @@ Lower-level pieces, for hosts that need them:
 
 | Export | What |
 |---|---|
-| `createDocuSignClient(config, { fetch? })` | The client: `createEnvelopeFromTemplate`, `getEmbeddedSigningUrl`, `fetchEnvelopeStatus`, `createWebFormInstanceRequest`, `getAccessToken`, `clearTokenCache` |
+| `createDocuSignClient(config, { fetch? })`, `WebFormsClient` | The client: `createEnvelopeFromTemplate`, `getEmbeddedSigningUrl`, `fetchEnvelopeStatus`, `createWebFormInstanceRequest`, `getAccessToken`, `clearTokenCache`; `createWebFormInstance({ client })` needs only `WebFormsClient` (`config` + `createWebFormInstanceRequest`), so a host's own client fits |
 | `docuSignConfigFromEnv(env?)`, `DOCUSIGN_ENV`, `assertDocuSignConfig` | Configuration and its `DOCUSIGN_*` mapping (demo-environment URLs by default) |
 | `parseWebFormPrefill`, `assertWebFormPrefill`, `formatPrefillValue` | The prefill contract (string, number, string[], phone object) |
 | `withRetry`, `HttpError`, `isClientError`, `isNotFoundError` | Retry/backoff and error classification |
