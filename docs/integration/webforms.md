@@ -465,8 +465,13 @@ Actionable one-pass checklist (capture points + where to fix mismatches):
   → `.mount()`) and its wiring is unit-tested with a fake SDK, but the precise
   method signatures are marked to confirm against a live account (the loader is
   `istanbul ignore`d). The `sessionEnd` discriminator **field name** (`type` vs
-  `sessionEndType` vs `returnValue`) is handled defensively - the interpreter
-  scans all three.
+  `sessionEndType` vs `returnValue`, `event` or `status`) is handled
+  defensively - inside a `sessionEnd` envelope the interpreter reads all five.
+  Outside it, only a DocuSign vocabulary word (`signingResult`,
+  `signing_complete`, `ttl_expired`, ...) in `type` / `returnValue` / `event`
+  counts - the bridge's `{ event }` included - so an unrelated
+  `{ status: 'error' }` or `{ type: 'error' }` from another embed or an
+  extension cannot end the signing flow.
 - **Mobile.** DocuSign.js has no React Native equivalent, but it is not
   needed: the instance's `returnUrl` and the backend's bridge page deliver
   completion into a plain WebView. Verified against the real form on the iOS
