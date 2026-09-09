@@ -14,6 +14,7 @@ export {
   toSigningSourceError,
 } from './errors';
 export { withTimeout } from './withTimeout';
+export { isAllowedOrigin } from './origin';
 
 export { interpretProxyEvent, interpretDocuSignEvent } from './events';
 export { getErrorMessage } from './messages';

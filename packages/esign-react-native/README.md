@@ -178,6 +178,11 @@ Component behaviors worth knowing:
   envelope).
 - **Offline**: connectivity is checked (NetInfo) before any API call;
   offline is a state with a "Check Connection" action, not an error.
+- **`allowedOrigin` is web-only**: a WebView `postMessage` carries no
+  origin, so the source's `allowedOrigin` is never consulted here (the web
+  package applies it via core's `isAllowedOrigin`). Setting it is harmless
+  and keeps one source config for both platforms; rely on the WebView
+  loading only your signing URL instead.
 - **testIDs**: every state exposes stable testIDs
   (`sign-document-button`, `loading-indicator`, `signing-webview`,
   `success-screen`, `error-message`, …) for E2E tooling.
