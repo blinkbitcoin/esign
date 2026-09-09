@@ -15,7 +15,8 @@ as their dependency. Install directly only to build a custom integration.
 | Import | Contents | Needs Apollo? |
 |--------|----------|---------------|
 | `@blinkbitcoin/esign-core` | Everything: all three sources, Apollo factory, GraphQL operations,<br>`ErrorCode` contract | Yes (`@apollo/client` + `graphql` peers) |
-| `@blinkbitcoin/esign-core/webform` | Web Forms only: `createWebFormsSource`, `createPublicUrlSource`, the<br>neutral `createHostedFormSource` layer, interpreters, `getErrorMessage`,<br>`SigningSourceError`, types | **No — Apollo-free by construction** (guard-tested) |
+| `@blinkbitcoin/esign-core/docusign` | The DocuSign provider: `createWebFormsSource`, `createPublicUrlSource`,<br>`interpretDocuSignEvent`, the prefill contract - plus the neutral signing<br>layer (`createHostedFormSource`, the state machine, `getErrorMessage`,<br>`SigningSourceError`, types) | **No — Apollo-free by construction** (guard-tested) |
+| `@blinkbitcoin/esign-core/webform` | Alias of `/docusign` (the same surface), kept for existing imports:<br>`createWebFormsSource`, `createPublicUrlSource`, the neutral<br>`createHostedFormSource` layer, interpreters, `getErrorMessage`,<br>`SigningSourceError`, types | **No — Apollo-free by construction** (guard-tested) |
 
 `@apollo/client` and `graphql` are **optional** peer dependencies — required
 only when the full entry (proxy mode) is used.

@@ -1,6 +1,8 @@
 module.exports = {
   testEnvironment: 'jsdom',
   moduleNameMapper: {
+    '^@blinkbitcoin/esign-core/docusign$':
+      '<rootDir>/../esign-core/src/docusign.ts',
     '^@blinkbitcoin/esign-core$': '<rootDir>/../esign-core/src/index.ts',
   },
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Packs the four packages and installs them into a clean project, then
-# asserts the consumer contract: the /webform entries resolve and never load
-# Apollo, and the server package loads on plain Node. Run from the repo root after `npm run build` (CI: E2E / Build Packages).
+# asserts the consumer contract: the /docusign + /webform entries resolve and
+# never load Apollo, and the server package loads on plain Node. Run from the repo root after `npm run build` (CI: E2E / Build Packages).
 set -euo pipefail
 SMOKE="$(mktemp -d)"
 trap 'rm -rf "$SMOKE"' EXIT
@@ -23,6 +23,12 @@ const assert = require('node:assert');
 const webform = require('@blinkbitcoin/esign-core/webform');
 assert.equal(typeof webform.createWebFormsSource, 'function');
 assert.equal(typeof webform.createPublicUrlSource, 'function');
+assert.equal(typeof webform.createHostedFormSource, 'function');
+// /docusign is the canonical DocuSign entry; /webform its alias
+const docusign = require('@blinkbitcoin/esign-core/docusign');
+assert.equal(typeof docusign.createWebFormsSource, 'function');
+assert.equal(typeof docusign.interpretDocuSignEvent, 'function');
+assert.equal(typeof docusign.createHostedFormSource, 'function');
 let apolloLoaded = false;
 try { require.resolve('@apollo/client'); apolloLoaded = true; } catch {}
 assert.equal(apolloLoaded, false, '@apollo/client must NOT be installed for webform-only use');
@@ -32,7 +38,7 @@ assert.equal(apolloLoaded, false, '@apollo/client must NOT be installed for webf
 let fullLoaded = false;
 try { require('@blinkbitcoin/esign-core'); fullLoaded = true; } catch {}
 assert.equal(fullLoaded, false, 'full entry must require the Apollo peers');
-console.log('pack smoke: /webform resolves Apollo-free; full entry correctly needs Apollo');
+console.log('pack smoke: /docusign + /webform resolve Apollo-free; full entry correctly needs Apollo');
 // The server package: CJS entry loads on plain Node with no peers at all
 const server = require('@blinkbitcoin/esign-server');
 assert.equal(typeof server.createWebFormInstance, 'function');
@@ -62,8 +68,9 @@ console.log('pack smoke: esign-server/knex loads without knex (host-provided ins
 NODE
 NODE_OPTIONS="" node --input-type=module -e "
 import { createWebFormsSource } from '@blinkbitcoin/esign-core/webform';
-if (typeof createWebFormsSource !== 'function') process.exit(1);
-console.log('pack smoke: ESM import of /webform works');
+import { createWebFormsSource as fromDocuSign } from '@blinkbitcoin/esign-core/docusign';
+if (typeof createWebFormsSource !== 'function' || typeof fromDocuSign !== 'function') process.exit(1);
+console.log('pack smoke: ESM import of /webform + /docusign works');
 "
 NODE_OPTIONS="" node --input-type=module -e "
 import { createWebFormInstance } from '@blinkbitcoin/esign-server';

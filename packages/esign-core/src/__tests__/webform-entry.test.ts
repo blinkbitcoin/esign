@@ -1,7 +1,7 @@
 // Guards on the source layout:
 //
-// 1. The ./webform entry must stay Apollo-free. Walks the static import graph
-//    from src/webform.ts (following relative imports and
+// 1. The ./docusign and ./webform entries must stay Apollo-free. Walks the
+//    static import graph from each entry (following relative imports and
 //    @blinkbitcoin/esign-core/* self-references) and asserts no reached file
 //    imports '@apollo/' or 'graphql' - the guarantee that a Web Forms-only
 //    consumer never needs those packages installed.
@@ -102,23 +102,26 @@ export const collectImportGraph = (
   return { files: [...seen], externals: [...externals] };
 };
 
-describe('webform entry (Apollo-free guarantee)', () => {
-  it('never reaches a file that imports @apollo/* or graphql', () => {
-    const { files, externals } = collectImportGraph(
-      path.join(SRC, 'webform.ts'),
-      '@blinkbitcoin/esign-core',
-      SRC,
-    );
+describe('the Apollo-free entries (webform, docusign)', () => {
+  it.each(['webform.ts', 'docusign.ts'])(
+    '%s never reaches a file that imports @apollo/* or graphql',
+    entry => {
+      const { files, externals } = collectImportGraph(
+        path.join(SRC, entry),
+        '@blinkbitcoin/esign-core',
+        SRC,
+      );
 
-    expect(files.length).toBeGreaterThan(3); // sanity: the walk followed the graph
-    const offenders = externals.filter(
-      spec =>
-        spec.startsWith('@apollo/') ||
-        spec === 'graphql' ||
-        spec.startsWith('graphql/'),
-    );
-    expect(offenders).toEqual([]);
-  });
+      expect(files.length).toBeGreaterThan(3); // sanity: the walk followed the graph
+      const offenders = externals.filter(
+        spec =>
+          spec.startsWith('@apollo/') ||
+          spec === 'graphql' ||
+          spec.startsWith('graphql/'),
+      );
+      expect(offenders).toEqual([]);
+    },
+  );
 
   it('the full index DOES reach Apollo (sanity check that the walker works)', () => {
     const { externals } = collectImportGraph(

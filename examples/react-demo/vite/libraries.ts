@@ -7,6 +7,7 @@ import fs from 'node:fs';
 // from `npm run build` at the repo root (`make e2e-web*` runs it).
 export const sourceAliases = (packagesDir: string) => ({
   '@blinkbitcoin/esign-react': `${packagesDir}/esign-react/src/index.ts`,
+  '@blinkbitcoin/esign-core/docusign': `${packagesDir}/esign-core/src/docusign.ts`,
   '@blinkbitcoin/esign-core/webform': `${packagesDir}/esign-core/src/webform.ts`,
   '@blinkbitcoin/esign-core': `${packagesDir}/esign-core/src/index.ts`,
 });

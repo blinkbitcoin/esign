@@ -5,6 +5,8 @@ module.exports = {
     'node_modules/(?!(@react-native|react-native|@apollo/client|graphql|react-native-webview)/)',
   ],
   moduleNameMapper: {
+    '^@blinkbitcoin/esign-core/docusign$':
+      '<rootDir>/../../packages/esign-core/src/docusign.ts',
     '^@blinkbitcoin/esign-core/webform$':
       '<rootDir>/../../packages/esign-core/src/webform.ts',
     '^@blinkbitcoin/esign-react-native/webform$':

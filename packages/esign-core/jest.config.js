@@ -7,6 +7,7 @@ module.exports = {
     'src/types\\.ts$',
     'src/index\\.ts$',
     'src/webform\\.ts$',
+    'src/docusign\\.ts$',
   ],
   // json-summary feeds scripts/coverage-badge.mjs (README badge + HTML report)
   coverageReporters: ['text', 'lcov', 'json-summary'],

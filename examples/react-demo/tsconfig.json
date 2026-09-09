@@ -17,6 +17,9 @@
       "@blinkbitcoin/esign-core": ["../../packages/esign-core/src/index.ts"],
       "@blinkbitcoin/esign-core/webform": [
         "../../packages/esign-core/src/webform.ts"
+      ],
+      "@blinkbitcoin/esign-core/docusign": [
+        "../../packages/esign-core/src/docusign.ts"
       ]
     }
   },

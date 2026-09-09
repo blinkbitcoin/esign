@@ -58,7 +58,8 @@ restart:
 ```
 packages/esign-core/src/       # platform-agnostic (shared with web)
 ├── index.ts             # Full entry (all sources + Apollo factory)
-├── webform.ts           # Apollo-free entry (./webform subpath)
+├── docusign.ts          # The DocuSign entry, Apollo-free (./docusign subpath)
+├── webform.ts           # Alias of ./docusign (./webform subpath)
 ├── signing/             # SigningSource + machine + bridge.ts + hostedForm/ - provider-neutral (guard-tested)
 ├── providers/docusign/  # DocuSign: interpreter, prefill contract, Web Forms sources
 ├── client.ts            # createESignApolloClient factory + ErrorCodes
