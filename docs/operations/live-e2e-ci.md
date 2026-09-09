@@ -59,12 +59,13 @@ see.
 - A green job means: the credentials work, the grant carries the right
   scopes, the form is active, a locked-prefill instance can be minted, in
   a real browser every minted value is displayed and every locked field
-  refuses input, the real form renders inside the web component, and in
-  the real form is submitted with its locked terms, signed inside the
-  component and completed through the return-URL bridge, and in proxy
-  mode a real envelope is created, signed and completed the same way. The
-  job starts the E2E Postgres (Docker) for the envelopes, like the Backend
-  job does.
+  refuses input, the real form renders inside the web component, is
+  submitted with its locked terms, signed inside the component and
+  completed through the return-URL bridge, and in proxy mode a real
+  envelope is created, signed and completed the same way. The job starts
+  the E2E Postgres (Docker) for the envelopes, like the Backend job does.
+  The React Native counterpart (`make e2e-ios-live`) is local only: it
+  needs a booted simulator with the demo installed.
 - The form screenshot is uploaded as the `live-docusign-webform` artifact.
   The service log is not uploaded: minted URLs carry a five-minute instance
   token.

@@ -171,11 +171,17 @@ Three tiers, by what they touch:
 2. **Live API verification is env-gated:** `make test-live` runs real JWT
    auth + envelope creation + Web Forms instance minting against a DocuSign
    demo account when `DOCUSIGN_*` is set in `examples/full-service-demo/.env`, and skips
-   itself entirely when not. Safe to run anytime; never part of CI.
-3. **Live UI verification is manual:** run the demos with
-   `ESIGN_PROVIDER=docusign` and follow the smoke-test checklist in
+   itself entirely when not. Safe to run anytime; in CI only as the opt-in
+   `Live DocuSign` job ([operations/live-e2e-ci.md](operations/live-e2e-ci.md)).
+3. **Live UI verification is automated too, locally:** `make e2e-live`
+   drives the real Web Form (locked terms, submission, signature, bridge)
+   and a proxy-mode signature inside the web component in a real browser;
+   `make e2e-ios-live` repeats the Web Form journey in the React Native
+   demo's WebView on a booted simulator. Findings and rules:
+   [integration/docusign-lessons.md](integration/docusign-lessons.md).
+   The manual smoke-test checklist in
    [integration/docusign-proxy.md](integration/docusign-proxy.md) (section
-   5) - `make test-live` logs ready-made signing URLs to hand off to it.
+   5) remains for anything the flows do not cover.
 
 ### Mobile Unit Tests
 
