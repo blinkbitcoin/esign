@@ -17,6 +17,25 @@ export {
 export { withTimeout } from './withTimeout';
 export { isAllowedOrigin } from './origin';
 
+export {
+  acquireSession,
+  initialSigningState,
+  resolveRestart,
+  transition,
+} from './machine';
+export type {
+  ESignatureError,
+  ESignatureResult,
+  ESignatureStatus,
+  SigningAction,
+  SigningCallbacks,
+  SigningEffect,
+  SigningMachineState,
+  SigningStateSeed,
+} from './machine';
+export { resolveLabelsWith } from './labels';
+export type { ESignatureLabels, LabelDefaults } from './labels';
+
 export { interpretProxyEvent, interpretDocuSignEvent } from './events';
 export { getErrorMessage } from './messages';
 

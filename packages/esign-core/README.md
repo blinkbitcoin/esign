@@ -45,6 +45,19 @@ around its mint call, for a custom source with the same need.
 hook applies (`SigningSession.allowedOrigin`); a React Native WebView message
 carries no origin, so the pin is a web-only defence.
 
+The signing **state machine** itself lives here too, once for both
+platforms: `initialSigningState(seed)`, `transition(state, action)` →
+`{ state, effects }` (the status/error/url/session transitions for every
+page event, acquisition outcome, offline/online, retry and restart, plus
+the host-callback effects to run), `acquireSession(acquire)` (a start or
+restart as the action it ends in, never throwing) and
+`resolveRestart(source, session)`. The platform hooks keep only what
+differs: the connectivity probe, how page messages arrive, and how the
+session is embedded. The shared UI contracts sit next to it
+(`ESignatureStatus`, `ESignatureError`, `ESignatureResult`,
+`SigningCallbacks`, `UseESignatureOptions`, `ESignatureTheme`,
+`ESignatureLabels`, `resolveLabelsWith`).
+
 ## Development (in this monorepo)
 
 ```sh

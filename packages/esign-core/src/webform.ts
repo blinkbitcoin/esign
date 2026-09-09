@@ -10,7 +10,11 @@
 //   - createWebFormsSource: API-embedded (a backend mints the instance URL)
 //   - createPublicUrlSource: a published public form URL (no backend)
 
-export type { RecipientData } from './types';
+export type {
+  RecipientData,
+  ESignatureTheme,
+  UseESignatureOptions,
+} from './types';
 
 export {
   createWebFormsSource,
@@ -44,6 +48,24 @@ export {
 } from './signing/errors';
 export { withTimeout } from './signing/withTimeout';
 export { isAllowedOrigin } from './signing/origin';
+export {
+  acquireSession,
+  initialSigningState,
+  resolveRestart,
+  transition,
+} from './signing/machine';
+export type {
+  ESignatureError,
+  ESignatureResult,
+  ESignatureStatus,
+  SigningAction,
+  SigningCallbacks,
+  SigningEffect,
+  SigningMachineState,
+  SigningStateSeed,
+} from './signing/machine';
+export { resolveLabelsWith } from './signing/labels';
+export type { ESignatureLabels, LabelDefaults } from './signing/labels';
 export type {
   SigningSource,
   RestartableSigningSource,
