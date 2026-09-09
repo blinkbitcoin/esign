@@ -30,6 +30,8 @@ tags:
       - extendedWaitUntil:
           visible: "Mock Web Form"
           timeout: 15000
+      # The prefill minted with the instance is shown locked (read-only)
+      - assertVisible: "Locked fields were set by the sender and cannot be edited."
 
       # Complete signing (posts the real DocuSign 'signingComplete' event)
       - tapOn: "Complete Signing"

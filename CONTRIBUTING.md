@@ -4,7 +4,7 @@
 
 ```sh
 make install                             # npm ci (also installs git hooks via lefthook)
-direnv allow . && direnv allow apps/api  # once per machine: env + nix dev shell (Node 24)
+direnv allow . && direnv allow examples/full-service-demo  # once per machine: env + nix dev shell (Node 24)
 ```
 
 Working on the libraries needs nothing else. Running the demo apps needs the
@@ -15,7 +15,7 @@ environment variables, and troubleshooting:
 ## Quality gates
 
 - `make test` — unit suites + lint + typecheck + format check. Coverage is
-  **100% enforced** on the packages, the backend, and both demo apps.
+  **100% enforced** on the packages and the three server examples; floors on the client demos.
   The README coverage badge is measured, not hardcoded: every CI run
   aggregates the packages + backend line coverage and publishes it to
   `gh-pages/badges/<branch>/`; the README embeds the `main` one. A red
@@ -30,8 +30,9 @@ environment variables, and troubleshooting:
 - CI (`ci.yml`) is one pipeline for every branch: static checks, unit
   suites with coverage thresholds, then one build of the packages next to
   all end-to-end suites (backend, browser - over that build - iOS
-  simulator, Android emulator), and on `main` the publish of those exact
-  tarballs + registry smoke. A second workflow re-checks the commit
+  simulator, Android emulator) and a build + smoke of the service image, and
+  on `main` the publish of those exact tarballs and image (GitHub Packages,
+  GHCR) + registry smoke of both. A second workflow re-checks the commit
   convention on the PR's commits and title.
 
 ## Commit messages
@@ -66,10 +67,10 @@ area names (`commitlint.config.mjs` is the source of truth):
 | Scope | Covers |
 |-------|--------|
 | `core` | `packages/esign-core` |
+| `server` | `packages/esign-server` |
 | `rn` | `packages/esign-react-native` |
 | `react` | `packages/esign-react` |
-| `api` | `apps/api` |
-| `demo` | `examples/*` |
+| `demo` | `examples/*` (the client demos and the three server examples) |
 | `e2e` | Maestro / Playwright / backend E2E suites |
 | `ci` | `.github/` |
 | `deps`, `deps-dev` | Dependency bumps (Dependabot uses these) |
@@ -102,7 +103,7 @@ CI stays the authoritative check.
 
 | Hook | What runs |
 |------|-----------|
-| `pre-commit` | Biome format (root) and Biome check (`apps/api`) on staged files, auto-fixes re-staged; ESLint on staged TS/TSX; diagram re-render when a `.mmd` source changes. Skipped during merge and rebase replays. |
+| `pre-commit` | Biome format (root) and Biome check (`examples/full-service-demo`) on staged files, auto-fixes re-staged; ESLint on staged TS/TSX; diagram re-render when a `.mmd` source changes. Skipped during merge and rebase replays. |
 | `commit-msg` | commitlint against `commitlint.config.mjs` |
 | `pre-push` | Workspace-wide typecheck |
 | `post-merge`, `post-checkout` | `npm ci` when `package-lock.json` changed, so hooks never run on a stale install |
@@ -120,7 +121,7 @@ Escape hatches, for the rare cases where they are warranted:
    the relevant doc in the same change** (docs are hand-maintained;
    `docs/index.md` maps them).
 2. Diagrams: edit `docs/diagrams/src/*.mmd`, then `make diagrams` (CI fails
-   on drift). Schema: edit `apps/api/src/typeDefs.ts`, then `make codegen`.
+   on drift). Schema: edit `examples/full-service-demo/src/typeDefs.ts`, then `make codegen`.
 3. Open a PR with a Conventional Commits title — every workflow must be
    green. The title is the line `CHANGELOG.md` will show, and its type
    decides the version bump (`feat` → minor, `fix` → patch, `ci` / `docs` /
@@ -140,7 +141,7 @@ Full walkthrough with a worked example: [docs/releasing.md](docs/releasing.md).
   `package.json` version. Approve it and `make release` (or the Merge
   button). Merging tags `vX.Y.Z`, publishes the GitHub Release with that
   entry as its body, and starts the release run. **The tag is the version**:
-  CI stamps it into the three packages before building them, so their
+  CI stamps it into the four packages before building them, so their
   `package.json` stays at `0.0.0-development`. GitHub Packages never
   accepts the same version twice, so a failed release means fixing forward.
   A release ships only once the commit's push-to-`main` run is green: the

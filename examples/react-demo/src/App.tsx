@@ -14,36 +14,39 @@ import {
 } from '@blinkbitcoin/esign-react';
 
 import { apolloClient, getAuthToken } from './apollo';
-import { ESIGN_MODE, WEBFORM_INSTANCE_URL, PUBLIC_FORM_URL } from './config';
+import {
+  ESIGN_MODE,
+  PREFILL_OVERRIDE,
+  PUBLIC_FORM_URL,
+  WEBFORM_INSTANCE_URL,
+} from './config';
+import type { WebFormPrefill } from '@blinkbitcoin/esign-react';
 import { HookSigning } from './HookSigning';
 
 export const DEMO_RECIPIENT = { name: 'Test User', email: 'test@example.com' };
+
+// Prefill minted with the Web Forms instance (webform mode). Values minted
+// this way land in the form LOCKED - the signer sees them but cannot change
+// them - which is how a host pins the terms of a document (amounts, rates).
+// Numbers travel unquoted (DocuSign Number fields); keys are the form's field
+// API reference names.
+export const DEMO_PREFILL: WebFormPrefill = PREFILL_OVERRIDE ?? {
+  full_name: DEMO_RECIPIENT.name,
+  email: DEMO_RECIPIENT.email,
+  units: 10,
+  total_usd: 1000.5,
+};
 
 // Build the signing source for the configured mode (VITE_ESIGN_MODE). The
 // component and callbacks are identical across modes.
 export const buildSource = (): SigningSource => {
   switch (ESIGN_MODE) {
     case 'webform':
+      // The source mints through the backend endpoint with the app's own
+      // session token; the backend holds the DocuSign credentials
       return createWebFormsSource({
-        createInstance: async () => {
-          const res = await fetch(WEBFORM_INSTANCE_URL, {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json',
-              authorization: `Bearer ${getAuthToken()}`,
-            },
-            body: JSON.stringify({
-              prefill: {
-                full_name: DEMO_RECIPIENT.name,
-                email: DEMO_RECIPIENT.email,
-              },
-            }),
-          });
-          if (!res.ok) {
-            throw new Error(`Could not start signing (HTTP ${res.status})`);
-          }
-          return res.json();
-        },
+        mint: { url: WEBFORM_INSTANCE_URL, getAuthToken },
+        prefill: DEMO_PREFILL,
       });
     case 'publicurl':
       // No backend call - just embed a published form URL (prefill in the URL).

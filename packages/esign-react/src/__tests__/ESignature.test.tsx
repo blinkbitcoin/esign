@@ -6,20 +6,18 @@
  * the hook's actions, and that theme / styles / labels reach the markup.
  */
 
-import React from 'react';
+import type { SigningSession, SigningSource } from '@blinkbitcoin/esign-core';
+import { interpretProxyEvent } from '@blinkbitcoin/esign-core';
 import {
+  act,
+  fireEvent,
   render,
   screen,
-  fireEvent,
-  act,
   waitFor,
 } from '@testing-library/react';
-
-import { ESignature, getErrorMessage, getApolloErrorCode } from '../ESignature';
-import { useESignature } from '../index';
-import { interpretProxyEvent } from '@blinkbitcoin/esign-core';
-
-import type { SigningSource, SigningSession } from '@blinkbitcoin/esign-core';
+import React from 'react';
+import { ESignature, getErrorMessage } from '../ESignature';
+import { getApolloErrorCode, useESignature } from '../index';
 import type { UseESignatureOptions } from '../types';
 
 const okSession: SigningSession = {

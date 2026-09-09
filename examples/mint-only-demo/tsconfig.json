@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "types": ["vitest/globals", "node"],
+    "paths": {
+      "@blinkbitcoin/esign-server": [
+        "../../packages/esign-server/src/index.ts"
+      ],
+      "@blinkbitcoin/esign-server/docusign": [
+        "../../packages/esign-server/src/docusign.ts"
+      ]
+    }
+  },
+  "include": ["src", "tests", "vitest.config.ts"],
+  "exclude": ["node_modules"]
+}

@@ -7,9 +7,13 @@
 ## Overview
 
 The backend uses two primary models for envelope management and audit tracking.
-Schema is managed with Knex migrations (`apps/api/migrations/`, TypeScript,
-executed through `tsx`); data access goes through repository modules
-(`src/envelope.ts`, `src/audit.ts`) built on a shared Knex instance (`src/db.ts`).
+Schema and data access both come from `@blinkbitcoin/esign-server/knex`:
+`ESIGN_MIGRATIONS` (a programmatic Knex migration source, no migration files
+or knexfile in the service) and `createKnexEnvelopeStore`, the Knex
+implementation of the `EnvelopeStore` port. The service composes the store
+over its shared Knex instance in `src/store.ts` (`src/db.ts`) and applies the
+migrations with `src/migrate.ts`. A host with its own Postgres uses the same
+two exports.
 
 ## Entity Relationship Diagram
 
@@ -124,77 +128,78 @@ Metadata is sanitized at write time against an allow-list
 
 ---
 
-## Repository Functions
+## The Store Port
 
-Data access is not done inline in resolvers - it goes through repository
-modules that accept an optional Knex transaction for atomic composition.
+Data access is not done inline in resolvers. The domain
+(`createEnvelopeService` in `@blinkbitcoin/esign-server`) talks to an
+`EnvelopeStore` port; `examples/full-service-demo/src/store.ts` implements it with Knex, and
+the package ships an in-memory implementation for tests and for hosts that
+keep envelope state elsewhere.
 
 ### Create Envelope with Audit Log (transactional)
 
 ```typescript
-// schema.ts createEnvelope resolver
-const envelope = await knex.transaction(async (trx) => {
-  const created = await createEnvelope(
-    { providerEnvelopeId: providerResult.envelopeId, userId, contractType },
-    trx
-  );
-  await logAuditEvent(created.id, 'initiated', { contractType, userId }, trx);
-  return created;
+// envelopes.ts createEnvelope - every write through `tx` commits together
+const created = await store.transaction(async (tx) => {
+  const record = await tx.createEnvelope({ id, providerEnvelopeId, userId, contractType, status: 'sent' });
+  await tx.appendAuditEntry({ id, envelopeId: record.id, action: 'initiated', metadata });
+  return record;
 });
 ```
 
 ### Find Envelope by Internal ID (Owner Scoped)
 
 ```typescript
-// envelope.ts - returns null on miss OR wrong owner (no info leak)
-const envelope = await getEnvelopeByIdForUser(envelopeId, currentUserId);
+// returns null on miss OR wrong owner (no info leak)
+const envelope = await store.getEnvelopeByIdForUser(envelopeId, currentUserId);
 ```
 
 ### Find Envelope by Provider Envelope ID (Webhook)
 
 ```typescript
-// envelope.ts
-const envelope = await getEnvelopeByProviderEnvelopeId(providerEnvelopeId);
+const envelope = await store.getEnvelopeByProviderEnvelopeId(providerEnvelopeId);
 ```
 
 ### Update Status with Audit Log (transactional)
 
 ```typescript
-// webhook.ts handleWebhookEvent
-await knex.transaction(async (trx) => {
-  await updateEnvelopeStatus(envelope.id, newStatus, trx);
-  await logAuditEvent(envelope.id, auditAction, { source: 'webhook' }, trx);
+// envelopes.ts handleWebhookEvent
+await store.transaction(async (tx) => {
+  await tx.updateEnvelopeStatus(envelope.id, newStatus);
+  await tx.appendAuditEntry({ id, envelopeId: envelope.id, action: newStatus, metadata: { source: 'webhook' } });
 });
 ```
 
 ### Get Audit Logs for Envelope
 
 ```typescript
-// audit.ts - newest first
-const logs = await getAuditLogsByEnvelopeId(envelopeId);
+// newest first
+const logs = await store.listAuditEntries(envelopeId);
 ```
 
 ---
 
 ## Migration Commands
 
-Migrations are TypeScript, so the `knex` CLI is run through `tsx`:
+The migrations live in the package
+(`packages/esign-server/src/knex/migrations.ts`, `ESIGN_MIGRATIONS`, in
+order; append, never edit a shipped one). Their names are the original file
+names, so a database migrated before the move keeps its `knex_migrations`
+history. Hosts run them through their own Knex instance:
+
+```ts
+import { runESignMigrations, createESignMigrationSource } from '@blinkbitcoin/esign-server/knex';
+await runESignMigrations(db);                                          // migrate.latest
+await db.migrate.rollback({ migrationSource: createESignMigrationSource() });
+```
+
+In this repo:
 
 ```bash
-cd apps/api
-
-# Apply migrations (uses DATABASE_URL)
-npm run migrate
-
-# Apply migrations against the test database (.env.test)
-npm run migrate:test
-
-# Create a new migration
-npx tsx "$(command -v knex)" migrate:make -x ts <migration-name>
-
-# Roll back the last batch / check status
-npx tsx "$(command -v knex)" migrate:rollback
-npx tsx "$(command -v knex)" migrate:status
+cd examples/full-service-demo
+npm run migrate          # tsx src/migrate.ts against DATABASE_URL (.env)
+npm run migrate:test     # the same against .env.test
+# in the image: docker run --rm --env-file .env esign-api node dist/migrate.js
 ```
 
 ---
@@ -202,7 +207,7 @@ npx tsx "$(command -v knex)" migrate:status
 ## Test Data Factory
 
 ```typescript
-// apps/api/tests/e2e/factories.ts (Knex-based, actual signatures)
+// examples/full-service-demo/tests/e2e/factories.ts (Knex-based, actual signatures)
 
 export const createTestEnvelope = async (overrides = {}): Promise<Envelope> => {
   const [envelope] = await knex<Envelope>('Envelope')

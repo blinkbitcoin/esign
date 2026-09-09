@@ -7,19 +7,42 @@
 #
 #   bounded_maestro <npm run args...>   -> exit status; 124 when the bound hit
 #
-# coreutils `timeout` on ubuntu runners, `gtimeout` (Homebrew coreutils) on
-# macOS runners; neither on a stock Mac, where the suite runs unbounded.
+# Implemented in plain bash (a background job polled against a deadline)
+# because coreutils `timeout` is not on the macOS runners - the earlier
+# `timeout`/`gtimeout` version silently ran unbounded there, so an iOS driver
+# hang cost the whole step timeout.
 MAESTRO_SUITE_TIMEOUT="${MAESTRO_SUITE_TIMEOUT:-10m}"
 
+# "10m" / "90s" / "600" -> seconds
+timeout_seconds() {
+  case "$1" in
+    *m) echo $(( ${1%m} * 60 )) ;;
+    *s) echo "${1%s}" ;;
+    *) echo "$1" ;;
+  esac
+}
+
 bounded_maestro() {
-  local t
-  if t=$(command -v timeout || command -v gtimeout); then
-    "$t" -k 30s "$MAESTRO_SUITE_TIMEOUT" npm run "$@"
-    local status=$?
-    if [ "$status" -eq 124 ]; then
+  local limit waited=0 pid status
+  limit=$(timeout_seconds "$MAESTRO_SUITE_TIMEOUT")
+  npm run "$@" &
+  pid=$!
+  while kill -0 "$pid" 2> /dev/null; do
+    if [ "$waited" -ge "$limit" ]; then
       echo "::error::Maestro suite exceeded $MAESTRO_SUITE_TIMEOUT without completing (#41)"
+      # npm wraps the Maestro CLI (a Java process): stop both, gently then hard
+      pkill -TERM -f 'maestro' 2> /dev/null || true
+      kill -TERM "$pid" 2> /dev/null || true
+      sleep 10
+      pkill -KILL -f 'maestro' 2> /dev/null || true
+      kill -KILL "$pid" 2> /dev/null || true
+      wait "$pid" 2> /dev/null
+      return 124
     fi
-    return "$status"
-  fi
-  npm run "$@"
+    sleep 5
+    waited=$((waited + 5))
+  done
+  wait "$pid"
+  status=$?
+  return "$status"
 }

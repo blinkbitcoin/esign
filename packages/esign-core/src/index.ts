@@ -4,30 +4,81 @@
 // generated types. No React/DOM/WebView - the platform packages layer the
 // ESignature component on top.
 
-export type { RecipientData } from './types';
+export type {
+  RecipientData,
+  ESignatureTheme,
+  UseESignatureOptions,
+} from './types';
 
 // Signing sources + the abstraction they satisfy
 export {
   createProxySigningSource,
-  createWebFormsSource,
-  createPublicUrlSource,
+  createHostedFormSource,
+  createHostedFormMinter,
+  createHostedFormPublicUrlSource,
+  resolveHostedFormCreateInstance,
   isRestartable,
+  isMountable,
+  SigningSourceError,
+  isSigningSourceError,
+  toSigningSourceError,
+  withTimeout,
+  isAllowedOrigin,
+  interpretBridgeEvent,
   interpretProxyEvent,
-  interpretDocuSignEvent,
   getErrorMessage,
   getApolloErrorCode,
+  acquireSession,
+  initialSigningState,
+  resolveRestart,
+  transition,
+  resolveLabelsWith,
 } from './signing';
 export type {
+  ESignatureError,
+  ESignatureResult,
+  ESignatureStatus,
+  ESignatureLabels,
+  LabelDefaults,
+  SigningAction,
+  SigningCallbacks,
+  SigningEffect,
+  SigningMachineState,
+  SigningStateSeed,
   SigningSource,
   RestartableSigningSource,
+  MountableSigningSource,
   SigningSession,
   SigningEvent,
-  SigningSourceError,
   ProxySigningSourceOptions,
-  WebFormsSigningSourceOptions,
-  WebFormsInstance,
-  PublicUrlSigningSourceOptions,
+  HostedFormSourceOptions,
+  HostedFormCreateInstanceOptions,
+  HostedFormMintOptions,
+  HostedFormPrefill,
+  HostedFormInstance,
+  MintHostedFormOptions,
+  HostedFormPublicUrlSourceOptions,
 } from './signing';
+
+// The DocuSign provider: its sources, interpreter and prefill contract
+export {
+  createPublicUrlSource,
+  createWebFormsMinter,
+  createWebFormsSource,
+  interpretDocuSignEvent,
+  resolveCreateInstance,
+} from './providers/docusign';
+export type {
+  MintWebFormsInstanceOptions,
+  PublicUrlSigningSourceOptions,
+  WebFormPhoneNumber,
+  WebFormPrefill,
+  WebFormPrefillValue,
+  WebFormsCreateInstanceOptions,
+  WebFormsInstance,
+  WebFormsMintOptions,
+  WebFormsSigningSourceOptions,
+} from './providers/docusign';
 
 // Apollo client factory + error-code contract
 export {

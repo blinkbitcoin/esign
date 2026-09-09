@@ -1,6 +1,6 @@
 /**
  * Wire-contract parity: the package's ErrorCodes map must exactly match the
- * ErrorCode enum generated from apps/api/schema.graphql. If this fails after
+ * ErrorCode enum generated from examples/full-service-demo/schema.graphql. If this fails after
  * a schema change, run `npm run codegen` and update ErrorCodes/getErrorMessage.
  */
 

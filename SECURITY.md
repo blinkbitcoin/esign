@@ -13,7 +13,7 @@ reproduction steps and the affected package/version.
 
 - The published packages: `@blinkbitcoin/esign-core`,
   `@blinkbitcoin/esign-react-native`, `@blinkbitcoin/esign-react`
-- The backend service in `apps/api`
+- The backend service in `examples/full-service-demo`
 
 ## Security model
 

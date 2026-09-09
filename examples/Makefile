@@ -4,7 +4,7 @@
 SUBDIRS := $(patsubst %/Makefile,%,$(wildcard */Makefile))
 
 test: ## Unit tests in every example
-coverage: ## Coverage in every example (floors enforced)
+coverage: ## Coverage in every example (client demos: floors; server demos: 100%)
 typecheck: ## tsc --noEmit in every example
 
 test coverage typecheck:

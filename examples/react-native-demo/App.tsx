@@ -22,7 +22,12 @@ import {
 } from 'react-native-safe-area-context';
 
 import { apolloClient } from './src/apollo';
-import { ESIGN_MODE, WEBFORM_INSTANCE_URL } from './src/config';
+import {
+  ESIGN_MODE,
+  PREFILL_OVERRIDE,
+  WEBFORM_INSTANCE_URL,
+  type WebFormPrefill,
+} from './src/config';
 import { HookSigning } from './src/HookSigning';
 import {
   ESignature,
@@ -58,6 +63,25 @@ export const getRecipientData = (): { name: string; email: string } => {
   return { name: '', email: '' };
 };
 
+// Prefill minted with the Web Forms instance (webform mode). Values minted
+// this way land in the form LOCKED - the signer sees them but cannot change
+// them - which is how a host pins the terms of a document (amounts, rates).
+// Keys are the form's field API reference names; locked amounts travel as
+// strings (Text fields - docs/integration/docusign-lessons.md). ESIGN_PREFILL
+// replaces these mock-form values for a run against a real form.
+export const getDemoPrefill = (): WebFormPrefill => {
+  if (PREFILL_OVERRIDE) {
+    return PREFILL_OVERRIDE;
+  }
+  const recipient = getRecipientData();
+  return {
+    full_name: recipient.name,
+    email: recipient.email,
+    units: 10,
+    total_usd: 1000.5,
+  };
+};
+
 export const handleSigningComplete = (result: {
   envelopeId?: string;
   status: string;
@@ -81,24 +105,11 @@ export const handleSigningCancel = (): void => {
 // and callbacks are identical across modes.
 export const buildSource = (): SigningSource => {
   if (ESIGN_MODE === 'webform') {
-    const recipient = getRecipientData();
+    // The source mints through the backend endpoint with the app's own
+    // session token; the backend holds the DocuSign credentials
     return createWebFormsSource({
-      createInstance: async () => {
-        const res = await fetch(WEBFORM_INSTANCE_URL, {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            authorization: 'Bearer mock-jwt-token',
-          },
-          body: JSON.stringify({
-            prefill: { full_name: recipient.name, email: recipient.email },
-          }),
-        });
-        if (!res.ok) {
-          throw new Error(`Could not start signing (HTTP ${res.status})`);
-        }
-        return res.json();
-      },
+      mint: { url: WEBFORM_INSTANCE_URL, getAuthToken: () => 'mock-jwt-token' },
+      prefill: getDemoPrefill(),
     });
   }
   return createProxySigningSource({

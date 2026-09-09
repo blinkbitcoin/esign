@@ -7,19 +7,17 @@
  * wiring is covered in ESignature.test.tsx.
  */
 
-import React from 'react';
-import ReactTestRenderer from 'react-test-renderer';
-import type { WebViewMessageEvent } from 'react-native-webview';
-
-import { useESignature } from '../useESignature';
+import type { SigningSession, SigningSource } from '@blinkbitcoin/esign-core';
 import { interpretProxyEvent } from '@blinkbitcoin/esign-core';
+import React from 'react';
+import type { WebViewMessageEvent } from 'react-native-webview';
+import ReactTestRenderer from 'react-test-renderer';
 import NetInfo, {
-  setMockNetworkState,
   resetMockNetworkState,
+  setMockNetworkState,
 } from '../../__mocks__/@react-native-community/netinfo';
-
-import type { SigningSource, SigningSession } from '@blinkbitcoin/esign-core';
 import type { UseESignatureOptions, UseESignatureResult } from '../types';
+import { useESignature } from '../useESignature';
 
 const okSession: SigningSession = {
   url: 'https://sign/1',

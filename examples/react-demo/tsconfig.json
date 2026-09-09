@@ -11,15 +11,32 @@
     "isolatedModules": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
-    "types": ["vitest/globals"],
+    "types": ["vitest/globals", "node"],
     "paths": {
       "@blinkbitcoin/esign-react": ["../../packages/esign-react/src"],
+      "@blinkbitcoin/esign-react/docusign": [
+        "../../packages/esign-react/src/docusign.ts"
+      ],
       "@blinkbitcoin/esign-core": ["../../packages/esign-core/src/index.ts"],
       "@blinkbitcoin/esign-core/webform": [
         "../../packages/esign-core/src/webform.ts"
+      ],
+      "@blinkbitcoin/esign-core/docusign": [
+        "../../packages/esign-core/src/docusign.ts"
       ]
     }
   },
-  "include": ["src", "e2e", "playwright.config.ts"],
+  "include": [
+    "src",
+    "vite",
+    "e2e",
+    "playwright.config.ts",
+    "playwright.publicurl.config.ts",
+    "playwright.webform.config.ts",
+    "playwright.webform-live.config.ts",
+    "playwright.webform-live-demo.config.ts",
+    "playwright.proxy-live-demo.config.ts",
+    "vite.config.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

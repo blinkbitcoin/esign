@@ -1,0 +1,25 @@
+{
+  "name": "esign-serverless-handler-example",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Example: the Fetch-API mint and webhook handlers of @blinkbitcoin/esign-server mounted in a route handler (plain Node here; Vercel, Cloudflare or a Next.js route the same way)",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@blinkbitcoin/esign-server": "0.0.0-development"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  },
+  "license": "MIT"
+}

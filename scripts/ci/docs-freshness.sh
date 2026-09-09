@@ -17,7 +17,7 @@ else
   CHANGED_FILES=$(git diff --name-only origin/main...HEAD 2>/dev/null || echo "")
 fi
 
-ARCH_PATTERNS="apps/api/migrations/|\.graphql$|src/.*index\.ts$|package\.json"
+ARCH_PATTERNS="esign-server/src/knex/migrations|\.graphql$|src/.*index\.ts$|package\.json|providers/"
 ARCH_CHANGES=$(echo "$CHANGED_FILES" | grep -E "$ARCH_PATTERNS" || true)
 DOC_CHANGES=$(echo "$CHANGED_FILES" | grep -E "^docs/|README\.md$" || true)
 

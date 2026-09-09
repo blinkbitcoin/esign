@@ -1,6 +1,6 @@
 // ESLint 9 flat config. The @react-native preset still ships in legacy
 // eslintrc format, so it is adapted via FlatCompat. Biome handles formatting
-// (and apps/api linting) - ESLint covers only the RN/web packages + demos.
+// (and examples/full-service-demo linting) - ESLint covers only the RN/web packages + demos.
 const { FlatCompat } = require('@eslint/eslintrc');
 const js = require('@eslint/js');
 
@@ -14,7 +14,9 @@ module.exports = [
     // Replaces .eslintignore (unsupported in flat config)
     ignores: [
       '**/node_modules/**',
-      'apps/api/**',
+      'examples/full-service-demo/**',
+      'examples/mint-only-demo/**',
+      'examples/serverless-handler-demo/**',
       '**/coverage/**',
       '**/ios/**',
       '**/android/**',

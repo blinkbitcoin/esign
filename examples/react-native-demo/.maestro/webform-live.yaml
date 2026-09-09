@@ -1,0 +1,118 @@
+# Maestro E2E, LIVE: the real DocuSign Web Form (capability test form v2)
+# inside the demo's WebView, minted with locked terms through the service on
+# the DocuSign provider, submitted, signed in DocuSign's ceremony, completed
+# through the return-URL bridge. Verified 2026-09-09 (demo env). Run it with
+#   make e2e-ios-live            (scripts/e2e/ios-live.sh: service + Metro + this)
+# It needs a Metro bundled with ESIGN_MODE=webform, ESIGN_BACKEND_PORT=<the
+# live service> and ESIGN_PREFILL=<the fixture prefill>, so it is tagged and
+# excluded from the default suites. Instance tokens expire ~5 min after
+# minting: the flow mints its own instance right away. The runner relaunches
+# the app through simctl first (so it loads the bundle from that Metro);
+# a Maestro-driven relaunch races its iOS driver (see config.yaml).
+#
+# What Maestro can and cannot see here: the Web Form is HTML, so its buttons
+# and values are accessible by text (below the fold - scroll first). The
+# signing ceremony renders the document on a canvas and exposes no text, so
+# the Sign tab and Finish are tapped by position (iPhone 16 Pro layout, the
+# tab anchored at "Signature:"). The ceremony also asks for the device's
+# location; iOS shows the prompt only when the app itself holds location
+# access - decline it when it appears.
+appId: ${APP_ID} # iOS: org.reactjs.native.example.ReactNativeSandbox
+tags:
+  - live
+---
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: "sign-document-button"
+    timeout: 120000
+- tapOn:
+    id: "sign-document-button"
+
+# The service mints an instance; the real form's welcome page loads in the WebView
+- extendedWaitUntil:
+    visible:
+      id: "signing-webview"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: "Start"
+    timeout: 90000
+- tapOn: "Start"
+
+# Start → Next … until the Summary page (every required field is prefilled)
+- repeat:
+    while:
+      notVisible: "Summary"
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: "Next"
+          direction: DOWN
+          timeout: 30000
+      - tapOn: "Next"
+      - waitForAnimationToEnd:
+          timeout: 5000
+
+# The Summary lists the locked terms with the minted values
+- scrollUntilVisible:
+    element:
+      text: "E2E-0001"
+    direction: DOWN
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: "0.01268231"
+    direction: DOWN
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: "78850"
+    direction: DOWN
+    timeout: 30000
+
+# Submit: DocuSign creates the envelope from the form and opens its signing
+# ceremony in the same WebView
+- scrollUntilVisible:
+    element:
+      text: "Next"
+    direction: DOWN
+    timeout: 30000
+- tapOn: "Next"
+- extendedWaitUntil:
+    notVisible: "Summary"
+    timeout: 60000
+- extendedWaitUntil:
+    visible: "Don’t Allow"
+    timeout: 20000
+    optional: true
+- tapOn:
+    text: "Don’t Allow"
+    optional: true
+
+# The ceremony: the Sign tab, then Finish (positions, see above). A recipient
+# adopting a signature for the first time gets DocuSign's dialog here.
+- waitForAnimationToEnd:
+    timeout: 15000
+- tapOn:
+    point: "28%,78%"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    text: "Adopt and Sign"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    point: "50%,88%"
+
+# Finish → DocuSign redirects the WebView to the bridge → signing_complete →
+# the component's success screen → the demo's onComplete alert
+- extendedWaitUntil:
+    visible:
+      id: "success-screen"
+    timeout: 60000
+- extendedWaitUntil:
+    visible: "Document signed!.*"
+    timeout: 15000
+- tapOn: "OK"

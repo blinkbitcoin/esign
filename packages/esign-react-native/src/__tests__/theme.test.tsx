@@ -3,12 +3,12 @@
  * default ESignature look. Precedence: base < theme < styles[key].
  */
 
-import { StyleSheet } from 'react-native';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import {
-  DEFAULT_LABELS,
   baseStyles,
+  DEFAULT_LABELS,
   resolveLabels,
   resolveStyles,
 } from '../theme';

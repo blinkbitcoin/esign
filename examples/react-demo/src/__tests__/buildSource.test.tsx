@@ -10,6 +10,7 @@ const loadApp = async (mode: EsignMode) => {
     GRAPHQL_URL: 'http://localhost:4000/graphql',
     WEBFORM_INSTANCE_URL: 'http://localhost:4000/webform/instance',
     PUBLIC_FORM_URL: 'http://localhost:4000/signing/public-demo',
+    PREFILL_OVERRIDE: undefined,
   }));
   return import('../App');
 };
@@ -51,7 +52,12 @@ describe('buildSource', () => {
           authorization: 'Bearer mock-jwt-token',
         }),
         body: JSON.stringify({
-          prefill: { full_name: 'Test User', email: 'test@example.com' },
+          prefill: {
+            full_name: 'Test User',
+            email: 'test@example.com',
+            units: 10,
+            total_usd: 1000.5,
+          },
         }),
       }),
     );

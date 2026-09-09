@@ -1,25 +1,26 @@
-// useESignature - the headless signing state machine.
-// Provider-agnostic: drives whatever SigningSource it is given (acquisition +
-// event protocol live in the source) and owns status transitions, offline
-// handling, session-expiry restart, and the success delay. It renders
-// nothing: the default ESignature component is one consumer, a host app's
-// own buttons + WebView are another.
+// useESignature - the headless signing flow on the core state machine.
+// The transitions live in @blinkbitcoin/esign-core (signing/machine); this
+// hook owns what is React Native-specific: NetInfo as the connectivity probe
+// (with the in-flight flag the offline screen shows), WebView messages as
+// the event transport, the success-screen delay, and the WebView props for
+// the active session. It renders nothing: the default ESignature component
+// is one consumer, a host app's own buttons + WebView are another.
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import type { WebViewMessageEvent } from 'react-native-webview';
-import NetInfo from '@react-native-community/netinfo';
-
-import {
-  getErrorMessage,
-  isRestartable,
-} from '@blinkbitcoin/esign-core/webform';
 import type {
+  SigningAction,
+  SigningMachineState,
   SigningSession,
-  SigningSourceError,
 } from '@blinkbitcoin/esign-core/webform';
+import {
+  acquireSession,
+  initialSigningState,
+  resolveRestart,
+  transition,
+} from '@blinkbitcoin/esign-core/webform';
+import NetInfo from '@react-native-community/netinfo';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { WebViewMessageEvent } from 'react-native-webview';
 import type {
-  ESignatureError,
-  ESignatureStatus,
   ESignatureWebViewProps,
   UseESignatureOptions,
   UseESignatureResult,
@@ -44,19 +45,16 @@ export const useESignature = ({
   __testSigningUrl,
   __testSession,
 }: UseESignatureOptions): UseESignatureResult => {
-  const [status, setStatus] = useState<ESignatureStatus>(
-    __testInitialStatus ?? 'idle',
+  const [state, setState] = useState<SigningMachineState>(() =>
+    initialSigningState({
+      __testInitialStatus,
+      __testSigningUrl,
+      __testSession,
+    }),
   );
-  const [error, setError] = useState<ESignatureError | null>(null);
-  const [signingUrl, setSigningUrl] = useState<string | null>(
-    __testSigningUrl ?? __testSession?.url ?? null,
-  );
-  // The active session (URL, envelopeId, allowedOrigin) never drives rendering,
-  // so it lives in a ref - also avoids stale closures in the message handler
-  // and is preserved across session-expiry for restart.
-  const sessionRef = useRef<SigningSession | null>(
-    __testSession ?? (__testSigningUrl ? { url: __testSigningUrl } : null),
-  );
+  // The machine state is also kept in a ref: the restart reads the live
+  // session without a stale closure
+  const stateRef = useRef(state);
   // Track success timeout for cleanup on unmount
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -75,34 +73,45 @@ export const useESignature = ({
     };
   }, []);
 
-  // Acquire a session (start or restart) and enter the signing state, mapping
-  // any SigningSourceError to a user-facing error state.
-  const beginSigning = useCallback(
-    async (acquire: () => Promise<SigningSession>) => {
-      setStatus('loading');
-      try {
-        const session = await acquire();
-        // The acquire call can outlive the host (user navigated away
-        // mid-loading) - a late result must not update state or fire callbacks
-        if (!mountedRef.current) {
-          return;
+  // Run one action through the machine and its effects: the success screen
+  // is held for successDelayMs before onComplete fires and the url clears
+  const apply = useCallback(
+    (action: SigningAction) => {
+      const { state: next, effects } = transition(stateRef.current, action);
+      stateRef.current = next;
+      setState(next);
+      for (const effect of effects) {
+        switch (effect.type) {
+          case 'complete':
+            successTimeoutRef.current = setTimeout(() => {
+              onComplete(effect.result);
+              apply({ type: 'settled' });
+            }, successDelayMs);
+            break;
+          case 'error':
+            onError(effect.error);
+            break;
+          case 'cancel':
+            onCancel();
+            break;
         }
-        sessionRef.current = session;
-        setSigningUrl(session.url);
-        setStatus('signing');
-      } catch (e) {
-        if (!mountedRef.current) {
-          return;
-        }
-        const sourceError = e as SigningSourceError;
-        const code = sourceError?.code ?? 'UNKNOWN_ERROR';
-        const message = getErrorMessage(code, sourceError?.message);
-        setError({ code, message });
-        setStatus('error');
-        onError({ code, message });
       }
     },
-    [onError],
+    [onComplete, onError, onCancel, successDelayMs],
+  );
+
+  // Acquire a session (start or restart) and enter the signing state. The
+  // acquire call can outlive the host (user navigated away mid-loading) - a
+  // late result must not update state or fire callbacks
+  const beginSigning = useCallback(
+    async (acquire: () => Promise<SigningSession>) => {
+      apply({ type: 'acquire' });
+      const outcome = await acquireSession(acquire);
+      if (mountedRef.current) {
+        apply(outcome);
+      }
+    },
+    [apply],
   );
 
   // Handle signing-session postMessage events from the WebView
@@ -127,66 +136,21 @@ export const useESignature = ({
         }
         return;
       }
-
-      switch (signingEvent.type) {
-        case 'complete': {
-          setStatus('success');
-          // Show success briefly before calling onComplete (configurable)
-          successTimeoutRef.current = setTimeout(() => {
-            onComplete({
-              // Prefer an id from the event; fall back to the session's
-              envelopeId:
-                signingEvent.envelopeId ?? sessionRef.current?.envelopeId,
-              status: 'completed',
-            });
-            setSigningUrl(null);
-          }, successDelayMs);
-          break;
-        }
-
-        case 'cancel':
-        case 'decline':
-          setStatus('idle');
-          onCancel();
-          setSigningUrl(null);
-          sessionRef.current = null;
-          break;
-
-        case 'sessionExpired': {
-          const message = getErrorMessage('SESSION_EXPIRED');
-          setStatus('error');
-          setError({ code: 'SESSION_EXPIRED', message });
-          onError({ code: 'SESSION_EXPIRED', message });
-          // Clear signingUrl but PRESERVE sessionRef for restart capability
-          setSigningUrl(null);
-          break;
-        }
-
-        case 'error': {
-          const code = signingEvent.code ?? 'SIGNING_ERROR';
-          const message = signingEvent.message ?? getErrorMessage(code);
-          setStatus('error');
-          setError({ code, message });
-          onError({ code, message });
-          setSigningUrl(null);
-          sessionRef.current = null;
-          break;
-        }
-      }
+      apply({ type: 'event', event: signingEvent });
     },
-    [source, onComplete, onCancel, onError, successDelayMs],
+    [source, apply],
   );
 
   const sign = useCallback(async () => {
-    // Check connectivity BEFORE any API call
+    // Check connectivity BEFORE any API call; offline is an expected state,
+    // not an error, so onError is not called
     const isOnline = await checkConnectivity();
     if (!isOnline) {
-      setStatus('offline');
-      // Do NOT call onError - offline is an expected state, not an error
+      apply({ type: 'offline' });
       return;
     }
     await beginSigning(() => source.start());
-  }, [beginSigning, source]);
+  }, [apply, beginSigning, source]);
 
   // Track if we're actively re-checking connection from the offline state
   const [isCheckingConnection, setIsCheckingConnection] = useState(false);
@@ -197,41 +161,32 @@ export const useESignature = ({
     setIsCheckingConnection(false);
     if (isOnline) {
       // Now online - transition to idle so the user can sign again
-      setStatus('idle');
+      apply({ type: 'online' });
     }
     // If still offline, remain in offline status (user can retry)
-  }, []);
+  }, [apply]);
 
   const cancel = useCallback(() => {
     onCancel();
   }, [onCancel]);
 
   const retry = useCallback(() => {
-    setError(null);
-    setSigningUrl(null);
-    sessionRef.current = null;
-    setStatus('idle');
-  }, []);
+    apply({ type: 'retry' });
+  }, [apply]);
 
-  // Restart after session expiration. Only sources that support restart AND
-  // a preserved session can restart; otherwise fall back to a full retry.
+  // Session-expiration restart: only a restartable source with a preserved
+  // session can restart; anything else falls back to a fresh start
   const restart = useCallback(async () => {
-    // Non-restartable sources (public URL / Web Forms) fall back to a fresh start
-    if (!isRestartable(source)) {
+    const acquire = resolveRestart(source, stateRef.current.session);
+    if (!acquire) {
       retry();
       return;
     }
-    const restartable = source;
-    const session = sessionRef.current;
-    /* istanbul ignore next -- restart is only offered after a SESSION_EXPIRED
-       event, which preserves sessionRef; this guard is defensive */
-    if (!session) {
-      retry();
-      return;
-    }
-    setError(null);
-    await beginSigning(() => restartable.restart(session));
-  }, [source, retry, beginSigning]);
+    apply({ type: 'restart' });
+    await beginSigning(acquire);
+  }, [source, retry, apply, beginSigning]);
+
+  const { status, error, signingUrl } = state;
 
   const webViewProps = useMemo<ESignatureWebViewProps | null>(
     () =>

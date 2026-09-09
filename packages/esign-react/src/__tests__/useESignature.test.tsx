@@ -6,14 +6,12 @@
  * wiring is covered in ESignature.test.tsx.
  */
 
+import type { SigningSession, SigningSource } from '@blinkbitcoin/esign-core';
+import { interpretProxyEvent } from '@blinkbitcoin/esign-core';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
-
-import { useESignature } from '../useESignature';
-import { interpretProxyEvent } from '@blinkbitcoin/esign-core';
-
-import type { SigningSource, SigningSession } from '@blinkbitcoin/esign-core';
 import type { UseESignatureOptions } from '../types';
+import { useESignature } from '../useESignature';
 
 const okSession: SigningSession = {
   url: 'https://sign/1',

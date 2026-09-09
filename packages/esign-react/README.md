@@ -13,6 +13,16 @@ npm install @blinkbitcoin/esign-react
 
 Peer dependencies: `react` (>=18) — plus `@apollo/client` · `graphql` (16.x) **only for proxy mode** (optional peers)
 
+## Entry points
+
+| Import | Contents |
+|--------|----------|
+| `@blinkbitcoin/esign-react` | Everything: the component + hook, all sources (proxy, Web Forms, public<br>URL, DocuSign.js), the Apollo factory |
+| `@blinkbitcoin/esign-react/docusign` | The DocuSign provider: `createWebFormsSource`, `createPublicUrlSource`,<br>`createDocuSignWebFormsSource`, `interpretDocuSignEvent`, the prefill<br>contract — plus the neutral signing layer (`createHostedFormSource`, …),<br>the component and the hook. No proxy source. **Apollo-free by<br>construction** (guard-tested): no `@apollo/client` / `graphql` needed. |
+
+The DocuSign.js source lives in `src/providers/docusign/`; its old
+`docusignWebForms` module path remains as a deprecated shim.
+
 ## Usage
 
 Provider-agnostic: give the component a `SigningSource`. Three are built in
@@ -51,9 +61,15 @@ const source = createProxySigningSource({
 ```tsx
 // Mode 2 - DocuSign Web Forms (host mints the instance URL):
 const source = createWebFormsSource({
-  createInstance: () => fetch('/onboarding/webform', { method: 'POST' }).then((r) => r.json()),
+  // Your backend mints the instance (one call from @blinkbitcoin/esign-server);
+  // the app sends its own session token. Read-only fields come back locked
+  // with the prefill; numbers stay numbers.
+  mint: { url: 'https://api.example.com/webform/instance', getAuthToken },
+  prefill: { number_of_units: 1000, settlement_amount_btc: '0.01268231' },
   allowedOrigin: 'https://apps.docusign.com',
 });
+// (or bring your own client: createWebFormsSource({ createInstance: () => ... /* { url } */ }));
+// createDocuSignWebFormsSource takes the same mint/prefill (or createInstance) options
 // Mode 3 - Public Web Form URL (no backend; prefill via query params):
 const source = createPublicUrlSource({ url, allowedOrigin: 'https://apps.docusign.com' });
 ```
@@ -158,7 +174,7 @@ generated types.
 
 ```sh
 make test        # 89 Jest (jsdom + Testing Library) tests, 100% coverage (enforced threshold)
-make codegen     # regenerate types from ../../apps/api/schema.graphql
+make codegen     # regenerate types from ../../examples/full-service-demo/schema.graphql
 make build       # tsup (ESM + CJS + types)
 ```
 

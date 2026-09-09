@@ -8,7 +8,7 @@
 <sub>E2E covers backend, web, Android and the iOS simulator suite, see [CI/CD](docs/development-guide.md#ios-e2e-and-the-macos-runner).</sub>
 
 <p align="center">
-  <img src="docs/assets/readme-hero.svg" alt="Your React Native or React web app renders one ESignature component. A SigningSource picks one of three modes: public URL (no backend), Web Forms instance (one backend endpoint), or proxy envelope (this repo's GraphQL backend). The backend-backed modes talk to DocuSign through the optional apps/api service." width="960">
+  <img src="docs/assets/readme-hero.svg" alt="Your React Native or React web app renders one ESignature component. A SigningSource picks one of three modes: public URL (no backend), Web Forms instance (one backend endpoint), or proxy envelope (this repo's GraphQL backend). The backend-backed modes talk to DocuSign through the optional examples/full-service-demo service." width="960">
 </p>
 
 Embedded e-signing for React Native and React web apps. One `ESignature`
@@ -18,12 +18,23 @@ mode**, and for two of the three that is a single small package:
 | Mode | What it is | What your app installs | Backend required |
 |------|-----------|------------------------|------------------|
 | **1. Public URL** | A published public form<br>URL embedded directly | One package via the<br>Apollo-free `/webform`<br>entry - **no Apollo,<br>no GraphQL** | **None** |
-| **2. Web Forms<br>instances** | Prefilled per-signer forms;<br>your backend mints an<br>instance URL with one<br>API call | Same minimal `/webform`<br>entry | One authenticated<br>endpoint on *your*<br>backend (or run this<br>repo's service) |
-| **3. Proxy envelope** | Full envelope orchestration:<br>templates, per-recipient<br>sessions, restart on expiry,<br>webhook status sync | The package +<br>`@apollo/client` +<br>`graphql` | This repo's backend<br>service (`apps/api`) |
+| **2. Web Forms<br>instances** | Prefilled per-signer forms<br>(read-only fields locked);<br>your backend mints an<br>instance URL with one<br>API call | Same minimal `/webform`<br>entry | One authenticated<br>endpoint on *your*<br>backend: one call from<br>`@blinkbitcoin/esign-server`<br>(or run this repo's service) |
+| **3. Proxy envelope** | Full envelope orchestration:<br>templates, per-recipient<br>sessions, restart on expiry,<br>webhook status sync | The package +<br>`@apollo/client` +<br>`graphql` | This repo's backend<br>service (`examples/full-service-demo`) |
 
 The GraphQL backend, Apollo wiring, and provider adapters in this repo exist
 for **mode 3 only**. If you need modes 1 or 2, none of that ships with you -
 the [Integration](#integration) section walks each mode from simplest up.
+
+**Which mode?** Nothing to lock and no per-signer data: mode 1. Values the
+signer must not change (amounts, rates, dates set by you): mode 2 - the
+only mode that locks fields, and it needs one call on your backend. A
+document workflow with per-recipient sessions, restarts and status
+tracking: mode 3. **Reading path for mode 2 (locked terms):**
+[docs/integration/locked-terms.md](docs/integration/locked-terms.md) (the
+recipe, backend + app) → [docs/integration/docusign-lessons.md](docs/integration/docusign-lessons.md)
+(the rules, one page) → [docs/integration/webforms.md](docs/integration/webforms.md)
+(the details) → [`examples/mint-only-demo`](examples/mint-only-demo/README.md)
+(the API side, runnable).
 
 ## Integration
 
@@ -61,16 +72,21 @@ your callbacks fire on completion/cancel/error.
 
 ### 2. Web Forms instances - adds per-signer prefill (one backend endpoint)
 
-**Use when:** you want each signer's data prefilled into the form, or need to
-know *which* signer completed it. DocuSign requires minting a short-lived
-**instance URL** per signer, and that API call carries your DocuSign
-credentials - so it belongs on a backend, not in the app.
+**Use when:** you want each signer's data prefilled into the form, need
+values **the signer cannot change** (the fields marked read-only in the
+builder show the minted values locked), or need to know *which* signer
+completed it. DocuSign requires minting a short-lived **instance URL** per
+signer, and that API call carries your DocuSign credentials - so it belongs
+on a backend, not in the app. One rule from the live runs: locked fields
+must be **Text** (or Dropdown) fields fed strings - a read-only Number or
+Date field makes DocuSign refuse the submission
+([lessons](docs/integration/docusign-lessons.md)).
 
 1. Add **one authenticated endpoint to your own backend** that calls
    DocuSign's `createInstance` with the signer's `clientUserId` + prefill
-   values and returns `{ url }`. (This repo's service implements it as
-   `POST /webform/instance` if you'd rather run it than write it - but any
-   backend able to make one REST call works.)
+   values and returns `{ url }` - one call from `@blinkbitcoin/esign-server`
+   (`createWebFormInstance`) in any Node backend, or this repo's service,
+   which exposes exactly that as `POST /webform/instance`.
 2. Install exactly as in mode 1 (same minimal packages, still no Apollo).
 3. Point the source at your endpoint:
 
@@ -78,13 +94,18 @@ credentials - so it belongs on a backend, not in the app.
 import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/webform';
 
 const source = createWebFormsSource({
-  createInstance: () =>
-    fetch('https://your-backend.example.com/webform/instance', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.json()), // -> { url }
+  // your endpoint + the app's own session token; the backend mints with
+  // @blinkbitcoin/esign-server, so read-only fields come back locked
+  mint: { url: 'https://your-backend.example.com/webform/instance', getAuthToken },
+  prefill: { number_of_units: '1000', settlement_amount_btc: '0.01268231' }, // locked fields: strings
 });
+// A GraphQL mutation instead of a POST endpoint: createWebFormsSource({ createInstance })
 ```
+
+Completion reaches the app through the instance's return URL: your backend
+serves the small bridge page (`renderSigningReturnBridge`) that the
+component listens to - no DocuSign.js, works in a plain WebView. The whole
+recipe, backend and app: [docs/integration/locked-terms.md](docs/integration/locked-terms.md).
 
 Modes 1 and 2 import from the `/webform` subpath, which is **Apollo-free by
 construction** (a guard test walks the import graph to keep it that way).
@@ -100,10 +121,10 @@ Web Forms specifics - event model, real-DocuSign caveats:
 **Use when:** you need real envelope workflows: creation from DocuSign
 templates, a distinct session per recipient, session restart after expiry,
 and webhook-driven status tracking in a database. This is the mode the rest
-of this repo exists for - `apps/api` (GraphQL service, provider adapters,
+of this repo exists for - `examples/full-service-demo` (GraphQL service, provider adapters,
 webhooks) plus the Apollo client wiring.
 
-1. Deploy this repo's backend ([apps/api](apps/api/README.md)).
+1. Deploy this repo's backend ([examples/full-service-demo](examples/full-service-demo/README.md)).
 2. Install the package **plus** the Apollo peers:
 
 ```sh
@@ -170,10 +191,14 @@ Ordered by how likely you are to need each part:
 | [`packages/esign-react-native/`](packages/esign-react-native/README.md) | The React Native library you install:<br>the `ESignature` component and the signing sources. |
 | [`packages/esign-react/`](packages/esign-react/README.md) | The React web library: the same component and sources for<br>browser apps, embedding with an iframe instead of a WebView. |
 | [`packages/esign-core/`](packages/esign-core/README.md) | The shared core both libraries build on: the `SigningSource`<br>abstraction and event interpreters, plus the GraphQL client<br>pieces used by mode 3. It arrives automatically as a<br>dependency - you never install it directly. |
-| [`apps/api/`](apps/api/README.md) | The backend service for mode 3: a GraphQL API that creates<br>envelopes through provider adapters (DocuSign and a mock),<br>persists status in PostgreSQL, and receives provider<br>webhooks. Not needed for modes 1 and 2. |
+| [`packages/esign-server/`](packages/esign-server/README.md) | The Node-only server half for your own backend: mint Web Forms<br>instances with locked prefill in one call, or run the whole<br>envelope domain (mode 3) over your own store, as a Fetch<br>handler or an Express router. The service below is built on it. |
+| [`examples/mint-only-demo/`](examples/mint-only-demo/README.md) | Server shape for most hosts: your existing API adds one<br>mutation that mints a locked Web Forms instance. |
+| [`examples/serverless-handler-demo/`](examples/serverless-handler-demo/README.md) | Server shape for route handlers and edge functions: the<br>package's mint and webhook handlers, `Request → Response`. |
+| [`examples/full-service-demo/`](examples/full-service-demo/README.md) | Server shape for mode 3, the whole service: a GraphQL API that creates<br>envelopes through provider adapters (DocuSign and a mock),<br>persists status in PostgreSQL, and receives provider<br>webhooks. Not needed for modes 1 and 2. |
 | [`examples/react-native-demo/`](examples/react-native-demo/README.md) | A complete React Native app hosting the component. Used for<br>manual testing, and the mobile end-to-end suites drive it. |
 | [`examples/react-demo/`](examples/react-demo/README.md) | The same for the browser: a small React app hosting the web<br>component, driven by the browser end-to-end suites. |
-| `docs/` | Documentation of how everything currently works -<br>start at [docs/index.md](docs/index.md). |
+| `docs/` | Documentation of how everything currently works -<br>start at [docs/index.md](docs/index.md); upgrading notes in<br>[docs/upgrading.md](docs/upgrading.md). |
+| `scripts/` | The CI / E2E / release shell and node the Makefile and the<br>workflows run; its logic is a tested `tooling` workspace. |
 
 ## Development
 
@@ -185,7 +210,7 @@ One-time setup:
 
 ```sh
 make install                             # npm ci across all workspaces (also installs git hooks)
-direnv allow . && direnv allow apps/api  # once per machine (loads env + nix flake dev shell)
+direnv allow . && direnv allow examples/full-service-demo  # once per machine (loads env + nix flake dev shell)
 ```
 
 **Working on the libraries** requires nothing else - no backend, no
@@ -218,14 +243,15 @@ credentials are set).
 | Target | Purpose |
 |--------|---------|
 | `make test` | Unit suites + lint + typecheck + format check |
-| `make unit`<br>`make coverage` | Test suites (100% coverage on packages + backend) |
+| `make unit`<br>`make coverage` | Test suites (100% coverage on packages + backend + `scripts/lib`) |
 | `make coverage-badge` | Coverage badge + HTML report from the last `make coverage` run |
 | `make check-code` | Lint + typecheck + format check only |
 | `make build` | Build the library (react-native-builder-bob) |
-| `make e2e-backend`<br>`make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown (`e2e-web` builds the libraries first and bundles the demo against their dist) |
+| `make e2e-backend`<br>`make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown (`e2e-web`<br>builds the libraries first and bundles the demo against their dist) |
 | `make e2e-ios`<br>`make e2e-android` | Maestro E2E against a running stack |
 | `make check-ci` | Lint the CI itself: actionlint on the workflows, shellcheck on `scripts/**` |
 | `make test-live` | Opt-in live DocuSign API verification (skips without credentials) |
+| `make e2e-live`<br>`make e2e-ios-live` | Live journeys against real DocuSign (needs `make docusign-env`): the<br>locked Web Form submitted and signed inside the web component + a<br>proxy-mode signature; the same Web Form journey in the React Native<br>demo's WebView (booted simulator) |
 | `make pods` | iOS CocoaPods install |
 
 Coverage is 100% everywhere, the demo apps included. The HTML report

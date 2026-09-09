@@ -53,8 +53,33 @@ export interface RestartableSigningSource extends SigningSource {
   restart(previous: SigningSession): Promise<SigningSession>;
 }
 
+/**
+ * A source that embeds via an SDK (mount) rather than a plain iframe/WebView
+ * URL. `C` is the platform's container (an HTMLElement on the web).
+ */
+export interface MountableSigningSource<C = unknown> extends SigningSource {
+  /**
+   * Mount the signing UI into `container` and forward normalized events to
+   * `onEvent`. Resolves with a cleanup function (call on unmount).
+   */
+  mount(
+    container: C,
+    onEvent: (event: SigningEvent) => void,
+  ): Promise<() => void>;
+}
+
+// Optional capabilities are duck-typed: a source has one when it implements
+// the method. One check backs every guard so they cannot drift apart.
+const hasCapability = (source: unknown, method: string): boolean =>
+  typeof (source as Record<string, unknown> | null | undefined)?.[method] ===
+  'function';
+
 /** Capability check - lets the component offer restart only when supported. */
 export const isRestartable = (
   source: SigningSource,
-): source is RestartableSigningSource =>
-  typeof (source as RestartableSigningSource).restart === 'function';
+): source is RestartableSigningSource => hasCapability(source, 'restart');
+
+/** Capability check - lets the component pick the mount path over the URL embed. */
+export const isMountable = <C = unknown>(
+  source: unknown,
+): source is MountableSigningSource<C> => hasCapability(source, 'mount');

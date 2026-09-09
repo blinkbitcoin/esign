@@ -12,15 +12,12 @@ import {
   type GetSigningUrlInput,
   type GetSigningUrlResult,
 } from '../operations';
-import { interpretProxyEvent } from './events';
+import { interpretBridgeEvent } from './bridge';
+import { SigningSourceError, isSigningSourceError } from './errors';
 
 import type { ApolloClient } from '@apollo/client';
 import type { RecipientData } from '../types';
-import type {
-  RestartableSigningSource,
-  SigningSession,
-  SigningSourceError,
-} from './types';
+import type { RestartableSigningSource, SigningSession } from './types';
 
 /**
  * Extract a GraphQL error code from an Apollo error. Apollo Client 4 wraps
@@ -38,13 +35,18 @@ export const getApolloErrorCode = (
   return fallback;
 };
 
+// Re-throw an already-normalized SigningSourceError untouched; otherwise map
+// the Apollo error onto a code (falling back to the caller's).
 const toSourceError = (
   error: unknown,
   fallbackCode: string,
-): SigningSourceError => ({
-  code: getApolloErrorCode(error, fallbackCode),
-  message: error instanceof Error ? error.message : undefined,
-});
+): SigningSourceError =>
+  isSigningSourceError(error)
+    ? error
+    : new SigningSourceError(
+        getApolloErrorCode(error, fallbackCode),
+        error instanceof Error ? error.message : undefined,
+      );
 
 export interface ProxySigningSourceOptions {
   /** Apollo client wired to the e-sign backend (createESignApolloClient). */
@@ -73,7 +75,7 @@ export const createProxySigningSource = (
         },
       });
       if (!data?.createEnvelope) {
-        throw { code: 'ENVELOPE_CREATION_FAILED' } as SigningSourceError;
+        throw new SigningSourceError('ENVELOPE_CREATION_FAILED');
       }
       return {
         url: data.createEnvelope.signingUrl,
@@ -81,17 +83,13 @@ export const createProxySigningSource = (
         allowedOrigin: options.allowedOrigin,
       };
     } catch (error) {
-      // Re-throw an already-normalized SigningSourceError untouched
-      if (error && typeof error === 'object' && 'code' in error) {
-        throw error;
-      }
       throw toSourceError(error, 'ENVELOPE_CREATION_FAILED');
     }
   },
 
   async restart(previous: SigningSession): Promise<SigningSession> {
     if (!previous.envelopeId) {
-      throw { code: 'SESSION_EXPIRED' } as SigningSourceError;
+      throw new SigningSourceError('SESSION_EXPIRED');
     }
     try {
       const { data } = await options.client.mutate<
@@ -107,7 +105,7 @@ export const createProxySigningSource = (
         },
       });
       if (!data?.getSigningUrl) {
-        throw { code: 'RESTART_FAILED' } as SigningSourceError;
+        throw new SigningSourceError('RESTART_FAILED');
       }
       return {
         url: data.getSigningUrl.signingUrl,
@@ -115,12 +113,10 @@ export const createProxySigningSource = (
         allowedOrigin: options.allowedOrigin,
       };
     } catch (error) {
-      if (error && typeof error === 'object' && 'code' in error) {
-        throw error;
-      }
       throw toSourceError(error, 'RESTART_FAILED');
     }
   },
 
-  interpret: interpretProxyEvent,
+  // The backend's return-URL bridge posts the `{ event }` protocol
+  interpret: interpretBridgeEvent,
 });

@@ -16,13 +16,16 @@ flowchart LR
         subgraph E2E["E2E"]
             direction LR
             BP["Build Packages<br/>version stamp · build · pack"] --> WEB["Web"]
+            DOCKER["Docker<br/>service image · smoke"]
+            SD["Server demos<br/>mint-only · serverless"]
+            LIVE["Live DocuSign<br/>opt-in: E2E_LIVE · e2e:live"]
             BACKEND["Backend"]
             BA["Build Android"] --> ANDROID["Android"]
             BI["Build iOS"] --> IOS["iOS"]
         end
         BADGES["Badges"]
         PUBLISH["Publish<br/>main → next · tag → latest<br/>waits for a green main run"]
-        VERIFY["Verify<br/>install from GitHub Packages"]
+        VERIFY["Verify<br/>install from GitHub Packages<br/>pull + smoke from GHCR"]
         CHECKS --> UNIT --> E2E
         E2E --> BADGES
         E2E --> PUBLISH --> VERIFY
@@ -46,6 +49,7 @@ flowchart LR
         RELPR["chore(release): X.Y.Z PR<br/>a human approves + merges it"]
         TAG["tag vX.Y.Z + GitHub Release<br/>body = CHANGELOG entry"]
         NPM[("GitHub Packages<br/>@blinkbitcoin/esign-*")]
+        GHCR[("GHCR<br/>ghcr.io/blinkbitcoin/esign-api")]
         GHP[("gh-pages branch<br/>badges/&lt;branch&gt;/ → README")]
     end
 
@@ -61,6 +65,7 @@ flowchart LR
     BADGES --> GHP
     CLEAN --> GHP
     PUBLISH --> NPM
+    PUBLISH --> GHCR
 
     CODEQL["CodeQL (codeql.yml)<br/>push · PR · weekly"]
     DEPBOT["Dependabot Updates<br/>weekly"]

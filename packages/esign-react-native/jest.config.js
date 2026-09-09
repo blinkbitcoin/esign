@@ -2,6 +2,8 @@ module.exports = {
   preset: '@react-native/jest-preset',
   testPathIgnorePatterns: ['/node_modules/', '/lib/'],
   moduleNameMapper: {
+    '^@blinkbitcoin/esign-core/docusign$':
+      '<rootDir>/../esign-core/src/docusign.ts',
     '^@blinkbitcoin/esign-core/webform$':
       '<rootDir>/../esign-core/src/webform.ts',
     '^@blinkbitcoin/esign-core$': '<rootDir>/../esign-core/src/index.ts',
@@ -15,12 +17,15 @@ module.exports = {
   collectCoverageFrom: ['src/**/*.{ts,tsx}'],
   coveragePathIgnorePatterns: [
     '/node_modules/',
-    // Generated from apps/api/schema.graphql (see codegen.ts)
+    // Generated from examples/full-service-demo/schema.graphql (see codegen.ts)
     'src/generated/',
     // Type-only file - no executable code to cover
     'src/types\\.ts$',
+    // Pure re-export barrels - no executable logic (istanbul reports 0/0)
+    'src/webform\\.ts$',
     // Pure re-export barrel - no executable logic (istanbul reports 0/0)
     'src/index\\.ts$',
+    'src/docusign\\.ts$',
   ],
   // json-summary feeds scripts/coverage-badge.mjs (README badge + HTML report)
   coverageReporters: ['text', 'lcov', 'json-summary'],

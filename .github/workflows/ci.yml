@@ -10,6 +10,10 @@ name: CI
 #               iOS)
 #         -> Publish -> Verify (main / release / dispatch)
 #
+# Docker (in E2E) builds + smokes the service image the same way; Publish
+# ships it to GHCR (ghcr.io/<owner>/esign-api:<version>, :latest / :next)
+# and Verify pulls and smokes what was published.
+#
 # A docs-only PR (docs/, *.md, LICENSE, templates - classified by the Changes
 # job in checks.yml) stops after Checks; main already skips docs-only pushes
 # via paths-ignore below, so PR and main follow the same rule.
@@ -24,7 +28,7 @@ name: CI
 # passed for that commit.
 #
 #   - Stable (`latest` dist-tag): ONLY for a vX.Y.Z tag. The tag IS the
-#     version (vX.Y.Z -> X.Y.Z); the three publishable package.json files
+#     version (vX.Y.Z -> X.Y.Z); the four publishable package.json files
 #     carry a placeholder that is stamped at build time. release.yml
 #     owns the tag: merging its "chore(release): X.Y.Z" PR (`make release`)
 #     creates the tag + GitHub Release and dispatches this workflow at the
@@ -39,12 +43,13 @@ name: CI
 #   - Prerelease (`next` dist-tag): every push to main (or a manual
 #     dispatch without `release_tag`) ships
 #     <next-patch-after-latest-tag>-pre.<run>.<sha>.
-#   Either way the three packages get the same version and the platform
+#   Either way the four packages get the same version and the platform
 #   packages pin core to exactly that version (the only range that also
 #   works for prereleases).
 #
 # Requires no extra secrets - GITHUB_TOKEN with packages:write is enough
-# for same-org publishing, and release.yml needs only the same token.
+# for same-org publishing (npm and GHCR), and release.yml needs only the
+# same token.
 #
 # The whole pipeline in one picture: docs/diagrams/README.md#ci--release-pipeline
 #
@@ -61,6 +66,11 @@ name: CI
 #                                           default macos-latest; set it to a
 #                                           self-hosted label, e.g.
 #                                           ["self-hosted","macOS","arm64"]
+#   - repo variable E2E_LIVE=true        -> run the live DocuSign suite on
+#                                           main / releases / dispatch (needs
+#                                           the docusign-demo environment)
+#   - PR label `e2e:live`                -> live DocuSign for one same-repo PR
+#                                           docs/operations/live-e2e-ci.md
 
 on:
   push:
@@ -114,6 +124,11 @@ jobs:
       ios: ${{ vars.E2E_IOS != 'false' || contains(github.event.pull_request.labels.*.name, 'e2e:ios') }}
       ios-runner: ${{ vars.E2E_IOS_RUNNER || 'macos-latest' }}
       release-tag: ${{ inputs.release_tag || '' }}
+      # Live DocuSign: repo variable E2E_LIVE=true turns it on for main pushes,
+      # releases and dispatches; PR label `e2e:live` for one same-repo PR.
+      # Fork PRs never get secrets, so they never qualify.
+      live: ${{ (github.event_name != 'pull_request' && vars.E2E_LIVE == 'true') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'e2e:live')) }}
+    secrets: inherit
 
   # Badges for this branch under gh-pages/badges/<branch>/: the measured
   # coverage badge (artifact from Unit / Coverage, or a red "failing"
@@ -122,17 +137,18 @@ jobs:
   # the whole pipeline). Runs after E2E so it never delays it; a stage that
   # never ran because an earlier one failed renders as "skipped". Always
   # runs so a red badge replaces a stale green one; skipped for fork PRs (no
-  # write token) and release tags (not a branch). gh-pages is the one branch
-  # the org ruleset exempts from the PR-approval requirement, so the default
-  # GITHUB_TOKEN can push there; pull-request.yml removes a PR's directory
-  # when it closes.
+  # write token) and release runs (not a branch - a hand-cut `release:` event
+  # or a workflow_dispatch at a tag with `release_tag` set). gh-pages is the
+  # one branch the org ruleset exempts from the PR-approval requirement, so
+  # the default GITHUB_TOKEN can push there; pull-request.yml removes a PR's
+  # directory when it closes.
   badges:
     name: Badges
     needs: [checks, unit, e2e]
     if: |
       always() &&
       needs.checks.result != 'cancelled' && needs.unit.result != 'cancelled' && needs.e2e.result != 'cancelled' &&
-      github.event_name != 'release' &&
+      github.event_name != 'release' && inputs.release_tag == '' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -197,6 +213,7 @@ jobs:
       actions: read # look up the commit's main run
     outputs:
       version: ${{ needs.e2e.outputs.version }}
+      image: ${{ steps.image.outputs.image }}
 
     steps:
       - name: Checkout code (for scripts/release)
@@ -236,6 +253,12 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DISTTAG: ${{ needs.e2e.outputs.disttag }}
 
+      - name: Publish @blinkbitcoin/esign-server
+        run: npm publish "$RUNNER_TEMP"/tarballs/blinkbitcoin-esign-server-[0-9]*.tgz --tag "$DISTTAG"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISTTAG: ${{ needs.e2e.outputs.disttag }}
+
       - name: Publish @blinkbitcoin/esign-react-native
         run: npm publish "$RUNNER_TEMP"/tarballs/blinkbitcoin-esign-react-native-[0-9]*.tgz --tag "$DISTTAG"
         env:
@@ -247,6 +270,22 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DISTTAG: ${{ needs.e2e.outputs.disttag }}
+
+      # The service image E2E / Docker built and smoked, tagged <version> and
+      # <disttag> like the packages: ghcr.io/<owner>/esign-api
+      - name: Fetch the service image built by E2E / Docker
+        uses: actions/download-artifact@v8
+        with:
+          name: service-image
+          path: ${{ runner.temp }}/image
+
+      - name: Publish the service image to GHCR
+        id: image
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/esign-api
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/release/publish-image.sh "$RUNNER_TEMP/image/esign-api.tar.gz" "${{ needs.e2e.outputs.version }}" "${{ needs.e2e.outputs.disttag }}"
 
   # Consumes what was ACTUALLY published: installs the exact version from
   # GitHub Packages into a clean project and asserts the consumer contract.
@@ -279,3 +318,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/release/registry-smoke.sh "${{ needs.publish.outputs.version }}"
+
+      - name: Pull the published service image and smoke it
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/release/registry-smoke-image.sh "${{ needs.publish.outputs.image }}"

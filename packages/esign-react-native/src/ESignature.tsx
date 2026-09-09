@@ -6,12 +6,11 @@
 // replace entirely by using the hook directly.
 
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-
-import { useESignature } from './useESignature';
 import { resolveLabels, resolveStyles } from './theme';
 import type { ESignatureProps } from './types';
+import { useESignature } from './useESignature';
 
 // Re-exported for backwards-compatible imports (Apollo-free).
 // getApolloErrorCode is re-exported from index.ts, NOT here - this file must

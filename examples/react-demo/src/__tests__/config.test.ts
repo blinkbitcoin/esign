@@ -12,6 +12,26 @@ const load = async (mode?: string) => {
 
 afterEach(() => vi.unstubAllEnvs());
 
+describe('PREFILL_OVERRIDE', () => {
+  it('is undefined without VITE_ESIGN_PREFILL and the parsed object with it', async () => {
+    vi.stubEnv('VITE_ESIGN_PREFILL', '');
+    expect((await load()).PREFILL_OVERRIDE).toBeUndefined();
+    vi.stubEnv('VITE_ESIGN_PREFILL', '{"number_of_units":1000}');
+    expect((await load()).PREFILL_OVERRIDE).toEqual({ number_of_units: 1000 });
+  });
+
+  it('rejects anything but a JSON object', async () => {
+    vi.stubEnv('VITE_ESIGN_PREFILL', '[1]');
+    await expect(load()).rejects.toThrow(
+      'VITE_ESIGN_PREFILL must be a JSON object',
+    );
+    vi.stubEnv('VITE_ESIGN_PREFILL', 'null');
+    await expect(load()).rejects.toThrow(
+      'VITE_ESIGN_PREFILL must be a JSON object',
+    );
+  });
+});
+
 describe('config', () => {
   it('defaults to proxy mode', async () => {
     expect((await load()).ESIGN_MODE).toBe('proxy');
@@ -24,6 +44,16 @@ describe('config', () => {
       expect((await load(mode)).ESIGN_MODE).toBe(mode);
     },
   );
+
+  it('defaults the API origin to :4000 and honors VITE_API_ORIGIN', async () => {
+    vi.stubEnv('VITE_API_ORIGIN', '');
+    expect((await load()).API_ORIGIN).toBe('http://localhost:4000');
+    vi.stubEnv('VITE_API_ORIGIN', 'http://localhost:4123');
+    expect((await load()).API_ORIGIN).toBe('http://localhost:4123');
+    expect((await load()).WEBFORM_INSTANCE_URL).toBe(
+      'http://localhost:4123/webform/instance',
+    );
+  });
 
   it('derives every URL from the API origin', async () => {
     const c = await load();

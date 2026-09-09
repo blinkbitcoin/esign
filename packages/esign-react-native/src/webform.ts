@@ -7,37 +7,55 @@
 //
 //   import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/webform';
 
-export { ESignature, getErrorMessage } from './ESignature';
-export { useESignature } from './useESignature';
 export type {
-  ESignatureProps,
-  ESignatureStatus,
-  ESignatureError,
-  ESignatureResult,
-  ESignatureTheme,
-  ESignatureStyles,
-  ESignatureStyleKey,
-  ESignatureLabels,
-  ESignatureWebViewProps,
-  UseESignatureOptions,
-  UseESignatureResult,
-  RecipientData,
-} from './types';
-
+  HostedFormCreateInstanceOptions,
+  HostedFormInstance,
+  HostedFormMintOptions,
+  HostedFormPrefill,
+  HostedFormPublicUrlSourceOptions,
+  HostedFormSourceOptions,
+  MintHostedFormOptions,
+  MintWebFormsInstanceOptions,
+  PublicUrlSigningSourceOptions,
+  RestartableSigningSource,
+  SigningEvent,
+  SigningSession,
+  SigningSource,
+  SigningSourceError,
+  WebFormPhoneNumber,
+  WebFormPrefill,
+  WebFormPrefillValue,
+  WebFormsCreateInstanceOptions,
+  WebFormsInstance,
+  WebFormsMintOptions,
+  WebFormsSigningSourceOptions,
+} from '@blinkbitcoin/esign-core/webform';
 export {
-  createWebFormsSource,
+  createHostedFormMinter,
+  createHostedFormPublicUrlSource,
+  createHostedFormSource,
+  interpretBridgeEvent,
+  resolveHostedFormCreateInstance,
   createPublicUrlSource,
+  createWebFormsMinter,
+  createWebFormsSource,
   interpretDocuSignEvent,
   interpretProxyEvent,
   isRestartable,
 } from '@blinkbitcoin/esign-core/webform';
+export { ESignature, getErrorMessage } from './ESignature';
 export type {
-  SigningSource,
-  RestartableSigningSource,
-  SigningSession,
-  SigningEvent,
-  SigningSourceError,
-  WebFormsSigningSourceOptions,
-  WebFormsInstance,
-  PublicUrlSigningSourceOptions,
-} from '@blinkbitcoin/esign-core/webform';
+  ESignatureError,
+  ESignatureLabels,
+  ESignatureProps,
+  ESignatureResult,
+  ESignatureStatus,
+  ESignatureStyleKey,
+  ESignatureStyles,
+  ESignatureTheme,
+  ESignatureWebViewProps,
+  RecipientData,
+  UseESignatureOptions,
+  UseESignatureResult,
+} from './types';
+export { useESignature } from './useESignature';

@@ -22,12 +22,11 @@
     "useEditorconfig": true,
     "includes": [
       "**",
-      "!apps/api/**",
       "!**/ios/**",
       "!**/android/**",
       "!**/coverage/**",
       "!**/vendor/**",
-      "!**/lib/**",
+      "!packages/*/lib/**",
       "!**/node_modules/**",
       "!**/src/generated/**"
     ]

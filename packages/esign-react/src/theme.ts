@@ -3,6 +3,7 @@
 // Precedence: base style < theme-derived color < styles[key].
 // Mirrors the RN component's StyleSheet (WCAG AA colors).
 
+import { resolveLabelsWith } from '@blinkbitcoin/esign-core/webform';
 import type React from 'react';
 
 import type {
@@ -107,20 +108,7 @@ export type ResolvedLabels = Required<ESignatureLabels>;
 export const resolveLabels = (
   label: string,
   labels?: ESignatureLabels,
-): ResolvedLabels => {
-  const resolved: ResolvedLabels = {
-    ...DEFAULT_LABELS,
-    title: label,
-    sign: label,
-  };
-  for (const key of Object.keys(labels ?? {}) as (keyof ESignatureLabels)[]) {
-    const value = labels?.[key];
-    if (value != null) {
-      resolved[key] = value;
-    }
-  }
-  return resolved;
-};
+): ResolvedLabels => resolveLabelsWith(DEFAULT_LABELS, label, labels);
 
 export type ResolvedStyles = Record<ESignatureStyleKey, React.CSSProperties>;
 

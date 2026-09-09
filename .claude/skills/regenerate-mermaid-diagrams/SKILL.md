@@ -30,7 +30,7 @@ separator - mermaid-cli rejects it even where GitHub's renderer is lenient).
   first (or flag it), then diagram the corrected state.
 - The current package names are `@blinkbitcoin/esign-core`,
   `@blinkbitcoin/esign-react-native`, `@blinkbitcoin/esign-react` under
-  `packages/`; the backend is `apps/api`. If these have changed, trust
+  `packages/`; the backend is `examples/full-service-demo`. If these have changed, trust
   `packages/*/package.json` over any doc.
 
 ## The eight diagrams: provenance and embeds
@@ -41,14 +41,14 @@ a diagram must update the "Embedded in" doc too:
 
 | # | Diagram | Type | Source of truth | Embedded in |
 |---|---------|------|-----------------|-------------|
-| 1 | System Architecture | `flowchart TB` | `README.md` (modes) + `docs/architecture/integration.md`; routes from `apps/api/src/app.ts` | `integration.md` (Parts) |
+| 1 | System Architecture | `flowchart TB` | `README.md` (modes) + `docs/architecture/integration.md`; routes from `examples/full-service-demo/src/app.ts` | `integration.md` (Parts) |
 | 2 | Data Flow (proxy mode) | `flowchart LR` | `docs/architecture/integration.md` end-to-end flow | combined page only (the doc's ASCII flow carries extra detail) |
 | 3 | Signing Flow Process | `flowchart TD` | `docs/architecture/mobile.md` state flow; event names from `packages/esign-core/src/signing/` | `mobile.md` (Architecture Pattern) |
-| 4 | Database ERD | `erDiagram` | `docs/architecture/data-models.md`; verify against `apps/api/migrations/` | `data-models.md` (ERD section) |
+| 4 | Database ERD | `erDiagram` | `docs/architecture/data-models.md`; verify against `examples/full-service-demo/migrations/` | `data-models.md` (ERD section) |
 | 5 | Component Hierarchy | `flowchart TB` | `docs/architecture/mobile.md` + demo `App.tsx` | `mobile.md` (Demo Host) |
-| 6 | Webhook Flow | `sequenceDiagram` | `docs/architecture/backend.md` webhook section + `apps/api/src/webhook.ts` | `backend.md` (Webhook Flow) |
-| 7 | GraphQL Request Flow | `sequenceDiagram` | `docs/architecture/api-contracts.md` + `apps/api/src/schema.ts` | `api-contracts.md` (createEnvelope) |
-| 8 | Web Forms Mode Flow | `sequenceDiagram` | `docs/integration/webforms.md` + `apps/api/src/providers/docusign/client.ts` | `webforms.md` (How it flows) |
+| 6 | Webhook Flow | `sequenceDiagram` | `docs/architecture/backend.md` webhook section + `examples/full-service-demo/src/webhook.ts` | `backend.md` (Webhook Flow) |
+| 7 | GraphQL Request Flow | `sequenceDiagram` | `docs/architecture/api-contracts.md` + `examples/full-service-demo/src/schema.ts` | `api-contracts.md` (createEnvelope) |
+| 8 | Web Forms Mode Flow | `sequenceDiagram` | `docs/integration/webforms.md` + `examples/full-service-demo/src/providers/docusign/client.ts` | `webforms.md` (How it flows) |
 
 ## Pedagogy and consistency rules
 
@@ -69,7 +69,8 @@ These keep the set readable as a progression, not eight unrelated pictures:
 - **Event vocabulary is real.** Use the actual signing event names
   (`signing_complete`, `cancel`, `decline`, `session_timeout`; DocuSign
   `sessionEnd` with `signingResult` / `formConfirmation` / `sessionTimeout`)
-  from `packages/esign-core/src/signing/events.ts` - the diagrams double as
+  from `packages/esign-core/src/signing/bridge.ts` (the bridge envelope) and
+  `packages/esign-core/src/providers/docusign/events.ts` (DocuSign.js) - the diagrams double as
   protocol documentation.
 - Separate diagrams with `---`; keep the one-line intro under each `##`
   heading if it adds a constraint the picture can't show.
@@ -81,7 +82,7 @@ These keep the set readable as a progression, not eight unrelated pictures:
    `git status` shows regenerated SVGs only for diagrams you touched.
 2. `grep` the sources for stale identifiers: old package names, `Prisma`
    (it is Knex), `docusignId` (it is `providerEnvelopeId`), any route not
-   present in `apps/api/src/app.ts`.
+   present in `examples/full-service-demo/src/app.ts`.
 3. ERD matches the latest migration exactly (columns, uniqueness, cascade,
    audit `action` values including `session_restart` and `creation_failed`).
 4. `docs/index.md` still links the file with an accurate description.

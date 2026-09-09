@@ -16,63 +16,87 @@
 // The signing abstraction, sources, Apollo factory, and operations come from
 // @blinkbitcoin/esign-core (shared with the RN package) and are re-exported.
 
-export { ESignature, getErrorMessage, getApolloErrorCode } from './ESignature';
-export { useESignature } from './useESignature';
 export type {
-  ESignatureProps,
-  ESignatureStatus,
-  ESignatureError,
-  ESignatureResult,
-  ESignatureTheme,
-  ESignatureStyles,
-  ESignatureStyleKey,
-  ESignatureLabels,
-  ESignatureEmbed,
-  UseESignatureOptions,
-  UseESignatureResult,
-  RecipientData,
-} from './types';
-
-// Web-only: DocuSign.js-backed Web Forms source (real embedded Web Forms).
-export { createDocuSignWebFormsSource, isMountable } from './docusignWebForms';
-export type {
-  DocuSignWebFormsSourceOptions,
-  MountableSigningSource,
-  DocuSignSdk,
-  DocuSignSigning,
-  LoadDocuSign,
-} from './docusignWebForms';
-
-// Re-export the platform-agnostic core surface
-export {
-  createProxySigningSource,
-  createWebFormsSource,
-  createPublicUrlSource,
-  isRestartable,
-  interpretProxyEvent,
-  interpretDocuSignEvent,
-  createESignApolloClient,
-  createAuthContextSetter,
-  handleApolloErrors,
-  ErrorCodes,
-  ErrorCode,
-  CREATE_ENVELOPE_MUTATION,
-  GET_SIGNING_URL_MUTATION,
-} from '@blinkbitcoin/esign-core';
-export type {
-  SigningSource,
-  RestartableSigningSource,
-  SigningSession,
-  SigningEvent,
-  SigningSourceError,
-  ProxySigningSourceOptions,
-  WebFormsSigningSourceOptions,
-  WebFormsInstance,
-  PublicUrlSigningSourceOptions,
-  ESignApolloClientOptions,
-  GetAuthToken,
   CreateEnvelopeInput,
   CreateEnvelopeResult,
+  ESignApolloClientOptions,
+  GetAuthToken,
   GetSigningUrlInput,
   GetSigningUrlResult,
+  HostedFormCreateInstanceOptions,
+  HostedFormInstance,
+  HostedFormMintOptions,
+  HostedFormPrefill,
+  HostedFormPublicUrlSourceOptions,
+  HostedFormSourceOptions,
+  MintHostedFormOptions,
+  MintWebFormsInstanceOptions,
+  ProxySigningSourceOptions,
+  PublicUrlSigningSourceOptions,
+  RestartableSigningSource,
+  SigningEvent,
+  SigningSession,
+  SigningSource,
+  SigningSourceError,
+  WebFormPhoneNumber,
+  WebFormPrefill,
+  WebFormPrefillValue,
+  WebFormsCreateInstanceOptions,
+  WebFormsInstance,
+  WebFormsMintOptions,
+  WebFormsSigningSourceOptions,
 } from '@blinkbitcoin/esign-core';
+// Re-export the platform-agnostic core surface
+export {
+  CREATE_ENVELOPE_MUTATION,
+  createAuthContextSetter,
+  createESignApolloClient,
+  createHostedFormMinter,
+  createHostedFormPublicUrlSource,
+  createHostedFormSource,
+  createProxySigningSource,
+  createPublicUrlSource,
+  createWebFormsMinter,
+  createWebFormsSource,
+  ErrorCode,
+  ErrorCodes,
+  GET_SIGNING_URL_MUTATION,
+  getApolloErrorCode,
+  handleApolloErrors,
+  interpretBridgeEvent,
+  interpretDocuSignEvent,
+  interpretProxyEvent,
+  isRestartable,
+  resolveHostedFormCreateInstance,
+} from '@blinkbitcoin/esign-core';
+export { ESignature, getErrorMessage } from './ESignature';
+export type {
+  DocuSignSdk,
+  DocuSignSigning,
+  DocuSignWebFormsCreateInstanceOptions,
+  DocuSignWebFormsMintOptions,
+  DocuSignWebFormsSourceOptions,
+  LoadDocuSign,
+  MountableSigningSource,
+} from './providers/docusign';
+// Web-only: DocuSign.js-backed Web Forms source (real embedded Web Forms).
+// Also on the ./docusign subpath, with the rest of the DocuSign provider.
+export {
+  createDocuSignWebFormsSource,
+  isMountable,
+} from './providers/docusign';
+export type {
+  ESignatureEmbed,
+  ESignatureError,
+  ESignatureLabels,
+  ESignatureProps,
+  ESignatureResult,
+  ESignatureStatus,
+  ESignatureStyleKey,
+  ESignatureStyles,
+  ESignatureTheme,
+  RecipientData,
+  UseESignatureOptions,
+  UseESignatureResult,
+} from './types';
+export { useESignature } from './useESignature';

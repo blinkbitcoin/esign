@@ -1,0 +1,30 @@
+{
+  "name": "esign-mint-only-example",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Example: an existing GraphQL API adds one mutation that mints a locked Web Forms instance with @blinkbitcoin/esign-server",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@apollo/server": "^5.5.1",
+    "@as-integrations/express5": "^1.1.2",
+    "@blinkbitcoin/esign-server": "0.0.0-development",
+    "express": "^5.2.1",
+    "graphql": "^16.14.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.4.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  },
+  "license": "MIT"
+}

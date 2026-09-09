@@ -24,6 +24,20 @@ test('public-url mode: embeds the published form (no backend call)', async ({
   await expect(signingFrame(page).getByText('Mock Web Form')).toBeVisible();
 });
 
+test('public-url prefill: URL values are shown but stay editable', async ({
+  page,
+}) => {
+  await startSigning(page);
+  // Prefill by URL (PUBLIC_FORM_URL carries ?full_name=Test+User) can only
+  // populate editable fields - unlike an instance minted via the API, the
+  // signer can change these values
+  const field = signingFrame(page).getByLabel('full_name');
+  await expect(field).toHaveValue('Test User');
+  await expect(field).toHaveJSProperty('readOnly', false);
+  await field.fill('Someone Else');
+  await expect(field).toHaveValue('Someone Else');
+});
+
 test('public-url happy path: complete signing', async ({ page }) => {
   await startSigning(page);
   await signingFrame(page)
