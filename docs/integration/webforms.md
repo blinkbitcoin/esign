@@ -177,6 +177,20 @@ make e2e-live         # service on DocuSign (LIVE_PORT, default 4010) → API li
 make e2e-ios-live     # the same journey in the React Native demo's WebView (booted simulator with the app installed, Maestro)
 ```
 
+To record the web journey as proof (a `video.webm` per test under
+`examples/react-demo/test-results/`, actions paced so each page is
+readable), run the in-iframe spec with `E2E_LIVE_VIDEO=1` while the live
+service is up:
+
+```sh
+# service on :4010 (what make e2e-live starts), then:
+. scripts/e2e/live-service.sh; live_env   # exports the fixture prefill
+cd examples/react-demo && E2E_LIVE_VIDEO=1 E2E_LIVE_API_ORIGIN=http://localhost:4010 \
+  npx playwright test -c playwright.webform-live-demo.config.ts -g "submitted, signed, completed"
+# MP4 / GIF: ffmpeg -i test-results/*/video.webm -c:v libx264 -pix_fmt yuv420p out.mp4
+#            ffmpeg -i test-results/*/video.webm -vf "fps=8,scale=480:-1" out.gif
+```
+
 `make e2e-live` also runs the web demo against the live service in a real
 browser twice - webform mode (the real form inside the component's
 iframe, walked to its Summary with the locked terms, **submitted**, the

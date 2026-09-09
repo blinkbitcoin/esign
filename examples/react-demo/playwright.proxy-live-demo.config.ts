@@ -19,9 +19,15 @@ export default defineConfig({
     // return-URL bridge on localhost; Chrome's Local Network Access policy
     // blocks that navigation (ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS).
     // A deployed service has a public return URL; here, lift the check.
-    launchOptions: { args: ['--disable-features=LocalNetworkAccessChecks'] },
+    launchOptions: {
+      args: ['--disable-features=LocalNetworkAccessChecks'],
+      // Recording mode paces every action so a viewer can read each page
+      slowMo: process.env.E2E_LIVE_VIDEO ? 600 : 0,
+    },
     baseURL: baseURL('proxy'),
     viewport: { width: 1000, height: 1100 },
+    // E2E_LIVE_VIDEO=1 records each test (test-results/<test>/video.webm)
+    video: process.env.E2E_LIVE_VIDEO ? 'on' : 'off',
   },
   webServer: apiOrigin
     ? [liveViteDevServer(apiOrigin, undefined, 'proxy')]
