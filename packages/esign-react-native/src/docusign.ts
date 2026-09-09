@@ -1,11 +1,13 @@
-// @blinkbitcoin/esign-react-native/webform - the Apollo-free entry.
+// @blinkbitcoin/esign-react-native/docusign - the DocuSign entry, Apollo-free.
 //
 // For consumers that only use DocuSign Web Forms (API-embedded or public URL):
-// nothing reachable from this file imports '@apollo/client' or 'graphql', so
-// those peers never need to be installed. Enforced by the webform-entry guard
-// test. Proxy-mode consumers import the package root instead.
+// the DocuSign provider plus the neutral signing layer, from core's /docusign
+// entry. Nothing reachable from this file imports '@apollo/client' or
+// 'graphql', so those peers never need to be installed. Enforced by the
+// webform-entry guard test. ./webform is this entry's alias; proxy-mode
+// consumers import the package root instead.
 //
-//   import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/webform';
+//   import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/docusign';
 
 export type {
   HostedFormCreateInstanceOptions,
@@ -29,7 +31,7 @@ export type {
   WebFormsInstance,
   WebFormsMintOptions,
   WebFormsSigningSourceOptions,
-} from '@blinkbitcoin/esign-core/webform';
+} from '@blinkbitcoin/esign-core/docusign';
 export {
   createHostedFormMinter,
   createHostedFormPublicUrlSource,
@@ -42,7 +44,7 @@ export {
   interpretDocuSignEvent,
   interpretProxyEvent,
   isRestartable,
-} from '@blinkbitcoin/esign-core/webform';
+} from '@blinkbitcoin/esign-core/docusign';
 export { ESignature, getErrorMessage } from './ESignature';
 export type {
   ESignatureError,

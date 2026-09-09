@@ -9,6 +9,8 @@ module.exports = {
       '<rootDir>/../../packages/esign-core/src/docusign.ts',
     '^@blinkbitcoin/esign-core/webform$':
       '<rootDir>/../../packages/esign-core/src/webform.ts',
+    '^@blinkbitcoin/esign-react-native/docusign$':
+      '<rootDir>/../../packages/esign-react-native/src/docusign.ts',
     '^@blinkbitcoin/esign-react-native/webform$':
       '<rootDir>/../../packages/esign-react-native/src/webform.ts',
     '^@blinkbitcoin/esign-core$':

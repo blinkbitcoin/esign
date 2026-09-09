@@ -66,7 +66,8 @@ esign/
 │       │
 │       ├── src/
 │       │   ├── index.ts           # Public API (full; re-exports core) ⭐
-│       │   ├── webform.ts         # Apollo-free entry (./webform subpath) ⭐
+│       │   ├── docusign.ts        # The DocuSign entry, Apollo-free (./docusign subpath) ⭐
+│       │   ├── webform.ts         # Alias of ./docusign (./webform subpath) ⭐
 │       │   ├── useESignature.ts   # Headless hook: runs core's signing machine (NetInfo, WebView transport, embed) ⭐
 │       │   ├── ESignature.tsx     # Default UI over the hook (source-driven) ⭐
 │       │   ├── theme.ts           # Base styles/copy + theme/styles/labels resolvers

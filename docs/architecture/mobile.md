@@ -68,7 +68,8 @@ packages/esign-core/src/       # platform-agnostic (shared with web)
 
 packages/esign-react-native/src/
 ├── index.ts             # Public API (re-exports core; needs Apollo peers)
-├── webform.ts           # Apollo-free entry (./webform subpath, guard-tested)
+├── docusign.ts          # The DocuSign entry, Apollo-free (./docusign subpath, guard-tested)
+├── webform.ts           # Alias of ./docusign (./webform subpath, guard-tested)
 ├── useESignature.ts     # Headless state machine (status, actions, webViewProps)
 ├── ESignature.tsx       # Default UI over the hook (WebView + built-in screens)
 ├── theme.ts             # Base styles/copy + theme / styles / labels resolvers
@@ -119,11 +120,12 @@ state offers a "Check Connection" action rather than reporting an error.
 
 ## Minimal consumption (Web Forms only)
 
-The `./webform` subpath entries in both core and the RN package are
-**Apollo-free by construction** (a guard test walks the import graph):
+The `./docusign` subpath entries in both core and the RN package (and
+`./webform`, their alias) are **Apollo-free by construction** (a guard test
+walks the import graph):
 
 ```tsx
-import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/webform';
+import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/docusign';
 ```
 
 `@apollo/client` + `graphql` are optional peers, needed only for proxy mode.
@@ -134,7 +136,8 @@ See [../integration/consuming.md](../integration/consuming.md).
 | File | Purpose |
 |------|---------|
 | `packages/esign-react-native/src/index.ts` | Library public API (full) |
-| `packages/esign-react-native/src/webform.ts` | Apollo-free `./webform` entry |
+| `packages/esign-react-native/src/docusign.ts` | The DocuSign entry, Apollo-free (`./docusign`) |
+| `packages/esign-react-native/src/webform.ts` | Alias of `./docusign` (`./webform`) |
 | `examples/react-native-demo/index.js` | Demo app registration |
 | `examples/react-native-demo/App.tsx` | Demo root; `buildSource()` picks the mode via `ESIGN_MODE` |
 
@@ -149,7 +152,7 @@ See [../integration/consuming.md](../integration/consuming.md).
 - Theme tests (`theme.test.tsx`): `theme` / `styles` / `labels` precedence
   and that the default look/copy is unchanged when nothing is passed
 - Per-source behavior tested in core (`signing/__tests__/`)
-- Apollo-free guard: import-graph walk from each `webform` entry
+- Apollo-free guard: import-graph walk from each `docusign` / `webform` entry
 
 ### E2E Tests (Maestro)
 - `examples/react-native-demo/.maestro/` - happy path, cancel-from-page,

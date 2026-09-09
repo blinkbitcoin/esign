@@ -39,6 +39,12 @@ let fullLoaded = false;
 try { require('@blinkbitcoin/esign-core'); fullLoaded = true; } catch {}
 assert.equal(fullLoaded, false, 'full entry must require the Apollo peers');
 console.log('pack smoke: /docusign + /webform resolve Apollo-free; full entry correctly needs Apollo');
+// The RN package's subpaths resolve through its export map to bob's output
+// (not loaded: that needs react-native)
+for (const sub of ['webform', 'docusign']) {
+  assert.match(require.resolve(`@blinkbitcoin/esign-react-native/${sub}`), new RegExp(`lib/commonjs/${sub}\\.js$`));
+}
+console.log('pack smoke: esign-react-native /webform + /docusign resolve');
 // The server package: CJS entry loads on plain Node with no peers at all
 const server = require('@blinkbitcoin/esign-server');
 assert.equal(typeof server.createWebFormInstance, 'function');

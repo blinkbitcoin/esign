@@ -17,18 +17,19 @@ npm install @blinkbitcoin/esign-react-native
 ```
 
 **Web Forms-only apps** (minimal footprint): import from the Apollo-free
-`/webform` subpath and skip `@apollo/client` + `graphql` entirely - they are
-optional peers needed only for proxy mode.
+`/docusign` subpath (the DocuSign provider + the neutral signing layer;
+`/webform` is its alias) and skip `@apollo/client` + `graphql` entirely -
+they are optional peers needed only for proxy mode.
 
 ```tsx
-import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/webform';
+import { ESignature, createWebFormsSource } from '@blinkbitcoin/esign-react-native/docusign';
 ```
 
 Peer dependencies your app provides (native modules must be owned by the host):
 
 `react` · `react-native` · `react-native-webview` ·
 `@react-native-community/netinfo` — plus `@apollo/client` · `graphql` (16.x)
-**only for proxy mode** (optional peers; the `/webform` subpath needs neither) ·
+**only for proxy mode** (optional peers; the `/docusign` and `/webform` subpaths need neither) ·
 `react-native-webview` · `@react-native-community/netinfo`
 
 ## Usage
@@ -156,7 +157,7 @@ return <MyButton onPress={sign} title="Sign" />;
 
 The hook still needs `react-native-webview` and
 `@react-native-community/netinfo` installed (peers), and is also exported
-from the Apollo-free `/webform` subpath.
+from the Apollo-free `/docusign` (and `/webform`) subpath.
 
 ## Public API
 

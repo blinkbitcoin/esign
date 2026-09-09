@@ -1,8 +1,7 @@
-// Guard: the ./webform entry must stay Apollo-free.
+// Guard: the ./docusign and ./webform entries must stay Apollo-free.
 //
-// Walks the static import graph from src/webform.ts - following relative
-// imports AND crossing into @blinkbitcoin/esign-core's source (webform
-// subpath) - and asserts no reached file imports '@apollo/' or 'graphql'.
+// Walks the static import graph from each entry - following relative
+// imports AND crossing into @blinkbitcoin/esign-core's source (its subpaths) - and asserts no reached file imports '@apollo/' or 'graphql'.
 // This is the package's guarantee that a Web Forms-only consumer never needs
 // GraphQL dependencies installed.
 
@@ -83,23 +82,28 @@ const listSources = (dir: string): string[] =>
     return entry.name.endsWith('.ts') ? [full] : [];
   });
 
-describe('webform entry (Apollo-free guarantee, across packages)', () => {
-  it('never reaches a file that imports @apollo/* or graphql', () => {
-    const externals = collectExternals(path.join(RN_SRC, 'webform.ts'));
+describe('the Apollo-free entries (webform, docusign), across packages', () => {
+  it.each(['webform.ts', 'docusign.ts'])(
+    '%s never reaches a file that imports @apollo/* or graphql',
+    entry => {
+      const externals = collectExternals(path.join(RN_SRC, entry));
 
-    const offenders = externals.filter(
-      s =>
-        s.startsWith('@apollo/') || s === 'graphql' || s.startsWith('graphql/'),
-    );
-    expect(offenders).toEqual([]);
-    // Sanity: the graph did cross into RN + core code (webview/netinfo present)
-    expect(externals).toEqual(
-      expect.arrayContaining([
-        'react-native-webview',
-        '@react-native-community/netinfo',
-      ]),
-    );
-  });
+      const offenders = externals.filter(
+        s =>
+          s.startsWith('@apollo/') ||
+          s === 'graphql' ||
+          s.startsWith('graphql/'),
+      );
+      expect(offenders).toEqual([]);
+      // Sanity: the graph did cross into RN + core code (webview/netinfo present)
+      expect(externals).toEqual(
+        expect.arrayContaining([
+          'react-native-webview',
+          '@react-native-community/netinfo',
+        ]),
+      );
+    },
+  );
 
   it('the full index DOES reach Apollo (walker sanity check)', () => {
     const externals = collectExternals(path.join(RN_SRC, 'index.ts'));

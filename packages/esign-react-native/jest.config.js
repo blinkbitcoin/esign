@@ -21,8 +21,9 @@ module.exports = {
     'src/generated/',
     // Type-only file - no executable code to cover
     'src/types\\.ts$',
-    // Pure re-export barrel - no executable logic (istanbul reports 0/0)
+    // Pure re-export barrels - no executable logic (istanbul reports 0/0)
     'src/index\\.ts$',
+    'src/docusign\\.ts$',
   ],
   // json-summary feeds scripts/coverage-badge.mjs (README badge + HTML report)
   coverageReporters: ['text', 'lcov', 'json-summary'],
