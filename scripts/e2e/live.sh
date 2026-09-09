@@ -92,4 +92,6 @@ E2E_LIVE_API_ORIGIN="http://localhost:$LIVE_PORT" npm run --silent test:e2e:prox
 
 echo "== the mint-only and serverless examples mint real instances"
 PROVIDER=docusign MINT_PORT="${MINT_PORT:-4110}" HANDLER_PORT="${HANDLER_PORT:-4210}" bash scripts/e2e/server-demos-smoke.sh
-echo "live run: all ok (screenshot: examples/react-demo/test-results/webform-live.png)"
+echo "live run: all ok (screenshots in examples/react-demo/test-results/)"
+echo "KNOWN LIMITATION: DocuSign (demo env) refuses to complete a Web Form with read-only fields (422);"
+echo "  the 'submission completes' spec is an expected failure and turns red when that changes."

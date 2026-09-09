@@ -61,7 +61,12 @@ see.
   a real browser every minted value is displayed and every locked field
   refuses input, the real form renders inside the web component, and in
   proxy mode a real envelope is created, signed inside the component and
-  completed through the return-URL bridge. The job starts the E2E Postgres
+  completed through the return-URL bridge. Green does NOT mean a Web Form
+  with read-only fields can be completed: DocuSign's demo environment
+  refuses that submission, and the suite carries it as an expected
+  failure that turns the job red when DocuSign's behaviour changes
+  ([webforms.md](../integration/webforms.md), "Submitting a form with
+  read-only fields"). The job starts the E2E Postgres
   (Docker) for the envelope, like the Backend job does.
 - The form screenshot is uploaded as the `live-docusign-webform` artifact.
   The service log is not uploaded: minted URLs carry a five-minute instance

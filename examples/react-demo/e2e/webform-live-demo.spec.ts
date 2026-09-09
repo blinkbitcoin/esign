@@ -74,7 +74,38 @@ test('live web form inside the component: minted, framed, walked', async ({
     path: 'test-results/webform-live-demo-summary.png',
     fullPage: true,
   });
-  // Submission (Summary → Next) is deliberately not attempted: DocuSign's
-  // demo environment refuses it for a form with read-only fields (422
-  // UNPROCESSABLE_ERROR), see docs/integration/webforms.md.
+});
+
+// KNOWN LIMITATION, encoded so a change is noticed: DocuSign's demo
+// environment refuses to complete a form that has read-only fields (422
+// UNPROCESSABLE_ERROR on the form's own submit request, whatever the values
+// - docs/integration/webforms.md, "Submitting a form with read-only
+// fields"). This test asserts a completed signing and is marked as an
+// expected failure: the run stays green while DocuSign refuses, and turns
+// RED the day the submission goes through - at which point the annotation
+// comes off and locked Web Forms are proven end to end.
+test('live web form inside the component: submission completes', async ({
+  page,
+}) => {
+  test.fail(
+    true,
+    'DocuSign (demo env) answers 422 to the submission of a form with read-only fields',
+  );
+  await page.goto('/');
+  await page.getByTestId('sign-document-button').click();
+  const frame = signingFrame(page);
+  await walkToSummary(frame);
+  let submitStatus = 0;
+  page.on('response', response => {
+    if (response.url().includes('/actions/')) {
+      submitStatus = response.status();
+    }
+  });
+  await frame.getByRole('button', { name: 'Next' }).click();
+  await expect.poll(() => submitStatus, { timeout: 30_000 }).not.toBe(0);
+  console.log(`[live-demo] submission answered ${submitStatus}`);
+  expect(submitStatus, 'the form submission is accepted').toBeLessThan(400);
+  await expect(page.getByTestId('success-screen')).toBeVisible({
+    timeout: 60_000,
+  });
 });
