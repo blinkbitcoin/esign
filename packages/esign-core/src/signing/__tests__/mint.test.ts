@@ -153,7 +153,7 @@ describe('createWebFormsSource with mint', () => {
     const source = createWebFormsSource({
       mint: { url: 'x', getAuthToken: () => undefined, fetch: fetchImpl },
     });
-    await expect(source.start()).rejects.toEqual({
+    await expect(source.start()).rejects.toMatchObject({
       code: 'ENVELOPE_CREATION_FAILED',
       message: 'Could not mint the signing instance (HTTP 401)',
     });

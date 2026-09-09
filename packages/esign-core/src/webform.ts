@@ -37,10 +37,14 @@ export type { PublicUrlSigningSourceOptions } from './signing/publicUrlSource';
 export { interpretDocuSignEvent, interpretProxyEvent } from './signing/events';
 export { getErrorMessage } from './signing/messages';
 export { isRestartable } from './signing/types';
+export {
+  SigningSourceError,
+  isSigningSourceError,
+  toSigningSourceError,
+} from './signing/errors';
 export type {
   SigningSource,
   RestartableSigningSource,
   SigningSession,
   SigningEvent,
-  SigningSourceError,
 } from './signing/types';

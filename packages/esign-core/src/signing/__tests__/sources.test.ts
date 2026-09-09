@@ -1,5 +1,6 @@
 import { CombinedGraphQLErrors } from '@apollo/client/errors';
 
+import { SigningSourceError } from '../errors';
 import { createProxySigningSource, getApolloErrorCode } from '../proxySource';
 import { createWebFormsSource } from '../webFormsSource';
 import { createPublicUrlSource } from '../publicUrlSource';
@@ -98,9 +99,9 @@ describe('createProxySigningSource', () => {
       contractType: 'c',
       recipient,
     });
-    await expect(source.start()).rejects.toMatchObject({
-      code: 'ENVELOPE_CREATION_FAILED',
-    });
+    const rejection = await source.start().catch(e => e);
+    expect(rejection).toBeInstanceOf(SigningSourceError);
+    expect(rejection).toMatchObject({ code: 'ENVELOPE_CREATION_FAILED' });
   });
 
   it('start() handles a non-Error, non-coded rejection', async () => {
@@ -109,9 +110,9 @@ describe('createProxySigningSource', () => {
       contractType: 'c',
       recipient,
     });
-    await expect(source.start()).rejects.toEqual({
+    await expect(source.start()).rejects.toMatchObject({
       code: 'ENVELOPE_CREATION_FAILED',
-      message: undefined,
+      message: '',
     });
   });
 
@@ -206,9 +207,23 @@ describe('createWebFormsSource', () => {
     const source = createWebFormsSource({
       createInstance: jest.fn().mockRejectedValue(new Error('http 500')),
     });
-    await expect(source.start()).rejects.toMatchObject({
+    const rejection = await source.start().catch(e => e);
+    expect(rejection).toBeInstanceOf(SigningSourceError);
+    expect(rejection).toMatchObject({
       code: 'ENVELOPE_CREATION_FAILED',
       message: 'http 500',
+    });
+  });
+
+  it('start() keeps the code of an already-coded createInstance rejection', async () => {
+    const source = createWebFormsSource({
+      createInstance: jest
+        .fn()
+        .mockRejectedValue(new SigningSourceError('UNAUTHORIZED', 'no')),
+    });
+    await expect(source.start()).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+      message: 'no',
     });
   });
 
@@ -216,9 +231,9 @@ describe('createWebFormsSource', () => {
     const source = createWebFormsSource({
       createInstance: jest.fn().mockRejectedValue('nope'),
     });
-    await expect(source.start()).rejects.toEqual({
+    await expect(source.start()).rejects.toMatchObject({
       code: 'ENVELOPE_CREATION_FAILED',
-      message: undefined,
+      message: '',
     });
   });
 
@@ -230,7 +245,9 @@ describe('createWebFormsSource', () => {
     });
     const started = source.start();
     jest.advanceTimersByTime(5000);
-    await expect(started).rejects.toMatchObject({
+    const rejection = await started.catch(e => e);
+    expect(rejection).toBeInstanceOf(SigningSourceError);
+    expect(rejection).toMatchObject({
       code: 'NETWORK_ERROR',
       message: expect.stringContaining('5000ms'),
     });

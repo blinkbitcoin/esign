@@ -55,7 +55,7 @@ describe('createDocuSignWebFormsSource with mint', () => {
       integrationKey: 'ik',
       loadDocuSign: async () => ({ signing: jest.fn() }),
     });
-    await expect(source.start()).rejects.toEqual({
+    await expect(source.start()).rejects.toMatchObject({
       code: 'ENVELOPE_CREATION_FAILED',
       message: 'Could not mint the signing instance (HTTP 502)',
     });

@@ -166,7 +166,7 @@ from the Apollo-free `/webform` subpath.
 | `useESignature(options)` | The headless state machine behind `ESignature`: `status`, `error`, `isSessionExpired`, `isCheckingConnection`, `sign` / `cancel` / `retry` / `restart` / `checkConnection`, and `webViewProps` to spread onto your own `WebView`. Same options as the component minus the look props. |
 | `createProxySigningSource` / `createWebFormsSource` / `createPublicUrlSource` | The three signing modes (`SigningSource`). Only the proxy is restartable. |
 | `createESignApolloClient({ uri, getAuthToken })` | Apollo Client factory — host owns endpoint + token retrieval (proxy mode only) |
-| `SigningSource`, `SigningSession`, `SigningEvent`, `isRestartable` | The abstraction, for writing a custom mode |
+| `SigningSource`, `SigningSession`, `SigningEvent`, `isRestartable`, `SigningSourceError` | The abstraction, for writing a custom mode (`start()` rejects with a `SigningSourceError`: an `Error` carrying a `code`) |
 | `ErrorCode` (enum) / `ErrorCodes` (map) | The backend wire contract — generated from the service's GraphQL schema |
 | `getErrorMessage(code, serverMessage?)` | Error-code → user-friendly copy |
 | `CREATE_ENVELOPE_MUTATION`, `GET_SIGNING_URL_MUTATION` + types | The GraphQL operations, types generated from the schema |
