@@ -149,7 +149,12 @@ See [../integration/consuming.md](../integration/consuming.md).
 ### E2E Tests (Maestro)
 - `examples/react-native-demo/.maestro/` - happy path, cancel-from-page,
   session-timeout→restart, webform-happy-path (tagged `webform`; needs
-  `ESIGN_MODE=webform` Metro)
+  `ESIGN_MODE=webform` Metro), webform-live (tagged `live`; the real
+  DocuSign form in the WebView to a signed envelope, run by
+  `make e2e-ios-live` which starts the live service and a Metro carrying
+  `ESIGN_MODE`/`ESIGN_BACKEND_PORT`/`ESIGN_PREFILL` and relaunches the app
+  through `simctl` - the ceremony exposes no text, so its taps are by
+  position; [integration/docusign-lessons.md](../integration/docusign-lessons.md))
 - TestID-based element selection
 - One app launch per run: `app-launch` (pinned first in `config.yaml`)
   boots the app with a retried launch + wait; every later flow keeps the

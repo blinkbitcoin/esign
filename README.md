@@ -229,6 +229,7 @@ credentials are set).
 | `make e2e-ios`<br>`make e2e-android` | Maestro E2E against a running stack |
 | `make check-ci` | Lint the CI itself: actionlint on the workflows, shellcheck on `scripts/**` |
 | `make test-live` | Opt-in live DocuSign API verification (skips without credentials) |
+| `make e2e-live`<br>`make e2e-ios-live` | Live journeys against real DocuSign (needs `make docusign-env`): the locked Web Form submitted and signed inside the web component + a proxy-mode signature; the same Web Form journey in the React Native demo's WebView (booted simulator) |
 | `make pods` | iOS CocoaPods install |
 
 Coverage is 100% everywhere, the demo apps included. The HTML report
