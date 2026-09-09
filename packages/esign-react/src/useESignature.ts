@@ -1,27 +1,30 @@
-// useESignature (web) - the headless signing state machine.
-// Mirrors packages/esign-react-native's hook: WebView becomes an iframe (or a
-// DocuSign.js-managed mount), WebView postMessage becomes window 'message'
-// events, and NetInfo becomes navigator.onLine. It renders nothing: the
-// default ESignature component is one consumer, a host app's own buttons +
-// iframe are another.
+// useESignature (web) - the headless signing flow on the core state machine.
+// The transitions live in @blinkbitcoin/esign-core (signing/machine); this
+// hook owns what is web-specific: navigator.onLine as the connectivity probe,
+// window 'message' events (origin-pinned) or a DocuSign.js mount as the event
+// transport, the success-screen delay, and how to embed the session (iframe
+// props or a mount container). It renders nothing: the default ESignature
+// component is one consumer, a host app's own buttons + iframe are another.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
-import {
-  getErrorMessage,
-  isAllowedOrigin,
-  isMountable,
-  isRestartable,
-} from '@blinkbitcoin/esign-core';
 import type {
+  SigningAction,
   SigningEvent,
+  SigningMachineState,
   SigningSession,
   SigningSourceError,
 } from '@blinkbitcoin/esign-core';
+
+import {
+  acquireSession,
+  initialSigningState,
+  isAllowedOrigin,
+  isMountable,
+  resolveRestart,
+  transition,
+} from '@blinkbitcoin/esign-core';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   ESignatureEmbed,
-  ESignatureError,
-  ESignatureStatus,
   UseESignatureOptions,
   UseESignatureResult,
 } from './types';
@@ -42,19 +45,16 @@ export const useESignature = ({
   __testSigningUrl,
   __testSession,
 }: UseESignatureOptions): UseESignatureResult => {
-  const [status, setStatus] = useState<ESignatureStatus>(
-    __testInitialStatus ?? 'idle',
+  const [state, setState] = useState<SigningMachineState>(() =>
+    initialSigningState({
+      __testInitialStatus,
+      __testSigningUrl,
+      __testSession,
+    }),
   );
-  const [error, setError] = useState<ESignatureError | null>(null);
-  const [signingUrl, setSigningUrl] = useState<string | null>(
-    __testSigningUrl ?? __testSession?.url ?? null,
-  );
-  // The active session (URL, envelopeId, allowedOrigin) never drives rendering,
-  // so it lives in a ref - also avoids stale closures in the message handler
-  // and is preserved across session-expiry for restart.
-  const sessionRef = useRef<SigningSession | null>(
-    __testSession ?? (__testSigningUrl ? { url: __testSigningUrl } : null),
-  );
+  // The machine state is also kept in a ref: the message handler and the
+  // restart read the live session without a stale closure
+  const stateRef = useRef(state);
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Lets async work detect unmount (in-flight source.start())
@@ -73,92 +73,57 @@ export const useESignature = ({
     };
   }, []);
 
-  // Acquire a session (start or restart) and enter the signing state, mapping
-  // any SigningSourceError to a user-facing error state.
-  const beginSigning = useCallback(
-    async (acquire: () => Promise<SigningSession>) => {
-      setStatus('loading');
-      try {
-        const session = await acquire();
-        // The acquire call can outlive the host (user navigated away
-        // mid-loading) - a late result must not update state or fire callbacks
-        if (!mountedRef.current) {
-          return;
+  // Run one action through the machine and its effects: the success screen
+  // is held for successDelayMs before onComplete fires and the url clears
+  const apply = useCallback(
+    (action: SigningAction) => {
+      const { state: next, effects } = transition(stateRef.current, action);
+      stateRef.current = next;
+      setState(next);
+      for (const effect of effects) {
+        switch (effect.type) {
+          case 'complete':
+            successTimeoutRef.current = setTimeout(() => {
+              onComplete(effect.result);
+              apply({ type: 'settled' });
+            }, successDelayMs);
+            break;
+          case 'error':
+            onError(effect.error);
+            break;
+          case 'cancel':
+            onCancel();
+            break;
         }
-        sessionRef.current = session;
-        setSigningUrl(session.url);
-        setStatus('signing');
-      } catch (e) {
-        if (!mountedRef.current) {
-          return;
-        }
-        const sourceError = e as SigningSourceError;
-        const code = sourceError?.code ?? 'UNKNOWN_ERROR';
-        const message = getErrorMessage(code, sourceError?.message);
-        setError({ code, message });
-        setStatus('error');
-        onError({ code, message });
       }
     },
-    [onError],
+    [onComplete, onError, onCancel, successDelayMs],
   );
 
-  // Drive the state machine from a normalized SigningEvent. Shared by the
-  // postMessage path (raw iframe) and the DocuSign.js mount path.
-  const applySigningEvent = useCallback(
-    (signingEvent: SigningEvent) => {
-      switch (signingEvent.type) {
-        case 'complete': {
-          setStatus('success');
-          successTimeoutRef.current = setTimeout(() => {
-            onComplete({
-              envelopeId:
-                signingEvent.envelopeId ?? sessionRef.current?.envelopeId,
-              status: 'completed',
-            });
-            setSigningUrl(null);
-          }, successDelayMs);
-          break;
-        }
-
-        case 'cancel':
-        case 'decline':
-          setStatus('idle');
-          onCancel();
-          setSigningUrl(null);
-          sessionRef.current = null;
-          break;
-
-        case 'sessionExpired': {
-          const message = getErrorMessage('SESSION_EXPIRED');
-          setStatus('error');
-          setError({ code: 'SESSION_EXPIRED', message });
-          onError({ code: 'SESSION_EXPIRED', message });
-          // Clear signingUrl but PRESERVE sessionRef for restart capability
-          setSigningUrl(null);
-          break;
-        }
-
-        case 'error': {
-          const code = signingEvent.code ?? 'SIGNING_ERROR';
-          const message = signingEvent.message ?? getErrorMessage(code);
-          setStatus('error');
-          setError({ code, message });
-          onError({ code, message });
-          setSigningUrl(null);
-          sessionRef.current = null;
-          break;
-        }
+  // Acquire a session (start or restart) and enter the signing state. The
+  // acquire call can outlive the host (user navigated away mid-loading) - a
+  // late result must not update state or fire callbacks
+  const beginSigning = useCallback(
+    async (acquire: () => Promise<SigningSession>) => {
+      apply({ type: 'acquire' });
+      const outcome = await acquireSession(acquire);
+      if (mountedRef.current) {
+        apply(outcome);
       }
     },
-    [onComplete, onCancel, onError, successDelayMs],
+    [apply],
+  );
+
+  const applySigningEvent = useCallback(
+    (event: SigningEvent) => apply({ type: 'event', event }),
+    [apply],
   );
 
   // Handle signing-page postMessage events (window-level: the embedded page
   // posts to window.parent). The session's allowedOrigin pins the sender.
   const handleSigningMessage = useCallback(
     (messageEvent: MessageEvent) => {
-      if (!isAllowedOrigin(sessionRef.current, messageEvent.origin)) {
+      if (!isAllowedOrigin(stateRef.current.session, messageEvent.origin)) {
         return; // Ignore messages from unexpected origins
       }
       const signingEvent = source.interpret(messageEvent.data);
@@ -175,14 +140,14 @@ export const useESignature = ({
   const usesSdkMount = isMountable<HTMLElement>(source);
 
   useEffect(() => {
-    if (status !== 'signing' || usesSdkMount) {
+    if (state.status !== 'signing' || usesSdkMount) {
       return;
     }
     window.addEventListener('message', handleSigningMessage);
     return () => {
       window.removeEventListener('message', handleSigningMessage);
     };
-  }, [status, usesSdkMount, handleSigningMessage]);
+  }, [state.status, usesSdkMount, handleSigningMessage]);
 
   // DocuSign.js mount path: the host renders a container and hands it over
   // via the callback ref in `embed`; the mount runs once it is attached (the
@@ -191,7 +156,7 @@ export const useESignature = ({
 
   useEffect(() => {
     if (
-      status !== 'signing' ||
+      state.status !== 'signing' ||
       !isMountable<HTMLElement>(source) ||
       !container
     ) {
@@ -216,53 +181,46 @@ export const useESignature = ({
       active = false;
       unmount?.();
     };
-  }, [status, source, container, applySigningEvent]);
+  }, [state.status, source, container, applySigningEvent]);
 
   const sign = useCallback(async () => {
     // Check connectivity BEFORE any API call; offline is an expected state,
     // not an error, so onError is not called
     if (!isOnline()) {
-      setStatus('offline');
+      apply({ type: 'offline' });
       return;
     }
     await beginSigning(() => source.start());
-  }, [beginSigning, source]);
+  }, [apply, beginSigning, source]);
 
   const checkConnection = useCallback(() => {
     if (isOnline()) {
-      setStatus('idle');
+      apply({ type: 'online' });
     }
     // If still offline, remain in offline status (user can retry)
-  }, []);
+  }, [apply]);
 
   const cancel = useCallback(() => {
     onCancel();
   }, [onCancel]);
 
   const retry = useCallback(() => {
-    setError(null);
-    setSigningUrl(null);
-    sessionRef.current = null;
-    setStatus('idle');
-  }, []);
+    apply({ type: 'retry' });
+  }, [apply]);
 
-  // Session-expiration restart (only for restartable sources)
+  // Session-expiration restart: only a restartable source with a preserved
+  // session can restart; anything else falls back to a fresh start
   const restart = useCallback(async () => {
-    if (!isRestartable(source)) {
+    const acquire = resolveRestart(source, stateRef.current.session);
+    if (!acquire) {
       retry();
       return;
     }
-    const restartable = source;
-    const session = sessionRef.current;
-    /* istanbul ignore next -- restart is only offered after a SESSION_EXPIRED
-       event, which preserves sessionRef; this guard is defensive */
-    if (!session) {
-      retry();
-      return;
-    }
-    setError(null);
-    await beginSigning(() => restartable.restart(session));
-  }, [source, retry, beginSigning]);
+    apply({ type: 'restart' });
+    await beginSigning(acquire);
+  }, [source, retry, apply, beginSigning]);
+
+  const { status, error, signingUrl } = state;
 
   const embed = useMemo<ESignatureEmbed>(() => {
     if (status !== 'signing') {
