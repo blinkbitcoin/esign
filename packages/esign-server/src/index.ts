@@ -40,6 +40,7 @@ export {
   MAX_CONTRACT_TYPE_LENGTH,
   MAX_NAME_LENGTH,
 } from './validation';
+export { bearerToken } from './auth';
 export { validateHmac } from './hmac';
 export type { ValidateHmacOptions } from './hmac';
 export { consoleLogger, sanitizeForLog } from './log';

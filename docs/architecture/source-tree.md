@@ -40,6 +40,7 @@ esign/
 │       │   ├── bridgeScript.ts    # postMessage helpers the pages ship, run in tests ⭐
 │       │   ├── html.ts            # escapeHtml / sanitizeId / jsonForScript
 │       │   ├── prefill.ts         # Web Forms prefill validation + formatting
+│       │   ├── auth.ts            # bearerToken: the Authorization header → token (the meaning stays the host's)
 │       │   ├── hmac.ts / validation.ts / audit.ts / errors.ts / log.ts / tracing.ts / http.ts
 │       │   ├── docusign/          # DocuSign adapter: auth (JWT grant), client, config, webforms, provider
 │       │   ├── mock/              # Mock adapter (mirrors DocuSign locally)

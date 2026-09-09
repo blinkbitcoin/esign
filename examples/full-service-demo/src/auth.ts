@@ -8,6 +8,7 @@
 //   - development: the bearer token is treated as an opaque userId, so local
 //     clients and E2E tests work without an identity provider
 
+import { bearerToken } from '@blinkbitcoin/esign-server';
 import crypto from 'crypto';
 
 import { isInsecureDevAllowed } from './config';
@@ -66,10 +67,7 @@ export const verifyJwt = (token: string, secret: string): string | null => {
 // Resolve the userId for a request from its Authorization header.
 // Returns null for anything that isn't a well-formed `Bearer <token>` header.
 export const getUserIdFromAuthHeader = (header: string | undefined): string | null => {
-  if (!header?.startsWith('Bearer ')) {
-    return null;
-  }
-  const token = header.slice('Bearer '.length);
+  const token = bearerToken(header);
   if (!token) {
     return null;
   }

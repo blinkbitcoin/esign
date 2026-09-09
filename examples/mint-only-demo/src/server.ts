@@ -9,6 +9,7 @@ import type { AddressInfo } from 'node:net';
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@as-integrations/express5';
 import {
+  bearerToken,
   renderSigningReturnBridge,
   signingPageCsp,
   signingPageNonce,
@@ -19,14 +20,7 @@ import { type Context, resolvers, typeDefs } from './schema';
 
 export const userFromAuthorization = (
   header: string | undefined,
-): string | null => {
-  if (!header?.startsWith('Bearer ')) {
-    return null;
-  }
-  // HTTP parsers strip the whitespace around header values, so a token is
-  // never empty once the prefix matched
-  return header.slice('Bearer '.length).trim();
-};
+): string | null => bearerToken(header);
 
 export const createServer = (mint: Mint) => {
   const apollo = new ApolloServer<Context>({ typeDefs, resolvers });
