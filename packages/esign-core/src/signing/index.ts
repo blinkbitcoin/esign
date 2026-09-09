@@ -13,6 +13,7 @@ export {
   isSigningSourceError,
   toSigningSourceError,
 } from './errors';
+export { withTimeout } from './withTimeout';
 
 export { interpretProxyEvent, interpretDocuSignEvent } from './events';
 export { getErrorMessage } from './messages';

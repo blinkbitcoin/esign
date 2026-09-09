@@ -17,6 +17,7 @@ export {
   SigningSourceError,
   isSigningSourceError,
   toSigningSourceError,
+  withTimeout,
   interpretProxyEvent,
   interpretDocuSignEvent,
   getErrorMessage,
