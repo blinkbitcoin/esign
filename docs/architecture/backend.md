@@ -57,7 +57,7 @@ examples/full-service-demo/src/
 ├── db.ts             # Knex instance (fail-fast on missing DATABASE_URL)
 ├── auth.ts           # JWT verification (HS256) with dev/prod split
 ├── providers/        # Hexagonal provider layer
-│   ├── port.ts       #   ESignProvider port + supportsWebForms
+│   ├── port.ts       #   ESignProvider port + supportsHostedForms (supportsWebForms kept as alias)
 │   ├── index.ts      #   Registry + providerFromEnv (ESIGN_PROVIDER) + tracing-wrapped singleton
 │   ├── mock.ts       #   The package's mock adapter, wired to this service's pages
 │   └── docusign/     #   The package's DocuSign adapter wired to the service's

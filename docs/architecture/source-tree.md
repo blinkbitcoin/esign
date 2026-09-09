@@ -161,7 +161,7 @@ esign/
 │       │   ├── tracing.ts         # OTel spans for the service + providers
 │       │   │
 │       │   ├── providers/         # The package's adapters wired to this service ⭐
-│       │   │   ├── port.ts        #   Re-exports ESignProvider + supportsWebForms
+│       │   │   ├── port.ts        #   Re-exports ESignProvider + supportsHostedForms
 │       │   │   ├── index.ts       #   registry + providerFromEnv, singleton (tracing-wrapped)
 │       │   │   ├── mock.ts        #   mock adapter handle (pages served by the router)
 │       │   │   └── docusign/      #   DocuSign adapter handle + env config

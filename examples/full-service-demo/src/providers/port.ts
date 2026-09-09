@@ -3,4 +3,4 @@
 // leaks past this boundary.
 
 export type { ESignProvider } from '@blinkbitcoin/esign-server';
-export { supportsWebForms } from '@blinkbitcoin/esign-server';
+export { supportsHostedForms, supportsWebForms } from '@blinkbitcoin/esign-server';

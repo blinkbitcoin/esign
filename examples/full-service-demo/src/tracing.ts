@@ -67,7 +67,7 @@ export const setActiveSpanAttributes = (attributes: Attributes): void => {
 // tracing equivalent of the provider pattern itself.
 export const instrumentProvider = (provider: ESignProvider, name: string): ESignProvider => ({
   // Optional Web Forms capability: only present (and traced) when the wrapped
-  // provider supports it, so supportsWebForms() still reflects the real
+  // provider supports it, so supportsHostedForms() still reflects the real
   // capability through the wrapper.
   ...(provider.createWebFormInstance && {
     createWebFormInstance: (userId: string, prefill: WebFormPrefill) =>

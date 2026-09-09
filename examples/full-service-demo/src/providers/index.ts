@@ -36,4 +36,4 @@ export const provider = getProvider();
 
 // Re-export the port for convenience (consumers can import both from here)
 export type { ESignProvider } from './port';
-export { supportsWebForms } from './port';
+export { supportsHostedForms, supportsWebForms } from './port';
