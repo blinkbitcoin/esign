@@ -5,20 +5,29 @@
 # *.mmd) may not change without its re-rendered SVG - `make diagrams`
 # produces both; the pre-commit hook stages both.
 # Range: PR -> origin/<BASE_REF>...HEAD; push -> HEAD~1; local -> origin/main.
-# Env: EVENT_NAME, BASE_REF (CI). CI: Checks / Docs. Local: make docs-check.
+# A package.json counts only when the change is structural (exports, scripts,
+# workspaces...), not a dependency or version bump (scripts/ci/manifest-
+# structural.mjs); a Dependabot PR is never expected to touch docs.
+# Env: EVENT_NAME, BASE_REF, PR_AUTHOR (CI). CI: Checks / Docs. Local: make docs-check.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 if [ "${EVENT_NAME:-}" = pull_request ]; then
   git fetch --no-tags --depth=1 origin "${BASE_REF:?}"
-  CHANGED_FILES=$(git diff --name-only "origin/$BASE_REF"...HEAD 2>/dev/null || echo "")
+  BASE="origin/$BASE_REF"
 elif [ -n "${EVENT_NAME:-}" ]; then
-  CHANGED_FILES=$(git diff --name-only HEAD~1 2>/dev/null || echo "")
+  BASE=HEAD~1
 else
-  CHANGED_FILES=$(git diff --name-only origin/main...HEAD 2>/dev/null || echo "")
+  BASE=origin/main
 fi
+CHANGED_FILES=$(git diff --name-only "$BASE"...HEAD 2>/dev/null || echo "")
+MERGE_BASE=$(git merge-base "$BASE" HEAD 2>/dev/null || echo "$BASE")
 
-ARCH_PATTERNS="esign-server/src/knex/migrations|\.graphql$|src/.*index\.ts$|package\.json|providers/"
+ARCH_PATTERNS="esign-server/src/knex/migrations|\.graphql$|src/.*index\.ts$|providers/"
 ARCH_CHANGES=$(echo "$CHANGED_FILES" | grep -E "$ARCH_PATTERNS" || true)
+# shellcheck disable=SC2046 # manifest paths are one per line, whitespace-free
+MANIFEST_CHANGES=$(node scripts/ci/manifest-structural.mjs "$MERGE_BASE" \
+  $(echo "$CHANGED_FILES" | grep -E 'package\.json$' || true))
+ARCH_CHANGES=$(printf '%s\n%s' "$ARCH_CHANGES" "$MANIFEST_CHANGES" | sed '/^$/d')
 DOC_CHANGES=$(echo "$CHANGED_FILES" | grep -E "^docs/|README\.md$" || true)
 
 # (grep exits 1 when nothing matched; with pipefail that must not abort us)
@@ -31,7 +40,9 @@ if [ -n "$STALE_SVGS" ]; then
   exit 1
 fi
 
-if [ -n "$ARCH_CHANGES" ] && [ -z "$DOC_CHANGES" ]; then
+if [ "${PR_AUTHOR:-}" = "dependabot[bot]" ]; then
+  echo "Docs check OK (dependency update by Dependabot - no docs expected)"
+elif [ -n "$ARCH_CHANGES" ] && [ -z "$DOC_CHANGES" ]; then
   echo "::warning::Architecture-relevant files changed but docs were not updated:"
   echo "$ARCH_CHANGES"
   echo ""

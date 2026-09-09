@@ -69,6 +69,8 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
   Squash merges take the PR title, so name the PR like a commit
 - Change code **and the relevant doc in the same change**; `docs/` is
   hand-maintained and CI's Docs check flags architecture changes without one
+  (a `package.json` counts only when the change is structural - exports,
+  scripts, workspaces - not a dependency bump; Dependabot PRs are exempt)
 - Shell that CI or the Makefile runs lives in `scripts/{ci,e2e,release}/`,
   not inline in workflows; it is shellcheck'd by `make check-ci`
 - The `ESignProvider` port is the provider boundary - nothing provider-specific
