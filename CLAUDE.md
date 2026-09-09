@@ -125,10 +125,15 @@ npm run migrate:test         # Same against the .env.test database
 - The platform-agnostic code (the `SigningSource` abstraction + sources, the
   Apollo client factory, the GraphQL operations + generated types) lives in
   **`@blinkbitcoin/esign-core`** (`packages/esign-core/`), depended on
-  and re-exported by both the RN and web packages. Each platform package
+  and re-exported by both the RN and web packages. The signing **state
+  machine** is in core too (`packages/esign-core/src/signing/machine.ts`:
+  `transition`, `acquireSession`, `resolveRestart`, the shared status /
+  error / result / options / theme / labels types). Each platform package
   contains its `ESignature` component (the default UI), the headless
-  `useESignature` hook (the state machine), and `theme.ts` (+ web-only
-  `docusignWebForms.ts`).
+  `useESignature` hook (the machine's runner: connectivity probe, message
+  transport, success delay, embed), and `theme.ts` (+ web-only
+  `docusignWebForms.ts`). Never re-implement a transition in a hook - add
+  it to the machine and its table test.
   Codegen runs in core (`packages/esign-core/src/generated/`); never hand-edit
   or duplicate the generated types in a platform package.
 

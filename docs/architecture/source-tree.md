@@ -14,7 +14,7 @@ esign/
 │       ├── src/
 │       │   ├── index.ts           # Full entry (incl. Apollo factory) ⭐
 │       │   ├── webform.ts         # Apollo-free entry (./webform) ⭐
-│       │   ├── signing/           # SigningSource abstraction + 3 sources
+│       │   ├── signing/           # SigningSource abstraction + 3 sources + machine.ts (the state machine) + labels.ts
 │       │   ├── client.ts          # createESignApolloClient + ErrorCodes
 │       │   ├── operations.ts      # GraphQL mutations (wire contract)
 │       │   ├── generated/         # Codegen output (from examples/full-service-demo schema)
@@ -58,7 +58,7 @@ esign/
 │       ├── src/
 │       │   ├── index.ts           # Public API (full; re-exports core) ⭐
 │       │   ├── webform.ts         # Apollo-free entry (./webform subpath) ⭐
-│       │   ├── useESignature.ts   # Headless signing state machine (hook) ⭐
+│       │   ├── useESignature.ts   # Headless hook: runs core's signing machine (NetInfo, WebView transport, embed) ⭐
 │       │   ├── ESignature.tsx     # Default UI over the hook (source-driven) ⭐
 │       │   ├── theme.ts           # Base styles/copy + theme/styles/labels resolvers
 │       │   ├── types.ts           # Props/hook/theme/status/error types
