@@ -4,7 +4,11 @@
 // generated types. No React/DOM/WebView - the platform packages layer the
 // ESignature component on top.
 
-export type { RecipientData } from './types';
+export type {
+  RecipientData,
+  ESignatureTheme,
+  UseESignatureOptions,
+} from './types';
 
 // Signing sources + the abstraction they satisfy
 export {
