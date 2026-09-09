@@ -22,6 +22,8 @@ module.exports = {
     // Type-only file - no executable code to cover
     'src/types\\.ts$',
     // Pure re-export barrels - no executable logic (istanbul reports 0/0)
+    'src/webform\\.ts$',
+    // Pure re-export barrel - no executable logic (istanbul reports 0/0)
     'src/index\\.ts$',
     'src/docusign\\.ts$',
   ],

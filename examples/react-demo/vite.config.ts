@@ -25,7 +25,15 @@ export default defineConfig(({ command }) => {
       coverage: {
         provider: 'v8',
         include: ['src/**/*.{ts,tsx}', 'e2e/ports.ts', 'vite/**/*.ts'],
-        exclude: ['src/main.tsx', 'src/**/*.test.*', 'vite/**/*.test.*'],
+        // vite-env.d.ts is type-only (nothing to cover)
+        exclude: [
+          'src/main.tsx',
+          'src/vite-env.d.ts',
+          'src/**/*.test.*',
+          'vite/**/*.test.*',
+        ],
+        // json-summary feeds scripts/ci/coverage-empty.mjs (make coverage)
+        reporter: ['text', 'json-summary', 'html'],
         // Demo app: unit-coverage floor at current level; the real coverage is
         // the Playwright E2E suites.
         thresholds: {

@@ -8,6 +8,8 @@ module.exports = {
     'src/index\\.ts$',
     'src/webform\\.ts$',
     'src/docusign\\.ts$',
+    // Pure re-export barrel - nothing to cover
+    'src/signing/index\\.ts$',
   ],
   // json-summary feeds scripts/coverage-badge.mjs (README badge + HTML report)
   coverageReporters: ['text', 'lcov', 'json-summary'],

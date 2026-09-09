@@ -187,6 +187,10 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   Every table cell line stays at or under 72 visible characters, broken with
   `<br>`; `make docs-check` (`scripts/ci/docs-tables.mjs`) fails otherwise -
   the rule is enforced, not remembered.
+- **Coverage rows with nothing to cover**: a re-export barrel or type-only
+  module shows as 0% without lowering the totals. Exclude it in the
+  workspace's coverage config; `make coverage` (`scripts/ci/coverage-empty.mjs`)
+  fails on any such row.
 - Shell that CI or the Makefile runs lives in `scripts/{ci,e2e,release}/`,
   never inline in a workflow; `make check-ci` runs actionlint + shellcheck
 - `graphql` is pinned to 16.x repo-wide (Apollo Server 5's peer range) - do
