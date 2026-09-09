@@ -12,6 +12,8 @@ app ──(session token)──▶ your API ──investSigningUrl(units)──�
                                      computes the amounts           ▲ JWT grant, server-held
                                      from its own quote             │
 app ◀────────────── { url } ◀────────────────────────────────────────┘
+app ──opens url in a WebView──▶ DocuSign form (locked terms) → signed envelope
+app ◀──postMessage── GET /signing/return (this API's bridge page) ◀── DocuSign redirect
 app opens url in <ESignature source={createWebFormsSource({ mint: ... })}>
 ```
 
@@ -25,7 +27,13 @@ app opens url in <ESignature source={createWebFormsSource({ mint: ... })}>
   points at the full-service demo's mock Web Forms page).
 - `src/schema.ts`, `src/server.ts` - stand-ins for what the host already has:
   its schema and its session handling. The bearer token is taken as the user
-  id here; a real host verifies its own session in that spot.
+  id here; a real host verifies its own session in that spot. `server.ts`
+  also serves the one extra route a Web Forms host needs, the return-URL
+  bridge (`GET /signing/return`, `renderSigningReturnBridge`): DocuSign
+  sends the signer there after the form's envelope is signed, and the page
+  posts the outcome to the app's WebView. `DOCUSIGN_RETURN_URL` points at it.
+- The app side of this shape (the source that calls the mutation, what
+  `onComplete` delivers): [invest-flow.md](../../docs/integration/invest-flow.md).
 
 ## Run
 
@@ -40,8 +48,9 @@ curl -s http://localhost:4100 -H 'content-type: application/json' \
 With `ESIGN_PROVIDER=docusign` and the JWT-grant credentials in `.env`
 (`DOCUSIGN_*`, see [docusign-proxy.md](../../docs/integration/docusign-proxy.md)),
 the same mutation mints a real instance; the read-only fields of the form
-show the computed amounts and cannot be edited
-([webforms.md](../../docs/integration/webforms.md)).
+show the computed amounts and cannot be edited, and the form can be
+submitted and signed ([webforms.md](../../docs/integration/webforms.md);
+`make e2e-live` mints through this example against real DocuSign).
 
 ## Test
 
