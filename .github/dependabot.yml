@@ -28,7 +28,11 @@ updates:
       # RN preset peers eslint ^8||^9; RN 0.86 is a Babel 7 toolchain
       - dependency-name: eslint
         update-types: ['version-update:semver-major']
-      - dependency-name: '@babel/preset-typescript'
+      - dependency-name: '@babel/*'
+        update-types: ['version-update:semver-major']
+      # Apollo Server 5 peers graphql 16.x (the packages' own peer range
+      # allows 16 or 17 for consumers; the repo stays on 16 until Apollo moves)
+      - dependency-name: graphql
         update-types: ['version-update:semver-major']
       # typescript-eslint peers typescript <6.1; TS 7 is the native compiler
       - dependency-name: typescript
