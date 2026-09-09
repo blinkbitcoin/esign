@@ -17,7 +17,7 @@ see.
 | Environment `docusign-demo`, secret | `DOCUSIGN_ACCOUNT_ID` | the API Account ID (GUID) |
 | Environment `docusign-demo`, secret | `DOCUSIGN_PRIVATE_KEY` | the private half of the app's RSA keypair, the PEM verbatim (multi-line secrets are fine) |
 | Repository variable | `DOCUSIGN_TEMPLATE_ID` | the proxy-flow template: `make docusign-template` creates it in the account from the fixture PDF and prints the id |
-| Repository variable | `DOCUSIGN_WEBFORM_ID` | the capability test form: `1228ee55-ce36-4b87-8646-39c93d50ee69` |
+| Repository variable | `DOCUSIGN_WEBFORM_ID` | the capability test form v2: `c640d957-a2d0-4e36-9975-5374afb02b54` |
 | Repository variable | `E2E_LIVE` | `true` to run on every main push, release and dispatch; unset or anything else = off |
 
 1. **Create the environment** `docusign-demo` (Settings → Environments). Add
@@ -60,14 +60,11 @@ see.
   scopes, the form is active, a locked-prefill instance can be minted, in
   a real browser every minted value is displayed and every locked field
   refuses input, the real form renders inside the web component, and in
-  proxy mode a real envelope is created, signed inside the component and
-  completed through the return-URL bridge. Green does NOT mean a Web Form
-  with read-only fields can be completed: DocuSign's demo environment
-  refuses that submission, and the suite carries it as an expected
-  failure that turns the job red when DocuSign's behaviour changes
-  ([webforms.md](../integration/webforms.md), "Submitting a form with
-  read-only fields"). The job starts the E2E Postgres
-  (Docker) for the envelope, like the Backend job does.
+  the real form is submitted with its locked terms, signed inside the
+  component and completed through the return-URL bridge, and in proxy
+  mode a real envelope is created, signed and completed the same way. The
+  job starts the E2E Postgres (Docker) for the envelopes, like the Backend
+  job does.
 - The form screenshot is uploaded as the `live-docusign-webform` artifact.
   The service log is not uploaded: minted URLs carry a five-minute instance
   token.

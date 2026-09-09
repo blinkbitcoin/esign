@@ -45,7 +45,7 @@ const { url } = await createWebFormInstance({
   userId: session.userId,                  // becomes clientUserId
   prefill: {                                // field API reference names → values
     number_of_units: 1000,                  // read-only in the builder → shown locked
-    settlement_amount_btc: '0.01268231',    // text field (Number fields take 2 decimals)
+    settlement_amount_btc: '0.01268231',    // locked amounts are Text fields (see the docs)
     country: 'Sweden',                      // editable in the builder → a suggestion
   },
   returnUrl: 'https://api.example.com/signing/return', // optional; where DocuSign sends the signer after signing

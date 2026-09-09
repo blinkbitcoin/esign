@@ -76,5 +76,5 @@ Web Forms path (the proxy envelope live test needs one built for it).
 
 Values used for the `esign` app on 2026-09-09 are recorded in
 `examples/full-service-demo/.env` (local only) and in the developer's notes;
-the capability test form is `1228ee55-ce36-4b87-8646-39c93d50ee69`
+the capability test form (v2, text amounts) is `c640d957-a2d0-4e36-9975-5374afb02b54`
 (`docs/integration/webforms.md`).
