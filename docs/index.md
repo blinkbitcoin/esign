@@ -29,7 +29,7 @@
 
 #### Server examples (`examples/*-demo/`, the three shapes on `esign-server`)
 - **`full-service-demo/`:** the whole service, below
-- **`mint-only-demo/`:** an existing GraphQL API adds one mutation that mints a locked Web Forms instance (the Blink API shape)
+- **`mint-only-demo/`:** an existing GraphQL API adds one mutation that mints a locked Web Forms instance (the smallest backend footprint)
 - **`serverless-handler-demo/`:** the Fetch handlers (mint + webhook) behind a route handler, plain Node adapter
 
 #### The service (`examples/full-service-demo/`)
@@ -53,7 +53,7 @@ Organized by namespace - pick by what you're doing:
 | Doc | Covers |
 |-----|--------|
 | [consuming.md](integration/consuming.md) | Registry setup (GitHub Packages) + the minimal Web Forms-only install |
-| [invest-flow.md](integration/invest-flow.md) | **The recipe for locked terms (mode 2), API + app:** the form rules, the one mutation, the bridge route, the app source, what to verify |
+| [locked-terms.md](integration/locked-terms.md) | **The recipe for locked terms (mode 2), backend + app:** the form rules, the one mutation, the bridge route, the app source, what to verify |
 | [docusign-lessons.md](integration/docusign-lessons.md) | **The rules behind it:** every lesson from the live DocuSign runs on one page - the Text-only rule for read-only fields, why the mint is server-side, completion without DocuSign.js, account gotchas |
 | [webforms.md](integration/webforms.md) | Modes 1-2 (public URL + Web Forms instances): mock and live runs, event model, embedding options |
 | [docusign-proxy.md](integration/docusign-proxy.md) | Mode 3 (proxy envelopes): real-DocuSign setup, return-URL bridge, webhooks, live smoke-test checklist |

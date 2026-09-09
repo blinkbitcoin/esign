@@ -104,7 +104,7 @@ from the package root and additionally install `@apollo/client` + `graphql`.
   redirects the WebView to the instance's return URL, your backend's bridge
   page posts the outcome, `onComplete` fires with the envelope id. DocuSign.js
   (web-only) is not needed. The backend must serve that bridge route:
-  [invest-flow.md](invest-flow.md). Locked fields must be Text fields:
+  [locked-terms.md](locked-terms.md). Locked fields must be Text fields:
   [docusign-lessons.md](docusign-lessons.md).
 - DocuSign's signing ceremony requests the device's location; on iOS the
   system prompt shows when the app holds location access. Declining does not

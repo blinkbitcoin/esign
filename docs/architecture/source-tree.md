@@ -101,7 +101,7 @@ esign/
 │       ├── metro.config.js        # watchFolders -> workspace root
 │       └── Gemfile / .bundle/     # CocoaPods tooling
 │
-├── 🖥️ SERVER EXAMPLE 2 - one mutation on an existing API (the Blink shape)
+├── 🖥️ SERVER EXAMPLE 2 - one mutation on an existing API (the smallest footprint)
 │   │
 │   └── examples/mint-only-demo/
 │       ├── src/

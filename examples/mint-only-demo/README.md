@@ -4,8 +4,8 @@ The smallest server-side footprint that still gives you **locked, server-set
 values** in a DocuSign Web Form: an existing GraphQL API (Apollo Server here,
 any framework works) adds one mutation whose resolver makes one call into
 `@blinkbitcoin/esign-server`. No envelope domain, no store, no webhooks, no
-esign service to run - this is the shape the Blink API uses for the invest
-flow.
+esign service to run - the shape for a host that already has an API and
+only needs locked terms (the example's domain is a subscription quote).
 
 ```
 app ──(session token)──▶ your API ──investSigningUrl(units)──▶ createWebFormInstance
@@ -33,7 +33,7 @@ app opens url in <ESignature source={createWebFormsSource({ mint: ... })}>
   sends the signer there after the form's envelope is signed, and the page
   posts the outcome to the app's WebView. `DOCUSIGN_RETURN_URL` points at it.
 - The app side of this shape (the source that calls the mutation, what
-  `onComplete` delivers): [invest-flow.md](../../docs/integration/invest-flow.md).
+  `onComplete` delivers): [locked-terms.md](../../docs/integration/locked-terms.md).
 
 ## Run
 

@@ -82,7 +82,7 @@ const source = createWebFormsSource({
   // React Native does not filter by origin.
 });
 // A GraphQL mutation instead: createWebFormsSource({ createInstance: async () => ({ url, envelopeId }) })
-// Recipe with both sides: docs/integration/invest-flow.md. DocuSign's signing
+// Recipe with both sides: docs/integration/locked-terms.md. DocuSign's signing
 // ceremony asks for the device's location; on iOS the prompt appears when the
 // app holds location access - declining does not affect signing.
 

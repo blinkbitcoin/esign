@@ -35,7 +35,7 @@ designing a form or a flow that must lock values the signer cannot change.
 | Lesson | Detail | Where |
 |---|---|---|
 | The mint must run server-side | `createInstance` needs the integration key's private key (JWT grant), and a locked value only means something when minted by a party the signer does not control. | [webforms.md](webforms.md), "Why a server call at all" |
-| It is one call | `createWebFormInstance` from `@blinkbitcoin/esign-server` behind one authenticated endpoint; for the invest flow, a mutation in the Blink API where the quote already lives, not a new service. | `packages/esign-server/README.md`, `examples/mint-only-demo/` |
+| It is one call | `createWebFormInstance` from `@blinkbitcoin/esign-server` behind one authenticated endpoint: a mutation or route in the backend that already computes the terms, not a new service. The full recipe, backend + app: [locked-terms.md](locked-terms.md). | `packages/esign-server/README.md`, `examples/mint-only-demo/` |
 | Everything else stays backend-free | Form UI, validation, document, envelope creation and the signing ceremony are DocuSign's. | [webforms.md](webforms.md) |
 | Public URL = editable only | The public form URL suits forms with nothing to lock. It also sits behind a CAPTCHA (no headless E2E) and anyone with the link can start a form. | [webforms.md](webforms.md), fixture notes |
 | Keep the form Private | The app and the suites open only API-minted instance URLs (`formUrl#instanceToken=…`), which work either way; Public only adds the public URL. | [docusign-live-e2e skill](../../.claude/skills/docusign-live-e2e/SKILL.md) |

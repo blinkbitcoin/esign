@@ -106,7 +106,7 @@ opening it: the instance token expires about five minutes after creation.
 
 ### How we got here (2026-09-08)
 
-The invest flow's first test against a published form showed every computed
+The first host's test against a published form showed every computed
 field editable. Two builder-side fixes were tried and both fail, for reasons
 that are documented DocuSign behaviour, not bugs to work around:
 
@@ -266,7 +266,7 @@ fields among its eight read-only fields) walked fine and showed every
 minted value, and then `Summary → Next` - which posts the form's values to
 `…/forms/<slug>/actions/ESignAction_…` - got **422 `UNPROCESSABLE_ERROR`
 "Request sent is well formed but otherwise invalid"**, the message the
-invest-flow team first saw. The 422 body says nothing else; the form
+first host team saw. The 422 body says nothing else; the form
 player's telemetry only logs "Player form submission error". Rewriting
 the multipart `formValues` in flight (Playwright `page.route()`) ruled the
 values out: date sent back as ISO or omitted, numbers as numbers, the
