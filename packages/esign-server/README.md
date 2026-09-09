@@ -101,6 +101,15 @@ if (!event) return 400;
 await envelopes.handleWebhookEvent(event); // idempotent; terminal statuses never downgrade
 ```
 
+`providerFromEnv(env, defaultRegistry(env))` selects the adapter the way the
+three example hosts do: `ESIGN_PROVIDER=docusign` or `mock` (the default; an
+unknown name warns once and falls back), each entry built lazily so the mock
+never reads `DOCUSIGN_*`. A host with its own adapter spreads another entry
+into the registry. `hostedFormMint(provider)` is the provider's mint as a
+plain function (`undefined` without the capability; `supportsHostedForms`
+is the guard), accepting adapters that still implement the deprecated
+`createWebFormInstance` name.
+
 Every failure is an `ESignError` with a `code` (`UNAUTHORIZED`,
 `ENVELOPE_NOT_FOUND`, `VALIDATION_ERROR`, `ENVELOPE_CREATION_FAILED`,
 `PROVIDER_UNAVAILABLE`, `PERSISTENCE_FAILED`, `SESSION_EXPIRED`) and a

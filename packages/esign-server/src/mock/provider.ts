@@ -9,9 +9,9 @@ import type { ESignProvider } from '../provider';
 import type {
   EnvelopeResult,
   EnvelopeStatus,
+  HostedFormInstanceResult,
   RecipientData,
   SigningUrlResult,
-  WebFormInstanceResult,
   WebFormPrefill,
   WebhookEvent,
   WebhookHeaders,
@@ -51,6 +51,25 @@ export const createMockProvider = (
   >();
   // Like a real instance, whose formValues DocuSign stores server-side
   const webFormInstances = new Map<string, WebFormPrefill>();
+
+  // The hosted-form capability: a mock Web Forms instance, its prefill kept
+  // for the mock page (exposed under both port names)
+  const createHostedFormInstance = async (
+    userId: string,
+    prefill: WebFormPrefill,
+  ): Promise<HostedFormInstanceResult> => {
+    const instanceId = randomUUID();
+    envelopes.set(instanceId, {
+      status: 'sent',
+      userId,
+      contractType: 'webform',
+    });
+    webFormInstances.set(instanceId, prefill);
+    return {
+      url: `${options.baseUrl()}/signing/mock-webform/${instanceId}`,
+      instanceId,
+    };
+  };
 
   return {
     async createEnvelope(
@@ -98,22 +117,8 @@ export const createMockProvider = (
       return options.webhook.parseWebhookEvent(rawBody);
     },
 
-    async createWebFormInstance(
-      userId: string,
-      prefill: WebFormPrefill,
-    ): Promise<WebFormInstanceResult> {
-      const instanceId = randomUUID();
-      envelopes.set(instanceId, {
-        status: 'sent',
-        userId,
-        contractType: 'webform',
-      });
-      webFormInstances.set(instanceId, prefill);
-      return {
-        url: `${options.baseUrl()}/signing/mock-webform/${instanceId}`,
-        instanceId,
-      };
-    },
+    createHostedFormInstance,
+    createWebFormInstance: createHostedFormInstance,
 
     setEnvelopeStatus(envelopeId, status) {
       const envelope = envelopes.get(envelopeId);

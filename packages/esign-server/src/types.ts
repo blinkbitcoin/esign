@@ -27,24 +27,37 @@ export type WebFormPrefillValue =
   | WebFormPhoneNumber;
 export type WebFormPrefill = Record<string, WebFormPrefillValue>;
 
-// Options for minting a Web Forms instance
-export interface WebFormInstanceOptions {
-  // Where DocuSign sends the signer after signing. A host that embeds the
+// --- Hosted forms (provider-neutral) ---------------------------------------
+//
+// A hosted form is a provider-hosted, prefilled form the backend mints an
+// instance URL for (DocuSign Web Forms is the one adapter today). The neutral
+// prefill is a flat record; a provider narrows the value shapes it accepts
+// (WebFormPrefill above for DocuSign).
+export type HostedFormPrefill = Record<string, unknown>;
+
+// Options for minting a hosted-form instance
+export interface HostedFormInstanceOptions {
+  // Where the provider sends the signer after signing. A host that embeds the
   // form in a WebView/iframe points this at a bridge page that reports the
   // outcome back (the esign service's /signing/return does exactly that).
   returnUrl?: string;
-  // Hours until the instance expires (DocuSign default applies when unset).
+  // Hours until the instance expires (the provider default applies when unset).
   // Note the instance TOKEN in the URL still expires ~5 minutes after minting.
   expirationOffsetHours?: number;
 }
 
-// A minted Web Forms instance
-export interface WebFormInstanceResult {
+// A minted hosted-form instance
+export interface HostedFormInstanceResult {
   // Embeddable instance URL (formUrl#instanceToken=...)
   url: string;
-  // Provider-side instance id, when DocuSign returns one
+  // Provider-side instance id, when the provider returns one
   instanceId?: string;
 }
+
+/** @deprecated Use HostedFormInstanceOptions */
+export type WebFormInstanceOptions = HostedFormInstanceOptions;
+/** @deprecated Use HostedFormInstanceResult */
+export type WebFormInstanceResult = HostedFormInstanceResult;
 
 // fetch, late-bound so tests can replace the global (Node 18+ ships fetch)
 export type FetchLike = (

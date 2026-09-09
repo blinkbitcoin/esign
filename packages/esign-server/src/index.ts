@@ -16,8 +16,26 @@ export type {
   EnvelopeView,
   WebhookOutcome,
 } from './envelopes';
-export { supportsWebForms } from './provider';
-export type { ESignProvider } from './provider';
+export {
+  hostedFormMint,
+  supportsHostedForms,
+  supportsWebForms,
+} from './provider';
+export type {
+  ESignProvider,
+  HostedFormMint,
+  HostedFormProvider,
+} from './provider';
+export {
+  defaultRegistry,
+  providerFromEnv,
+  ESIGN_PROVIDER_ENV,
+} from './registry';
+export type {
+  DefaultRegistryOptions,
+  ProviderFromEnvOptions,
+  ProviderRegistry,
+} from './registry';
 export { createMemoryEnvelopeStore } from './store';
 export type {
   EnvelopeStore,
@@ -148,6 +166,9 @@ export type {
   WebFormPhoneNumber,
   WebFormInstanceOptions,
   WebFormInstanceResult,
+  HostedFormPrefill,
+  HostedFormInstanceOptions,
+  HostedFormInstanceResult,
   FetchLike,
   EnvelopeStatus,
   EnvelopeResult,

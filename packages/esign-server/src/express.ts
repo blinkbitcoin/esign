@@ -22,7 +22,7 @@ import {
   renderMockWebFormPage,
   renderSigningReturnBridge,
 } from './pages';
-import type { ESignProvider } from './provider';
+import { type ESignProvider, hostedFormMint } from './provider';
 import { signingPageCsp, signingPageNonce } from './signingPage';
 import type { WebFormPrefill } from './types';
 
@@ -120,10 +120,7 @@ export const createESignRouter = (options: ESignRouterOptions): Router => {
       const result = await mintWebFormInstanceHttp({
         userId: await authenticate(req),
         body: req.body,
-        mint: provider.createWebFormInstance
-          ? (userId, prefill) =>
-              provider.createWebFormInstance!(userId, prefill)
-          : undefined,
+        mint: hostedFormMint(provider),
         logger,
       });
       res.status(result.status).json(result.body);

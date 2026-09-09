@@ -99,9 +99,11 @@ interface ESignProvider {
   // Parse a verified webhook body into a normalized event (null = malformed)
   parseWebhookEvent(rawBody: string): WebhookEvent | null;
 
-  // Optional capability: mint a prefilled DocuSign Web Forms instance
-  // (callers gate on supportsWebForms(provider))
-  createWebFormInstance?(userId: string, prefill: WebFormPrefill): Promise<WebFormInstanceResult>;
+  // Optional capability: mint a prefilled hosted-form instance (DocuSign:
+  // a Web Forms instance). Callers gate on supportsHostedForms(provider) or
+  // mint through hostedFormMint(provider), which also honours the deprecated
+  // createWebFormInstance name.
+  createHostedFormInstance?(userId: string, prefill: HostedFormPrefill): Promise<HostedFormInstanceResult>;
 }
 ```
 

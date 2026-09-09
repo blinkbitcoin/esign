@@ -8,9 +8,9 @@ import type { EnvelopeService } from './envelopes';
 import { getErrorCode } from './errors';
 import { consoleLogger, type Logger } from './log';
 import { parseWebFormPrefill } from './prefill';
-import type { ESignProvider } from './provider';
+import { type ESignProvider, hostedFormMint } from './provider';
 import type {
-  WebFormInstanceResult,
+  HostedFormInstanceResult,
   WebFormPrefill,
   WebhookHeaders,
 } from './types';
@@ -32,13 +32,13 @@ export interface MintHttpInput {
   userId: string | null;
   // The parsed JSON body, if any ({ prefill })
   body: unknown;
-  // How to mint for a user (a provider's createWebFormInstance, or the
-  // package's createWebFormInstance bound to a config)
+  // How to mint for a user (hostedFormMint(provider), or the package's
+  // createWebFormInstance bound to a config)
   mint:
     | ((
         userId: string,
         prefill: WebFormPrefill,
-      ) => Promise<WebFormInstanceResult>)
+      ) => Promise<HostedFormInstanceResult>)
     | undefined;
   logger?: Logger;
 }
@@ -165,10 +165,7 @@ export type WebFormInstanceHandlerOptions = MintTarget & {
 // The mint call for either target
 const mintFor = (target: MintTarget): MintHttpInput['mint'] => {
   if ('provider' in target) {
-    const { provider } = target;
-    return provider.createWebFormInstance
-      ? (userId, prefill) => provider.createWebFormInstance!(userId, prefill)
-      : undefined;
+    return hostedFormMint(target.provider);
   }
   return (userId, prefill) =>
     createWebFormInstance({ ...target, userId, prefill });

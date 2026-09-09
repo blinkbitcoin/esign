@@ -31,7 +31,8 @@ esign/
 │       │   ├── knex.ts            # ./knex entry: Knex EnvelopeStore + migration source (knex is a peer) ⭐
 │       │   ├── knex/              #   store.ts, migrations.ts (ESIGN_MIGRATIONS, programmatic source)
 │       │   ├── envelopes.ts       # createEnvelopeService: rules, audit, webhook state machine ⭐
-│       │   ├── provider.ts        # ESignProvider port
+│       │   ├── provider.ts        # ESignProvider port (+ hosted-form capability: supportsHostedForms, hostedFormMint)
+│       │   ├── registry.ts        # providerFromEnv + defaultRegistry: ESIGN_PROVIDER → adapter, lazily
 │       │   ├── store.ts           # EnvelopeStore port + in-memory implementation
 │       │   ├── handlers.ts        # Fetch-API mint + webhook handlers (serverless) ⭐
 │       │   ├── signingPage.ts     # Signing-page CSP + nonce; signingPageResponse (Fetch), shared by express.ts

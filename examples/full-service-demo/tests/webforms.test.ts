@@ -30,9 +30,10 @@ describe('supportsWebForms', () => {
     expect(supportsWebForms(DocuSignProvider)).toBe(true);
   });
 
-  it('is false for a provider without the method', () => {
+  it('is false for a provider without the method (under either port name)', () => {
     const minimal = { ...MockProvider };
     delete (minimal as { createWebFormInstance?: unknown }).createWebFormInstance;
+    delete (minimal as { createHostedFormInstance?: unknown }).createHostedFormInstance;
     expect(supportsWebForms(minimal)).toBe(false);
   });
 });
