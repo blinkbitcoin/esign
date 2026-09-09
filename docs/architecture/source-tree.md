@@ -13,13 +13,14 @@ esign/
 │   └── packages/esign-core/
 │       ├── src/
 │       │   ├── index.ts           # Full entry (incl. Apollo factory) ⭐
-│       │   ├── docusign.ts        # The DocuSign entry, Apollo-free (./docusign) ⭐
+│       │   ├── docusign.ts        # The DocuSign entry (./docusign): one line over providers/docusign/entry.ts ⭐
 │       │   ├── webform.ts         # Alias of ./docusign (./webform) ⭐
 │       │   ├── signing/           # SigningSource abstraction + machine.ts (the state machine) + labels.ts
 │       │   │   ├── bridge.ts      #   interpretBridgeEvent: the neutral `{ event }` protocol the bridge/mock pages post
 │       │   │   ├── hostedForm/    #   provider-neutral hosted-form source, minter, public-URL source (interpreter injectable)
 │       │   │   └── ...            #   proxySource (Apollo) + deprecated shims at the old DocuSign paths
-│       │   ├── providers/docusign/# DocuSign: interpretDocuSignEvent, the prefill contract, the Web Forms sources
+│       │   ├── providers/docusign/# DocuSign: interpretDocuSignEvent, the prefill contract, the Web Forms sources;
+│       │   │                      #   entry.ts is the ./docusign surface (provider + the neutral layer), Apollo-free
 │       │   ├── client.ts          # createESignApolloClient + ErrorCodes
 │       │   ├── operations.ts      # GraphQL mutations (wire contract)
 │       │   ├── generated/         # Codegen output (from examples/full-service-demo schema)
@@ -48,11 +49,12 @@ esign/
 │       │   ├── html.ts            # escapeHtml / sanitizeId / jsonForScript
 │       │   ├── auth.ts            # bearerToken: the Authorization header → token (the meaning stays the host's)
 │       │   ├── hmac.ts / validation.ts / audit.ts / errors.ts / log.ts / tracing.ts / http.ts
-│       │   ├── prefill.ts / bridgeScript.ts  # deprecated shims over docusign/ and bridge/
-│       │   ├── docusign/          # DocuSign adapter: auth (JWT grant), client, config, webforms, provider,
-│       │   │                      #   types (prefill contract), prefill, bridge (return-URL page), mockWebFormPage,
-│       │   │                      #   handlers (mintFromDocuSign), express (mountDocuSignPages), index (barrel)
-│       │   ├── mock/              # Mock adapter (mirrors DocuSign locally)
+│       │   ├── prefill.ts / bridgeScript.ts  # deprecated shims over providers/docusign/ and bridge/
+│       │   ├── providers/         # One directory per adapter of the ESignProvider port (guard test) ⭐
+│       │   │   ├── docusign/      #   auth (JWT grant), client, config, webforms, provider, types (prefill
+│       │   │   │                  #   contract), prefill, bridge (return-URL page), mockWebFormPage,
+│       │   │   │                  #   handlers (mintFromDocuSign), express (mountDocuSignPages), index (barrel)
+│       │   │   └── mock/          #   Mock adapter (mirrors DocuSign locally)
 │       │   └── __tests__/         # Jest, 100% enforced
 │       ├── tsup.config.ts         # ESM + CJS + d.ts build (four entries: index, express, knex, docusign)
 │       └── dist/                  # Build output (gitignored)
@@ -66,8 +68,9 @@ esign/
 │       │
 │       ├── src/
 │       │   ├── index.ts           # Public API (full; re-exports core) ⭐
-│       │   ├── docusign.ts        # The DocuSign entry, Apollo-free (./docusign subpath) ⭐
+│       │   ├── docusign.ts        # The DocuSign entry (./docusign subpath): one line over providers/docusign/entry.ts ⭐
 │       │   ├── webform.ts         # Alias of ./docusign (./webform subpath) ⭐
+│       │   ├── providers/docusign/entry.ts  # The ./docusign surface: core's /docusign + the component and hook, Apollo-free
 │       │   ├── useESignature.ts   # Headless hook: runs core's signing machine (NetInfo, WebView transport, embed) ⭐
 │       │   ├── ESignature.tsx     # Default UI over the hook (source-driven) ⭐
 │       │   ├── theme.ts           # Base styles/copy + theme/styles/labels resolvers
@@ -85,8 +88,9 @@ esign/
 │       │   ├── useESignature.ts   #   Headless hook (embed: iframe | mount)
 │       │   ├── ESignature.tsx     #   Default UI over the hook
 │       │   ├── theme.ts           #   Base styles/copy + theme/styles/labels resolvers
-│       │   ├── docusign.ts        #   The DocuSign entry (./docusign subpath) ⭐
-│       │   ├── providers/docusign/#   DocuSign.js SDK source (web-only); docusignWebForms.ts is its deprecated shim
+│       │   ├── docusign.ts        #   The DocuSign entry (./docusign subpath): one line over providers/docusign/entry.ts ⭐
+│       │   ├── providers/docusign/#   DocuSign.js SDK source (web-only) + entry.ts, the ./docusign surface;
+│       │   │                      #   docusignWebForms.ts is the source's deprecated shim
 │       │   └── types.ts
 │       ├── tsup.config.ts         # ESM + CJS + d.ts build
 │       └── dist/                  # Build output (gitignored)

@@ -3,11 +3,14 @@
 // computed. Everything else about Web Forms (form UI, validation, document,
 // signing) needs no server code.
 
+import { type RetryConfig, withRetry } from '../../http';
+import type {
+  WebFormInstanceOptions,
+  WebFormInstanceResult,
+} from '../../types';
 import { createDocuSignClient, type DocuSignClient } from './client';
 import { assertDocuSignConfig, type DocuSignConfig } from './config';
-import { withRetry, type RetryConfig } from '../http';
 import { assertWebFormPrefill } from './prefill';
-import type { WebFormInstanceOptions, WebFormInstanceResult } from '../types';
 
 // What createWebFormInstance needs of a client: its configuration and the
 // one request. A host's own client (or a test double) needs nothing more.

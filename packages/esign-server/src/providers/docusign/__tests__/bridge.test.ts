@@ -2,7 +2,7 @@
 // the client protocol and forwards it as a postMessage under the nonce CSP,
 // never letting a URL value break out of the markup.
 
-import { CLIENT_EVENTS } from '../../bridge/script';
+import { CLIENT_EVENTS } from '../../../bridge/script';
 import { mapDocuSignReturnEvent, renderSigningReturnBridge } from '../bridge';
 
 describe('mapDocuSignReturnEvent', () => {

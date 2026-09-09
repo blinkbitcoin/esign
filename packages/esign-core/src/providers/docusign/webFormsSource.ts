@@ -6,24 +6,23 @@
 // host's own `createInstance` call) and public URL (createPublicUrlSource: a
 // published form link, no backend). No Apollo/GraphQL dependency.
 
-import { createHostedFormMinter } from '../../signing/hostedForm/mint';
-import { createHostedFormPublicUrlSource } from '../../signing/hostedForm/publicUrlSource';
-import {
-  createHostedFormSource,
-  resolveHostedFormCreateInstance,
-} from '../../signing/hostedForm/source';
-import { interpretDocuSignEvent } from './events';
-
 import type {
   HostedFormInstance,
   MintHostedFormOptions,
 } from '../../signing/hostedForm/mint';
+import { createHostedFormMinter } from '../../signing/hostedForm/mint';
 import type { HostedFormPublicUrlSourceOptions } from '../../signing/hostedForm/publicUrlSource';
+import { createHostedFormPublicUrlSource } from '../../signing/hostedForm/publicUrlSource';
 import type {
   HostedFormCreateInstanceOptions,
   HostedFormMintOptions,
 } from '../../signing/hostedForm/source';
+import {
+  createHostedFormSource,
+  resolveHostedFormCreateInstance,
+} from '../../signing/hostedForm/source';
 import type { SigningSource } from '../../signing/types';
+import { interpretDocuSignEvent } from './events';
 import type { WebFormPrefill } from './prefill';
 
 /** The minted instance ({ url, envelopeId? }); the same shape as `HostedFormInstance`. */

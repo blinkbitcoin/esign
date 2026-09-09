@@ -1,7 +1,7 @@
 // The handlers' DocuSign mint target: createWebFormInstance bound to a
 // config or a client.
 
-import { fakeFetch, ok, testConfig, token } from '../../__tests__/support';
+import { fakeFetch, ok, testConfig, token } from '../../../__tests__/support';
 import { createDocuSignClient } from '../client';
 import { mintFromDocuSign } from '../handlers';
 

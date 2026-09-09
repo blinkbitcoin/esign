@@ -9,17 +9,17 @@
 // `express` is an optional peer: only this entry imports it.
 
 import express, { type Request, type RequestHandler, Router } from 'express';
-import { mountDocuSignPages } from './docusign/express';
-import type { WebFormPrefill } from './docusign/types';
 import type { EnvelopeService } from './envelopes';
 import { mintWebFormInstanceHttp, processWebhookHttp } from './handlers';
 import type { Logger } from './log';
 import { renderMockSigningPage } from './pages';
 import { type ESignProvider, hostedFormMint } from './provider';
+import { mountDocuSignPages } from './providers/docusign/express';
+import type { WebFormPrefill } from './providers/docusign/types';
 import { sendSigningPage } from './signingPageExpress';
 
-export { mountDocuSignPages } from './docusign/express';
-export type { DocuSignPagesOptions } from './docusign/express';
+export type { DocuSignPagesOptions } from './providers/docusign/express';
+export { mountDocuSignPages } from './providers/docusign/express';
 
 export interface ESignRouterMiddleware {
   // Applied to POST /webform/instance (e.g. CORS, rate limit); the OPTIONS

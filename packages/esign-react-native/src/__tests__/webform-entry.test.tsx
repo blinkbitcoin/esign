@@ -105,6 +105,21 @@ describe('the Apollo-free entries (webform, docusign), across packages', () => {
     },
   );
 
+  // The DocuSign surface lives under providers/docusign/; the root entry files
+  // only name the subpaths (no DocuSign-specific code at the package root).
+  it.each([
+    ['docusign.ts', './providers/docusign/entry'],
+    ['webform.ts', './docusign'],
+  ])('%s is a one-line re-export of %s', (entry, target) => {
+    const statements = fs
+      .readFileSync(path.join(RN_SRC, entry), 'utf8')
+      .replace(/\/\/.*$/gm, '')
+      .split(';')
+      .map(s => s.trim())
+      .filter(Boolean);
+    expect(statements).toEqual([`export * from '${target}'`]);
+  });
+
   it('the full index DOES reach Apollo (walker sanity check)', () => {
     const externals = collectExternals(path.join(RN_SRC, 'index.ts'));
     expect(externals.some(s => s.startsWith('@apollo/'))).toBe(true);

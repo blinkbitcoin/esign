@@ -26,6 +26,7 @@ module.exports = {
     // Pure re-export barrel - no executable logic (istanbul reports 0/0)
     'src/index\\.ts$',
     'src/docusign\\.ts$',
+    'src/providers/docusign/entry\\.ts$',
   ],
   // json-summary feeds scripts/coverage-badge.mjs (README badge + HTML report)
   coverageReporters: ['text', 'lcov', 'json-summary'],

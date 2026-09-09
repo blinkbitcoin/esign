@@ -1,13 +1,13 @@
-import { createJwtAssertion, createTokenProvider, defaultFetch } from '../auth';
-import { DocuSignConfigError } from '../config';
-import { HttpError } from '../../http';
 import {
   fail,
   fakeFetch,
   testConfig,
   token,
   verifyJwt,
-} from '../../__tests__/support';
+} from '../../../__tests__/support';
+import { HttpError } from '../../../http';
+import { createJwtAssertion, createTokenProvider, defaultFetch } from '../auth';
+import { DocuSignConfigError } from '../config';
 
 describe('createJwtAssertion', () => {
   it('signs an RS256 assertion with the grant claims', () => {

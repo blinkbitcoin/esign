@@ -4,7 +4,7 @@
 
 /* eslint-disable no-new-func */
 
-import { POST_SESSION_END_SCRIPT } from '../../docusign/mockWebFormPage';
+import { POST_SESSION_END_SCRIPT } from '../../providers/docusign/mockWebFormPage';
 import { POST_SIGNING_EVENT_SCRIPT } from '../script';
 
 interface FakeWindow {

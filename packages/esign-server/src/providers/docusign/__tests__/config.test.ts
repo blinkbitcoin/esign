@@ -1,13 +1,13 @@
 import {
+  assertDocuSignConfig,
+  consentUrl,
   DOCUSIGN_DEMO_URLS,
   DOCUSIGN_ENV,
-  DocuSignConfigError,
-  JWT_CREDENTIALS,
-  assertDocuSignConfig,
-  docuSignConfigFromEnv,
-  missingDocuSignConfig,
   DOCUSIGN_SCOPES,
-  consentUrl,
+  DocuSignConfigError,
+  docuSignConfigFromEnv,
+  JWT_CREDENTIALS,
+  missingDocuSignConfig,
 } from '../config';
 
 describe('docuSignConfigFromEnv', () => {

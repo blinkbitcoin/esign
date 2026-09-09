@@ -4,8 +4,6 @@
 // Express. The decision logic (status codes, bodies) lives in the two
 // `*Http` functions and is shared with the Express router.
 
-import { mintFromDocuSign, type DocuSignMintTarget } from './docusign/handlers';
-import { parseWebFormPrefill } from './docusign/prefill';
 import type { EnvelopeService } from './envelopes';
 import { getErrorCode } from './errors';
 import { consoleLogger, type Logger } from './log';
@@ -14,6 +12,11 @@ import {
   type HostedFormMint,
   hostedFormMint,
 } from './provider';
+import {
+  type DocuSignMintTarget,
+  mintFromDocuSign,
+} from './providers/docusign/handlers';
+import { parseWebFormPrefill } from './providers/docusign/prefill';
 import type { HostedFormPrefill, WebhookHeaders } from './types';
 
 // An HTTP outcome, independent of the framework that sends it

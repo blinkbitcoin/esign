@@ -2,16 +2,16 @@
 // bridge/ keep exporting the same values (deprecated), so a host importing
 // a deep path, and the package's own root entry, see no change.
 
+import * as script from '../bridge/script';
 import * as bridgeScript from '../bridgeScript';
-import * as bridge from '../docusign/bridge';
-import * as docusignHandlers from '../docusign/handlers';
-import * as mockWebFormPage from '../docusign/mockWebFormPage';
-import * as docusignPrefill from '../docusign/prefill';
 import * as handlers from '../handlers';
 import * as index from '../index';
 import * as pages from '../pages';
 import * as prefill from '../prefill';
-import * as script from '../bridge/script';
+import * as bridge from '../providers/docusign/bridge';
+import * as docusignHandlers from '../providers/docusign/handlers';
+import * as mockWebFormPage from '../providers/docusign/mockWebFormPage';
+import * as docusignPrefill from '../providers/docusign/prefill';
 
 describe('deprecated module paths', () => {
   it('prefill.ts is docusign/prefill.ts', () => {

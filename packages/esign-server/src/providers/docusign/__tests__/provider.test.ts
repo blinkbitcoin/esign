@@ -1,8 +1,9 @@
 import { createHmac } from 'node:crypto';
+import { fakeFetch, ok, testConfig, token } from '../../../__tests__/support';
+import { HttpError } from '../../../http';
+import { type ESignProvider, supportsWebForms } from '../../../provider';
 import type { DocuSignClient } from '../client';
 import type { DocuSignConfig } from '../config';
-import { HttpError } from '../../http';
-import { type ESignProvider, supportsWebForms } from '../../provider';
 import {
   createDocuSignProvider,
   DOCUSIGN_SIGNATURE_HEADER,
@@ -11,7 +12,6 @@ import {
   mapWebhookStatus,
   parseDocuSignWebhook,
 } from '../provider';
-import { fakeFetch, ok, testConfig, token } from '../../__tests__/support';
 
 const recipient = { name: 'Jane Signer', email: 'jane@example.com' };
 

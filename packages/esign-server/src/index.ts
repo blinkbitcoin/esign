@@ -2,81 +2,29 @@
 // packages: a DocuSign client (JWT grant, envelopes, Web Forms) and the one
 // call a host needs for locked prefill, createWebFormInstance. Node only.
 
-export { createWebFormInstance, clientFor } from './docusign/webforms';
-export type {
-  CreateWebFormInstanceParams,
-  WebFormsClient,
-} from './docusign/webforms';
-
-// --- Domain: the envelope service over a provider port and a store port ----
-export { createEnvelopeService } from './envelopes';
+export type { AuditAction, AuditEntry, AuditMetadata } from './audit';
+export { sanitizeAuditMetadata } from './audit';
+export { bearerToken } from './auth';
+export type { ClientEvent } from './bridge/script';
+export { CLIENT_EVENTS, POST_SIGNING_EVENT_SCRIPT } from './bridge/script';
 export type {
   EnvelopeService,
   EnvelopeServiceDeps,
   EnvelopeView,
   WebhookOutcome,
 } from './envelopes';
-export {
-  hostedFormMint,
-  supportsHostedForms,
-  supportsWebForms,
-} from './provider';
-export type {
-  ESignProvider,
-  HostedFormMint,
-  HostedFormProvider,
-} from './provider';
-export {
-  defaultRegistry,
-  providerFromEnv,
-  ESIGN_PROVIDER_ENV,
-} from './registry';
-export type {
-  DefaultRegistryOptions,
-  ProviderFromEnvOptions,
-  ProviderRegistry,
-} from './registry';
-export { createMemoryEnvelopeStore } from './store';
-export type {
-  EnvelopeStore,
-  EnvelopeRecord,
-  NewEnvelope,
-  NewAuditEntry,
-} from './store';
-export { sanitizeAuditMetadata } from './audit';
-export type { AuditAction, AuditEntry, AuditMetadata } from './audit';
-export {
-  ESignError,
-  ErrorCodes,
-  Errors,
-  createError,
-  getErrorCode,
-} from './errors';
+// --- Domain: the envelope service over a provider port and a store port ----
+export { createEnvelopeService } from './envelopes';
 export type { ErrorCode } from './errors';
 export {
-  isValidEmail,
-  requireId,
-  validateContractType,
-  validateRecipient,
-  MAX_CONTRACT_TYPE_LENGTH,
-  MAX_NAME_LENGTH,
-} from './validation';
-export { bearerToken } from './auth';
-export { validateHmac } from './hmac';
-export type { ValidateHmacOptions } from './hmac';
-export { consoleLogger, sanitizeForLog } from './log';
-export type { Logger } from './log';
-export { noopTracing } from './tracing';
-export type { Tracing, SpanLike, SpanAttributes } from './tracing';
-
-// --- Wire layer pieces that need no framework --------------------------------
-export {
-  createHostedFormInstanceHandler,
-  createWebFormInstanceHandler,
-  createWebhookHandler,
-  mintWebFormInstanceHttp,
-  processWebhookHttp,
-} from './handlers';
+  createError,
+  ErrorCodes,
+  Errors,
+  ESignError,
+  getErrorCode,
+} from './errors';
+export type { ESignGraphQLOptions, GraphQLContext } from './graphql';
+export { createESignGraphQL, typeDefs } from './graphql';
 export type {
   HostedFormHandlerOptions,
   HostedFormInstanceHandlerOptions,
@@ -90,105 +38,164 @@ export type {
   WebhookHandlerOptions,
   WebhookHttpInput,
 } from './handlers';
-export { mintFromDocuSign } from './docusign/handlers';
-export type { DocuSignMintTarget } from './docusign/handlers';
-export { createESignGraphQL, typeDefs } from './graphql';
-export type { ESignGraphQLOptions, GraphQLContext } from './graphql';
-export { renderMockFormPage, renderMockSigningPage } from './pages';
+// --- Wire layer pieces that need no framework --------------------------------
+export {
+  createHostedFormInstanceHandler,
+  createWebFormInstanceHandler,
+  createWebhookHandler,
+  mintWebFormInstanceHttp,
+  processWebhookHttp,
+} from './handlers';
+export type { ValidateHmacOptions } from './hmac';
+export { validateHmac } from './hmac';
+export { escapeHtml, jsonForScript, sanitizeId } from './html';
+export type { RetryConfig } from './http';
+export {
+  HttpError,
+  isClientError,
+  isNotFoundError,
+  RETRY_CONFIG,
+  shouldRetry,
+  sleep,
+  withRetry,
+} from './http';
+export type { Logger } from './log';
+export { consoleLogger, sanitizeForLog } from './log';
 export type { MockFormButton, MockFormField, MockFormPage } from './pages';
-export { CLIENT_EVENTS, POST_SIGNING_EVENT_SCRIPT } from './bridge/script';
-export type { ClientEvent } from './bridge/script';
+export { renderMockFormPage, renderMockSigningPage } from './pages';
+export type {
+  ESignProvider,
+  HostedFormMint,
+  HostedFormProvider,
+} from './provider';
+export {
+  hostedFormMint,
+  supportsHostedForms,
+  supportsWebForms,
+} from './provider';
+export type { TokenProvider } from './providers/docusign/auth';
+export {
+  createJwtAssertion,
+  createTokenProvider,
+} from './providers/docusign/auth';
 // DocuSign's pages, also on the ./docusign entry
 export {
   mapDocuSignReturnEvent,
   renderSigningReturnBridge,
-} from './docusign/bridge';
+} from './providers/docusign/bridge';
+export type {
+  DocuSignClient,
+  DocuSignClientOptions,
+} from './providers/docusign/client';
+export { createDocuSignClient } from './providers/docusign/client';
+export type {
+  DocuSignConfig,
+  DocuSignConfigKey,
+  Env,
+} from './providers/docusign/config';
+export {
+  assertDocuSignConfig,
+  consentUrl,
+  DOCUSIGN_DEMO_URLS,
+  DOCUSIGN_ENV,
+  DOCUSIGN_SCOPES,
+  DocuSignConfigError,
+  docuSignConfigFromEnv,
+  JWT_CREDENTIALS,
+  missingDocuSignConfig,
+} from './providers/docusign/config';
+export type { DocuSignMintTarget } from './providers/docusign/handlers';
+export { mintFromDocuSign } from './providers/docusign/handlers';
+export type { MockWebFormField } from './providers/docusign/mockWebFormPage';
 export {
   LOCKED_FIELDS_HINT,
-  POST_SESSION_END_SCRIPT,
   mockWebFormFields,
+  POST_SESSION_END_SCRIPT,
   renderMockWebFormPage,
-} from './docusign/mockWebFormPage';
-export type { MockWebFormField } from './docusign/mockWebFormPage';
-export { escapeHtml, jsonForScript, sanitizeId } from './html';
+} from './providers/docusign/mockWebFormPage';
+export type { ParsedWebFormPrefill } from './providers/docusign/prefill';
 export {
-  signingPageCsp,
-  signingPageNonce,
-  signingPageResponse,
-} from './signingPage';
-
-// --- Provider adapters -------------------------------------------------------
-export {
-  createDocuSignProvider,
-  mapDocuSignStatus,
-  mapWebhookStatus,
-  parseDocuSignWebhook,
-  DOCUSIGN_SIGNATURE_HEADER,
-} from './docusign/provider';
+  assertWebFormPrefill,
+  formatPrefillValue,
+  MAX_PREFILL_FIELDS,
+  parseWebFormPrefill,
+  WebFormPrefillError,
+} from './providers/docusign/prefill';
 export type {
   DocuSignProviderHandle,
   DocuSignProviderOptions,
   DocuSignWebhookOptions,
   DocuSignWebhookPayload,
-} from './docusign/provider';
-export { createMockProvider } from './mock/provider';
-export type { MockProviderHandle, MockProviderOptions } from './mock/provider';
-
-export { createDocuSignClient } from './docusign/client';
-export type { DocuSignClient, DocuSignClientOptions } from './docusign/client';
-
+} from './providers/docusign/provider';
+// --- Provider adapters -------------------------------------------------------
 export {
-  docuSignConfigFromEnv,
-  missingDocuSignConfig,
-  assertDocuSignConfig,
-  DocuSignConfigError,
-  DOCUSIGN_ENV,
-  DOCUSIGN_DEMO_URLS,
-  DOCUSIGN_SCOPES,
-  JWT_CREDENTIALS,
-  consentUrl,
-} from './docusign/config';
-export type { DocuSignConfig, DocuSignConfigKey, Env } from './docusign/config';
-
-export { createTokenProvider, createJwtAssertion } from './docusign/auth';
-export type { TokenProvider } from './docusign/auth';
-
-export {
-  parseWebFormPrefill,
-  assertWebFormPrefill,
-  formatPrefillValue,
-  WebFormPrefillError,
-  MAX_PREFILL_FIELDS,
-} from './docusign/prefill';
-export type { ParsedWebFormPrefill } from './docusign/prefill';
-
-export {
-  HttpError,
-  RETRY_CONFIG,
-  isClientError,
-  isNotFoundError,
-  shouldRetry,
-  sleep,
-  withRetry,
-} from './http';
-export type { RetryConfig } from './http';
-
+  createDocuSignProvider,
+  DOCUSIGN_SIGNATURE_HEADER,
+  mapDocuSignStatus,
+  mapWebhookStatus,
+  parseDocuSignWebhook,
+} from './providers/docusign/provider';
 export type {
-  RecipientData,
-  WebFormPrefill,
-  WebFormPrefillValue,
-  WebFormPhoneNumber,
-  WebFormInstanceOptions,
-  WebFormInstanceResult,
-  HostedFormPrefill,
+  CreateWebFormInstanceParams,
+  WebFormsClient,
+} from './providers/docusign/webforms';
+export {
+  clientFor,
+  createWebFormInstance,
+} from './providers/docusign/webforms';
+export type {
+  MockProviderHandle,
+  MockProviderOptions,
+} from './providers/mock/provider';
+export { createMockProvider } from './providers/mock/provider';
+export type {
+  DefaultRegistryOptions,
+  ProviderFromEnvOptions,
+  ProviderRegistry,
+} from './registry';
+export {
+  defaultRegistry,
+  ESIGN_PROVIDER_ENV,
+  providerFromEnv,
+} from './registry';
+export {
+  signingPageCsp,
+  signingPageNonce,
+  signingPageResponse,
+} from './signingPage';
+export type {
+  EnvelopeRecord,
+  EnvelopeStore,
+  NewAuditEntry,
+  NewEnvelope,
+} from './store';
+export { createMemoryEnvelopeStore } from './store';
+export type { SpanAttributes, SpanLike, Tracing } from './tracing';
+export { noopTracing } from './tracing';
+export type {
+  CreateEnvelopeInput,
+  EnvelopeResult,
+  EnvelopeStatus,
+  FetchLike,
+  GetSigningUrlInput,
   HostedFormInstanceOptions,
   HostedFormInstanceResult,
-  FetchLike,
-  EnvelopeStatus,
-  EnvelopeResult,
+  HostedFormPrefill,
+  RecipientData,
   SigningUrlResult,
-  WebhookHeaders,
+  WebFormInstanceOptions,
+  WebFormInstanceResult,
+  WebFormPhoneNumber,
+  WebFormPrefill,
+  WebFormPrefillValue,
   WebhookEvent,
-  CreateEnvelopeInput,
-  GetSigningUrlInput,
+  WebhookHeaders,
 } from './types';
+export {
+  isValidEmail,
+  MAX_CONTRACT_TYPE_LENGTH,
+  MAX_NAME_LENGTH,
+  requireId,
+  validateContractType,
+  validateRecipient,
+} from './validation';

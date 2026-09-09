@@ -19,6 +19,7 @@ module.exports = {
     // Pure re-export barrels - no executable logic
     'src/index\\.ts$',
     'src/docusign\\.ts$',
+    'src/providers/docusign/entry\\.ts$',
     // Pure re-export barrel - nothing to cover
     'src/providers/docusign/index\\.ts$',
   ],

@@ -2,13 +2,13 @@
 // key, exchange it for an access token, cache the token (single-flight).
 
 import { createSign } from 'node:crypto';
+import { HttpError } from '../../http';
+import type { FetchLike } from '../../types';
 import {
-  DOCUSIGN_SCOPES,
   assertDocuSignConfig,
+  DOCUSIGN_SCOPES,
   type DocuSignConfig,
 } from './config';
-import { HttpError } from '../http';
-import type { FetchLike } from '../types';
 
 // Late-bound global fetch (tests replace global.fetch)
 export const defaultFetch: FetchLike = (input, init) =>

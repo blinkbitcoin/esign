@@ -12,7 +12,7 @@ export type {
   WebFormPhoneNumber,
   WebFormPrefill,
   WebFormPrefillValue,
-} from './docusign/types';
+} from './providers/docusign/types';
 
 // --- Hosted forms (provider-neutral) ---------------------------------------
 //

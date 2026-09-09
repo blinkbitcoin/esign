@@ -4,8 +4,11 @@
 // protocol the client components listen for (the mock pages speak it
 // natively).
 
-import { type ClientEvent, POST_SIGNING_EVENT_SCRIPT } from '../bridge/script';
-import { jsonForScript } from '../html';
+import {
+  type ClientEvent,
+  POST_SIGNING_EVENT_SCRIPT,
+} from '../../bridge/script';
+import { jsonForScript } from '../../html';
 
 // Map DocuSign return-URL event values onto the client protocol.
 // https://developers.docusign.com/docs/esign-rest-api/ (embedded signing

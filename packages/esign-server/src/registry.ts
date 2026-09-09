@@ -4,11 +4,11 @@
 // Every host in this repo selects its provider this way; a host with its own
 // adapter adds an entry.
 
-import { createDocuSignProvider } from './docusign/provider';
-import type { DocuSignWebhookOptions } from './docusign/provider';
-import { docuSignConfigFromEnv, type Env } from './docusign/config';
-import { createMockProvider } from './mock/provider';
 import type { ESignProvider } from './provider';
+import { docuSignConfigFromEnv, type Env } from './providers/docusign/config';
+import type { DocuSignWebhookOptions } from './providers/docusign/provider';
+import { createDocuSignProvider } from './providers/docusign/provider';
+import { createMockProvider } from './providers/mock/provider';
 
 // Provider name → factory (called once, when that provider is selected)
 export type ProviderRegistry = Record<string, () => ESignProvider>;

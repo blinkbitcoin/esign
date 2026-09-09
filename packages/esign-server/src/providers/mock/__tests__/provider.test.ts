@@ -1,4 +1,4 @@
-import { type ESignProvider, supportsWebForms } from '../../provider';
+import { type ESignProvider, supportsWebForms } from '../../../provider';
 import { createMockProvider } from '../provider';
 
 const UUID =

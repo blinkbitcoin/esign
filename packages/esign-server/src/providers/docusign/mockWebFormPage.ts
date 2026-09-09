@@ -5,7 +5,7 @@
 // protocol. The page itself is the neutral mock-form renderer (pages.ts)
 // fed DocuSign's vocabulary, script and prefill rendering.
 
-import { type MockFormField, renderMockFormPage } from '../pages';
+import { type MockFormField, renderMockFormPage } from '../../pages';
 import { formatPrefillValue } from './prefill';
 import type { WebFormPrefill } from './types';
 

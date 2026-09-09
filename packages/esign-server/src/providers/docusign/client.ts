@@ -2,16 +2,16 @@
 // and the REST calls. Calls are single attempts - wrap them in withRetry (or
 // use createWebFormInstance, which does) to get backoff on 5xx/429/network.
 
-import { assertDocuSignConfig, type DocuSignConfig } from './config';
-import { createTokenProvider, defaultFetch, type TokenProvider } from './auth';
-import { HttpError } from '../http';
+import { HttpError } from '../../http';
 import type {
   FetchLike,
   RecipientData,
   WebFormInstanceOptions,
   WebFormInstanceResult,
   WebFormPrefill,
-} from '../types';
+} from '../../types';
+import { createTokenProvider, defaultFetch, type TokenProvider } from './auth';
+import { assertDocuSignConfig, type DocuSignConfig } from './config';
 
 export interface DocuSignClientOptions {
   // Replace fetch (tests, custom agents)
