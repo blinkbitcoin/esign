@@ -240,7 +240,7 @@ import { createDocuSignProvider, docuSignConfigFromEnv } from '@blinkbitcoin/esi
 
 | Entry | What | Peer |
 |---|---|---|
-| `@blinkbitcoin/esign-server` | everything: domain, ports, registry, handlers, pages, DocuSign + mock adapters | none |
+| `@blinkbitcoin/esign-server` | everything: domain, ports, registry, handlers, pages, DocuSign + mock<br>adapters | none |
 | `@blinkbitcoin/esign-server/docusign` | the DocuSign adapter | none |
 | `@blinkbitcoin/esign-server/express` | `createESignRouter`, `mountDocuSignPages` | `express` |
 | `@blinkbitcoin/esign-server/knex` | the Postgres store + migrations | `knex` (types only) |

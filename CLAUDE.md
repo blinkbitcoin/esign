@@ -91,10 +91,16 @@ npm run migrate:test         # Same against the .env.test database
   package's programmatic migration source (`src/migrate.ts` applies it, no
   migration files here). Never query inline in resolvers.
 - Provider work goes through the package's `ESignProvider` port - including
-  webhooks + Web Forms. `src/providers/docusign/` and `src/providers/mock.ts`
-  are the package adapters wired to the service's config and policy; the
-  factory + singleton are `src/providers/index.ts`. Nothing DocuSign-specific
-  outside `src/providers/docusign/` and the package.
+  webhooks + hosted forms (`createHostedFormInstance`). `src/providers/docusign/`
+  and `src/providers/mock.ts` are the package adapters wired to the service's
+  config and policy; selection is the package's `providerFromEnv` registry
+  (`src/providers/index.ts`). **Provider boundary, everywhere:** nothing
+  provider-specific outside a `providers/<name>/` directory - in the packages
+  (`packages/esign-core/src/providers/docusign/`,
+  `packages/esign-react/src/providers/docusign/`, `packages/esign-server/src/docusign/`)
+  and in the service. The generic layers (`signing/`, the port, the pages, the
+  handlers) never import a provider; guard tests enforce it. DocuSign code is
+  reached through the `./docusign` subpaths; `./webform` stays as an alias.
 - The api resolves `@blinkbitcoin/esign-server` from source for typecheck,
   tests and `tsx` dev (`tsconfig.json` paths + vitest aliases); `npm run
   build` (`tsconfig.build.json`) needs the package's dist, so build the
@@ -217,9 +223,11 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
 
 ## Architecture Patterns
 
-- **Provider pattern**: new e-sign providers implement the `ESignProvider`
-  port (`examples/full-service-demo/src/providers/port.ts`) as an adapter under
-  `examples/full-service-demo/src/providers/` + a case in the `src/providers/index.ts` factory
+- **Provider pattern**: a new e-sign provider is an adapter directory
+  (`packages/esign-server/src/<name>/` implementing the `ESignProvider` port,
+  client-side interpreters under `packages/esign-core/src/providers/<name>/`)
+  plus one entry in the `providerFromEnv` registry; hosts select it with
+  `ESIGN_PROVIDER=<name>`
 - **Safe Area**: `react-native-safe-area-context` (demo app concern)
 - **Entry points**: `examples/react-native-demo/index.js` (RN app),
   `examples/react-demo/src/main.tsx` (web app), `examples/full-service-demo/src/index.ts`

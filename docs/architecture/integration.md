@@ -60,7 +60,7 @@ every client spot needing updates (ErrorCodes map, getErrorMessage copy).
   different messages needs a small injected mapping script (mobile concern,
   deliberately outside the backend provider interface)
 - Two backend-served pages complete this protocol layer
-  (`packages/esign-server/src/pages.ts`): `/signing/mock/:id` - the mock
+  (`packages/esign-server/src/pages.ts` and `src/docusign/bridge.ts`): `/signing/mock/:id` - the mock
   provider's interactive signing page (what Maestro E2E drives) - and
   `/signing/return` - the bridge translating real DocuSign's redirect
   protocol (`?event=...`) into these postMessage events

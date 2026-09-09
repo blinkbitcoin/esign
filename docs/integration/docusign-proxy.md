@@ -100,8 +100,9 @@ protocol (`ttl_expired` → `session_timeout`; unknown values → `exception`,
 query input is never interpolated raw) and forwards them via
 `window.ReactNativeWebView.postMessage` (RN WebView) or
 `window.parent.postMessage` (web iframe). Implementation:
-`packages/esign-server/src/pages.ts`; behavior covered by
-`packages/esign-server/src/__tests__/pages.test.ts`.
+`packages/esign-server/src/docusign/bridge.ts` (the bridge, DocuSign's
+redirect vocabulary) and `src/pages.ts` (the neutral mock signing page);
+behavior covered by their tests under `src/docusign/__tests__/` and `src/__tests__/`.
 
 If you override `DOCUSIGN_RETURN_URL`, point it at a publicly reachable
 deployment of this same route.

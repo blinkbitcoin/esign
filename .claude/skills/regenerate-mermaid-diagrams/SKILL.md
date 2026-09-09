@@ -69,7 +69,8 @@ These keep the set readable as a progression, not eight unrelated pictures:
 - **Event vocabulary is real.** Use the actual signing event names
   (`signing_complete`, `cancel`, `decline`, `session_timeout`; DocuSign
   `sessionEnd` with `signingResult` / `formConfirmation` / `sessionTimeout`)
-  from `packages/esign-core/src/signing/events.ts` - the diagrams double as
+  from `packages/esign-core/src/signing/bridge.ts` (the bridge envelope) and
+  `packages/esign-core/src/providers/docusign/events.ts` (DocuSign.js) - the diagrams double as
   protocol documentation.
 - Separate diagrams with `---`; keep the one-line intro under each `##`
   heading if it adds a constraint the picture can't show.
