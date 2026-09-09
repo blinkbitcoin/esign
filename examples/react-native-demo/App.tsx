@@ -22,7 +22,12 @@ import {
 } from 'react-native-safe-area-context';
 
 import { apolloClient } from './src/apollo';
-import { ESIGN_MODE, WEBFORM_INSTANCE_URL } from './src/config';
+import {
+  ESIGN_MODE,
+  PREFILL_OVERRIDE,
+  WEBFORM_INSTANCE_URL,
+  type WebFormPrefill,
+} from './src/config';
 import { HookSigning } from './src/HookSigning';
 import {
   ESignature,
@@ -61,9 +66,13 @@ export const getRecipientData = (): { name: string; email: string } => {
 // Prefill minted with the Web Forms instance (webform mode). Values minted
 // this way land in the form LOCKED - the signer sees them but cannot change
 // them - which is how a host pins the terms of a document (amounts, rates).
-// Numbers travel unquoted (DocuSign Number fields); keys are the form's field
-// API reference names.
-export const getDemoPrefill = (): Record<string, string | number> => {
+// Keys are the form's field API reference names; locked amounts travel as
+// strings (Text fields - docs/integration/docusign-lessons.md). ESIGN_PREFILL
+// replaces these mock-form values for a run against a real form.
+export const getDemoPrefill = (): WebFormPrefill => {
+  if (PREFILL_OVERRIDE) {
+    return PREFILL_OVERRIDE;
+  }
   const recipient = getRecipientData();
   return {
     full_name: recipient.name,
