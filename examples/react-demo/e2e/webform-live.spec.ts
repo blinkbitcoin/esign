@@ -10,7 +10,7 @@
 //   E2E_LIVE_AUTH_TOKEN     bearer for POST /webform/instance (default: e2e-live,
 //                           the dev passthrough userId)
 //   E2E_LIVE_PREFILL        JSON object: field API reference name → value
-//                           (numbers unquoted for Number fields)
+//                           (numbers unquoted for Number fields, strings for Text)
 //   E2E_LIVE_LOCKED_LABELS  JSON object: form label → expected displayed value
 //                           for the fields marked read-only in the builder
 //

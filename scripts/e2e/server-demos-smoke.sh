@@ -57,7 +57,7 @@ expect_match "mint-only refuses anonymous" '"Unauthenticated"' "$BODY"
 # serverless-handler-demo: the Fetch handlers behind plain Node
 BODY=$(curl -fsS -X POST "http://127.0.0.1:$HANDLER_PORT/webform/instance" \
   -H 'content-type: application/json' -H 'authorization: Bearer smoke-user' \
-  -d '{"prefill":{"number_of_units":10,"total_subscription_usd":1000}}')
+  -d '{"prefill":{"number_of_units":"10","total_subscription_usd":"1000.00"}}')
 expect_match "serverless mint ($PROVIDER)" "$URL_PATTERN" "$BODY"
 CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:$HANDLER_PORT/webform/instance" \
   -H 'content-type: application/json' -d '{"prefill":{}}')
