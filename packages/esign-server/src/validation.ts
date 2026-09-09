@@ -7,9 +7,17 @@ import type { RecipientData } from './types';
 export const MAX_CONTRACT_TYPE_LENGTH = 100;
 export const MAX_NAME_LENGTH = 200;
 
-// Basic email format check (an @ and a dotted domain)
-export const isValidEmail = (email: string): boolean =>
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+// Basic email format check (one @, a dotted domain, no whitespace) - written
+// without a backtracking regex so a long input cannot make it slow
+export const isValidEmail = (email: string): boolean => {
+  const at = email.indexOf('@');
+  if (at < 1 || email.indexOf('@', at + 1) !== -1 || /\s/.test(email)) {
+    return false;
+  }
+  const domain = email.slice(at + 1);
+  const dot = domain.indexOf('.');
+  return dot > 0 && dot < domain.length - 1 && !domain.endsWith('.');
+};
 
 // A required identifier: present and not blank
 export const requireId = (value: string | undefined, name: string): string => {

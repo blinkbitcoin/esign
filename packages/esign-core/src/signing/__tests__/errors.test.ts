@@ -1,6 +1,6 @@
 import {
-  SigningSourceError,
   isSigningSourceError,
+  SigningSourceError,
   toSigningSourceError,
 } from '../errors';
 
@@ -21,9 +21,10 @@ describe('SigningSourceError', () => {
     const error: unknown = new SigningSourceError('RESTART_FAILED');
     const shape: SigningSourceErrorShape = error as SigningSourceError;
     expect(shape.code).toBe('RESTART_FAILED');
-    expect(typeof error === 'object' && error !== null && 'code' in error).toBe(
-      true,
-    );
+    const hasCode = (value: unknown): boolean =>
+      typeof value === 'object' && value !== null && 'code' in value;
+    expect(hasCode(error)).toBe(true);
+    expect(hasCode(null)).toBe(false);
     expect(error).toMatchObject({ code: 'RESTART_FAILED' });
   });
 
