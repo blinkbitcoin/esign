@@ -1,62 +1,21 @@
 // The one call to @blinkbitcoin/esign-node this host makes: the hosted-form
-// mint of the provider ESIGN_PROVIDER selects. With real credentials that is
-// the DocuSign adapter (createWebFormInstance underneath); with
-// ESIGN_PROVIDER=mock the mock provider mints a URL onto the full-service
-// demo's mock Web Forms page, so the mutation can be exercised with no
-// DocuSign account.
+// mint of the provider ESIGN_PROVIDER selects. `hostedFormProviderFromEnv`
+// is the package's own preset over `defaultRegistry` - DocuSign unless
+// ESIGN_PROVIDER=mock, with everything a mint needs (the JWT grant plus
+// webFormId/returnUrl) required at selection time, so a missing credential
+// fails at startup, not on the first mutation. With ESIGN_PROVIDER=mock the
+// mock provider mints a URL onto the full-service demo's mock Web Forms
+// page, so the mutation can be exercised with no DocuSign account.
 
 import {
-  assertDocuSignConfig,
-  createDocuSignProvider,
-  type DefaultRegistryOptions,
-  defaultRegistry,
-  docuSignConfigFromEnv,
+  type HostedFormMint,
   hostedFormMint,
-  type ProviderRegistry,
-  providerFromEnv,
-  type WebFormPrefill,
+  hostedFormProviderFromEnv,
 } from '@blinkbitcoin/esign-node';
 
-export type Mint = (
-  userId: string,
-  prefill: WebFormPrefill,
-) => Promise<{ url: string; instanceId?: string }>;
-
-// The mock provider: mints onto the full-service demo's mock Web Forms page.
-// This host never receives webhooks; the mock mirrors DocuSign's anyway.
-export const mockProvider = (
-  env: NodeJS.ProcessEnv,
-  options: DefaultRegistryOptions = {},
-) => defaultRegistry(env, options).mock();
-
-// The package's registry, with this host's DocuSign entry: the credentials
-// are checked when the provider is selected (fail at startup, not on the
-// first mutation), and one config object → one cached token.
-export const registry = (
-  env: NodeJS.ProcessEnv,
-  options: DefaultRegistryOptions = {},
-): ProviderRegistry => ({
-  ...defaultRegistry(env, options),
-  docusign: () => {
-    const config = docuSignConfigFromEnv(env);
-    assertDocuSignConfig(config);
-    return createDocuSignProvider({
-      config,
-      webhook: { hmacKey: () => env.DOCUSIGN_HMAC_KEY, ...options.webhook },
-    });
-  },
-});
-
-// The mint for the selected provider (ESIGN_PROVIDER, DocuSign unless set)
 export const createMint = (
   env: NodeJS.ProcessEnv = process.env,
-  providers: ProviderRegistry = registry(env),
-): Mint => {
-  const mint = hostedFormMint(
-    providerFromEnv(env, providers, { default: 'docusign' }),
-  );
-  if (!mint) {
-    throw new Error('The selected provider cannot mint hosted forms');
-  }
-  return mint;
-};
+): HostedFormMint =>
+  // hostedFormProviderFromEnv already refuses (throws) a provider without
+  // the hosted-form capability, so the mint below is never undefined.
+  hostedFormMint(hostedFormProviderFromEnv(env))!;

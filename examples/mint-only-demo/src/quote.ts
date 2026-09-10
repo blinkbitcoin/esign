@@ -34,3 +34,13 @@ export const quoteFor = (units: number, now = new Date()): Quote => {
   }
   return { units, unitPriceUsd: 100, btcUsdRate: 78_850.5, quotedAt: now };
 };
+
+// The REST spelling (createHostedFormRouter's prefill hook) receives the
+// caller's own prefill as intent, not fact: `number_of_units` arrives as
+// whatever the client sent (a DocuSign Text-field string, most likely, but
+// the contract only guarantees string | number | string[] | phone object).
+// This coerces it to a number and hands it to `quoteFor`, which is the one
+// place that actually validates the range - never re-implemented here, so
+// the REST and GraphQL spellings enforce the exact same bound.
+export const unitsFrom = (prefill: Record<string, unknown>): number =>
+  Number(prefill.number_of_units);

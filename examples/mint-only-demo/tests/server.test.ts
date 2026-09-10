@@ -104,4 +104,65 @@ describe('createServer', () => {
       await server.stop();
     }
   });
+
+  it('serves the REST spelling of the same mint: POST /webform/instance, locked the same way as the mutation', async () => {
+    const { server, start } = createServer(mint);
+    const { url } = await start(0);
+    mint.mockClear();
+    try {
+      const response = await fetch(`${url}webform/instance`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: 'Bearer user-1',
+        },
+        // The client's number_of_units is intent, not fact: the mint is
+        // still asked for the computed prefill (total, rate), not this body
+        body: JSON.stringify({ prefill: { number_of_units: '10' } }),
+      });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        url: 'https://forms.example/user-1/5',
+        instanceId: 'i-1',
+      });
+      expect(mint).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({
+          number_of_units: '10',
+          total_subscription_usd: '1000.00',
+        }),
+      );
+    } finally {
+      await server.stop();
+    }
+  });
+
+  it('POST /webform/instance refuses an unauthenticated caller (401, no mint)', async () => {
+    const { server, start } = createServer(mint);
+    const { url } = await start(0);
+    mint.mockClear();
+    try {
+      const response = await fetch(`${url}webform/instance`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ prefill: { number_of_units: '10' } }),
+      });
+      expect(response.status).toBe(401);
+      expect(mint).not.toHaveBeenCalled();
+    } finally {
+      await server.stop();
+    }
+  });
+
+  it('GET /health answers ok (the CI smoke and the container HEALTHCHECK hit this)', async () => {
+    const { server, start } = createServer(mint);
+    const { url } = await start(0);
+    try {
+      const response = await fetch(`${url}health`);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ status: 'ok' });
+    } finally {
+      await server.stop();
+    }
+  });
 });

@@ -22,16 +22,29 @@ app opens url in <ESignature source={createWebFormsSource({ mint: ... })}>
   amounts are Text fields on the form (a read-only Number or Date field
   makes DocuSign refuse the submission, and Number fields take at most two
   decimals anyway - [webforms.md](../../docs/integration/webforms.md)).
-- `src/mint.ts` - `hostedFormMint(providerFromEnv(...))`, the one package call. `ESIGN_PROVIDER=mock` swaps in the
-  mock provider so the mutation runs with no DocuSign account (the URL
-  points at the service's mock Web Forms page).
+- `src/mint.ts` - `hostedFormMint(hostedFormProviderFromEnv(env))`, the
+  package's own preset: `ESIGN_PROVIDER=mock` swaps in the mock provider so
+  the mutation runs with no DocuSign account (the URL points at the
+  full-service demo's mock Web Forms page); with `docusign` it requires the
+  JWT grant plus `DOCUSIGN_WEBFORM_ID`/`DOCUSIGN_RETURN_URL` at boot, not on
+  the first mutation.
 - `src/schema.ts`, `src/server.ts` - stand-ins for what the host already has:
   its schema and its session handling. The bearer token is taken as the user
-  id here; a real host verifies its own session in that spot. `server.ts`
-  also serves the one extra route a Web Forms host needs, the return-URL
-  bridge (`GET /signing/return`, `renderSigningReturnBridge`): DocuSign
-  sends the signer there after the form's envelope is signed, and the page
-  posts the outcome to the app's WebView. `DOCUSIGN_RETURN_URL` points at it.
+  id here; a real host verifies its own session in that spot. Two spellings
+  of the same mint are shown side by side (a real host picks one):
+  - the GraphQL mutation above, resolved against `quoteFor`/`prefillFromQuote`
+    directly;
+  - the REST preset, `createHostedFormRouter` from
+    `@blinkbitcoin/esign-node/express`, mounted at `app.use(...)` -
+    `POST /webform/instance`, `GET /health`, and the one extra route a Web
+    Forms host needs, the return-URL bridge (`GET /signing/return`): DocuSign
+    sends the signer there after the form's envelope is signed, and the page
+    posts the outcome to the app's WebView. `DOCUSIGN_RETURN_URL` points at
+    it. Its `prefill` hook computes the same locked amounts from the
+    caller's own `number_of_units` (`unitsFrom` in `src/quote.ts` - intent,
+    never trusted for the read-only fields).
+- `src/index.ts` - `SIGTERM`/`SIGINT` stop the server and exit, so a
+  container orchestrator's shutdown is clean.
 - The app side of this shape (the source that calls the mutation, what
   `onComplete` delivers): [locked-terms.md](../../docs/integration/locked-terms.md).
 
@@ -58,8 +71,26 @@ submitted and signed ([webforms.md](../../docs/integration/webforms.md);
 make test          # Vitest, 100% coverage enforced (make coverage)
 ```
 
-CI also boots this example with the mock provider and runs the mutation end
-to end (`scripts/e2e/server-demos-smoke.sh`, `make e2e-server-demos`).
+CI also boots this example with the mock provider and calls both spellings
+of the mint - the GraphQL mutation and `POST /webform/instance` - plus
+`GET /health` (`scripts/e2e/server-demos-smoke.sh`, `make e2e-server-demos`).
+
+## Build and run as a container
+
+This demo also ships a `Dockerfile`, to prove the shape actually deploys
+(not to publish it - see [Deploy](../../packages/esign-service/README.md#deploy)
+for the package host apps actually run in production):
+
+```sh
+make docker-build-mint-only    # → esign-mint-only-demo (node 24 alpine, production deps only)
+make docker-smoke-mint-only    # boots it with the mock provider, checks /health
+docker run --rm -p 4100:4100 -e ESIGN_PROVIDER=mock esign-mint-only-demo
+```
+
+CI builds and smokes the same image on every branch (E2E / Docker); it is
+never uploaded as an artifact or published - a real deployment installs
+`@blinkbitcoin/esign-service` (or, in this shape, `@blinkbitcoin/esign-node`
+straight into an existing API) rather than running this example's image.
 
 ## Two in-process examples and the service
 

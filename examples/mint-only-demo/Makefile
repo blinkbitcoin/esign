@@ -4,7 +4,11 @@
 dev: ## Run the API (ESIGN_PROVIDER=mock needs no credentials; PORT, default 4104 = ESIGN_PORT_BASE + 4)
 	npm run dev
 
-start: dev ## Alias for dev
+build: ## Build with tsup (dist/index.js)
+	npm run build
+
+start: build ## Build then run the built API (node dist/index.js)
+	npm start
 
 test: ## Unit tests (Vitest)
 	npm test
@@ -19,4 +23,4 @@ help: ## List targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*##' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*##"} {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: dev start test coverage typecheck help
+.PHONY: dev build start test coverage typecheck help

@@ -5,7 +5,14 @@ export default defineConfig({
   resolve: {
     alias: [
       // The workspace package straight from source (no build needed); the
-      // subpath first so the bare name does not swallow it
+      // subpaths first so the bare name does not swallow them
+      {
+        find: '@blinkbitcoin/esign-node/express',
+        replacement: path.resolve(
+          import.meta.dirname,
+          '../../packages/esign-node/src/express.ts',
+        ),
+      },
       {
         find: '@blinkbitcoin/esign-node/docusign',
         replacement: path.resolve(
