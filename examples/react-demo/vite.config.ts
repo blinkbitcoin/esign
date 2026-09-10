@@ -39,7 +39,7 @@ export default defineConfig(({ command }) => {
         // vite-env.d.ts is type-only (nothing to cover)
         exclude: [
           'src/main.tsx',
-          'src/vite-env.d.ts',
+          'src/**/*.d.ts',
           'src/**/*.test.*',
           'vite/**/*.test.*',
         ],

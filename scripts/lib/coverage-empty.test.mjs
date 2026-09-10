@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { emptyCoverageFiles, formatEmptyFiles } from './coverage-empty.mjs';
+import {
+  coverageWorkspaces,
+  emptyCoverageFiles,
+  formatEmptyFiles,
+  missingSummaries,
+} from './coverage-empty.mjs';
 
 const metrics = total => ({
   statements: { total, covered: total, pct: 100 },
@@ -31,5 +36,39 @@ describe('formatEmptyFiles', () => {
       'packages/x: /w/src/index.ts has no statements to cover - exclude it from coverage in the workspace config (re-export / type-only module)',
     ]);
     expect(formatEmptyFiles('packages/x', [])).toEqual([]);
+  });
+});
+
+describe('coverageWorkspaces', () => {
+  it('reads every -w workspace out of the root test:coverage script', () => {
+    const script =
+      'npm run test:coverage -w packages/a -w examples/b && npm run test -w examples/c -- --coverage && npm run test:coverage -w scripts';
+    expect(coverageWorkspaces(script)).toEqual([
+      'packages/a',
+      'examples/b',
+      'examples/c',
+      'scripts',
+    ]);
+  });
+});
+
+describe('missingSummaries', () => {
+  it('names the workspaces that left no coverage-summary.json', () => {
+    const files = [
+      'packages/a/coverage/coverage-summary.json',
+      'scripts/coverage/coverage-summary.json',
+    ];
+    expect(
+      missingSummaries(['packages/a', 'examples/b', 'scripts'], files),
+    ).toEqual(['examples/b']);
+  });
+
+  it('does not let a nested path stand in for a workspace', () => {
+    expect(
+      missingSummaries(
+        ['examples/b'],
+        ['examples/b/node_modules/x/coverage/coverage-summary.json'],
+      ),
+    ).toEqual(['examples/b']);
   });
 });

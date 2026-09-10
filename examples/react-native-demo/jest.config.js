@@ -29,6 +29,8 @@ module.exports = {
       '<rootDir>/__mocks__/react-native-safe-area-context.tsx',
   },
   collectCoverageFrom: ['App.tsx', 'src/**/*.{ts,tsx}'],
+  // json-summary is what scripts/ci/coverage-empty.mjs reads
+  coverageReporters: ['text', 'lcov', 'json-summary'],
   coveragePathIgnorePatterns: ['/node_modules/'],
   // Demo app: unit-coverage floor at current level; the real coverage is
   // the Maestro E2E suites.

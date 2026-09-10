@@ -47,6 +47,7 @@ export default defineConfig({
       // ... plus the re-export / type-only modules (nothing to cover):
       // errors, typeDefs, types and providers/port re-export the package
       exclude: [
+        'src/**/*.d.ts',
         'src/generated/**',
         'src/index.ts',
         'src/errors.ts',

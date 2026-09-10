@@ -6,8 +6,10 @@
 import { globSync, readFileSync } from 'node:fs';
 import { relative } from 'node:path';
 import {
+  coverageWorkspaces,
   emptyCoverageFiles,
   formatEmptyFiles,
+  missingSummaries,
 } from '../lib/coverage-empty.mjs';
 
 const summaries = globSync(
@@ -17,6 +19,16 @@ const summaries = globSync(
   },
 );
 let problems = 0;
+// A workspace that ran coverage but left no summary would be invisible here
+const expected = coverageWorkspaces(
+  JSON.parse(readFileSync('package.json', 'utf8')).scripts['test:coverage'],
+);
+for (const workspace of missingSummaries(expected, summaries)) {
+  console.log(
+    `::error::${workspace}: no coverage/coverage-summary.json - add 'json-summary' to its coverage reporters`,
+  );
+  problems++;
+}
 for (const file of summaries) {
   const workspace = file.replace(/\/coverage\/coverage-summary\.json$/, '');
   const empty = emptyCoverageFiles(JSON.parse(readFileSync(file, 'utf8'))).map(

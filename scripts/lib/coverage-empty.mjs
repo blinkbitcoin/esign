@@ -12,6 +12,24 @@ export const emptyCoverageFiles = summary =>
     )
     .map(([file]) => file);
 
+/**
+ * The workspaces `make coverage` runs: every `-w <path>` in the root
+ * package.json's test:coverage script. Each must leave a
+ * coverage-summary.json behind, or this check never sees it (a workspace
+ * whose reporter list lacks json-summary is invisible, not clean).
+ */
+export const coverageWorkspaces = script =>
+  [...script.matchAll(/(?:^|\s)-w\s+(\S+)/g)].map(match => match[1]);
+
+/** The workspaces that ran coverage but wrote no summary. */
+export const missingSummaries = (workspaces, summaryFiles) =>
+  workspaces.filter(
+    workspace =>
+      !summaryFiles.some(file =>
+        file.endsWith(`${workspace}/coverage/coverage-summary.json`),
+      ),
+  );
+
 /** One report line per empty file, pointing at the fix. */
 export const formatEmptyFiles = (workspace, files) =>
   files.map(

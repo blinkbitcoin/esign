@@ -33,7 +33,7 @@ export default defineConfig({
       reportsDirectory: 'coverage',
       include: ['src/**/*.ts'],
       // index.ts binds a real port; the CI smoke runs it for real
-      exclude: ['src/index.ts'],
+      exclude: ['src/index.ts', 'src/**/*.d.ts'],
       reporter: ['text', 'json-summary', 'html'],
       thresholds: {
         statements: 100,
