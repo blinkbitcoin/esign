@@ -78,8 +78,9 @@ of the mint - the GraphQL mutation and `POST /webform/instance` - plus
 ## Build and run as a container
 
 This demo also ships a `Dockerfile`, to prove the shape actually deploys
-(not to publish it - see [Deploy](../../packages/esign-service/README.md#deploy)
-for the package host apps actually run in production):
+(not to publish it - see the production runbook,
+[docs/operations/production.md](../../docs/operations/production.md), for
+the package host apps actually run in production):
 
 ```sh
 make docker-build-mint-only    # → esign-mint-only-demo (node 24 alpine, production deps only)

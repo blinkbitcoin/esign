@@ -1,5 +1,9 @@
 import { createServer, userFromAuthorization } from '../src/server';
 
+// Tests are silent (vitest.setup.ts): the router reports a failed mint
+// through the injected logger
+const silent = { log() {}, warn() {}, error() {} };
+
 const MUTATION =
   'mutation Sign($units: Int!) { investSigningUrl(units: $units) { url instanceId } }';
 
@@ -149,6 +153,58 @@ describe('createServer', () => {
       });
       expect(response.status).toBe(401);
       expect(mint).not.toHaveBeenCalled();
+    } finally {
+      await server.stop();
+    }
+  });
+
+  it.each([
+    ['non-numeric', 'abc'],
+    ['negative', '-1'],
+    ['zero', '0'],
+    ['fractional', '1.5'],
+    ['huge', '999999'],
+    ['missing', undefined],
+  ])(
+    'POST /webform/instance answers 400 with a message for %s number_of_units, never the mint',
+    async (_label, value) => {
+      const { server, start } = createServer(mint);
+      const { url } = await start(0);
+      mint.mockClear();
+      try {
+        const response = await fetch(`${url}webform/instance`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: 'Bearer user-1',
+          },
+          body: JSON.stringify({
+            prefill: value === undefined ? {} : { number_of_units: value },
+          }),
+        });
+        expect(response.status).toBe(400);
+        expect((await response.json()).error).toMatch(/units must be/);
+        expect(mint).not.toHaveBeenCalled();
+      } finally {
+        await server.stop();
+      }
+    },
+  );
+
+  it('POST /webform/instance still answers 502 when the mint itself fails (a real provider/network failure)', async () => {
+    const failingMint = vi.fn().mockRejectedValue(new Error('network down'));
+    const { server, start } = createServer(failingMint, { logger: silent });
+    const { url } = await start(0);
+    try {
+      const response = await fetch(`${url}webform/instance`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: 'Bearer user-1',
+        },
+        body: JSON.stringify({ prefill: { number_of_units: '10' } }),
+      });
+      expect(response.status).toBe(502);
     } finally {
       await server.stop();
     }

@@ -39,8 +39,12 @@ export const quoteFor = (units: number, now = new Date()): Quote => {
 // caller's own prefill as intent, not fact: `number_of_units` arrives as
 // whatever the client sent (a DocuSign Text-field string, most likely, but
 // the contract only guarantees string | number | string[] | phone object).
-// This coerces it to a number and hands it to `quoteFor`, which is the one
-// place that actually validates the range - never re-implemented here, so
-// the REST and GraphQL spellings enforce the exact same bound.
+// This ONLY coerces it to a number - it never validates or rejects
+// anything itself (garbage input becomes `NaN`, not a thrown error).
+// `quoteFor` is the one place that actually validates the range (and is
+// never re-implemented here, so the REST and GraphQL spellings enforce the
+// exact same bound); the caller of `unitsFrom` is responsible for turning
+// `quoteFor`'s `RangeError` into whatever its own transport expects
+// (`src/server.ts` turns it into a `400`, per the REST mint contract).
 export const unitsFrom = (prefill: Record<string, unknown>): number =>
   Number(prefill.number_of_units);

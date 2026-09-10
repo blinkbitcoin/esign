@@ -10,7 +10,12 @@ import { createServer as createHttpServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@as-integrations/express5';
-import { bearerToken, type HostedFormMint } from '@blinkbitcoin/esign-node';
+import {
+  bearerToken,
+  Errors,
+  type HostedFormMint,
+  type Logger,
+} from '@blinkbitcoin/esign-node';
 import { createHostedFormRouter } from '@blinkbitcoin/esign-node/express';
 import express from 'express';
 import { prefillFromQuote, quoteFor, unitsFrom } from './quote';
@@ -20,7 +25,15 @@ export const userFromAuthorization = (
   header: string | undefined,
 ): string | null => bearerToken(header);
 
-export const createServer = (mint: HostedFormMint) => {
+// What a host injects: where the package reports (default: the console)
+export interface ServerOptions {
+  logger?: Logger;
+}
+
+export const createServer = (
+  mint: HostedFormMint,
+  options: ServerOptions = {},
+) => {
   const apollo = new ApolloServer<Context>({ typeDefs, resolvers });
   const app = express();
 
@@ -34,8 +47,21 @@ export const createServer = (mint: HostedFormMint) => {
   app.use(
     createHostedFormRouter({
       mint,
+      logger: options.logger,
       authenticate: req => userFromAuthorization(req.headers.authorization),
-      prefill: ({ prefill }) => prefillFromQuote(quoteFor(unitsFrom(prefill))),
+      prefill: ({ prefill }) => {
+        try {
+          return prefillFromQuote(quoteFor(unitsFrom(prefill)));
+        } catch (error) {
+          // quoteFor's RangeError (an invalid, out-of-range or missing
+          // number_of_units) is this demo's own validation shape;
+          // mintWebFormInstanceHttp (the router's HTTP layer) only
+          // recognizes Errors.validationError as a 400 - translate here,
+          // or a bad request would read as the generic 502 a real
+          // provider/network failure gets instead.
+          throw Errors.validationError((error as Error).message);
+        }
+      },
     }),
   );
 

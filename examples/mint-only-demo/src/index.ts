@@ -22,7 +22,16 @@ start(port).then(({ url }) => {
 // A container's orchestrator (Docker, Kubernetes, Fly, ...) sends SIGTERM
 // to ask for a clean shutdown before killing the process; Ctrl-C sends
 // SIGINT locally. Either way: stop accepting new connections and exit.
+// `shuttingDown` guards re-entrancy - a second signal while `server.stop()`
+// is still in flight (an impatient double Ctrl-C, or SIGTERM followed by
+// SIGINT from the same orchestrator) must not call `apollo.stop()` /
+// `httpServer.close()` a second time on top of the first.
+let shuttingDown = false;
 const shutdown = (signal: NodeJS.Signals) => {
+  if (shuttingDown) {
+    return;
+  }
+  shuttingDown = true;
   console.log(`${signal} received, shutting down`);
   server
     .stop()
