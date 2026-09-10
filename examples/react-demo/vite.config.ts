@@ -1,9 +1,9 @@
 import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
-import { requireBuiltLibraries, sourceAliases } from './vite/libraries';
+import { requireBuiltLibraries, sourceAliases } from './vite/libraries.ts';
 
-const packages = path.resolve(__dirname, '../../packages');
+const packages = path.resolve(import.meta.dirname, '../../packages');
 
 export default defineConfig(({ command }) => {
   if (command === 'build') {
@@ -17,6 +17,8 @@ export default defineConfig(({ command }) => {
     test: {
       environment: 'jsdom',
       globals: true,
+      // Tests are silent: fails a test on any console output
+      setupFiles: ['./vitest.setup.ts'],
       include: [
         'src/**/*.test.{ts,tsx}',
         'e2e/**/*.test.ts',

@@ -1,6 +1,10 @@
 import { vi } from 'vitest';
 import { authenticate, createHandlers, providerFromEnv } from '../src/handlers';
 
+// Tests are silent (vitest.setup.ts): the package reports through the
+// injected logger
+const silent = { log() {}, warn() {}, error() {} };
+
 const post = (
   path: string,
   body: unknown,
@@ -40,16 +44,19 @@ describe('providerFromEnv', () => {
   });
 
   it('is the DocuSign provider otherwise, refusing unsigned webhooks', () => {
-    const provider = providerFromEnv({ DOCUSIGN_HMAC_KEY: 'k' });
+    const provider = providerFromEnv(
+      { DOCUSIGN_HMAC_KEY: 'k' },
+      { logger: silent },
+    );
     expect(provider.verifyWebhook({}, '{}')).toBe(false);
   });
 
   it('warns and stays on DocuSign for an unknown name', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const provider = providerFromEnv({
-      ESIGN_PROVIDER: 'adobe',
-      DOCUSIGN_HMAC_KEY: 'k',
-    });
+    const provider = providerFromEnv(
+      { ESIGN_PROVIDER: 'adobe', DOCUSIGN_HMAC_KEY: 'k' },
+      { logger: silent },
+    );
     expect(provider.verifyWebhook({}, '{}')).toBe(false);
     expect(warn).toHaveBeenCalledWith(
       'Unknown ESIGN_PROVIDER: adobe, falling back to docusign',
@@ -59,10 +66,13 @@ describe('providerFromEnv', () => {
 });
 
 describe('createHandlers (mock provider)', () => {
-  const handlers = createHandlers({
-    ESIGN_PROVIDER: 'mock',
-    MOCK_PAGES_ORIGIN: 'http://p:4000',
-  });
+  const handlers = createHandlers(
+    {
+      ESIGN_PROVIDER: 'mock',
+      MOCK_PAGES_ORIGIN: 'http://p:4000',
+    },
+    { logger: silent },
+  );
 
   it('mints a Web Forms instance for an authenticated caller', async () => {
     const response = await handlers.mint(

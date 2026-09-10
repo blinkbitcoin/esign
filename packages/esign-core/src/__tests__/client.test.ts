@@ -6,6 +6,7 @@
 import { CombinedGraphQLErrors } from '@apollo/client/errors';
 
 import {
+  createApolloErrorHandler,
   createESignApolloClient,
   createAuthContextSetter,
   ErrorCodes,
@@ -14,14 +15,18 @@ import {
 import * as operations from '../operations';
 import * as api from '../index';
 
-// Mock console.error to verify error logging
-const originalConsoleError = console.error;
-
 describe('createESignApolloClient', () => {
   it('creates a client with link chain and cache', () => {
     const client = createESignApolloClient({
       uri: 'http://example.test/graphql',
     });
+    // The host's logger replaces the console-backed error link
+    expect(
+      createESignApolloClient({
+        uri: 'http://example.test/graphql',
+        logger: { error: jest.fn() },
+      }).link,
+    ).toBeDefined();
 
     expect(client).toBeDefined();
     expect(client.link).toBeDefined();
@@ -105,13 +110,12 @@ describe('createAuthContextSetter (authLink)', () => {
   });
 });
 
-describe('handleApolloErrors (errorLink)', () => {
-  beforeEach(() => {
-    console.error = jest.fn();
-  });
+describe('createApolloErrorHandler (errorLink)', () => {
+  const logger = { error: jest.fn() };
+  const handle = createApolloErrorHandler(logger);
 
-  afterEach(() => {
-    console.error = originalConsoleError;
+  beforeEach(() => {
+    logger.error.mockClear();
   });
 
   it('logs each GraphQL error with its code and message', () => {
@@ -123,25 +127,32 @@ describe('handleApolloErrors (errorLink)', () => {
       { message: 'Second error', extensions: { code: 'SECOND_CODE' } },
     ]);
 
-    handleApolloErrors({ error } as never);
+    handle({ error } as never);
 
-    expect(console.error).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       '[GraphQL error]: ENVELOPE_NOT_FOUND - Envelope not found',
     );
-    expect(console.error).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       '[GraphQL error]: SECOND_CODE - Second error',
     );
-    expect(console.error).toHaveBeenCalledTimes(2);
+    expect(logger.error).toHaveBeenCalledTimes(2);
   });
 
   it('logs a network error for non-GraphQL errors', () => {
     const networkError = new Error('Network connection failed');
 
-    handleApolloErrors({ error: networkError } as never);
+    handle({ error: networkError } as never);
 
-    expect(console.error).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       '[Network error]: Error: Network connection failed',
     );
+  });
+
+  it('is console-backed when the client gets no logger (handleApolloErrors)', () => {
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    handleApolloErrors({ error: new Error('down') } as never);
+    expect(error).toHaveBeenCalledWith('[Network error]: Error: down');
+    error.mockRestore();
   });
 });
 

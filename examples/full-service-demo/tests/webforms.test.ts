@@ -173,6 +173,13 @@ describe('POST /webform/instance', () => {
   beforeAll(async () => {
     app = await createApp();
   });
+  // The dev-mode bearer passthrough warns (no JWT_SECRET): expected here
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it('mints an instance for an authenticated caller', async () => {
     const response = await request(app)

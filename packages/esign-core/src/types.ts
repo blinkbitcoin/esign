@@ -29,6 +29,16 @@ export interface ESignatureTheme {
 }
 
 /**
+ * Where the libraries report what they drop or cannot act on (a malformed
+ * WebView message, an unknown signing event, a GraphQL error). Console by
+ * default; hosts route it into their own logging, tests inject silence.
+ */
+export interface ESignLogger {
+  warn(message: string, ...rest: unknown[]): void;
+  error(message: string, ...rest: unknown[]): void;
+}
+
+/**
  * Options for the headless useESignature hook, identical on every platform.
  *
  * Provider-agnostic: takes a SigningSource (proxy envelope, DocuSign Web
@@ -40,6 +50,8 @@ export interface UseESignatureOptions extends SigningCallbacks {
   source: SigningSource;
   /** Duration in ms to hold the success state before calling onComplete (default: 1500) */
   successDelayMs?: number;
+  /** Diagnostics sink for what the flow drops (default: console). */
+  logger?: ESignLogger;
   /** @internal Test-only option to seed the initial status */
   __testInitialStatus?: ESignatureStatus;
   /** @internal Test-only option to seed the initial signingUrl */

@@ -268,7 +268,7 @@ Defined by the package's programmatic migration source
 
 ### E2E Tests (`examples/full-service-demo/tests/e2e/`)
 - Real PostgreSQL via Docker Compose (tmpfs-backed, port 5433)
-- Separate config (`vitest.e2e.config.ts`, sequential execution)
+- Separate config (`vitest.e2e.config.mts`, sequential execution)
 - Factory pattern for test data; env from `.env.test` via dotenv-cli
 
 ```bash

@@ -12,7 +12,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 if [ "${EVENT_NAME:-}" = pull_request ]; then
-  git fetch --no-tags --depth=1 origin "${BASE_REF:?}"
+  git fetch -q --no-tags --depth=1 origin "${BASE_REF:?}"
   BASE="origin/$BASE_REF"
 elif [ -n "${EVENT_NAME:-}" ]; then
   BASE=HEAD~1

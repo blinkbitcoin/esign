@@ -1,7 +1,7 @@
 // Default import = the real module object, so spies reach hmac.ts's binding
+import { spyLogger } from './support';
 import crypto from 'node:crypto';
 import { validateHmac } from '../hmac';
-import type { Logger } from '../log';
 
 const key = 'test-hmac-key-0123456789';
 const body = '{"data":{"envelopeId":"secret-123","email":"pii@example.com"}}';
@@ -9,11 +9,7 @@ const body = '{"data":{"envelopeId":"secret-123","email":"pii@example.com"}}';
 const sign = (payload: string, secret = key) =>
   crypto.createHmac('sha256', secret).update(payload, 'utf8').digest('base64');
 
-const fakeLogger = (): Logger & {
-  log: jest.Mock;
-  warn: jest.Mock;
-  error: jest.Mock;
-} => ({ log: jest.fn(), warn: jest.fn(), error: jest.fn() });
+const fakeLogger = spyLogger;
 
 // The JSON security event logged through `error('Security event:', json)`
 const securityEvent = (logger: { error: jest.Mock }) => {

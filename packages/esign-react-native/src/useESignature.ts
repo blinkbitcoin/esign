@@ -25,6 +25,14 @@ import type {
   UseESignatureOptions,
   UseESignatureResult,
 } from './types';
+import type { ESignLogger } from '@blinkbitcoin/esign-core/webform';
+
+// Where dropped WebView messages are reported unless the host injects a
+// logger (late-bound console, so a spy installed by a test is honoured)
+const consoleLogger: ESignLogger = {
+  warn: (...args) => console.warn(...args),
+  error: (...args) => console.error(...args),
+};
 
 const checkConnectivity = async (): Promise<boolean> => {
   const state = await NetInfo.fetch();
@@ -41,6 +49,7 @@ export const useESignature = ({
   onError,
   onCancel,
   successDelayMs = 1500,
+  logger = consoleLogger,
   __testInitialStatus,
   __testSigningUrl,
   __testSession,
@@ -123,7 +132,7 @@ export const useESignature = ({
       } catch (e) {
         /* istanbul ignore else -- __DEV__ is hardcoded true by the RN Jest preset; the false branch is a compile-time-only path Metro strips in production */
         if (__DEV__) {
-          console.error('WebView message parse error:', e);
+          logger.error('WebView message parse error:', e);
         }
         return;
       }
@@ -132,13 +141,13 @@ export const useESignature = ({
       if (!signingEvent) {
         /* istanbul ignore else -- __DEV__ is hardcoded true by the RN Jest preset; the false branch is a compile-time-only path Metro strips in production */
         if (__DEV__) {
-          console.warn('Unknown signing WebView event:', raw);
+          logger.warn('Unknown signing WebView event:', raw);
         }
         return;
       }
       apply({ type: 'event', event: signingEvent });
     },
-    [source, apply],
+    [source, apply, logger],
   );
 
   const sign = useCallback(async () => {

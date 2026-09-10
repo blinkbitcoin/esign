@@ -8,19 +8,25 @@ export default defineConfig({
       // the subpath first so the bare name does not swallow it
       {
         find: '@blinkbitcoin/esign-server/express',
-        replacement: path.resolve(__dirname, '../../packages/esign-server/src/express.ts'),
+        replacement: path.resolve(
+          import.meta.dirname,
+          '../../packages/esign-server/src/express.ts'
+        ),
       },
       {
         find: '@blinkbitcoin/esign-server/knex',
-        replacement: path.resolve(__dirname, '../../packages/esign-server/src/knex.ts'),
+        replacement: path.resolve(import.meta.dirname, '../../packages/esign-server/src/knex.ts'),
       },
       {
         find: '@blinkbitcoin/esign-server/docusign',
-        replacement: path.resolve(__dirname, '../../packages/esign-server/src/docusign.ts'),
+        replacement: path.resolve(
+          import.meta.dirname,
+          '../../packages/esign-server/src/docusign.ts'
+        ),
       },
       {
         find: '@blinkbitcoin/esign-server',
-        replacement: path.resolve(__dirname, '../../packages/esign-server/src/index.ts'),
+        replacement: path.resolve(import.meta.dirname, '../../packages/esign-server/src/index.ts'),
       },
     ],
   },

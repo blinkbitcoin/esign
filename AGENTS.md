@@ -121,6 +121,21 @@ cannot see changes.
   scripts themselves; CLI entry points are excluded from coverage by design
 - Mobile E2E: Maestro flows in `examples/react-native-demo/.maestro/`, driven by `scripts/e2e/*`
 - Native-module mocks live in `packages/esign-react-native/__mocks__/` and are shared by the demo
+- **Tests are silent.** Every workspace's `jest.setup.ts` / `vitest.setup.ts`
+  fails a test that lets `console.error`, `console.warn` or `console.log`
+  fire. Two things cause it, and both are bugs in the test: a module built
+  without an injected logger (pass `silentLogger` / `spyLogger()` from
+  `packages/esign-server/src/__tests__/support.ts`, or the `logger` option of
+  `createESignApolloClient` / `useESignature` / the demos' factories - every
+  logger in this repo is injectable), and a React state update outside
+  `act()`. Anything that updates React state in a test goes through an
+  act-wrapped API: Testing Library's `fireEvent` / `userEvent` / `waitFor` /
+  `findBy*`, or `ReactTestRenderer.act` (async when the update is), never a
+  raw DOM `.click()` or an awaited promise outside `act`. A test that expects
+  logging spies on the console method itself
+  (`jest.spyOn(console, 'warn').mockImplementation(() => {})`) in the test or
+  a `beforeEach` - never `beforeAll`, which sits underneath the gate's spy -
+  and thereby opts out for that test
 
 ## Troubleshooting
 

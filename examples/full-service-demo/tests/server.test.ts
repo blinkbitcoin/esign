@@ -9,14 +9,18 @@ import { startServer } from '../src/server';
 describe('startServer', () => {
   let server: http.Server;
   let logSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
   const originalProvider = process.env.ESIGN_PROVIDER;
 
   beforeEach(() => {
     logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    // Boot warns about ALLOW_INSECURE_DEV (tests/setup.ts sets it)
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterEach(async () => {
     logSpy.mockRestore();
+    warnSpy.mockRestore();
     if (originalProvider !== undefined) {
       process.env.ESIGN_PROVIDER = originalProvider;
     } else {

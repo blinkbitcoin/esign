@@ -71,6 +71,7 @@ export { isMountable, isRestartable } from '../../signing/types';
 export { withTimeout } from '../../signing/withTimeout';
 export type {
   ESignatureTheme,
+  ESignLogger,
   RecipientData,
   UseESignatureOptions,
 } from '../../types';
