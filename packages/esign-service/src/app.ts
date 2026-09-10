@@ -39,7 +39,7 @@ const GRAPHQL_PATH = '/graphql';
 // The baseline security headers. Helmet is Express-only, so the equivalents
 // are set here - on every response that does not carry its own policy. The
 // signing pages bring a nonce-based CSP from the package and keep it.
-const SECURITY_HEADERS: Record<string, string> = {
+export const SECURITY_HEADERS: Record<string, string> = {
   'content-security-policy': "default-src 'none';frame-ancestors 'none'",
   'x-content-type-options': 'nosniff',
   'x-frame-options': 'DENY',
@@ -82,7 +82,7 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
 
 // The allowed origin echoed back, and the Vary that keeps a shared cache
 // from serving one origin's answer to another
-const corsHeaders = (origins: string[], request: Request): Record<string, string> => {
+export const corsHeaders = (origins: string[], request: Request): Record<string, string> => {
   if (origins.length === 0) {
     return {};
   }
@@ -98,7 +98,7 @@ const corsHeaders = (origins: string[], request: Request): Record<string, string
 };
 
 // Set what the response does not already say for itself
-const withDefaults = (response: Response, headers: Record<string, string>): Response => {
+export const withDefaults = (response: Response, headers: Record<string, string>): Response => {
   for (const [key, value] of Object.entries(headers)) {
     if (!response.headers.has(key)) {
       response.headers.set(key, value);

@@ -15,7 +15,14 @@
 import type { AddressInfo } from 'node:net';
 import { serve } from '@hono/node-server';
 
-import { createESignApp, type ESignAppDeps } from './app';
+import {
+  corsHeaders,
+  createESignApp,
+  type ESignAppDeps,
+  SECURITY_HEADERS,
+  withDefaults,
+} from './app';
+import { getAllowedOrigins } from './config';
 import type { Env } from './env';
 import { loadEnvelopes } from './loadEnvelopes';
 import { resolvePort } from './port';
@@ -185,6 +192,9 @@ export const startServer = async (
 
   const limiter = createRateLimiter(rateLimitsFromEnv(env));
   const trustProxy = trustsProxy(env);
+  // The limiter answers before the app is reached, so this target applies
+  // the app's own header policy to the one response it writes itself
+  const origins = getAllowedOrigins(env);
   const address = deps.clientAddress ?? socketAddress;
 
   const clientOf = (request: Request, bindings: unknown): string =>
@@ -195,7 +205,7 @@ export const startServer = async (
     fetch: async (request: Request, bindings: unknown) => {
       const decision = limiter(new URL(request.url).pathname, clientOf(request, bindings));
       if (decision && !decision.allowed) {
-        return new Response(JSON.stringify({ error: 'Too many requests' }), {
+        const limited = new Response(JSON.stringify({ error: 'Too many requests' }), {
           status: 429,
           headers: {
             'content-type': 'application/json',
@@ -203,6 +213,7 @@ export const startServer = async (
             ...rateLimitHeaders(decision),
           },
         });
+        return withDefaults(withDefaults(limited, corsHeaders(origins, request)), SECURITY_HEADERS);
       }
       const response = await app.fetch(request);
       if (decision) {

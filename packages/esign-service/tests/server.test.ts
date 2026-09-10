@@ -239,6 +239,59 @@ describe('startServer', () => {
     expect(limited.headers.get('retry-after')).toBeTruthy();
   });
 
+  it('gives the 429 the same security headers as every other JSON answer', async () => {
+    server = await start({ RATE_LIMIT_WEBFORM_PER_MIN: '1' });
+    const mint = () =>
+      fetch(`${server?.url}/webform/instance`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer user-1' },
+        body: JSON.stringify({ prefill: {} }),
+      });
+
+    const allowed = await mint();
+    const limited = await mint();
+    expect(limited.status).toBe(429);
+
+    // The limiter answers before the app is reached, so this is the one
+    // response the Node target writes itself - it must not be the one that
+    // ships without a CSP
+    for (const header of [
+      'content-security-policy',
+      'x-content-type-options',
+      'x-frame-options',
+      'referrer-policy',
+      'cross-origin-resource-policy',
+      'strict-transport-security',
+    ]) {
+      expect(limited.headers.get(header)).toBe(allowed.headers.get(header));
+      expect(limited.headers.get(header)).toBeTruthy();
+    }
+  });
+
+  it('gives the 429 the same CORS answer as every other JSON answer', async () => {
+    server = await start({
+      RATE_LIMIT_WEBFORM_PER_MIN: '1',
+      CORS_ALLOWED_ORIGINS: 'https://app.example.com',
+    });
+    const mint = () =>
+      fetch(`${server?.url}/webform/instance`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: 'Bearer user-1',
+          origin: 'https://app.example.com',
+        },
+        body: JSON.stringify({ prefill: {} }),
+      });
+
+    await mint();
+    const limited = await mint();
+
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get('access-control-allow-origin')).toBe('https://app.example.com');
+    expect(limited.headers.get('vary')).toBe('origin');
+  });
+
   it('leaves unlimited routes unmarked', async () => {
     server = await start();
 
