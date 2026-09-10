@@ -3,7 +3,10 @@
 #
 #   docker build -f packages/esign-service/Dockerfile -t esign-service .        (make docker-build)
 #   docker run --rm -p 4100:4100 --env-file packages/esign-service/.env esign-service
-#   docker run --rm --env-file packages/esign-service/.env esign-service node dist/migrate.js   # once per database
+#   docker run --rm --env-file packages/esign-service/.env esign-service node dist/node.js migrate
+#
+# One image, both capabilities: the mint is always on, and DATABASE_URL adds
+# envelope orchestration (the migrate command above applies its schema).
 #
 # Three stages: install everything → build the two workspaces the service
 # needs → a production image with only their runtime dependencies.
@@ -55,4 +58,4 @@ WORKDIR /app/packages/esign-service
 EXPOSE 4100
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
   CMD wget -qO- http://127.0.0.1:${PORT:-4100}/health || exit 1
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/node.js"]

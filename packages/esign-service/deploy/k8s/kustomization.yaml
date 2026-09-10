@@ -1,0 +1,15 @@
+# kubectl apply -k .
+#
+# Fill in secret.yaml first (or replace it with your secret manager's
+# output). Nothing else here takes an input: the image tag and the
+# environment are the only things a deployer changes.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - secret.yaml
+  - deployment.yaml
+  - service.yaml
+  - migrate-job.yaml
+images:
+  - name: ghcr.io/blinkbitcoin/esign-service
+    newTag: latest

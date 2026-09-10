@@ -1,0 +1,70 @@
+# Deploy the esign service with Compose. The only input is environment:
+#
+#   cp ../.env.example .env          # fill it in
+#   docker compose up -d             # mint only (no DATABASE_URL)
+#   docker compose --profile postgres up -d   # + envelopes, with a local database
+#
+# With ESIGN_PROVIDER=docusign, put the private key next to this file as
+# docusign.pem: it is mounted read-only as a secret and named by
+# DOCUSIGN_PRIVATE_KEY_FILE (the container-only way; DOCUSIGN_PRIVATE_KEY_BASE64
+# in the env file works everywhere).
+#
+# Capabilities follow DATABASE_URL: leave it unset for the mint alone, point it
+# at Postgres for envelope orchestration. `migrate` applies the schema once per
+# database.
+
+services:
+  esign-service:
+    image: ghcr.io/blinkbitcoin/esign-service:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: 4100
+      # Behind a load balancer, so the rate limits key on the real client
+      TRUST_PROXY: "true"
+      DOCUSIGN_PRIVATE_KEY_FILE: /run/secrets/docusign_pem
+    secrets:
+      - docusign_pem
+    ports:
+      - "4100:4100"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4100/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+  # One-shot: applies the envelope schema to DATABASE_URL, then exits
+  migrate:
+    image: ghcr.io/blinkbitcoin/esign-service:latest
+    profiles: ["migrate"]
+    env_file:
+      - .env
+    command: ["node", "dist/node.js", "migrate"]
+
+  # Optional: a database for envelope orchestration. Point DATABASE_URL at it
+  # (postgresql://esign:esign@postgres:5432/esign) and start with
+  # --profile postgres.
+  postgres:
+    image: postgres:15
+    profiles: ["postgres"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: esign
+      POSTGRES_PASSWORD: esign
+      POSTGRES_DB: esign
+    volumes:
+      - esign_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U esign"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+secrets:
+  docusign_pem:
+    file: ./docusign.pem
+
+volumes:
+  esign_postgres:

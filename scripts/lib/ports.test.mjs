@@ -135,6 +135,11 @@ describe('the consumers', () => {
       `docker-smoke.sh esign-mint-only-demo ${mint}`,
     ],
     ['packages/esign-service/.env.example', `PORT=${api}`],
+    ['packages/esign-service/deploy/docker-compose.yml', `PORT: ${api}`],
+    [
+      'packages/esign-service/deploy/k8s/deployment.yaml',
+      `containerPort: ${api}`,
+    ],
     ['examples/mint-only-demo/.env.example', `PORT=${mint}`],
     ['examples/serverless-handler-demo/.env.example', `PORT=${handler}`],
   ])('%s carries %s', (file, literal) => {

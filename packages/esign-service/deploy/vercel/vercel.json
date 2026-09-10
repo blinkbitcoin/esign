@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/[...path].ts": {
+      "runtime": "nodejs22.x"
+    }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/$1" }]
+}
