@@ -1,5 +1,9 @@
 # `@blinkbitcoin/esign-service` — one deployable, mint and envelopes
 
+**For whoever deploys and operates a backend.** If instead you own a Node API
+and want it to mint in-process, that is the other tier,
+[`@blinkbitcoin/esign-node`](../esign-node/README.md).
+
 The whole e-signature service as a Fetch-native app composed from
 `@blinkbitcoin/esign-node`: the hosted-form mint, the signing pages, the
 envelope domain, the Postgres store, the provider webhook and the GraphQL
@@ -37,15 +41,24 @@ environment variables.
 | Docker | `docker run -p 4100:4100 --env-file .env`<br>`ghcr.io/blinkbitcoin/esign-service:latest`<br>(the image defaults to `ESIGN_ENV=production`) | mint;<br>+ envelopes<br>with a database |
 | Compose | `cp deploy/docker-compose.yml .` then<br>`docker compose up -d` (`--profile postgres` adds<br>a database, `--profile migrate` applies its schema) | mint;<br>+ envelopes |
 | Kubernetes | fill `deploy/k8s/secret.yaml` (the environment) and<br>`secret-docusign-pem.yaml` (the mounted key), then<br>`kubectl apply -k deploy/k8s` (Deployment, Service,<br>migrate Job, probes on `/health`) | mint;<br>+ envelopes |
+| NixOS | copy `deploy/nix/configuration.nix` into the host<br>config, write the environment file it names, then<br>`nixos-rebuild switch` (the container runs under<br>`virtualisation.oci-containers`) | mint;<br>+ envelopes |
 | Cloud Run<br>Fly, Render<br>Railway | the same image, the platform's env UI, port 4100 | mint;<br>+ envelopes |
 | Lambda | the same image behind the [AWS Lambda Web<br>Adapter](https://github.com/awslabs/aws-lambda-web-adapter)<br>(`PORT=4100`, no code) | mint;<br>+ envelopes |
 | Vercel | `npm i @blinkbitcoin/esign-service`, copy<br>`deploy/vercel/` (a two-line route + `vercel.json`),<br>set the env | mint;<br>+ envelopes<br>with pooled<br>Postgres |
 | Cloudflare | `npm i @blinkbitcoin/esign-service`, copy<br>`deploy/cloudflare/` (a one-line worker +<br>`wrangler.toml` with `nodejs_compat`), set the env | mint only |
 
+The NixOS row is a NixOS host declaring a container; a host that merely has
+Nix installed is the Docker row.
+
 Applying the envelope schema is the same command everywhere:
 `node dist/node.js migrate` (`npx esign-service migrate` from the package).
 Workers have no Postgres driver, so the boot guard refuses `DATABASE_URL`
 there with a message that says which target to use instead.
+
+Taking a deployment live on a production DocuSign account - the go-live
+steps, the production hosts, the private key per platform, the boot guard
+and the verification checklist - is the runbook,
+[docs/operations/production.md](../../docs/operations/production.md).
 
 ### The host's two obligations
 

@@ -1,7 +1,7 @@
 # Integration Architecture
 
 **Project:** @blinkbitcoin/esign-react-native monorepo (npm workspaces)
-**Updated:** 2026-07-02
+**Updated:** 2026-09-10
 
 ## Parts
 
@@ -18,16 +18,18 @@
 
 ### 1. Library → Backend: GraphQL over HTTP
 
-- **From:** `packages/esign-react-native/src/client.ts` (Apollo Client 4, `createESignApolloClient` factory)
+- **From:** `packages/esign-core/src/client.ts` (Apollo Client 4, `createESignApolloClient` factory), re-exported by both client packages
 - **To:** `packages/esign-service/src/app.ts` `/graphql` (Apollo Server 5)
 - **URL resolution:** host app's concern - the demo resolves it in `examples/react-native-demo/src/config.ts` — iOS simulator `localhost:4100`,
   Android emulator `10.0.2.2:4100` (host alias), physical devices need the
   host LAN IP
 - **Auth:** `Authorization: Bearer <token>` attached by a `SetContextLink`;
-  backend resolves it in `src/auth.ts` (HS256 JWT when `JWT_SECRET` set,
-  dev passthrough otherwise)
+  the service resolves it in `src/session.ts` via `jose` - a remote key set
+  (`SESSION_JWKS_URL`, RS/ES only) or a shared secret
+  (`SESSION_HS256_SECRET`, `JWT_SECRET` an alias); the dev passthrough
+  exists only under `ALLOW_INSECURE_DEV=true`
 - **Operations:** `createEnvelope`, `getSigningUrl` mutations
-  (`packages/esign-react-native/src/operations.ts` ↔ `packages/esign-service/src/schema.ts`)
+  (`packages/esign-core/src/operations.ts` ↔ `packages/esign-service/src/schema.ts`)
 
 ### 2. Shared Error-Code Contract (schema-borne, generated)
 
@@ -44,9 +46,10 @@ generated enum. Drift fails tests locally and a dedicated CI step:
 `UNKNOWN_ERROR`, `RESTART_FAILED`, `NETWORK_ERROR`, `MISSING_ENVELOPE_ID`,
 `SIGNING_ERROR`).
 
-Changing a code is a **breaking cross-part change**: edit the schema enum +
-`packages/esign-service/src/errors.ts`, run `make codegen`, and the parity tests point at
-every client spot needing updates (ErrorCodes map, getErrorMessage copy).
+Changing a code is a **breaking cross-part change**: edit the SDL in
+`packages/esign-node/src/graphql.ts` (which `packages/esign-service/src/typeDefs.ts`
+and `src/errors.ts` re-export), run `make codegen`, and the parity tests point
+at every client spot needing updates (ErrorCodes map, getErrorMessage copy).
 
 ### 3. Mobile WebView ↔ Signing Page: postMessage Events
 
@@ -78,7 +81,7 @@ every client spot needing updates (ErrorCodes map, getErrorMessage copy).
 
 ### 5. Backend → DocuSign: REST API
 
-- **From:** `packages/esign-service/src/providers/docusign/` (the only file that talks to DocuSign)
+- **From:** `packages/esign-node/src/providers/docusign/` (the only code that talks to DocuSign); `packages/esign-service/src/providers/docusign/` only wires it to the service's config and webhook policy
 - **To:** DocuSign eSignature REST API v2.1 (`DOCUSIGN_BASE_URL`) and OAuth
   (`DOCUSIGN_OAUTH_URL`, JWT Grant with RS256 assertion)
 - **Resilience:** exponential-backoff retry (3 attempts) on network/5xx/429;
@@ -135,5 +138,5 @@ mobile↔backend boundary; the provider's envelope ID never leaves the backend.
 | Dependency | Library/Demo | Backend | Must stay compatible |
 |------------|--------|---------|----------------------|
 | `graphql` | 16.x (unified) | 16.x | Yes — hoisted to ONE copy repo-wide; Apollo Server 5 pins 16.x, so do not bump to 17 until it supports it |
-| Error codes | `packages/esign-react-native/src/client.ts` | `packages/esign-service/src/errors.ts` | Yes — wire contract |
+| Error codes | `packages/esign-core/src/client.ts` | `packages/esign-node/src/graphql.ts` (SDL) → `packages/esign-service/src/errors.ts` | Yes — wire contract |
 | WebView events | `ESignature.tsx` | mock signing page | Yes — signing protocol |

@@ -1,7 +1,7 @@
 # Project Documentation Index
 
 **Project:** esign
-**Updated:** 2026-09-09
+**Updated:** 2026-09-10
 
 ---
 
@@ -12,7 +12,7 @@
 | **Type** | Monorepo (npm workspaces): five packages (incl. the service) + two demo apps + tooling |
 | **Domain** | Fintech / E-Signature |
 | **Primary Language** | TypeScript |
-| **Architecture** | React Native / React (web) + Express/Apollo, hexagonal server library |
+| **Architecture** | React Native / React (web) + a Fetch-native service (Apollo only for the GraphQL half), hexagonal server library |
 
 ### Quick Reference
 
@@ -66,7 +66,7 @@ Organized by namespace - pick by what you're doing:
 | Doc | Covers |
 |-----|--------|
 | [mobile.md](architecture/mobile.md) | React Native component: state machine, sources, render states, test doubles |
-| [backend.md](architecture/backend.md) | Express/Apollo service: provider pattern, webhook processing, observability |
+| [backend.md](architecture/backend.md) | Fetch-native service, capability by environment: provider pattern, webhook processing, observability |
 | [integration.md](architecture/integration.md) | How the parts communicate: GraphQL, webhooks, WebView events, shared error codes |
 | [api-contracts.md](architecture/api-contracts.md) | GraphQL schema and REST endpoints |
 | [data-models.md](architecture/data-models.md) | Knex schema and database design |
@@ -77,6 +77,7 @@ Organized by namespace - pick by what you're doing:
 
 | Doc | Covers |
 |-----|--------|
+| [production.md](operations/production.md) | **Running the mint in production, by role:** what runs where (in-process vs the service), DocuSign go-live, backend, DevOps (deploy, env, private key, boot guard), mobile, verification, failure modes |
 | [live-e2e-ci.md](operations/live-e2e-ci.md) | The live DocuSign suite in GitHub Actions: environment, secrets, variables, the CI integration key + consent, triggers, rotation, failure modes |
 
 ### Root
@@ -85,7 +86,7 @@ Organized by namespace - pick by what you're doing:
 |-----|--------|
 | [development-guide.md](./development-guide.md) | Working on this repo: setup, commands, quality gates, CI |
 | [releasing.md](./releasing.md) | How a merged PR becomes a version: release-please, the release PR, the changelog, what merging it does |
-| [upgrading.md](./upgrading.md) | What changes for app, backend and form owners in the 2026-09 stack:<br>additive API, deprecated names and their canonical homes, the `apps/api` move |
+| [upgrading.md](./upgrading.md) | What changes for app, backend and form owners in the 2026-09 stack:<br>additive API, deprecated names and their canonical homes, the package renames and the service's capability-by-env rewrite |
 | [diagrams/](./diagrams/README.md) | All nine diagrams (render directly on GitHub) |
 
 ---
@@ -135,9 +136,20 @@ make e2e-ios                # or: make e2e-android
 1. Review [API Contracts - Backend](architecture/api-contracts.md)
 2. Check [Data Models](architecture/data-models.md) for schema
 
-### "I want to integrate signing into my own app"
+### "I build the app" (app developer / integrator)
 1. [Consuming the Packages](integration/consuming.md) - registry setup + minimal Web Forms-only install
 2. Pick a mode: [integration/webforms.md](integration/webforms.md) (Web Forms / public URL) or [integration/docusign-proxy.md](integration/docusign-proxy.md) (proxy envelope mode, webhooks)
+3. [locked-terms.md](integration/locked-terms.md) for mode 2 end to end, and [error-codes.md](integration/error-codes.md) for what `onError` can hand you
+
+### "I own the backend API" (backend developer)
+1. [The mint-only preset](../packages/esign-node/README.md#mint-only-the-whole-surface-in-three-lines) - the routes inside your own Node API, session check and `prefill` hook
+2. [`examples/mint-only-demo`](../examples/mint-only-demo/README.md) - the same shape, runnable
+3. [Running the mint in production](operations/production.md#3-backend-developer) - what a backend owes the mint, in either tier
+
+### "I deploy and operate" (DevOps engineer)
+1. [Deploy table](../packages/esign-service/README.md#deploy) - the copy-paste per target (container, Compose, Kubernetes, NixOS, Vercel, Cloudflare, Lambda)
+2. [Running the mint in production](operations/production.md#4-devops) - the environment, the private key per platform, the boot guard, health and shutdown
+3. [Live DocuSign E2E in CI](operations/live-e2e-ci.md) for the opt-in CI job
 
 ### "I want to add a new feature"
 1. [Development Guide](./development-guide.md) for workflow + quality gates

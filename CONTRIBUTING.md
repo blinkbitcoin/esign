@@ -122,7 +122,9 @@ Escape hatches, for the rare cases where they are warranted:
    the relevant doc in the same change** (docs are hand-maintained;
    `docs/index.md` maps them).
 2. Diagrams: edit `docs/diagrams/src/*.mmd`, then `make diagrams` (CI fails
-   on drift). Schema: edit `packages/esign-service/src/typeDefs.ts`, then `make codegen`.
+   on drift). Schema: edit the SDL in `packages/esign-node/src/graphql.ts`
+   (`packages/esign-service/src/typeDefs.ts` re-exports it), then
+   `make codegen`.
 3. Open a PR with a Conventional Commits title — every workflow must be
    green. The title is the line `CHANGELOG.md` will show, and its type
    decides the version bump (`feat` → minor, `fix` → patch, `ci` / `docs` /

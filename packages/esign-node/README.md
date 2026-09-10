@@ -1,5 +1,10 @@
 # @blinkbitcoin/esign-node
 
+**For the backend developer who owns a Node API.** If you would rather deploy
+a ready service than import a package, that is the other tier,
+[`@blinkbitcoin/esign-service`](../esign-service/README.md) (its
+[Deploy table](../esign-service/README.md#deploy) has one row per target).
+
 The server-side half of the e-signature packages, for any Node ≥ 18 backend,
 no framework, no peers:
 
@@ -12,9 +17,9 @@ no framework, no peers:
   with authorization and ownership, input bounds, atomic persistence with an
   audit trail, the restart rule and the webhook state machine.
 
-The esign service (`packages/esign-service`) is this package plus Express, Apollo and a
-Postgres store; a host that already has a backend imports the package
-instead of running that service.
+The esign service (`packages/esign-service`) is this package plus a Fetch
+runtime, Apollo and a Postgres store; a host that already has a backend
+imports the package instead of running that service.
 
 Three worked hosts live in this repo, one per shape:
 [`examples/mint-only-demo`](../../examples/mint-only-demo/README.md) (one
@@ -34,7 +39,8 @@ the end-to-end recipe for a GraphQL API + app, including the builder checklist
 and the return-URL bridge route every Web Forms host must serve:
 [docs/integration/locked-terms.md](../../docs/integration/locked-terms.md).
 Authentication of the caller is the host's own (this package never sees the
-session token); the `JWT_SECRET` of this repo's service is not part of it.
+session token); the `SESSION_*` variables of this repo's service are not part
+of it.
 
 ## Use
 
@@ -322,6 +328,10 @@ import { createDocuSignProvider, docuSignConfigFromEnv } from '@blinkbitcoin/esi
 | `DOCUSIGN_HMAC_KEY` | webhooks | the Connect HMAC key; without it signed webhooks cannot be verified |
 | `MOCK_PAGES_ORIGIN` | mock | where the mock provider's signing pages are served (default<br>`http://localhost:4100`) |
 
+Going live - the production DocuSign hosts, the go-live steps, what the
+boot guard refuses and the verification checklist:
+[docs/operations/production.md](../../docs/operations/production.md).
+
 ## Development (in this monorepo)
 
 ```sh
@@ -329,7 +339,7 @@ make test        # Jest, 100% coverage enforced
 make build       # tsup (ESM + CJS + types)
 ```
 
-The reference host is `packages/esign-service` (Knex store, Express + Apollo, the same
-router mounted); it also ships as a container image,
+The reference host is `packages/esign-service` (Knex store, Apollo, the same
+handlers mounted as a Fetch app); it also ships as a container image,
 `ghcr.io/blinkbitcoin/esign-service`, for hosts that would rather run the
 service than import the package ([packages/esign-service/README.md](../../packages/esign-service/README.md#deploy)).

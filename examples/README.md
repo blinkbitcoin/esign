@@ -11,10 +11,21 @@ package.
 
 | Example | Hosts |
 |---------|-------|
-| [`react-native-demo/`](react-native-demo/README.md) | 📱 `@blinkbitcoin/esign-react-native` (React Native 0.86; Maestro end-to-end target) |
+| [`react-native-demo/`](react-native-demo/README.md) | 📱 `@blinkbitcoin/esign-react-native`<br>(React Native 0.86; Maestro end-to-end target) |
 | [`react-demo/`](react-demo/README.md) | 🌐 `@blinkbitcoin/esign-react` (Vite) |
-| [`mint-only-demo/`](mint-only-demo/README.md) | 🖥️ `@blinkbitcoin/esign-node` from an API you already have: one mutation that mints a locked Web Forms instance (the Blink API shape) |
-| [`serverless-handler-demo/`](serverless-handler-demo/README.md) | 🖥️ `@blinkbitcoin/esign-node` as Fetch handlers behind a route handler or edge function (plain Node adapter here) |
+| [`mint-only-demo/`](mint-only-demo/README.md) | 🖥️ **In-process tier.**<br>`@blinkbitcoin/esign-node` from an API you already<br>have: one mutation that mints a locked Web Forms<br>instance (the Blink API shape) |
+| [`serverless-handler-demo/`](serverless-handler-demo/README.md) | 🖥️ **In-process tier**, as Fetch handlers.<br>`@blinkbitcoin/esign-node` behind a route handler or<br>edge function (plain Node adapter here) |
+
+The **deployable tier** has no row here because it is not an example: it is
+the published [`@blinkbitcoin/esign-service`](../packages/esign-service/README.md)
+package and its `ghcr.io/blinkbitcoin/esign-service` image, whose targets are
+its [Deploy table](../packages/esign-service/README.md#deploy). The two tiers
+side by side: [Backend options](../README.md#backend-options).
+
+No example carries its own flake: each is a workspace under the root, so
+direnv gives it the repo's pinned toolchain, and each models a consumer -
+who installs a published package under its `engines` range and never needs
+Nix.
 
 Proxy and webform modes need the backend running (`make db-up migrate
 backend` from the repo root); public-URL mode runs without it. `make help` here fans common targets (`test`, `coverage`,

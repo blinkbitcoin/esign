@@ -1,7 +1,7 @@
 # Development Guide
 
 **Project:** esign
-**Updated:** 2026-07-02
+**Updated:** 2026-09-10
 
 ## Prerequisites
 
@@ -37,6 +37,14 @@ direnv allow . && direnv allow packages/esign-service
 Without direnv/nix, any Node 22.22+ or 24.15+ plus a JDK 17 and Ruby 3.2+ works -
 the flake is the convenient, pinned path, not a hard requirement (CI uses
 plain setup-node).
+
+The examples and the deploy templates carry no flake of their own. They are
+workspaces under the root, so direnv finds the root `.envrc` from any
+subdirectory and they already have the pinned toolchain; and each one models
+a consumer, who installs a published package under the `engines` range and
+never needs Nix. An operator whose hosts are Nix-managed has a Nix path too,
+and it is a deploy target rather than a dev shell: the NixOS row of
+[the deploy table](../packages/esign-service/README.md#deploy).
 
 ### 2. iOS Setup (macOS only)
 
@@ -77,10 +85,18 @@ PORT=4100                      # ESIGN_PORT_BASE + 0 (docs/architecture/backend.
 # DOCUSIGN_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----...
 # DOCUSIGN_TEMPLATE_ID=your-template-id
 
-# Fail-closed in production when unset; optional in dev
+# Session verification - one of these, or the service refuses to boot
+# SESSION_JWKS_URL=https://id.example.com/.well-known/jwks.json
+# SESSION_HS256_SECRET=change-me   # JWT_SECRET is an accepted alias
+
+# Required when envelopes are on (DATABASE_URL) and the provider signs
 # DOCUSIGN_HMAC_KEY=your-webhook-hmac-key
-# JWT_SECRET=your-jwt-secret
+
+# The explicit opt-in to running without either (local dev only)
+ALLOW_INSECURE_DEV=true
 ```
+
+`packages/esign-service/.env.example` is the complete, commented list.
 
 ## Running the Application
 
@@ -90,7 +106,9 @@ PORT=4100                      # ESIGN_PORT_BASE + 0 (docs/architecture/backend.
 cd packages/esign-service
 npm run dev
 # Server runs at http://localhost:4100
-# GraphQL Playground at http://localhost:4100/graphql
+# GraphQL Playground at http://localhost:4100/graphql - only when DATABASE_URL
+#   is set (it turns envelope orchestration on) and ESIGN_ENV is not
+#   'production' (which disables introspection)
 ```
 
 ### Start Mobile (Metro)
@@ -132,7 +150,7 @@ The npm scripts underneath:
 |---------|-------------|
 | `npm test` | All suites: library + demo + backend |
 | `npm run typecheck` | tsc across all workspaces |
-| `npm run build` | Build the library (react-native-builder-bob) |
+| `npm run build` | Build the packages (bob for RN, tsup for core/node/react, tsc for the service) |
 
 ### Demo app / library
 
@@ -281,7 +299,9 @@ A flow that needs a truly fresh process should `launchApp` with the default
 - Safe area handling via `useSafeAreaInsets()`
 
 ### Backend
-- Express 5 async error handling
+- Fetch handlers: `Request` in, `Response` out - no framework, no middleware
+  chain, so an async failure is caught where it happens and mapped to a
+  status code (`packages/esign-node/src/handlers.ts`)
 - GraphQL error codes for client handling
 - Audit logging for all state changes
 
@@ -368,8 +388,9 @@ npm run migrate
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `DATABASE_URL` | No | PostgreSQL connection string. Its presence turns **envelope orchestration** on (GraphQL, the webhook, the Knex store); without it the deployment serves the mint alone |
 | `ESIGN_PROVIDER` | No | Provider selection: `mock` (default) or `docusign` |
+| `MOCK_PAGES` | No | `false` turns the mock provider's signing pages off |
 | `DOCUSIGN_ACCOUNT_ID` | docusign | DocuSign account ID |
 | `DOCUSIGN_INTEGRATION_KEY` | docusign | DocuSign integration key |
 | `DOCUSIGN_USER_ID` | docusign | DocuSign user ID (GUID) |
@@ -381,12 +402,22 @@ npm run migrate
 | `DOCUSIGN_OAUTH_URL` | no | OAuth host for the JWT grant (defaults to demo) |
 | `DOCUSIGN_RETURN_URL` | no | Where DocuSign redirects after signing (defaults to the built-in return-URL bridge) |
 | `OTEL_*` | no | Standard OpenTelemetry vars; tracing is off unless set (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, `OTEL_TRACES_EXPORTER=console` for stdout) |
-| `NODE_ENV` | no | `production` activates the fail-closed auth/webhook behavior described above |
-| `ALLOW_INSECURE_DEV` | no | Explicit opt-in to run without JWT/HMAC secrets (never in prod) |
+| `ESIGN_ENV` | no | `production` declares this deployment production: demo provider settings and demo DocuSign hosts are refused at boot, GraphQL introspection is off, and a missing `TERMS_URL` needs `ESIGN_ALLOW_CLIENT_PREFILL`. **`NODE_ENV` gates nothing** |
+| `ESIGN_ALLOW_DEMO` | no | `true` is the one bypass of that refusal (a production-shaped staging deployment) |
+| `SESSION_JWKS_URL` | one of the two | Remote key set (RS/ES) for session verification |
+| `SESSION_HS256_SECRET` | one of the two | Shared secret instead (`JWT_SECRET` is an accepted alias). With neither, the service **refuses to boot** unless `ALLOW_INSECURE_DEV=true` |
+| `SESSION_ISSUER`, `SESSION_AUDIENCE` | no | Enforced when set |
+| `SESSION_USER_CLAIM` | no | The claim carrying the user id (default `sub`) |
+| `TERMS_URL` | prod | Where the host computes the prefill actually minted. Required under `ESIGN_ENV=production` unless `ESIGN_ALLOW_CLIENT_PREFILL=true` |
+| `TERMS_SHARED_SECRET`, `TERMS_TIMEOUT_MS` | no | Sent as `x-esign-terms-secret`; default 5000 ms |
+| `TERMS_ALLOW_INSECURE` | no | `true` to allow a plaintext `TERMS_URL` in production (only for a private host the guard cannot recognise) |
+| `ESIGN_ALLOW_CLIENT_PREFILL` | no | `true` to mint the client's own prefill in production |
+| `ALLOW_INSECURE_DEV` | no | Explicit opt-in to run without session verification and without webhook signatures (never in prod) |
 | `CORS_ALLOWED_ORIGINS` | no | Comma-separated CORS allow-list |
-| `DOCUSIGN_HMAC_KEY` | Prod | Webhook HMAC validation secret. Unset: dev allows all webhooks (warns); production rejects all (fail-closed) |
-| `JWT_SECRET` | Prod | HS256 JWT verification secret. Unset: dev treats bearer token as userId; production treats requests as unauthenticated (fail-closed) |
-| `PORT` | No | Server port (default: `ESIGN_PORT_BASE` + 0 = 4100) |
+| `DOCUSIGN_HMAC_KEY` | envelopes + docusign | Webhook HMAC validation secret. Missing: webhooks are rejected (fail-closed) unless `ALLOW_INSECURE_DEV=true`; with envelopes on and the DocuSign provider the boot guard refuses to start without it |
+| `PORT` | No | Server port (default: `ESIGN_PORT_BASE` + 0 = 4100). **Container only** |
+| `TRUST_PROXY` | No | `true` to take the client from `x-forwarded-for` (rate limits, webhook security log). **Container only** |
+| `RATE_LIMIT_WEBFORM_PER_MIN`, `RATE_LIMIT_WEBHOOK_PER_MIN`, `RATE_LIMIT_GRAPHQL_PER_MIN` | No | Per-route limits (60 / 120 / 100); `0` switches a route's limit off. **Container only** |
 | `ESIGN_PORT_BASE` | No | The repo's base port (default 4100); every service is base + offset (`scripts/lib/ports.mjs`), so one variable moves a worktree |
 
 The `docusign` column means required when `ESIGN_PROVIDER=docusign` — the
@@ -421,7 +452,7 @@ diagram: [CI / Release Pipeline](diagrams/README.md#ci--release-pipeline).
 | `ci.yml` | Push to main, PRs, release tag (dispatched by `release.yml`, or a hand-cut GitHub Release), manual | The one pipeline every branch runs, staged so a failure never spends the next stage's minutes: `Checks` (calls `checks.yml`) → `Unit` (calls `test.yml`) → `E2E` (calls `e2e.yml`; its `Build Packages` job is the one build of the packages), then `Badges` (coverage + Unit / E2E pass-fail badges for the branch to `gh-pages/badges/<branch>/`, after E2E so it never delays it), and on main pushes / releases / dispatch `Publish` (ships the tarballs `Build Packages` made and `Web` tested to GitHub Packages and the service image `Docker` built and smoked to GHCR as `ghcr.io/blinkbitcoin/esign-service:<version>` + `:latest` / `:next`, nothing is rebuilt: release → stable `latest`, version = the tag; main → prerelease `next`) + `Verify` (installs the published packages from GitHub Packages into a clean project and asserts the consumer contract; pulls the published image and smokes it). Workflow badge, if needed: `ci.yml/badge.svg?branch=<branch>` |
 | `checks.yml` | `workflow_call` only | First stage, all static: `Changes` (classifies the PR: when every changed file is docs/, `*.md`, `LICENSE` or a template, Unit and E2E are skipped; main pushes get the same via `paths-ignore`), `Code` (audit-ci, actionlint, diagram freshness, `make check-code` = lint + typecheck + format), `Commits` (Conventional Commits on the PR's commits and title; PRs only), `Docs` (warns when architecture-relevant files change without a docs/ update; fails for a diagram source without its SVG) |
 | `test.yml` | `workflow_call` only | Unit tests + coverage thresholds; uploads the coverage badge (1 day, consumed by `Badges`) and the combined HTML coverage report (`coverage-report` artifact, 30 days) |
-| `e2e.yml` | `workflow_call` only | `build-packages` (version stamp, build, publint + arethetypeswrong, pack smoke; uploads the dist for `web` and the tarballs for `Publish`), `docker` (the service image from `packages/esign-service/Dockerfile`, same version stamp, booted with the mock provider against `/health` - `make docker-smoke` locally - and uploaded for `Publish`; also builds and smokes the mint-only demo's image, `examples/mint-only-demo/Dockerfile` - `make docker-build-mint-only && make docker-smoke-mint-only` locally - proving that shape deploys too, but it is a demo: no version stamp, no artifact upload), `server-demos` (boots the mint-only and serverless examples with the mock provider and calls their routes, including the mint-only demo's REST mint and `/health` - `make e2e-server-demos`), `live` (opt-in live DocuSign: JWT grant, real mint, Playwright on the real form; [operations/live-e2e-ci.md](operations/live-e2e-ci.md)) plus the E2E suites as jobs: `backend`, `web` (Playwright, bundles the demo against that dist - what a web consumer installs), `build-android` → `android` (emulator), and `build-ios` → `ios` (simulator) **only when opted in** (see below). Outputs the stamped `version` / `disttag` for `Publish` |
+| `e2e.yml` | `workflow_call` only | `build-packages` (version stamp, build, publint + arethetypeswrong, pack smoke; uploads the dist for `web` and the tarballs for `Publish`), `docker` (the service image from `packages/esign-service/Dockerfile`, same version stamp, smoked **twice** - once without `DATABASE_URL` (the mint alone; the envelope webhook must be absent) and once against the E2E Postgres (mint + envelopes) - `make docker-smoke` locally - and uploaded for `Publish`; also builds and smokes the mint-only demo's image, `examples/mint-only-demo/Dockerfile` - `make docker-build-mint-only && make docker-smoke-mint-only` locally - proving that shape deploys too, but it is a demo: no version stamp, no artifact upload), `server-demos` (boots the mint-only and serverless examples with the mock provider and calls their routes, including the mint-only demo's REST mint and `/health` - `make e2e-server-demos`), `live` (opt-in live DocuSign: JWT grant, real mint, Playwright on the real form; [operations/live-e2e-ci.md](operations/live-e2e-ci.md)) plus the E2E suites as jobs: `backend`, `web` (Playwright, bundles the demo against that dist - what a web consumer installs), `build-android` → `android` (emulator), and `build-ios` → `ios` (simulator), which runs by default - `E2E_IOS=false` pauses it (see below). Outputs the stamped `version` / `disttag` for `Publish` |
 | `release.yml` | Push to main; CI completed on main | `Release PR / Tag` (push): keeps the `chore(release): X.Y.Z` PR current (version from the Conventional Commits since the last tag, `CHANGELOG.md` entry); when that PR merges, tags `vX.Y.Z`, creates the GitHub Release and dispatches `ci.yml` at the tag with `release_tag` (a release the workflow token creates never fires the `release:` trigger). `Re-run blocked releases` (CI completed green): re-runs the failed Publish of any release run for that commit (releases wait for / refuse a red main run). See [releasing.md](releasing.md) |
 | `pull-request.yml` | PR closed; PR title edited | `Cancel in-flight runs` + `Remove branch badge` (closed): cancels the PR's still-running runs (the push-to-main run is unaffected) and removes its `gh-pages` badge directory. `Title` (edited): re-lints the PR title only; the gating lint is the `Commits` job in `checks.yml` (a title edit must not re-run the whole pipeline) |
 | `codeql.yml` | Push to main, PRs, weekly | CodeQL security-and-quality analysis<br>(suite + alert-suppression query:<br>`.github/codeql/codeql-config.yml`);<br>`make codeql` runs the same analysis locally |

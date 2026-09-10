@@ -1,30 +1,42 @@
 flowchart TB
-    subgraph Hosts["Host apps"]
+    subgraph Apps["App packages"]
         RN[React Native app<br/>esign-react-native: WebView]
         WEB[React web app<br/>esign-react: iframe / DocuSign.js]
+        CORE["esign-core<br/>signing machine + SigningSource<br/>proxy / hosted form / web forms / public URL"]
+        RN --> CORE
+        WEB --> CORE
     end
 
-    subgraph Core["esign-core (shared)"]
-        MACHINE[signing machine<br/>transition / effects]
-        SRC{SigningSource}
-        PROXY[createProxySigningSource<br/>Apollo - proxy mode only]
-        HF[createHostedFormSource<br/>neutral hosted forms]
-        subgraph CoreDS["providers/docusign (./docusign entry)"]
-            WF[createWebFormsSource]
-            PUB[createPublicUrlSource]
+    subgraph TierA["Tier A - in-process: your API imports esign-node"]
+        API["Your Node API<br/>createHostedFormRouter (Express)<br/>createHostedFormApp (Fetch)<br/>or one GraphQL mutation"]
+        HOOKA["your authenticate() + prefill() hooks<br/>session and terms never leave your process"]
+        API --> HOOKA
+    end
+
+    subgraph TierB["Tier B - deployed: esign-service (Fetch core on esign-node)"]
+        ENTRY{"entries<br/>./node = the image · ./vercel<br/>./cloudflare = mint only"}
+        APP["createESignApp(env)<br/>boot guard · CORS · security headers"]
+        subgraph Mint["mint - always on"]
+            WFI[/"POST /webform/instance"/]
+            SP[/"GET /signing/return + mock pages"/]
+            HEALTH[/"GET /health -> capabilities"/]
         end
+        subgraph Envelopes["envelopes - only with DATABASE_URL"]
+            GQL[/"/graphql (Apollo)"/]
+            WH[/"POST /webhook/esign"/]
+            KNEX[Knex EnvelopeStore]
+        end
+        PROV{"ESignProvider<br/>providerFromEnv(ESIGN_PROVIDER)"}
+        ENTRY --> APP
+        APP --> WFI & SP & HEALTH
+        APP -->|DATABASE_URL set| Envelopes
+        GQL --> KNEX
+        WH --> KNEX
     end
 
-    subgraph Backend["Backend on esign-node: esign-service (all modes) - or your own API with one mutation (mint-only) / route handlers (serverless)"]
-        GQL[/"GraphQL /graphql"/]
-        WFI[/"POST /webform/instance"/]
-        WH[/"POST /webhook/esign"/]
-        SP[/"signing pages + return-URL bridge"/]
-        PROV{ESignProvider}
-        DS["DocuSignProvider<br/>(src/providers/docusign/, ./docusign entry)"]
-        MOCK["MockProvider<br/>(src/providers/mock/)"]
-        REG{providerFromEnv<br/>ESIGN_PROVIDER}
-        KNEX[Knex.js]
+    subgraph Host["The host's two obligations (Tier B)"]
+        IDP[["SESSION_JWKS_URL<br/>or SESSION_HS256_SECRET<br/>-> the user id"]]
+        TERMS[["TERMS_URL<br/>-> the locked prefill"]]
     end
 
     subgraph External["External"]
@@ -32,22 +44,17 @@ flowchart TB
         DB[(PostgreSQL)]
     end
 
-    RN --> MACHINE
-    WEB --> MACHINE
-    RN --> SRC
-    WEB --> SRC
-    SRC --> PROXY & HF
-    HF --> WF & PUB
-    PROXY -->|GraphQL| GQL
-    WF -->|one mint call| WFI
-    GQL --> PROV
-    WFI --> PROV
-    PROV --> REG
-    REG --> DS & MOCK
-    DS -->|REST| DOCU
-    DOCU -->|webhooks| WH
-    GQL --> KNEX
-    WH --> KNEX
-    KNEX --> DB
+    CORE -->|"mint (REST)"| API
+    CORE -->|"mint (REST)"| WFI
+    CORE -->|GraphQL - proxy mode| GQL
     RN -.->|embedded signing + bridge| SP
     WEB -.->|embedded signing + bridge| SP
+
+    API -->|esign-node| DOCU
+    WFI -->|verify the bearer token| IDP
+    WFI -->|POST userId + input| TERMS
+    WFI --> PROV
+    GQL --> PROV
+    PROV -->|REST| DOCU
+    DOCU -->|Connect webhook| WH
+    KNEX --> DB

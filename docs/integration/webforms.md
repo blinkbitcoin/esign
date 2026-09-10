@@ -25,7 +25,10 @@ The embedded page reports back via postMessage
 
 The backend endpoint is provider-agnostic (`POST /webform/instance`,
 authenticated); the mode is chosen by `ESIGN_PROVIDER`. Nothing DocuSign-specific
-lives outside the DocuSign adapter (`packages/esign-service/src/providers/docusign/`).
+lives outside the DocuSign adapter
+(`packages/esign-node/src/providers/docusign/`; the service's own
+`src/providers/docusign/` only wires it to the service's config and webhook
+policy).
 
 ## Toggling the demos
 
@@ -95,12 +98,13 @@ no DocuSign.js needed on React Native. The request body is:
 ```
 
 Keys are the fields' API reference names; the value shape follows the field
-type (`packages/esign-service/src/types.ts`): text / email / date (`yyyy-mm-dd`) / dropdown /
+type (`packages/esign-node/src/providers/docusign/types.ts`): text / email / date (`yyyy-mm-dd`) / dropdown /
 radio → string, **Number → a JSON number** (unquoted, `.` decimal, no
 thousands separators; for *editable* Number fields - locked amounts and
 dates are Text fields, hence the strings above), checkbox group → string array, phone →
 `{ countryCode?, nationalNumber }`. The endpoint validates that contract at the
-edge (`packages/esign-service/src/webFormPrefill.ts`) and answers 400 with a reason for
+edge (`parseWebFormPrefill`,
+`packages/esign-node/src/providers/docusign/prefill.ts`) and answers 400 with a reason for
 anything else, before the provider is called. Mint the instance right before
 opening it: the instance token expires about five minutes after creation.
 
