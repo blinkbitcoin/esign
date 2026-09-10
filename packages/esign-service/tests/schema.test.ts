@@ -8,8 +8,8 @@ import { ApolloServer } from '@apollo/server';
 import { vi } from 'vitest';
 
 vi.mock('../src/store', async () => {
-  const { createMemoryEnvelopeStore } = await import('@blinkbitcoin/esign-node');
-  return { store: createMemoryEnvelopeStore(), createKnexEnvelopeStore: vi.fn() };
+  const { memoryStore } = await import('./support/store');
+  return { createStore: vi.fn(() => memoryStore) };
 });
 
 import type { EnvelopeStatus } from '@blinkbitcoin/esign-node';
@@ -17,14 +17,14 @@ import { ErrorCodes, Errors } from '../src/errors';
 import { createMock } from '../src/providers/mock';
 import { createGraphQL } from '../src/schema';
 import { createServices } from '../src/services';
-import { store } from '../src/store';
+import { memoryStore as store } from './support/store';
 
 // The service composes these per app; a test composes its own over the
 // in-memory store mocked above, so the resolvers run on the very provider
 // this file drives
 const provider = createMock();
 const { addEnvelope, clearEnvelopes } = provider;
-const { resolvers, typeDefs } = createGraphQL(createServices(provider));
+const { resolvers, typeDefs } = createGraphQL(createServices(provider, store));
 
 import type { GraphQLContext } from '../src/types';
 

@@ -7,7 +7,8 @@ import { vi } from 'vitest';
 vi.mock('../src/envelope');
 vi.mock('../src/audit');
 vi.mock('../src/db', () => ({
-  knex: { transaction: (cb: (trx: unknown) => unknown) => cb({}) },
+  DATABASE_URL: 'DATABASE_URL',
+  createKnexClient: () => ({ transaction: (cb: (trx: unknown) => unknown) => cb({}) }),
 }));
 
 import { LOCKED_FIELDS_HINT } from '@blinkbitcoin/esign-node';

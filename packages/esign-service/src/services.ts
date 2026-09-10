@@ -5,12 +5,17 @@
 // GraphQL resolvers and the webhook always run on the same adapter - an
 // injected `deps.provider` cannot be silently ignored by one of them.
 
-import { createEnvelopeService, type EnvelopeService } from '@blinkbitcoin/esign-node';
+import {
+  createEnvelopeService,
+  type EnvelopeService,
+  type EnvelopeStore,
+} from '@blinkbitcoin/esign-node';
 import type { ESignProvider } from './providers/port';
-import { store } from './store';
 import { withSpan } from './tracing';
 
-export const createServices = (provider: ESignProvider): EnvelopeService =>
+// Both ports are injected: the provider the app resolved and the store the
+// envelope capability built from its env - never a module-level singleton.
+export const createServices = (provider: ESignProvider, store: EnvelopeStore): EnvelopeService =>
   createEnvelopeService({
     provider,
     store,

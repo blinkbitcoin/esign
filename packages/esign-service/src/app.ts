@@ -165,6 +165,7 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
   }
   const envelopes = load?.().then((module) =>
     module.createEnvelopeCapability({
+      env,
       provider,
       authenticate,
       introspection: env[ESIGN_ENV] !== 'production',

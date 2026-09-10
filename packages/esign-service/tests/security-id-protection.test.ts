@@ -9,19 +9,19 @@ import { ApolloServer } from '@apollo/server';
 import { vi } from 'vitest';
 
 vi.mock('../src/store', async () => {
-  const { createMemoryEnvelopeStore } = await import('@blinkbitcoin/esign-node');
-  return { store: createMemoryEnvelopeStore(), createKnexEnvelopeStore: vi.fn() };
+  const { memoryStore } = await import('./support/store');
+  return { createStore: vi.fn(() => memoryStore) };
 });
 
 import { ErrorCodes } from '../src/errors';
 import { createMock } from '../src/providers/mock';
 import { createGraphQL } from '../src/schema';
 import { createServices } from '../src/services';
-import { store } from '../src/store';
+import { memoryStore as store } from './support/store';
 
 // The service composes these per app; a test composes its own over the
 // in-memory store mocked above
-const { resolvers, typeDefs } = createGraphQL(createServices(createMock()));
+const { resolvers, typeDefs } = createGraphQL(createServices(createMock(), store));
 
 import type { GraphQLContext } from '../src/types';
 

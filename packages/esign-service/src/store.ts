@@ -1,9 +1,11 @@
-// The service's envelope store: the package's Knex implementation over the
-// shared Knex client (src/db.ts). Internal UUIDs only - providerEnvelopeId
-// never leaves the store's callers.
+// The service's envelope store: the package's Knex implementation over a
+// client built from the env the app was handed (src/db.ts). Internal UUIDs
+// only - providerEnvelopeId never leaves the store's callers.
 
 import type { EnvelopeStore } from '@blinkbitcoin/esign-node';
 import { createKnexEnvelopeStore } from '@blinkbitcoin/esign-node/knex';
-import { knex } from './db';
+import { createKnexClient } from './db';
+import type { Env } from './env';
 
-export const store: EnvelopeStore = createKnexEnvelopeStore(knex);
+export const createStore = (env: Env = process.env): EnvelopeStore =>
+  createKnexEnvelopeStore(createKnexClient(env));

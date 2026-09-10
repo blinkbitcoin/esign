@@ -11,12 +11,13 @@ import crypto from 'crypto';
 import { vi } from 'vitest';
 
 vi.mock('../src/store', async () => {
-  const { createMemoryEnvelopeStore } = await import('@blinkbitcoin/esign-node');
-  return { store: createMemoryEnvelopeStore(), createKnexEnvelopeStore: vi.fn() };
+  const { memoryStore } = await import('./support/store');
+  return { createStore: vi.fn(() => memoryStore) };
 });
 
 import { createESignApp } from '../src/app';
-import { store } from '../src/store';
+import { createStore } from '../src/store';
+import { memoryStore as store } from './support/store';
 import { asJson, get, options, post, silently, testApp, testFullApp } from './support/app';
 
 const mintHeaders = { authorization: 'Bearer user-1' };
@@ -39,6 +40,32 @@ describe('capabilities', () => {
       capabilities: ['mint', 'envelopes'],
     });
     await app.stop();
+  });
+
+  it('builds the envelope store from the env it was handed, not from process.env', async () => {
+    // The whole point of the env object: an app constructed with a
+    // DATABASE_URL that is not process.env's must connect to that one
+    const injected = 'postgresql://injected:injected@db.internal:5432/esign';
+    const original = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = 'postgresql://wrong:wrong@elsewhere:9999/wrong';
+    vi.mocked(createStore).mockClear();
+    try {
+      const app = testFullApp({ DATABASE_URL: injected });
+      // The capability (and with it the store) is built lazily, on the first
+      // request that needs it
+      await silently(() => post(app, '/webhook/esign', { event: 'envelope-completed' }));
+
+      expect(vi.mocked(createStore)).toHaveBeenCalledWith(
+        expect.objectContaining({ DATABASE_URL: injected })
+      );
+      await app.stop();
+    } finally {
+      if (original === undefined) {
+        delete process.env.DATABASE_URL;
+      } else {
+        process.env.DATABASE_URL = original;
+      }
+    }
   });
 
   it('has no webhook and no GraphQL route without a database', async () => {

@@ -6,14 +6,14 @@ import { randomUUID } from 'node:crypto';
 import { vi } from 'vitest';
 
 vi.mock('../src/store', async () => {
-  const { createMemoryEnvelopeStore } = await import('@blinkbitcoin/esign-node');
-  return { store: createMemoryEnvelopeStore(), createKnexEnvelopeStore: vi.fn() };
+  const { memoryStore } = await import('./support/store');
+  return { createStore: vi.fn(() => memoryStore) };
 });
 
 import type { EnvelopeStatus } from '@blinkbitcoin/esign-node';
 import type { MockInstance } from 'vitest';
 import type { DocuSignWebhookPayload } from '../src/providers/docusign';
-import { store } from '../src/store';
+import { memoryStore as store } from './support/store';
 import { asJson, get, post, testFullApp } from './support/app';
 
 // Helper to create a mock DocuSign webhook payload

@@ -9,12 +9,14 @@
 // Worker's entry point at all.
 
 import { ApolloServer, HeaderMap, type HTTPGraphQLResponse } from '@apollo/server';
-import { createWebhookHandler } from '@blinkbitcoin/esign-node';
+import { createWebhookHandler, type EnvelopeStore } from '@blinkbitcoin/esign-node';
 
+import type { Env } from './env';
 import type { ESignProvider } from './providers/port';
 import { forwardedClientIp } from './proxy';
 import { createGraphQL } from './schema';
 import { createServices } from './services';
+import { createStore } from './store';
 import { setActiveSpanAttributes } from './tracing';
 import type { GraphQLContext } from './types';
 
@@ -30,6 +32,9 @@ export interface EnvelopeCapability {
 }
 
 export interface EnvelopeCapabilityOptions {
+  // The environment the app was constructed with - the store connects to
+  // THIS env's DATABASE_URL, not to whatever process.env happens to hold
+  env: Env;
   // The adapter the app resolved: the resolvers and the webhook run on the
   // same one the mint does
   provider: ESignProvider;
@@ -40,6 +45,9 @@ export interface EnvelopeCapabilityOptions {
   // Believe x-forwarded-for when logging the webhook's caller (the same
   // TRUST_PROXY the rate limits key on)
   trustProxy: boolean;
+  // The store to run on (default: a Knex store over `env`'s DATABASE_URL).
+  // Tests hand in an in-memory one; nothing else overrides it.
+  store?: EnvelopeStore;
 }
 
 // What `createESignApp` is handed to reach this module without naming it
@@ -88,7 +96,7 @@ export const graphQLResponseBody = async (body: HTTPGraphQLResponseBody): Promis
 export const createEnvelopeCapability = async (
   options: EnvelopeCapabilityOptions
 ): Promise<EnvelopeCapability> => {
-  const envelopes = createServices(options.provider);
+  const envelopes = createServices(options.provider, options.store ?? createStore(options.env));
   const { typeDefs, resolvers } = createGraphQL(envelopes);
 
   const apollo = new ApolloServer<GraphQLContext>({
