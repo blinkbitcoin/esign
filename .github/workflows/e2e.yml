@@ -289,8 +289,29 @@ jobs:
           VERSION: ${{ steps.ver.outputs.version }}
         run: bash scripts/ci/docker-build.sh esign-service "$RUNNER_TEMP/esign-service.tar.gz"
 
-      - name: Boot the image with the mock provider and hit /health
+      # The image is one deployable with two capability sets, so it is
+      # smoked twice: without DATABASE_URL (the mint alone - the envelope
+      # webhook must be absent) and with one (both capabilities).
+      - name: Smoke the image with the mock provider (mint only)
         run: bash scripts/ci/docker-smoke.sh esign-service
+
+      - name: Start the E2E Postgres for the full-capability smoke
+        run: docker compose -f docker-compose.test.yml up -d --wait
+
+      - name: Smoke the image with a database (mint + envelopes)
+        env:
+          DATABASE_URL: postgresql://test:test@host.docker.internal:5433/esign_test
+        run: bash scripts/ci/docker-smoke.sh esign-service
+
+      - name: Stop the E2E Postgres
+        if: always()
+        run: docker compose -f docker-compose.test.yml down
+
+      # The deploy templates ship in the tarball, so they are checked where
+      # docker already is. kubeconform is not installed here; the script
+      # skips the k8s manifests when it is missing.
+      - name: Validate the deploy templates
+        run: bash scripts/ci/deploy-check.sh
 
       # 7 days like the tarballs: a blocked release's Publish is re-run later
       # from this same artifact.
