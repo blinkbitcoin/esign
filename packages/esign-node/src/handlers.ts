@@ -5,7 +5,7 @@
 // `*Http` functions and is shared with the Express router.
 
 import type { EnvelopeService } from './envelopes';
-import { getErrorCode } from './errors';
+import { ErrorCodes, getErrorCode } from './errors';
 import { consoleLogger, type Logger } from './log';
 import {
   type ESignProvider,
@@ -58,7 +58,12 @@ export interface MintHttpInput {
 // POST /webform/instance semantics: 401 unauthenticated, 400 when hosted
 // forms are unsupported or the prefill is outside the contract (with the
 // reason, before any provider call), 502 when minting fails, else 200 + the
-// instance
+// instance. A `prefill` hook (mintWithPrefillHook) runs inside the same
+// `mint` call this awaits, so a host rejecting the caller's own prefill
+// (units out of range, say) throws `Errors.validationError(message)` /
+// `Errors.unauthorized()` here too - those two coded errors map to 400 /
+// 401 with the thrown message, same as the provider's own contract; any
+// other error (a provider/network failure) still falls through to 502.
 export const mintWebFormInstanceHttp = async (
   input: MintHttpInput,
 ): Promise<HttpResult> => {
@@ -84,7 +89,17 @@ export const mintWebFormInstanceHttp = async (
       body: await input.mint(input.userId, parsed.prefill),
     };
   } catch (error) {
-    logger.error('Web Forms instance creation failed:', getErrorCode(error));
+    const code = getErrorCode(error);
+    if (code === ErrorCodes.VALIDATION_ERROR) {
+      return {
+        status: 400,
+        body: { error: error instanceof Error ? error.message : code },
+      };
+    }
+    if (code === ErrorCodes.UNAUTHORIZED) {
+      return { status: 401, body: { error: 'Unauthorized' } };
+    }
+    logger.error('Web Forms instance creation failed:', code);
     return { status: 502, body: { error: 'Could not create signing session' } };
   }
 };
@@ -100,7 +115,11 @@ export interface HostedFormPrefillInput {
 }
 
 // The host's chance to compute the terms it locks from its own data: it
-// returns the prefill that is actually minted
+// returns the prefill that is actually minted. To reject the request
+// instead (the caller's own input is out of range, say), throw
+// `Errors.validationError(message)` - mintWebFormInstanceHttp maps it to
+// `400 { error: message }` (or `Errors.unauthorized()` for `401`); any
+// other thrown error still falls through to the generic `502`.
 export type HostedFormPrefillHook<TInput extends HostedFormPrefillInput> = (
   input: TInput,
 ) => HostedFormPrefill | Promise<HostedFormPrefill>;

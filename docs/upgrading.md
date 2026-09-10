@@ -62,6 +62,7 @@ bridge can delete that code.
 | The whole mint-only HTTP surface on Express (mint + return bridge +<br>health) | `createHostedFormRouter` (`@blinkbitcoin/esign-node/express`) |
 | The same surface with no framework, as one Fetch entry point | `createHostedFormApp({ ... }).fetch` |
 | Compute the locked terms server-side | the presets' `prefill` hook: it receives the caller's validated<br>prefill and returns the prefill actually minted |
+| Reject a request from inside the `prefill` hook (its own input is<br>out of range, say) | throw `Errors.validationError(message)` → `400 { error: message }`,<br>or `Errors.unauthorized()` → `401`; any other error still falls<br>through to `502` |
 | The provider a mint needs, checked at boot | `hostedFormProviderFromEnv(env, options?)` - `ESIGN_PROVIDER`,<br>DocuSign by default, `HOSTED_FORM_SETTINGS` required |
 | Refuse demo settings in production | `ESIGN_ENV=production` + `productionErrors` /<br>`assertProductionConfig` / `ProductionConfigError`;<br>`ESIGN_ALLOW_DEMO=true` overrides. Never gated on `NODE_ENV` |
 | The private key from a mounted secret | `DOCUSIGN_PRIVATE_KEY_BASE64` / `DOCUSIGN_PRIVATE_KEY_FILE`, or<br>`privateKeyFromEnv(env, readFile?)` |

@@ -6,6 +6,7 @@ import { spyLogger } from './support';
 import express, { type RequestHandler } from 'express';
 import request from 'supertest';
 import { createEnvelopeService } from '../envelopes';
+import { Errors } from '../errors';
 import {
   createESignRouter,
   createHostedFormRouter,
@@ -499,6 +500,24 @@ describe('createHostedFormRouter', () => {
       name: 'Jane',
       agent: 'jest',
     });
+  });
+
+  it("answers 400 with the message when the prefill hook rejects the caller's own input", async () => {
+    const prefill = jest.fn(() => {
+      throw Errors.validationError(
+        'units must be an integer between 1 and 10000',
+      );
+    });
+    const { app, provider } = hosted({ prefill });
+    const response = await request(app)
+      .post('/webform/instance')
+      .set('authorization', 'Bearer user-1')
+      .send({ prefill: { units: '999999' } });
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'units must be an integer between 1 and 10000',
+    });
+    expect(provider.createWebFormInstance).not.toHaveBeenCalled();
   });
 
   it('runs the prefill hook only after validation, and awaits an async hook', async () => {

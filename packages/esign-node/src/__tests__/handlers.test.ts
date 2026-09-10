@@ -3,6 +3,7 @@
 // with the Express router is exercised through them.
 
 import { createEnvelopeService } from '../envelopes';
+import { Errors } from '../errors';
 import {
   createHostedFormApp,
   type HostedFormAppPrefillInput,
@@ -211,6 +212,61 @@ describe('createHostedFormInstanceHandler', () => {
       });
     }
     expect(mint).not.toHaveBeenCalled();
+  });
+});
+
+describe("mintWebFormInstanceHttp: a thrown coded error from the mint (typically the prefill hook rejecting the caller's own input)", () => {
+  const call = (mint: () => Promise<never>) =>
+    mintWebFormInstanceHttp({
+      userId: 'u',
+      body: {},
+      mint,
+      logger: silent,
+    });
+
+  it('maps Errors.validationError to 400 with the thrown message', async () => {
+    const response = await call(async () => {
+      throw Errors.validationError(
+        'units must be an integer between 1 and 10000',
+      );
+    });
+    expect(response).toEqual({
+      status: 400,
+      body: { error: 'units must be an integer between 1 and 10000' },
+    });
+  });
+
+  it('maps a coded-but-non-Error validation rejection to 400 with the code as a fallback message', async () => {
+    // A coded rejection that is not an Error instance - getErrorCode's own
+    // contract allows a plain object with `extensions.code` or `code`.
+    const response = await call(() =>
+      Promise.reject({ extensions: { code: 'VALIDATION_ERROR' } }),
+    );
+    expect(response).toEqual({
+      status: 400,
+      body: { error: 'VALIDATION_ERROR' },
+    });
+  });
+
+  it('maps Errors.unauthorized to 401', async () => {
+    const response = await call(async () => {
+      throw Errors.unauthorized();
+    });
+    expect(response).toEqual({ status: 401, body: { error: 'Unauthorized' } });
+  });
+
+  it('still answers 502 for any other thrown error (a provider/network failure)', async () => {
+    const response = await call(async () => {
+      throw new Error('boom');
+    });
+    expect(response).toEqual({
+      status: 502,
+      body: { error: 'Could not create signing session' },
+    });
+    expect(silent.error).toHaveBeenCalledWith(
+      'Web Forms instance creation failed:',
+      'UNKNOWN_ERROR',
+    );
   });
 });
 
@@ -432,6 +488,27 @@ describe('createHostedFormApp', () => {
       name: 'Jane',
       source: 'api.example.com',
     });
+  });
+
+  it("answers 400 with the message when the prefill hook rejects the caller's own input", async () => {
+    const prefill = jest.fn(() => {
+      throw Errors.validationError(
+        'units must be an integer between 1 and 10000',
+      );
+    });
+    const { fetch, p } = app({ prefill });
+    const response = await fetch(
+      post(
+        'https://x/webform/instance',
+        JSON.stringify({ prefill: { units: '999999' } }),
+        { authorization: 'Bearer user-1' },
+      ),
+    );
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: 'units must be an integer between 1 and 10000',
+    });
+    expect(p.createWebFormInstance).not.toHaveBeenCalled();
   });
 
   it('takes a custom mint path and the host prefill contract', async () => {

@@ -214,7 +214,7 @@ const { typeDefs, resolvers } = createESignGraphQL({ envelopes }); // → your A
 | Route | What |
 |---|---|
 | `GET /health` | `{ status, timestamp }` |
-| `POST /webform/instance` | mint for the authenticated caller (`401`), validated prefill (`400` with the<br>reason), provider failure `502` |
+| `POST /webform/instance` | mint for the authenticated caller (`401`), validated prefill (`400` with the<br>reason), a `prefill` hook throwing `Errors.validationError`/`unauthorized`<br>(`400`/`401` too), provider failure `502` |
 | `POST /webhook/esign` | raw-body signature check (`401`), parse (`400`), `handleWebhookEvent` (`500` =<br>retry, `200 { received: true }`) |
 | `GET /signing/return` | the return-URL bridge for real DocuSign (postMessage protocol, nonce<br>CSP) |
 | `GET /signing/mock/:id`, `GET /signing/mock-webform/:id` | the mock provider's pages, when `mockPages` is given |
@@ -247,7 +247,12 @@ needs is missing, when the selected provider cannot mint hosted forms, or
 when `ESIGN_ENV=production` still points at demo settings
 (`ESIGN_ALLOW_DEMO=true` overrides). The `prefill` hook receives the
 caller's *validated* prefill and returns the prefill that is actually
-minted, so client values stay input and never decide a read-only field.
+minted, so client values stay input and never decide a read-only field. To
+reject the request instead (the caller's own input is out of range, say),
+throw `Errors.validationError(message)` - it comes back as `400 { error:
+message }`, the same shape a bad prefill already gets (`Errors.unauthorized()`
+maps to `401`); any other thrown error still falls through to the generic
+`502`.
 
 The same surface with no framework at all is `createHostedFormApp`, a
 single Fetch entry point (the thing a Vercel route, a Cloudflare Worker or
@@ -274,7 +279,8 @@ export default { fetch };
 | CORS | `middleware.cors` + `middleware.webform` | `cors: { origins }` |
 | pages | `GET /signing/return`, `mockPages` | `GET /signing/return` |
 
-Both answer the same status codes (`401`, `400` with the reason, `502`)
+Both answer the same status codes (`401`, `400` with the reason - including
+a `prefill` hook's own `Errors.validationError`/`unauthorized`, `502`)
 because both go through `mintWebFormInstanceHttp`; anything else is a
 `404`.
 
