@@ -22,9 +22,9 @@ mode**, and for two of the three that is a single small package:
 | **3. Proxy envelope** | Full envelope orchestration:<br>templates, per-recipient<br>sessions, restart on expiry,<br>webhook status sync | The package +<br>`@apollo/client` +<br>`graphql` | `@blinkbitcoin/esign-service`<br>with `DATABASE_URL`, or the<br>envelope domain of<br>`@blinkbitcoin/esign-node`<br>in your own Node API |
 
 The GraphQL API and the Apollo wiring exist for **mode 3 only**. If you need
-modes 1 or 2, none of that ships with you: the mint mode 2 needs runs either
-inside your own Node API or in this repo's service with **no database at
-all** ([Backend options](#backend-options)). The [Integration](#integration)
+modes 1 or 2, none of that ships with you: the mint that mode 2 needs runs
+either inside your own Node API or in this repo's service, with **no database
+at all** ([Backend options](#backend-options)). The [Integration](#integration)
 section walks each mode from simplest up.
 
 **Which mode?** Nothing to lock and no per-signer data: mode 1. Values the
