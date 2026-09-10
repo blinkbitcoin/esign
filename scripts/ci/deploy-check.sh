@@ -12,6 +12,13 @@
 # @blinkbitcoin/esign-service/cloudflare), so it needs the service's dist:
 # run `npm run build` first. CI: E2E / Build Packages, right after the build.
 # Local: make deploy-check.
+#
+# The bundle runs on a THROWAWAY COPY of the template: wrangler writes a
+# `.wrangler/` working directory next to the config it was given, and the
+# template is a tracked directory that ships inside the published tarball -
+# a check must not leave anything in it. The copy gets a node_modules symlink
+# so the entry's `@blinkbitcoin/esign-service/cloudflare` still resolves to
+# the workspace, and the template dir is asserted untouched afterwards.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 DEPLOY=packages/esign-service/deploy
@@ -41,11 +48,20 @@ elif ! "${WRANGLER[@]}" --version > /dev/null 2>&1; then
   # below is a broken template.
   echo "deploy check: wrangler is unavailable (offline?), skipping the Worker bundle"
 else
+  cp -R "$DEPLOY/cloudflare" "$TMP/cloudflare"
+  ln -s "$PWD/node_modules" "$TMP/cloudflare/node_modules"
   # --config absolute: wrangler resolves a relative one against the nearest
   # package root (packages/esign-service), not against the working directory
-  (cd "$DEPLOY/cloudflare" && "${WRANGLER[@]}" deploy --dry-run \
-    --config "$PWD/wrangler.toml" --outdir "$TMP/worker")
+  (cd "$TMP/cloudflare" && "${WRANGLER[@]}" deploy --dry-run \
+    --config "$TMP/cloudflare/wrangler.toml" --outdir "$TMP/worker")
   echo "deploy check: the Worker bundle builds"
+  # The copy is what wrangler may litter in; the shipped template must be
+  # exactly what it was before this script ran.
+  if [ -e "$DEPLOY/cloudflare/.wrangler" ]; then
+    echo "::error::the Worker dry-run wrote $DEPLOY/cloudflare/.wrangler - it must run on a copy"
+    exit 1
+  fi
+  echo "deploy check: the Cloudflare template is untouched"
 fi
 
 if command -v kubeconform > /dev/null 2>&1; then

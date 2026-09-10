@@ -208,3 +208,41 @@ describe('the Kubernetes templates', () => {
     expect(kustomization).toContain('- secret-docusign-pem.yaml');
   });
 });
+
+describe('the Cloudflare template ships clean', () => {
+  const manifest = JSON.parse(
+    readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf8')
+  ) as { files: string[] };
+
+  // wrangler writes a `.wrangler/` working directory next to the config it is
+  // pointed at. deploy/cloudflare is tracked AND published, so nothing may
+  // leave one there: make deploy-check runs the dry-run on a copy (and fails
+  // if this directory reappears), the root .gitignore refuses to commit one,
+  // and `files` refuses to pack one.
+  it('has no wrangler working directory in the tracked template', () => {
+    expect(existsSync(path.join(import.meta.dirname, '..', 'deploy/cloudflare/.wrangler'))).toBe(
+      false
+    );
+  });
+
+  it('keeps a wrangler working directory out of the tarball and out of git', () => {
+    expect(manifest.files).toContain('!deploy/**/.wrangler');
+
+    const gitignore = readFileSync(
+      path.join(import.meta.dirname, '..', '..', '..', '.gitignore'),
+      'utf8'
+    );
+    expect(gitignore.split('\n')).toContain('.wrangler/');
+  });
+
+  it('runs the dry-run on a copy, and says so if the template was written to', () => {
+    const script = readFileSync(
+      path.join(import.meta.dirname, '..', '..', '..', 'scripts/ci/deploy-check.sh'),
+      'utf8'
+    );
+
+    expect(script).toContain('cp -R "$DEPLOY/cloudflare" "$TMP/cloudflare"');
+    expect(script).toContain('--config "$TMP/cloudflare/wrangler.toml"');
+    expect(script).toContain('if [ -e "$DEPLOY/cloudflare/.wrangler" ]; then');
+  });
+});

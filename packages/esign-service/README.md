@@ -157,7 +157,8 @@ From the repo root, `make docker-build && make docker-smoke` boots the image
 in both capability modes, and `make deploy-check` validates the deploy
 templates: `docker compose config` always, the Cloudflare template through a
 `wrangler deploy --dry-run` (wrangler from `npx` when it is not installed;
-needs `npm run build` first), and `kubeconform` when it is installed. CI runs
+needs `npm run build` first; run on a throwaway copy, so the shipped template
+never gets a `.wrangler/`), and `kubeconform` when it is installed. CI runs
 it in E2E / Build Packages, where the dist already exists.
 
 ## Key Paths

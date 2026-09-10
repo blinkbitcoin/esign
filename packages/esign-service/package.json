@@ -27,7 +27,7 @@
   "author": "",
   "license": "MIT",
   "description": "The esign service as one deployable: a Fetch-native core that mints locked hosted-form instances always, adds envelope orchestration when DATABASE_URL is set, and runs as a container, a Node process, a Vercel route or a Cloudflare Worker from the same environment contract.",
-  "files": ["dist", "deploy"],
+  "files": ["dist", "deploy", "!deploy/**/.wrangler", "!deploy/**/node_modules"],
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
