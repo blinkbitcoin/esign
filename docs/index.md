@@ -1,7 +1,7 @@
 # Project Documentation Index
 
 **Project:** esign
-**Updated:** 2026-09-09
+**Updated:** 2026-09-10
 
 ---
 
@@ -77,6 +77,7 @@ Organized by namespace - pick by what you're doing:
 
 | Doc | Covers |
 |-----|--------|
+| [production.md](operations/production.md) | **Running the mint in production, by role:** what runs where (in-process vs the service), DocuSign go-live, backend, DevOps (deploy, env, private key, boot guard), mobile, verification, failure modes |
 | [live-e2e-ci.md](operations/live-e2e-ci.md) | The live DocuSign suite in GitHub Actions: environment, secrets, variables, the CI integration key + consent, triggers, rotation, failure modes |
 
 ### Root
@@ -138,6 +139,10 @@ make e2e-ios                # or: make e2e-android
 ### "I want to integrate signing into my own app"
 1. [Consuming the Packages](integration/consuming.md) - registry setup + minimal Web Forms-only install
 2. Pick a mode: [integration/webforms.md](integration/webforms.md) (Web Forms / public URL) or [integration/docusign-proxy.md](integration/docusign-proxy.md) (proxy envelope mode, webhooks)
+
+### "I want to take it to production"
+1. [Running the mint in production](operations/production.md) - the runbook by role: DocuSign go-live, backend, DevOps, mobile, the verification checklist
+2. [Live DocuSign E2E in CI](operations/live-e2e-ci.md) for the opt-in CI job
 
 ### "I want to add a new feature"
 1. [Development Guide](./development-guide.md) for workflow + quality gates

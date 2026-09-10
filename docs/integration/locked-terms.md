@@ -68,7 +68,7 @@ Install `@blinkbitcoin/esign-node` (Node only; registry setup in
 | `DOCUSIGN_INTEGRATION_KEY`, `DOCUSIGN_USER_ID`, `DOCUSIGN_ACCOUNT_ID`, `DOCUSIGN_PRIVATE_KEY` | the JWT grant (step 1) |
 | `DOCUSIGN_WEBFORM_ID` | the form (step 1) |
 | `DOCUSIGN_RETURN_URL` | `https://<your api>/signing/return` - the bridge route below |
-| `DOCUSIGN_BASE_URL`, `DOCUSIGN_OAUTH_URL`, `DOCUSIGN_WEBFORMS_BASE_URL` | defaults are the demo environment; set the production hosts in production |
+| `DOCUSIGN_BASE_URL`, `DOCUSIGN_OAUTH_URL`, `DOCUSIGN_WEBFORMS_BASE_URL` | defaults are the demo environment; the production hosts are in [operations/production.md](../operations/production.md#2-docusign-go-live-account-owner) |
 
 **One mutation (or endpoint).** Authenticate the caller with the backend's
 own session (the package never sees the token), compute the terms from the
@@ -185,7 +185,9 @@ What the app can expect:
   `make e2e-ios-live` (the same journey in the React Native demo's WebView).
 - Then the same against the **production** account with the production
   form and hosts: the findings so far are from the demo environment
-  ([docusign-lessons.md](docusign-lessons.md), "Still open").
+  ([docusign-lessons.md](docusign-lessons.md), "Still open"). The go-live
+  steps and the full checklist are the runbook,
+  [operations/production.md](../operations/production.md).
 - Operations: the opt-in CI job in
   [operations/live-e2e-ci.md](../operations/live-e2e-ci.md).
 

@@ -322,6 +322,10 @@ import { createDocuSignProvider, docuSignConfigFromEnv } from '@blinkbitcoin/esi
 | `DOCUSIGN_HMAC_KEY` | webhooks | the Connect HMAC key; without it signed webhooks cannot be verified |
 | `MOCK_PAGES_ORIGIN` | mock | where the mock provider's signing pages are served (default<br>`http://localhost:4100`) |
 
+Going live - the production DocuSign hosts, the go-live steps, what the
+boot guard refuses and the verification checklist:
+[docs/operations/production.md](../../docs/operations/production.md).
+
 ## Development (in this monorepo)
 
 ```sh

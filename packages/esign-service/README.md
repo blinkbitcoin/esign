@@ -47,6 +47,11 @@ Applying the envelope schema is the same command everywhere:
 Workers have no Postgres driver, so the boot guard refuses `DATABASE_URL`
 there with a message that says which target to use instead.
 
+Taking a deployment live on a production DocuSign account - the go-live
+steps, the production hosts, the private key per platform, the boot guard
+and the verification checklist - is the runbook,
+[docs/operations/production.md](../../docs/operations/production.md).
+
 ### The host's two obligations
 
 1. **Say who the caller is.** Expose a JWKS endpoint (`SESSION_JWKS_URL`) or
