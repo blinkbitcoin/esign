@@ -7,6 +7,8 @@
 # and no Metro on :8081. Local only.
 #   make e2e-ios-live [LIVE_PORT=4106]
 set -euo pipefail
+# shellcheck source=scripts/e2e/xcode-env.sh
+. "$(dirname "$0")/xcode-env.sh"
 cd "$(dirname "$0")/../.."
 # shellcheck source=scripts/e2e/live-service.sh
 . scripts/e2e/live-service.sh

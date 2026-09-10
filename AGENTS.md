@@ -51,6 +51,7 @@ one-line description. The ones you will reach for:
 | `make coverage` | 100% enforced everywhere; also fails on a coverage row with nothing to<br>cover (re-export / type-only modules go in the workspace's exclude list) |
 | `make db-up migrate backend` | Dev Postgres, migrations, backend dev server |
 | `make e2e-backend` / `make e2e-web` | Backend E2E against real Postgres / Playwright browser E2E |
+| `make e2e-android-local` / `make e2e-ios-local` | The whole mobile stack on a laptop (DB, backend, APK or .app, Metro, Maestro,<br>teardown); Android needs a running emulator, iOS boots a simulator.<br>`e2e-backend-up` / `android-build` or `ios-build` / `e2e-metro-up` /<br>`e2e-android` or `e2e-ios` are the steps CI runs as separate jobs |
 | `make start` / `make ios` / `make android` / `make web` | Demo apps |
 | `make release` | Merge the open release PR that release-please maintains (tags, publishes; `docs/releasing.md`) |
 

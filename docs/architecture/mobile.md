@@ -165,6 +165,11 @@ See [../integration/consuming.md](../integration/consuming.md).
   `ESIGN_MODE`/`ESIGN_BACKEND_PORT`/`ESIGN_PREFILL` and relaunches the app
   through `simctl` - the ceremony exposes no text, so its taps are by
   position; [integration/docusign-lessons.md](../integration/docusign-lessons.md))
+- On a laptop: `make e2e-android-local` / `make e2e-ios-local` (repo root)
+  bring up the database, the backend, the build, Metro and Maestro and tear
+  them down; the Maestro scripts pin their device (`MAESTRO_DEVICE`) so an
+  emulator and a simulator can be up at once, and the iOS scripts drop the
+  nix shell's Apple SDK (`scripts/e2e/xcode-env.sh`) before calling Xcode
 - TestID-based element selection
 - One app launch per run: `app-launch` (pinned first in `config.yaml`)
   boots the app with a retried launch + wait; every later flow keeps the

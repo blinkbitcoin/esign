@@ -15,6 +15,7 @@ set -uo pipefail
 APK=examples/react-native-demo/android/app/build/outputs/apk/debug/app-debug.apk
 LOGS="${RUNNER_TEMP:-/tmp}/android-logs"
 
+[ -f "$APK" ] || { echo "::error::no debug APK at $APK - run make android-build (or make e2e-android-local for the whole stack)"; exit 1; }
 adb install "$APK"
 # Metro + backend: the signing WebView loads localhost:$ESIGN_API_PORT URLs
 # minted by the mock provider - reverse both into the emulator.
@@ -35,6 +36,11 @@ adb logcat -c
 status=0
 # Bounded (see maestro-bound.sh) so the logcat post-mortem below still runs
 # when Maestro hangs; a `::error::` line marks the timeout case.
+# The emulator by serial: with an iOS simulator booted as well (a laptop,
+# not CI) Maestro would otherwise pick whichever device it lists first (the
+# demo's test:e2e:android script appends --device from this variable)
+MAESTRO_DEVICE="${ANDROID_SERIAL:-$(adb get-serialno)}"
+export MAESTRO_DEVICE
 bounded_maestro test:e2e:android -w examples/react-native-demo || status=$?
 
 # Forensics: the failure screenshots show the launcher (the app process is

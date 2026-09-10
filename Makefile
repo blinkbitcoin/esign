@@ -153,20 +153,36 @@ e2e-server-demos: ## Boot the mint-only + serverless examples (mock provider) an
 e2e-web-webform-live: ## Playwright against a REAL DocuSign Web Form (opt-in via E2E_LIVE_* env, see docs/integration/webforms.md)
 	npm run test:e2e:webform:live -w examples/react-demo
 
-e2e-backend-up: ## Start the backend (mock provider) in the background for mobile E2E, wait for /health
+e2e-backend-up: ## The backend (mock provider) in the background on ESIGN_API_PORT, wait for /health (needs a migrated E2E database: Docker `make test-db-up` + `npm run migrate:test -w examples/full-service-demo`, or CI's Homebrew Postgres; `make e2e-*-local` does it all)
 	bash scripts/e2e/backend-up.sh
 
 e2e-backend-down: ## Stop the backend started by e2e-backend-up
 	bash scripts/e2e/backend-down.sh
 
+e2e-metro-up: ## Start Metro for the RN demo in the background and prewarm the Android bundle
+	bash scripts/e2e/metro-start.sh
+	bash scripts/e2e/metro-wait.sh android
+
+e2e-metro-down: ## Stop the Metro started by e2e-metro-up
+	bash scripts/e2e/metro-down.sh
+
+android-build: ## Debug APK of the RN demo for the attached emulator's ABI (what CI's Build Android job runs; ANDROID_ABI overrides)
+	bash scripts/e2e/android-build.sh
+
 ios-build: ## Debug build of the RN demo for the simulator (what CI's Build iOS job runs; needs `make pods`)
 	bash scripts/e2e/ios-build.sh
 
-e2e-ios: ## Maestro E2E, iOS (needs: booted simulator with the app installed, Metro + backend running)
+e2e-ios: ## Maestro E2E, iOS (needs: booted simulator with the app installed via `make ios-build` + ios-simulator.sh install, `make e2e-backend-up`, `make e2e-metro-up`)
 	bash scripts/e2e/ios-maestro.sh
 
-e2e-android: ## Maestro E2E, Android (needs: emulator, debug APK built, Metro + backend running)
+e2e-ios-local: ## The whole iOS stack in one command on a Mac: DB, backend, pods if missing, .app, simulator, Metro, Maestro, teardown
+	bash scripts/e2e/ios-local.sh
+
+e2e-android: ## Maestro E2E, Android (needs: emulator, `make android-build`, `make e2e-backend-up`, `make e2e-metro-up`)
 	bash scripts/e2e/android-maestro.sh
+
+e2e-android-local: ## The whole Android stack in one command on a laptop: DB, backend, APK, Metro, Maestro, teardown (needs a running emulator)
+	bash scripts/e2e/android-local.sh
 
 test-live: ## Live verification against real DocuSign (skips unless DOCUSIGN_* set in examples/full-service-demo/.env)
 	npm run test:live -w examples/full-service-demo
@@ -211,4 +227,4 @@ help: ## List available targets
 .PHONY: install hooks pods release release-rc version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
 	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check start ios android backend web db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-web-webform-live \
-	e2e-server-demos e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live docker-build docker-smoke clean reset help
+	e2e-server-demos e2e-backend-up e2e-backend-down e2e-metro-up e2e-metro-down android-build ios-build e2e-ios e2e-ios-local e2e-android e2e-android-local test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live docker-build docker-smoke clean reset help

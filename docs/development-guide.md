@@ -249,18 +249,31 @@ docker-compose -f docker-compose.test.yml down
 ### Mobile E2E Tests (Maestro)
 
 ```bash
-# Install Maestro CLI
+# Install Maestro CLI once
 curl -Ls "https://get.maestro.mobile.dev" | bash
 
-# Start backend with mock provider against the test database
-cd examples/full-service-demo && ESIGN_PROVIDER=mock npx dotenv-cli -e .env.test -- npm run dev &
+# Android, in one command (an emulator must already be running):
+emulator -avd <avd> &
+make e2e-android-local     # test DB + backend + debug APK + Metro + Maestro, then teardown
 
-# Build and run app on simulator
-npm run ios
+# iOS, in one command (boots the first iPhone simulator if none is booted):
+make e2e-ios-local         # test DB + backend + pods if missing + .app + install + Metro + Maestro
 
-# Run Maestro tests
-maestro test examples/react-native-demo/.maestro/
+# ...or step by step, which is what CI's jobs do:
+make test-db-up && npm run migrate:test -w examples/full-service-demo
+make e2e-backend-up        # the backend on ESIGN_API_PORT (CI's iOS job feeds it Homebrew Postgres instead)
+make android-build         # debug APK for the emulator's ABI (or: make ios-build + scripts/e2e/ios-simulator.sh install)
+make e2e-metro-up          # Metro, bundle prewarmed
+make e2e-android           # or: make e2e-ios
+make e2e-metro-down && make e2e-backend-down && make test-db-down
 ```
+
+With an emulator and a simulator running at the same time, the Maestro
+scripts pin their device (`MAESTRO_DEVICE`, which the demo's `test:e2e*`
+scripts expand), so each suite lands on its own platform. The iOS scripts
+drop the nix dev shell's Apple SDK and clang (`scripts/e2e/xcode-env.sh`)
+before calling Xcode: with them, xcodebuild fails with `unknown argument:
+-index-store-path` and Maestro's `xcrun` answers "unable to find sdk".
 
 The flows launch the app once (`app-launch` runs first) and reset between
 flows with the demo's **Start over** control instead of relaunching - see

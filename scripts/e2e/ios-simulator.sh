@@ -7,21 +7,23 @@
 #   install  install the .app (tar from build-ios, or an existing .app dir)
 # Usage: ios-simulator.sh pick | wait | install <app.tar|App.app>
 set -euo pipefail
+# shellcheck source=scripts/e2e/xcode-env.sh
+. "$(dirname "$0")/xcode-env.sh"
 APP_DIR=examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator
 case "${1:-}" in
   pick)
-    DEVICE_NAME=$(xcrun simctl list devices available -j \
+    DEVICE_NAME=$(/usr/bin/xcrun simctl list devices available -j \
       | jq -r '[.devices[] | .[] | select(.isAvailable and (.name | startswith("iPhone")))] | .[0].name')
     if [ -z "$DEVICE_NAME" ] || [ "$DEVICE_NAME" = "null" ]; then
       echo "::error::No available iPhone simulator on this machine"
-      xcrun simctl list devices available; exit 1
+      /usr/bin/xcrun simctl list devices available; exit 1
     fi
     echo "Using simulator: $DEVICE_NAME"
     echo "SIM_DEVICE=$DEVICE_NAME" >> "${GITHUB_ENV:-/dev/null}"
-    xcrun simctl boot "$DEVICE_NAME" || true
+    /usr/bin/xcrun simctl boot "$DEVICE_NAME" || true
     ;;
   wait)
-    xcrun simctl bootstatus "${SIM_DEVICE:?SIM_DEVICE not set - run 'pick' first}" -b
+    /usr/bin/xcrun simctl bootstatus "${SIM_DEVICE:?SIM_DEVICE not set - run 'pick' first}" -b
     ;;
   install)
     SRC="${2:?usage: ios-simulator.sh install <app.tar|App.app>}"
@@ -32,7 +34,7 @@ case "${1:-}" in
       tar -C "$APP_DIR" -xf "$SRC"
       APP="$APP_DIR/ReactNativeSandbox.app"
     fi
-    xcrun simctl install booted "$APP"
+    /usr/bin/xcrun simctl install booted "$APP"
     ;;
   *) echo "usage: ios-simulator.sh pick | wait | install <app.tar|App.app>"; exit 2 ;;
 esac
