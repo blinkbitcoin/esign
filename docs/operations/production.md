@@ -235,7 +235,11 @@ The host does not mint. It exposes, instead:
   `x-esign-terms-secret` when `TERMS_SHARED_SECRET` is set) and the reply's
   `{ prefill }` wins over the client's values key by key. A non-2xx, a
   timeout or a reply without a prefill object is a `502` to the app - it
-  never falls back to minting what the client sent.
+  never falls back to minting what the client sent. Because that request
+  carries the session token and the shared secret, production requires
+  `https` unless the host is private (loopback, `*.svc`,
+  `*.svc.cluster.local`, `*.internal`) or `TERMS_ALLOW_INSECURE=true` is
+  set; the boot guard refuses otherwise (section 4).
 
 Rotation in both tiers is a restart: the DocuSign config is read once at
 boot, so replacing the key material means rolling the deployment.
@@ -283,8 +287,9 @@ comments. In production the ones that matter:
 | `SESSION_JWKS_URL` | the host's key set; or `SESSION_HS256_SECRET` |
 | `SESSION_ISSUER`,<br>`SESSION_AUDIENCE` | enforced when set - set them |
 | `SESSION_USER_CLAIM` | the claim carrying the user id (default `sub`) |
-| `TERMS_URL` | the host endpoint computing the locked prefill |
+| `TERMS_URL` | the host endpoint computing the locked prefill -<br>**https**, or a private host (see below) |
 | `TERMS_SHARED_SECRET`,<br>`TERMS_TIMEOUT_MS` | sent as `x-esign-terms-secret`; default 5000 ms |
+| `TERMS_ALLOW_INSECURE` | unset; `true` only for a plaintext `TERMS_URL` on a<br>private host this guard does not recognise |
 | `DATABASE_URL` | only when envelopes are wanted |
 | `DOCUSIGN_INTEGRATION_KEY`,<br>`DOCUSIGN_ACCOUNT_ID`,<br>`DOCUSIGN_USER_ID` | the production GUIDs from section 2 |
 | `DOCUSIGN_WEBFORM_ID`,<br>`DOCUSIGN_RETURN_URL` | the production form; the deployed bridge URL |
@@ -336,6 +341,13 @@ refuses:
   `ESIGN_ALLOW_CLIENT_PREFILL=true` says the client's own prefill may be
   minted as sent;
 - a `TERMS_URL` that is not an absolute http(s) URL;
+- under `ESIGN_ENV=production`: a plaintext (`http:`) `TERMS_URL`. That
+  callback carries the caller's own session token and
+  `TERMS_SHARED_SECRET`, so cleartext hands both to anyone on the path.
+  A hop that cannot leave the cluster is the exception and is accepted as
+  is: loopback, `*.svc`, `*.svc.cluster.local`, `*.internal`. For a private
+  host the guard cannot recognise by name, `TERMS_ALLOW_INSECURE=true` is
+  the explicit opt-in;
 - envelopes on with DocuSign and no `DOCUSIGN_HMAC_KEY`;
 - `DATABASE_URL` on the Cloudflare runtime.
 
