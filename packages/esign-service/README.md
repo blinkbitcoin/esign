@@ -74,6 +74,7 @@ list with comments.
 | `TERMS_URL` | Where the host computes the prefill actually minted |
 | `TERMS_SHARED_SECRET` | Sent as `x-esign-terms-secret` when set |
 | `TERMS_TIMEOUT_MS` | Default 5000; a timeout or non-2xx answers `502` |
+| `TERMS_ALLOW_INSECURE` | `true` to allow a plaintext `TERMS_URL` in production.<br>The callback carries the caller's session token and<br>`TERMS_SHARED_SECRET`, so `http:` is refused unless the<br>host is private (loopback, `*.svc`,<br>`*.svc.cluster.local`, `*.internal`) |
 | `ESIGN_ALLOW_CLIENT_PREFILL` | `true` to mint the client's own prefill in production |
 | `ESIGN_PROVIDER` | `mock` (default) or `docusign` |
 | `MOCK_PAGES` | `false` turns the mock provider's signing pages off |

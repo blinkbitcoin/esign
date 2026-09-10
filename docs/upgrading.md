@@ -76,7 +76,11 @@ everywhere (it is a caller-controlled header).
 
 New, optional: `TERMS_URL` (the host computes the prefill actually minted;
 its answer wins over client values key by key), `TERMS_SHARED_SECRET`,
-`TERMS_TIMEOUT_MS`, `ESIGN_ALLOW_CLIENT_PREFILL` (production must opt in
+`TERMS_TIMEOUT_MS`, `TERMS_ALLOW_INSECURE` (production requires an https
+`TERMS_URL` unless its host is private - loopback, `*.svc`,
+`*.svc.cluster.local`, `*.internal` - because the callback carries the
+caller's session token and `TERMS_SHARED_SECRET`),
+`ESIGN_ALLOW_CLIENT_PREFILL` (production must opt in
 before the client's own prefill is minted as sent), `MOCK_PAGES`,
 `TRUST_PROXY`, `RATE_LIMIT_{WEBFORM,WEBHOOK,GRAPHQL}_PER_MIN`, and the
 `./vercel` / `./cloudflare` entries with the templates in `deploy/`.

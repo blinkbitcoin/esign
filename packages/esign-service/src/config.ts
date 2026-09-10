@@ -63,9 +63,39 @@ const sessionErrors = (env: Env): string[] =>
       ]
     : [];
 
+// The opt-in to a plaintext terms callback in production, for a host whose
+// hop is private but whose name this guard cannot recognise.
+export const TERMS_ALLOW_INSECURE = 'TERMS_ALLOW_INSECURE';
+
+// Hosts a plaintext terms callback cannot leak to the internet: the loopback
+// interface, and the private naming schemes a cluster resolves internally
+// (Kubernetes `<service>.<namespace>.svc[.cluster.local]`, and the `.internal`
+// suffix Google Cloud, AWS and others use for VPC-private records).
+const isPrivateHost = (hostname: string): boolean => {
+  const host = hostname.toLowerCase().replace(/\.$/, '');
+  return (
+    host === 'localhost' ||
+    host === '::1' ||
+    host === '[::1]' ||
+    /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host) ||
+    host.endsWith('.localhost') ||
+    host.endsWith('.internal') ||
+    host === 'svc' ||
+    host.endsWith('.svc') ||
+    host.endsWith('.svc.cluster.local')
+  );
+};
+
 // TERMS_URL must be a URL this service can actually POST to, and a
 // production deployment without one is minting whatever the client sent -
 // allowed, but only when the operator says so in as many words.
+//
+// In production the callback also has to be encrypted: createTermsPrefill
+// forwards the caller's own session bearer AND TERMS_SHARED_SECRET to that
+// URL, so a plaintext hop hands both to anyone on the path. A private hop
+// (loopback, `*.svc`, `*.svc.cluster.local`, `*.internal`) is the legitimate
+// exception, and TERMS_ALLOW_INSECURE=true is the explicit escape for the
+// private host this guard cannot recognise by name.
 const termsErrors = (env: Env): string[] => {
   const url = env[TERMS_URL];
   if (!url) {
@@ -75,16 +105,24 @@ const termsErrors = (env: Env): string[] => {
         ]
       : [];
   }
-  const protocol = ((): string | undefined => {
+  const parsed = ((): URL | undefined => {
     try {
-      return new URL(url).protocol;
+      return new URL(url);
     } catch {
       return undefined;
     }
   })();
-  return protocol === 'http:' || protocol === 'https:'
-    ? []
-    : [`${TERMS_URL} must be an absolute http(s) URL (got ${url})`];
+  if (!parsed || (parsed.protocol !== 'http:' && parsed.protocol !== 'https:')) {
+    return [`${TERMS_URL} must be an absolute http(s) URL (got ${url})`];
+  }
+  return parsed.protocol === 'http:' &&
+    isProductionEnv(env) &&
+    !isPrivateHost(parsed.hostname) &&
+    env[TERMS_ALLOW_INSECURE] !== 'true'
+    ? [
+        `${ESIGN_ENV}=production with a plaintext ${TERMS_URL} (${url}): the caller's session token and TERMS_SHARED_SECRET would travel in cleartext. Use https, a private host (loopback, *.svc, *.svc.cluster.local, *.internal), or ${TERMS_ALLOW_INSECURE}=true`,
+      ]
+    : [];
 };
 
 // The provider must be able to mint: the settings a hosted form needs have

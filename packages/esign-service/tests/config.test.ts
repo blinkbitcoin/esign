@@ -107,6 +107,62 @@ describe('configErrors - the terms callback', () => {
   });
 });
 
+describe('configErrors - the terms callback must be encrypted in production', () => {
+  // createTermsPrefill forwards the caller's session bearer and
+  // TERMS_SHARED_SECRET to this URL, so a plaintext public hop leaks both.
+  const prodEnv = (extra: Record<string, string | undefined> = {}) =>
+    docusignEnv({
+      ESIGN_ENV: 'production',
+      ESIGN_ALLOW_DEMO: 'true',
+      JWT_SECRET: 's',
+      ...extra,
+    });
+
+  it('refuses a plaintext public terms callback, naming the variable', () => {
+    const errors = configErrors(prodEnv({ TERMS_URL: 'http://terms.example.com/terms' }));
+
+    expect(errors).toEqual([
+      expect.stringContaining('plaintext TERMS_URL (http://terms.example.com/terms)'),
+    ]);
+    expect(errors[0]).toContain('TERMS_ALLOW_INSECURE=true');
+  });
+
+  it('accepts https', () => {
+    expect(configErrors(prodEnv({ TERMS_URL: 'https://terms.example.com/terms' }))).toEqual([]);
+  });
+
+  it.each([
+    'http://localhost:9000/terms',
+    'http://127.0.0.1:9000/terms',
+    'http://[::1]:9000/terms',
+    'http://terms.default.svc/terms',
+    'http://terms.default.svc.cluster.local/terms',
+    'http://terms.default.svc.cluster.local./terms',
+    'http://terms.eu-west-1.internal/terms',
+    'http://TERMS.default.SVC/terms',
+  ])('accepts the private hop %s', (url) => {
+    expect(configErrors(prodEnv({ TERMS_URL: url }))).toEqual([]);
+  });
+
+  it('accepts a plaintext public host only when the operator opts in', () => {
+    expect(
+      configErrors(
+        prodEnv({ TERMS_URL: 'http://terms.example.com/terms', TERMS_ALLOW_INSECURE: 'true' })
+      )
+    ).toEqual([]);
+    // Anything but the exact string is not the opt-in
+    expect(
+      configErrors(
+        prodEnv({ TERMS_URL: 'http://terms.example.com/terms', TERMS_ALLOW_INSECURE: '1' })
+      )
+    ).toEqual([expect.stringContaining('plaintext TERMS_URL')]);
+  });
+
+  it('does not apply outside production', () => {
+    expect(configErrors(devEnv({ TERMS_URL: 'http://terms.example.com/terms' }))).toEqual([]);
+  });
+});
+
 describe('configErrors - the provider', () => {
   it('accepts the mock provider', () => {
     expect(configErrors(devEnv())).toEqual([]);
