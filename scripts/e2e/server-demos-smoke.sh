@@ -55,6 +55,17 @@ expect_match "mint-only refuses anonymous" '"Unauthenticated"' "$BODY"
 BODY=$(curl -fsS "http://127.0.0.1:$MINT_PORT/signing/return?event=signing_complete")
 expect_match "mint-only return bridge" 'signing_complete' "$BODY"
 
+# mint-only-demo: the REST spelling of the same mint (createHostedFormRouter)
+BODY=$(curl -fsS -X POST "http://127.0.0.1:$MINT_PORT/webform/instance" \
+  -H 'content-type: application/json' -H 'authorization: Bearer smoke-user' \
+  -d '{"prefill":{"number_of_units":"10"}}')
+expect_match "mint-only REST mint ($PROVIDER)" "$URL_PATTERN" "$BODY"
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:$MINT_PORT/webform/instance" \
+  -H 'content-type: application/json' -d '{"prefill":{"number_of_units":"10"}}')
+expect_match "mint-only REST mint refuses anonymous" '^401$' "$CODE"
+BODY=$(curl -fsS "http://127.0.0.1:$MINT_PORT/health")
+expect_match "mint-only /health" '"status":"ok"' "$BODY"
+
 # serverless-handler-demo: the Fetch handlers behind plain Node
 BODY=$(curl -fsS -X POST "http://127.0.0.1:$HANDLER_PORT/webform/instance" \
   -H 'content-type: application/json' -H 'authorization: Bearer smoke-user' \

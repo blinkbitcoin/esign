@@ -4,7 +4,7 @@
 # ROOT (the workspace lockfile and @blinkbitcoin/esign-node are inputs):
 #
 #   docker build -f examples/mint-only-demo/Dockerfile -t esign-mint-only-demo .   (make docker-build-mint-only)
-#   docker run --rm -p 4100:4100 -e ESIGN_PROVIDER=mock esign-mint-only-demo
+#   docker run --rm -p 4104:4104 -e ESIGN_PROVIDER=mock esign-mint-only-demo
 #
 # Three stages: install everything → build the two workspaces this demo
 # needs → a production image with only their runtime dependencies.
@@ -53,7 +53,7 @@ COPY --from=build /app/examples/mint-only-demo/dist examples/mint-only-demo/dist
 
 USER node
 WORKDIR /app/examples/mint-only-demo
-EXPOSE 4100
+EXPOSE 4104
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
-  CMD wget -qO- http://127.0.0.1:${PORT:-4100}/health || exit 1
+  CMD wget -qO- http://127.0.0.1:${PORT:-4104}/health || exit 1
 CMD ["node", "dist/index.js"]

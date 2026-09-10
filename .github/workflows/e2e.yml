@@ -303,6 +303,18 @@ jobs:
           overwrite: true
           if-no-files-found: error
 
+      # The mint-only demo's Dockerfile, proving that shape actually deploys
+      # (`make docker-build-mint-only && make docker-smoke-mint-only`
+      # locally). It is a demo, not a deliverable: no version stamp, no
+      # archive, no artifact upload, nothing for Publish to ship.
+      - name: Build the mint-only demo image
+        env:
+          DOCKERFILE: examples/mint-only-demo/Dockerfile
+        run: bash scripts/ci/docker-build.sh esign-mint-only-demo
+
+      - name: Boot the mint-only demo image with the mock provider and hit /health
+        run: bash scripts/ci/docker-smoke.sh esign-mint-only-demo 4104
+
   web:
     name: Web
     runs-on: ubuntu-latest

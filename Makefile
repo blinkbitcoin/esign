@@ -197,6 +197,12 @@ docker-build: ## Build the service image (packages/esign-service/Dockerfile, fro
 docker-smoke: docker-build ## Boot the image with the mock provider and hit /health
 	bash scripts/ci/docker-smoke.sh esign-service
 
+docker-build-mint-only: ## Build the mint-only demo image (examples/mint-only-demo/Dockerfile, from the repo root) - a demo, not published
+	DOCKERFILE=examples/mint-only-demo/Dockerfile bash scripts/ci/docker-build.sh esign-mint-only-demo
+
+docker-smoke-mint-only: docker-build-mint-only ## Boot the mint-only demo image with the mock provider and hit /health
+	bash scripts/ci/docker-smoke.sh esign-mint-only-demo 4104
+
 # ---------- Housekeeping ----------
 
 clean: ## Remove build output and caches (library lib/, coverage)
@@ -214,4 +220,4 @@ help: ## List available targets
 .PHONY: install hooks pods release release-rc version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
 	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check codeql start ios android backend web db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-web-webform-live \
-	e2e-server-demos e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live docker-build docker-smoke clean reset help
+	e2e-server-demos e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live docker-build docker-smoke docker-build-mint-only docker-smoke-mint-only clean reset help

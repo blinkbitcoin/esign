@@ -84,7 +84,7 @@ for the package host apps actually run in production):
 ```sh
 make docker-build-mint-only    # → esign-mint-only-demo (node 24 alpine, production deps only)
 make docker-smoke-mint-only    # boots it with the mock provider, checks /health
-docker run --rm -p 4100:4100 -e ESIGN_PROVIDER=mock esign-mint-only-demo
+docker run --rm -p 4104:4104 -e ESIGN_PROVIDER=mock esign-mint-only-demo
 ```
 
 CI builds and smokes the same image on every branch (E2E / Docker); it is
