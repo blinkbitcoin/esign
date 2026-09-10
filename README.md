@@ -8,7 +8,7 @@
 <sub>E2E covers backend, web, Android and the iOS simulator suite, see [CI/CD](docs/development-guide.md#ios-e2e-and-the-macos-runner).</sub>
 
 <p align="center">
-  <img src="docs/assets/readme-hero.svg" alt="Your React Native or React web app renders one ESignature component. A SigningSource picks one of three modes: public URL (no backend), Web Forms instance (one backend endpoint), or proxy envelope (this repo's GraphQL backend). The backend-backed modes talk to DocuSign through the optional packages/esign-service service." width="960">
+  <img src="docs/assets/readme-hero.svg" alt="Your React Native or React web app renders one ESignature component. A SigningSource picks one of three modes: public URL (no backend), Web Forms instance (one backend endpoint), or proxy envelope (a GraphQL backend). The backend-backed modes talk to DocuSign either from your own Node API with @blinkbitcoin/esign-node or from the deployable @blinkbitcoin/esign-service, which mints without a database." width="960">
 </p>
 
 Embedded e-signing for React Native and React web apps. One `ESignature`
@@ -18,12 +18,14 @@ mode**, and for two of the three that is a single small package:
 | Mode | What it is | What your app installs | Backend required |
 |------|-----------|------------------------|------------------|
 | **1. Public URL** | A published public form<br>URL embedded directly | One package via the<br>Apollo-free `/webform`<br>entry - **no Apollo,<br>no GraphQL** | **None** |
-| **2. Web Forms<br>instances** | Prefilled per-signer forms<br>(read-only fields locked);<br>your backend mints an<br>instance URL with one<br>API call | Same minimal `/webform`<br>entry | One authenticated<br>endpoint on *your*<br>backend: one call from<br>`@blinkbitcoin/esign-node`<br>(or run this repo's service) |
-| **3. Proxy envelope** | Full envelope orchestration:<br>templates, per-recipient<br>sessions, restart on expiry,<br>webhook status sync | The package +<br>`@apollo/client` +<br>`graphql` | This repo's backend<br>service (`packages/esign-service`) |
+| **2. Web Forms<br>instances** | Prefilled per-signer forms<br>(read-only fields locked);<br>your backend mints an<br>instance URL with one<br>API call | Same minimal `/webform`<br>entry | One mint endpoint,<br>either tier: in-process<br>with `@blinkbitcoin/esign-node`,<br>or deploy<br>`@blinkbitcoin/esign-service`<br>(**no database**) |
+| **3. Proxy envelope** | Full envelope orchestration:<br>templates, per-recipient<br>sessions, restart on expiry,<br>webhook status sync | The package +<br>`@apollo/client` +<br>`graphql` | `@blinkbitcoin/esign-service`<br>with `DATABASE_URL`, or the<br>envelope domain of<br>`@blinkbitcoin/esign-node`<br>in your own Node API |
 
-The GraphQL backend, Apollo wiring, and provider adapters in this repo exist
-for **mode 3 only**. If you need modes 1 or 2, none of that ships with you -
-the [Integration](#integration) section walks each mode from simplest up.
+The GraphQL API and the Apollo wiring exist for **mode 3 only**. If you need
+modes 1 or 2, none of that ships with you: the mint mode 2 needs runs either
+inside your own Node API or in this repo's service with **no database at
+all** ([Backend options](#backend-options)). The [Integration](#integration)
+section walks each mode from simplest up.
 
 **Which mode?** Nothing to lock and no per-signer data: mode 1. Values the
 signer must not change (amounts, rates, dates set by you): mode 2 - the
@@ -35,6 +37,14 @@ recipe, backend + app) → [docs/integration/docusign-lessons.md](docs/integrati
 (the rules, one page) → [docs/integration/webforms.md](docs/integration/webforms.md)
 (the details) → [`examples/mint-only-demo`](examples/mint-only-demo/README.md)
 (the API side, runnable).
+
+**Who are you?** Three paths through this repository:
+
+| You are | Your path |
+|---------|-----------|
+| **App developer /<br>integrator** | [Integration](#integration) - the three modes, same component<br>[consuming.md](docs/integration/consuming.md) - registry setup and the minimal install<br>[locked-terms.md](docs/integration/locked-terms.md) - the mode 2 recipe, backend + app |
+| **Backend<br>developer** | [The in-process mint preset](packages/esign-node/README.md#the-http-surface-blinkbitcoinesign-nodeexpress) - routes in your own API<br>[`examples/mint-only-demo`](examples/mint-only-demo/README.md) - a runnable API that mints<br>[Runbook: backend developer](docs/operations/production.md#3-backend-developer) - what to build once |
+| **DevOps<br>engineer** | [Backend options](#backend-options) - the two tiers, side by side<br>[Deploy table](packages/esign-service/README.md#deploy) - the copy-paste per target<br>[Runbook: DevOps](docs/operations/production.md#4-devops) - env, keys, boot guard, health |
 
 ## Integration
 
@@ -181,6 +191,27 @@ more from left to right.
 Details and code for each path: the package READMEs
 ([RN](packages/esign-react-native/README.md#integration-paths),
 [web](packages/esign-react/README.md#integration-paths)).
+
+## Backend options
+
+Modes 2 and 3 need a mint on a backend you control, and there are exactly two
+tiers to choose between. **The app code is identical for both** - the same
+`SigningSource` calls one endpoint and embeds the URL it gets back.
+
+| Tier | What you run | What your API must provide | Capabilities | Copy-paste |
+|------|--------------|----------------------------|--------------|------------|
+| **In-process**<br>`@blinkbitcoin/esign-node` | The package inside<br>your own Node API<br>(router or Fetch<br>handler) | Your own session check<br>(`authenticate`), and the<br>locked terms from the<br>`prefill` hook - which can<br>reject a mint by throwing<br>`Errors.validationError` | Mint; the envelope<br>domain too, over<br>your own store | [The mint-only preset](packages/esign-node/README.md#mint-only-the-whole-surface-in-three-lines) |
+| **Deployable**<br>`@blinkbitcoin/esign-service` | The package or the<br>`ghcr.io/blinkbitcoin/esign-service`<br>image, as a function<br>or a container | `SESSION_JWKS_URL` or<br>`SESSION_HS256_SECRET`<br>(who the caller is), plus<br>`TERMS_URL` when the<br>locked terms come from<br>your data | Mint always on;<br>envelopes, webhooks<br>and GraphQL with<br>`DATABASE_URL` | [Deploy table](packages/esign-service/README.md#deploy) |
+
+**Mode 2 needs no database with the service**: the mint is always on, and
+`DATABASE_URL` only adds the envelope half. Deploy targets are a Node
+container, Vercel, a Cloudflare Worker (mint only), Kubernetes, or Lambda via
+the same image - one row each, with the commands, in the service's
+[Deploy table](packages/esign-service/README.md#deploy).
+
+Taking either tier live - DocuSign go-live, the environment, the private key
+per platform, the boot guard and the verification checklist - is the runbook:
+[docs/operations/production.md](docs/operations/production.md).
 
 ## Repository Layout
 

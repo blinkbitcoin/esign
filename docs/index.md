@@ -136,13 +136,20 @@ make e2e-ios                # or: make e2e-android
 1. Review [API Contracts - Backend](architecture/api-contracts.md)
 2. Check [Data Models](architecture/data-models.md) for schema
 
-### "I want to integrate signing into my own app"
+### "I build the app" (app developer / integrator)
 1. [Consuming the Packages](integration/consuming.md) - registry setup + minimal Web Forms-only install
 2. Pick a mode: [integration/webforms.md](integration/webforms.md) (Web Forms / public URL) or [integration/docusign-proxy.md](integration/docusign-proxy.md) (proxy envelope mode, webhooks)
+3. [locked-terms.md](integration/locked-terms.md) for mode 2 end to end, and [error-codes.md](integration/error-codes.md) for what `onError` can hand you
 
-### "I want to take it to production"
-1. [Running the mint in production](operations/production.md) - the runbook by role: DocuSign go-live, backend, DevOps, mobile, the verification checklist
-2. [Live DocuSign E2E in CI](operations/live-e2e-ci.md) for the opt-in CI job
+### "I own the backend API" (backend developer)
+1. [The mint-only preset](../packages/esign-node/README.md#mint-only-the-whole-surface-in-three-lines) - the routes inside your own Node API, session check and `prefill` hook
+2. [`examples/mint-only-demo`](../examples/mint-only-demo/README.md) - the same shape, runnable
+3. [Running the mint in production](operations/production.md#3-backend-developer) - what a backend owes the mint, in either tier
+
+### "I deploy and operate" (DevOps engineer)
+1. [Deploy table](../packages/esign-service/README.md#deploy) - the copy-paste per target (container, Compose, Kubernetes, Vercel, Cloudflare, Lambda)
+2. [Running the mint in production](operations/production.md#4-devops) - the environment, the private key per platform, the boot guard, health and shutdown
+3. [Live DocuSign E2E in CI](operations/live-e2e-ci.md) for the opt-in CI job
 
 ### "I want to add a new feature"
 1. [Development Guide](./development-guide.md) for workflow + quality gates

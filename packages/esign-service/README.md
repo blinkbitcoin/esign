@@ -1,5 +1,9 @@
 # `@blinkbitcoin/esign-service` — one deployable, mint and envelopes
 
+**For whoever deploys and operates a backend.** If instead you own a Node API
+and want it to mint in-process, that is the other tier,
+[`@blinkbitcoin/esign-node`](../esign-node/README.md).
+
 The whole e-signature service as a Fetch-native app composed from
 `@blinkbitcoin/esign-node`: the hosted-form mint, the signing pages, the
 envelope domain, the Postgres store, the provider webhook and the GraphQL

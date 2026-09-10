@@ -1,5 +1,10 @@
 # @blinkbitcoin/esign-node
 
+**For the backend developer who owns a Node API.** If you would rather deploy
+a ready service than import a package, that is the other tier,
+[`@blinkbitcoin/esign-service`](../esign-service/README.md) (its
+[Deploy table](../esign-service/README.md#deploy) has one row per target).
+
 The server-side half of the e-signature packages, for any Node ≥ 18 backend,
 no framework, no peers:
 

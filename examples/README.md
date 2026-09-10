@@ -16,6 +16,13 @@ package.
 | [`mint-only-demo/`](mint-only-demo/README.md) | 🖥️ `@blinkbitcoin/esign-node` from an API you already have: one mutation that mints a locked Web Forms instance (the Blink API shape) |
 | [`serverless-handler-demo/`](serverless-handler-demo/README.md) | 🖥️ `@blinkbitcoin/esign-node` as Fetch handlers behind a route handler or edge function (plain Node adapter here) |
 
+Both server demos illustrate the **in-process tier** - your own API mints,
+nothing extra is deployed. The **deployable tier** is not an example: it is
+the published [`@blinkbitcoin/esign-service`](../packages/esign-service/README.md)
+package and its `ghcr.io/blinkbitcoin/esign-service` image, whose targets are
+its [Deploy table](../packages/esign-service/README.md#deploy). The two tiers
+side by side: [Backend options](../README.md#backend-options).
+
 Proxy and webform modes need the backend running (`make db-up migrate
 backend` from the repo root); public-URL mode runs without it. `make help` here fans common targets (`test`, `coverage`,
 `typecheck`) out to every example; examples with a `Makefile` are discovered
