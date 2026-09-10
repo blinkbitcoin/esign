@@ -19,7 +19,7 @@ describe('Provider Selection (getProvider)', () => {
         name: 'Test',
         email: 'test@test.com',
       });
-      expect(result.signingUrl).toContain('http://localhost:4000/signing/mock/');
+      expect(result.signingUrl).toContain('http://localhost:4100/signing/mock/');
       expect(result.envelopeId).toBeDefined();
     });
   });
@@ -90,7 +90,7 @@ describe('Provider Selection (getProvider)', () => {
         name: 'Test',
         email: 'test@test.com',
       });
-      expect(result.signingUrl).toContain('http://localhost:4000/signing/mock/');
+      expect(result.signingUrl).toContain('http://localhost:4100/signing/mock/');
 
       // Assert - warning was logged
       expect(warnSpy).toHaveBeenCalledWith(
@@ -114,7 +114,7 @@ describe('Provider Selection (getProvider)', () => {
         name: 'Test',
         email: 'test@test.com',
       });
-      expect(result.signingUrl).toContain('http://localhost:4000/signing/mock/');
+      expect(result.signingUrl).toContain('http://localhost:4100/signing/mock/');
 
       warnSpy.mockRestore();
     });

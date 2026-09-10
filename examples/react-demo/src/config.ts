@@ -4,7 +4,7 @@ import type { WebFormPrefill } from '@blinkbitcoin/esign-react';
 // environment/config system.
 // The backend origin; the E2E configs move it per worktree (e2e/ports.ts)
 export const API_ORIGIN: string =
-  import.meta.env.VITE_API_ORIGIN || 'http://localhost:4000';
+  import.meta.env.VITE_API_ORIGIN || 'http://localhost:4100';
 export const GRAPHQL_URL = `${API_ORIGIN}/graphql`;
 export const WEBFORM_INSTANCE_URL = `${API_ORIGIN}/webform/instance`;
 // A "published public form" URL (prefill via query params). For the demo it

@@ -73,6 +73,17 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
   scripts, workspaces - not a dependency bump; Dependabot PRs are exempt)
 - Shell that CI or the Makefile runs lives in `scripts/{ci,e2e,release}/`,
   not inline in workflows; it is shellcheck'd by `make check-ci`
+- Every service listens on `ESIGN_PORT_BASE` (default 4100 - 4000 is
+  everybody's) plus its offset: the backend +0, the web demo +1/+2/+3 (proxy /
+  webform / publicurl), mint-only +4, serverless +5, the live service and its
+  two examples +6/+7/+8, the docker smoke +9. The table is
+  `scripts/lib/ports.mjs`; shell reads it through `scripts/e2e/ports-env.sh`
+  (`$ESIGN_API_PORT`, `$MINT_PORT`, `$LIVE_PORT`, ...), the Playwright
+  configs through `examples/react-demo/e2e/ports.ts`, and each service
+  declares its own offset (its test checks the literal against the table).
+  A second worktree sets one variable (`ESIGN_PORT_BASE=4300 make e2e-web`);
+  a service's own variable (`PORT`, `LIVE_PORT`, ...) overrides just that
+  service. Nothing hard-codes a port outside those defaults
 - The `ESignProvider` port is the provider boundary - nothing provider-specific
   outside a `providers/<name>/` directory: `packages/esign-server/src/providers/docusign/`,
   `packages/esign-core/src/providers/docusign/`, `packages/esign-react/src/providers/docusign/`

@@ -195,6 +195,12 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   fails on any such row.
 - Shell that CI or the Makefile runs lives in `scripts/{ci,e2e,release}/`,
   never inline in a workflow; `make check-ci` runs actionlint + shellcheck
+- **Ports**: every service listens on `ESIGN_PORT_BASE` (default 4100) +
+  its offset - table `scripts/lib/ports.mjs`, shell via
+  `scripts/e2e/ports-env.sh`, Playwright via `examples/react-demo/e2e/ports.ts`;
+  `ESIGN_PORT_BASE=4300 make e2e-web` moves a whole worktree. Never write a
+  port literal outside those defaults; `scripts/lib/ports.test.mjs` checks
+  each service's declared offset against the table.
 - `graphql` is pinned to 16.x repo-wide (Apollo Server 5's peer range) - do
   not bump it to 17 until Apollo Server supports it
 

@@ -37,7 +37,7 @@ form's preview is `https://apps-d.docusign.com/send/forms/view/<form-id>`.
    The toast confirms with a keypair id.
 4. Additional settings → Redirect URIs → **Add URI** → click into the new
    text box and *type* the URI (setting the value programmatically does not
-   register with the form), e.g. `http://localhost:4000`. Press Tab, then
+   register with the form), e.g. `http://localhost:4100`. Press Tab, then
    zoom on the field to confirm the value before saving.
 5. **Save** (bottom of the page). Then reopen via Actions → Edit and confirm
    the URI persisted: the consent page answers "There are no redirect URIs
@@ -57,8 +57,8 @@ but every Web Forms call answers 401 `AUTHORIZATION_INSUFFICIENT_SCOPE`.
 `consentUrl(config, redirectUri)` builds it in code. The consent host
 (`account-d.docusign.com`) is outside the Chrome extension's allowed
 domains, so the developer opens it themselves. After accepting it redirects
-to the registered URI: on this machine another project answers on :4000
-(a GraphQL Yoga page), which is harmless - the `code` in the URL is for the
+to the registered URI: nothing may answer on :4100 (or another project
+might - this machine has one on :4000), which is harmless - the `code` in the URL is for the
 auth-code flow the JWT grant does not use.
 
 ## 4. Write the env and verify

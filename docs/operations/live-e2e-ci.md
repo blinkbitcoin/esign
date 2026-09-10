@@ -27,7 +27,7 @@ see.
    from any developer's: Admin → Apps and Keys → Add App and Integration
    Key, private custom integration, **Upload RSA** with a keypair generated
    on your machine (`openssl genrsa -out ci.pem 2048 && openssl rsa -in ci.pem -pubout`),
-   a redirect URI (any, e.g. `http://localhost:4000`). The full click path,
+   a redirect URI (any, e.g. `http://localhost:4100`). The full click path,
    including the pitfalls, is in
    [docusign-proxy.md](../integration/docusign-proxy.md) and the repo skill
    `.claude/skills/docusign-integration-key-setup`.

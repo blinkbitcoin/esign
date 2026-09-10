@@ -5,7 +5,7 @@
 # inside the demo's WebView to a signed envelope (.maestro/webform-live.yaml).
 # Needs a booted iOS simulator with the demo app installed (make ios-build)
 # and no Metro on :8081. Local only.
-#   make e2e-ios-live [LIVE_PORT=4010]
+#   make e2e-ios-live [LIVE_PORT=4106]
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 # shellcheck source=scripts/e2e/live-service.sh

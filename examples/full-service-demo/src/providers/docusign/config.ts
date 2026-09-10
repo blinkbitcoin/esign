@@ -7,16 +7,17 @@ import {
   JWT_CREDENTIALS,
   missingDocuSignConfig,
 } from '@blinkbitcoin/esign-server';
+import { localOrigin } from '../../port';
 
-// The service's return-URL bridge (app.ts serves /signing/return) unless
-// DOCUSIGN_RETURN_URL points elsewhere
-const DEFAULT_RETURN_URL = 'http://localhost:4000/signing/return';
+// The service's return-URL bridge (app.ts serves /signing/return) on this
+// service's own port unless DOCUSIGN_RETURN_URL points elsewhere
+const defaultReturnUrl = (): string => `${localOrigin()}/signing/return`;
 
 // Configuration from environment variables (read on every call so tests and
 // credential rotation see the current environment)
 export const getConfig = (): DocuSignConfig => {
   const config = docuSignConfigFromEnv();
-  return { ...config, returnUrl: config.returnUrl ?? DEFAULT_RETURN_URL };
+  return { ...config, returnUrl: config.returnUrl ?? defaultReturnUrl() };
 };
 
 // Validate required environment variables.

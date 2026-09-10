@@ -15,7 +15,7 @@ describe('getDevBackendHost', () => {
 describe('GRAPHQL_URL', () => {
   it('points at the backend GraphQL endpoint for the current platform', () => {
     expect(GRAPHQL_URL).toBe(
-      `http://${getDevBackendHost(Platform.OS)}:4000/graphql`,
+      `http://${getDevBackendHost(Platform.OS)}:4100/graphql`,
     );
   });
 });

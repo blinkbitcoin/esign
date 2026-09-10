@@ -1,7 +1,7 @@
 # Example-app targets. Repo-wide flows live in the root Makefile.
 .DEFAULT_GOAL := help
 
-dev: ## Run the API (ESIGN_PROVIDER=mock needs no credentials; PORT, default 4100)
+dev: ## Run the API (ESIGN_PROVIDER=mock needs no credentials; PORT, default 4104 = ESIGN_PORT_BASE + 4)
 	npm run dev
 
 start: dev ## Alias for dev

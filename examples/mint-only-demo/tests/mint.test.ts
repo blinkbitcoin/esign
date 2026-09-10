@@ -36,7 +36,7 @@ describe('createMint', () => {
   it('mock provider: defaults the pages origin to the full-service demo', async () => {
     const mint = createMint({ ESIGN_PROVIDER: 'mock' });
     expect((await mint('user-1', {})).url).toMatch(
-      /^http:\/\/localhost:4000\//,
+      /^http:\/\/localhost:4100\//,
     );
   });
 

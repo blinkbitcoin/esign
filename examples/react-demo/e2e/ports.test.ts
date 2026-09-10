@@ -1,80 +1,100 @@
-// The per-worktree port scheme the Playwright configs rely on.
+// The port scheme the Playwright configs rely on: ESIGN_PORT_BASE + offset
+// per service, each service's own variable overriding. The table lives in
+// scripts/lib/ports.mjs; this file's copy must match it.
 
 declare const process: { env: Record<string, string | undefined> };
 
 import {
-  BLOCKS,
+  SERVICES,
+  resolvePorts,
+  BASE_DEFAULT as TABLE_BASE_DEFAULT,
+} from '../../../scripts/lib/ports.mjs';
+import {
+  API_OFFSET,
+  API_VAR,
+  BASE_DEFAULT,
+  BASE_VAR,
+  DEFAULT_PORTS,
   MODES,
   PORTS,
-  WORKTREE_ROOT,
+  WEB_OFFSETS,
+  WEB_VARS,
   backendServer,
   baseURL,
-  blockFor,
   ciPolicy,
-  fnv1a,
   liveViteDevServer,
-  portsForBlock,
+  portFrom,
+  portsFrom,
   viteDevServer,
   vitePreviewServer,
 } from './ports';
 
-describe('fnv1a', () => {
-  it('is deterministic and spreads sibling worktree paths apart', () => {
-    expect(fnv1a('/Users/x/Dev/esign')).toBe(fnv1a('/Users/x/Dev/esign'));
-    expect(fnv1a('/Users/x/Dev/esign')).not.toBe(fnv1a('/Users/x/Dev/esign-2'));
-    expect(fnv1a('')).toBe(0x811c9dc5);
-  });
-});
-
-describe('blockFor', () => {
-  it('derives a block inside the range from the worktree path', () => {
-    for (const root of [
-      '/a',
-      '/Users/x/Dev/esign',
-      '/home/runner/work/esign/esign',
+describe('the port table', () => {
+  it('is the repo table (scripts/lib/ports.mjs)', () => {
+    expect(BASE_DEFAULT).toBe(TABLE_BASE_DEFAULT);
+    expect(API_OFFSET).toBe(SERVICES.api.offset);
+    expect(API_VAR).toBe(SERVICES.api.env);
+    expect(WEB_OFFSETS).toEqual({
+      proxy: SERVICES.webProxy.offset,
+      webform: SERVICES.webWebform.offset,
+      publicurl: SERVICES.webPublicurl.offset,
+    });
+    expect(WEB_VARS).toEqual({
+      proxy: SERVICES.webProxy.env,
+      webform: SERVICES.webWebform.env,
+      publicurl: SERVICES.webPublicurl.env,
+    });
+    for (const env of [
+      {},
+      { [BASE_VAR]: '4300' },
+      { [BASE_VAR]: '4300', ESIGN_WEB_WEBFORM_PORT: '5555' },
     ]) {
-      const block = blockFor(root);
-      expect(block).toBeGreaterThanOrEqual(0);
-      expect(block).toBeLessThan(BLOCKS);
-      expect(block).toBe(blockFor(root));
+      const table = resolvePorts(env);
+      expect(portsFrom(env)).toEqual({
+        api: table.api,
+        vite: {
+          proxy: table.webProxy,
+          webform: table.webWebform,
+          publicurl: table.webPublicurl,
+        },
+      });
     }
   });
 
-  it('is pinned by E2E_PORT_OFFSET when set, and derived when it is empty', () => {
-    expect(blockFor('/anything', '0')).toBe(0);
-    expect(blockFor('/anything', String(BLOCKS - 1))).toBe(BLOCKS - 1);
-    expect(blockFor('/anything', '')).toBe(blockFor('/anything'));
-  });
-
-  it.each(['-1', String(BLOCKS), '1.5', 'abc', ' '])(
-    'rejects the out-of-range or malformed pin %j',
-    pin => {
-      expect(() => blockFor('/anything', pin)).toThrow(
-        /E2E_PORT_OFFSET must be an integer/,
-      );
-    },
-  );
-});
-
-describe('portsForBlock', () => {
-  it('block 0 is the canonical port set the docs quote', () => {
-    expect(portsForBlock(0)).toEqual({
-      api: 4000,
-      vite: { proxy: 5173, webform: 5174, publicurl: 5175 },
+  it('defaults to the 4100 block', () => {
+    expect(DEFAULT_PORTS).toEqual({
+      api: 4100,
+      vite: { proxy: 4101, webform: 4102, publicurl: 4103 },
     });
   });
 
-  it('blocks never overlap each other or the backend range', () => {
-    const seen = new Set<number>();
-    for (let block = 0; block < BLOCKS; block++) {
-      const ports = portsForBlock(block);
-      for (const port of [ports.api, ...MODES.map(mode => ports.vite[mode])]) {
-        expect(seen.has(port)).toBe(false);
-        seen.add(port);
-      }
-    }
-    expect(seen.size).toBe(BLOCKS * (1 + MODES.length));
+  it('moves the whole stack with the base and one service with its own variable', () => {
+    expect(portsFrom({ [BASE_VAR]: '4300' })).toEqual({
+      api: 4300,
+      vite: { proxy: 4301, webform: 4302, publicurl: 4303 },
+    });
+    expect(portsFrom({ ESIGN_API_PORT: '4010', ESIGN_WEB_PORT: '' })).toEqual({
+      api: 4010,
+      vite: { proxy: 4101, webform: 4102, publicurl: 4103 },
+    });
   });
+
+  it('never hands out a port twice', () => {
+    const ports = portsFrom({});
+    const all = [ports.api, ...MODES.map(mode => ports.vite[mode])];
+    expect(new Set(all).size).toBe(all.length);
+  });
+});
+
+describe('portFrom', () => {
+  it.each(['0', '65536', '-1', '1.5', 'abc', ' '])(
+    'rejects the malformed value %j',
+    value => {
+      expect(() => portFrom('ESIGN_API_PORT', value, 1)).toThrow(
+        /ESIGN_API_PORT must be a port number/,
+      );
+    },
+  );
 });
 
 describe('ciPolicy', () => {
@@ -92,8 +112,8 @@ describe('ciPolicy', () => {
 
 describe('liveViteDevServer', () => {
   it('points the webform demo at the live service and hands it the prefill', () => {
-    const server = liveViteDevServer('http://localhost:4010', '{"a":1}');
-    expect(server.command).toContain('VITE_API_ORIGIN=http://localhost:4010 ');
+    const server = liveViteDevServer('http://localhost:4106', '{"a":1}');
+    expect(server.command).toContain('VITE_API_ORIGIN=http://localhost:4106 ');
     expect(server.command).toContain('VITE_ESIGN_MODE=webform ');
     expect(server.command).toContain(`VITE_ESIGN_PREFILL='{"a":1}' `);
     expect(server.command).toContain(
@@ -111,13 +131,9 @@ describe('liveViteDevServer', () => {
   });
 });
 
-describe('this worktree', () => {
-  it('resolves the repo root and a consistent port set', () => {
-    expect(WORKTREE_ROOT).toMatch(/^\/.+[^/]$/);
-    expect(WORKTREE_ROOT.endsWith('/examples/react-demo')).toBe(false);
-    expect(PORTS).toEqual(
-      portsForBlock(blockFor(WORKTREE_ROOT, process.env.E2E_PORT_OFFSET)),
-    );
+describe('this process', () => {
+  it('resolves its ports from the environment', () => {
+    expect(PORTS).toEqual(portsFrom(process.env));
   });
 
   it('wires the backend port, CORS origins and the demo origin into the servers', () => {

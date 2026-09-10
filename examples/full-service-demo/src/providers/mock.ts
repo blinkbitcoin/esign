@@ -3,10 +3,11 @@
 // webhook format mirrored through the DocuSign adapter.
 
 import { createMockProvider } from '@blinkbitcoin/esign-server';
+import { localOrigin } from '../port';
 import { DocuSignProvider } from './docusign';
 
 const handle = createMockProvider({
-  baseUrl: () => `http://localhost:${process.env.PORT || 4000}`,
+  baseUrl: () => localOrigin(),
   webhook: DocuSignProvider,
 });
 

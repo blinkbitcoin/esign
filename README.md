@@ -225,7 +225,7 @@ against a locally running service and its Postgres. By default it uses the
 **mock provider**, so no DocuSign account or credentials are needed:
 
 ```sh
-make db-up migrate backend              # dev Postgres + migrations + server (:4000)
+make db-up migrate backend              # dev Postgres + migrations + server (:4100)
 
 # in a new terminal:
 make start                              # Metro

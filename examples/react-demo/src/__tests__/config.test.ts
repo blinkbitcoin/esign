@@ -45,9 +45,9 @@ describe('config', () => {
     },
   );
 
-  it('defaults the API origin to :4000 and honors VITE_API_ORIGIN', async () => {
+  it('defaults the API origin to :4100 and honors VITE_API_ORIGIN', async () => {
     vi.stubEnv('VITE_API_ORIGIN', '');
-    expect((await load()).API_ORIGIN).toBe('http://localhost:4000');
+    expect((await load()).API_ORIGIN).toBe('http://localhost:4100');
     vi.stubEnv('VITE_API_ORIGIN', 'http://localhost:4123');
     expect((await load()).API_ORIGIN).toBe('http://localhost:4123');
     expect((await load()).WEBFORM_INSTANCE_URL).toBe(

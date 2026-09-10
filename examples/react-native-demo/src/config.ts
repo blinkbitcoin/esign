@@ -1,22 +1,34 @@
 import { Platform } from 'react-native';
 
-// ESIGN_MODE, ESIGN_BACKEND_PORT and ESIGN_PREFILL are inlined at bundle time
+// ESIGN_MODE, ESIGN_PORT_BASE, ESIGN_BACKEND_PORT and ESIGN_PREFILL are inlined at bundle time
 // by babel (see babel.config.js); declare the shape we read without pulling
 // in full @types/node.
 declare const process: {
   env: {
     ESIGN_MODE?: string;
+    ESIGN_PORT_BASE?: string;
     ESIGN_BACKEND_PORT?: string;
     ESIGN_PREFILL?: string;
   };
 };
 
-// The backend port, 4000 unless ESIGN_BACKEND_PORT says otherwise (the live
-// run puts the service on another port: scripts/e2e/ios-live.sh)
-export const resolveBackendPort = (value: string | undefined): number =>
-  /^\d+$/.test(value ?? '') ? Number(value) : 4000;
+// The backend port: ESIGN_BACKEND_PORT (the live run puts the service on
+// another port: scripts/e2e/ios-live.sh), else the repo's ESIGN_PORT_BASE +
+// the backend's offset (table: scripts/lib/ports.mjs), else 4100
+export const PORT_BASE_DEFAULT = 4100;
+const API_OFFSET = 0;
+const digits = (value: string | undefined): number | undefined =>
+  /^\d+$/.test(value ?? '') ? Number(value) : undefined;
+export const resolveBackendPort = (
+  override: string | undefined,
+  base?: string,
+): number =>
+  digits(override) ?? (digits(base) ?? PORT_BASE_DEFAULT) + API_OFFSET;
 
-const BACKEND_PORT = resolveBackendPort(process.env.ESIGN_BACKEND_PORT);
+const BACKEND_PORT = resolveBackendPort(
+  process.env.ESIGN_BACKEND_PORT,
+  process.env.ESIGN_PORT_BASE,
+);
 
 export const getDevBackendHost = (platformOs: string): string =>
   platformOs === 'android' ? '10.0.2.2' : 'localhost';

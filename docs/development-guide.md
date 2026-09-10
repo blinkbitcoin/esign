@@ -68,7 +68,7 @@ dotenv never overrides direnv-exported values, so precedence is consistent.
 ```env
 DATABASE_URL=postgresql://dev:dev@localhost:5432/esign
 ESIGN_PROVIDER=mock            # 'docusign' for the real integration
-PORT=4000
+PORT=4100                      # ESIGN_PORT_BASE + 0 (docs/architecture/backend.md)
 
 # Required when ESIGN_PROVIDER=docusign (server fails fast if missing)
 # DOCUSIGN_ACCOUNT_ID=your-account-id
@@ -89,8 +89,8 @@ PORT=4000
 ```bash
 cd examples/full-service-demo
 npm run dev
-# Server runs at http://localhost:4000
-# GraphQL Playground at http://localhost:4000/graphql
+# Server runs at http://localhost:4100
+# GraphQL Playground at http://localhost:4100/graphql
 ```
 
 ### Start Mobile (Metro)
@@ -386,7 +386,8 @@ npm run migrate
 | `CORS_ALLOWED_ORIGINS` | no | Comma-separated CORS allow-list |
 | `DOCUSIGN_HMAC_KEY` | Prod | Webhook HMAC validation secret. Unset: dev allows all webhooks (warns); production rejects all (fail-closed) |
 | `JWT_SECRET` | Prod | HS256 JWT verification secret. Unset: dev treats bearer token as userId; production treats requests as unauthenticated (fail-closed) |
-| `PORT` | No | Server port (default: 4000) |
+| `PORT` | No | Server port (default: `ESIGN_PORT_BASE` + 0 = 4100) |
+| `ESIGN_PORT_BASE` | No | The repo's base port (default 4100); every service is base + offset (`scripts/lib/ports.mjs`), so one variable moves a worktree |
 
 The `docusign` column means required when `ESIGN_PROVIDER=docusign` — the
 server refuses to start without them (fail-fast). For the full walkthrough

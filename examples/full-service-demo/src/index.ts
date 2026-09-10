@@ -10,10 +10,11 @@
 import 'dotenv/config';
 
 import { initTelemetry } from './instrumentation';
+import { resolvePort } from './port';
 
 initTelemetry();
 
-const PORT = Number(process.env.PORT) || 4000;
+const PORT = resolvePort();
 
 import('./server.js')
   .then(({ startServer }) => startServer(PORT))

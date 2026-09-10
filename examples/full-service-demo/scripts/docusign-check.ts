@@ -5,6 +5,7 @@
 import 'dotenv/config';
 
 import { consentUrl, createDocuSignClient } from '@blinkbitcoin/esign-server';
+import { localOrigin } from '../src/port';
 import { getConfig, validateConfig } from '../src/providers/docusign/config';
 
 const main = async (): Promise<void> => {
@@ -19,10 +20,7 @@ const main = async (): Promise<void> => {
     if (message.includes('consent_required') || message.includes('insufficient_scope')) {
       console.error('consent has not been granted for this integration key. Open, log in, accept:');
       console.error(
-        consentUrl(
-          config,
-          config.returnUrl?.replace(/\/signing\/return$/, '') ?? 'http://localhost:4000'
-        )
+        consentUrl(config, config.returnUrl?.replace(/\/signing\/return$/, '') ?? localOrigin())
       );
       process.exit(2);
     }

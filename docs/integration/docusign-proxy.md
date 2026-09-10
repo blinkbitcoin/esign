@@ -25,7 +25,7 @@ adapter works internally.
      openssl rsa -in examples/full-service-demo/.docusign.pem -pubout`
      (`*.pem` is gitignored). Generate RSA in the UI works too; save the PEM
      it shows once.
-   - Add any **redirect URI** (e.g. `http://localhost:4000`) - needed for the
+   - Add any **redirect URI** (e.g. `http://localhost:4100`) - needed for the
      consent step below, not used at runtime.
 3. **Grant one-time consent** for JWT impersonation (without it the token
    request fails with `consent_required`). Open in a browser, log in, accept:
@@ -112,7 +112,7 @@ deployment of this same route.
 The UI flow completes without webhooks, but the envelope row stays `sent`
 unless DocuSign Connect can reach the backend:
 
-1. Tunnel: `ngrok http 4000` (or `cloudflared tunnel --url http://localhost:4000`)
+1. Tunnel: `ngrok http 4100` (or `cloudflared tunnel --url http://localhost:4100`)
 2. DocuSign **Admin → Connect → Add Configuration**:
    - URL: `https://<tunnel-host>/webhook/esign`
    - **HMAC key**: must match `DOCUSIGN_HMAC_KEY` in `examples/full-service-demo/.env`

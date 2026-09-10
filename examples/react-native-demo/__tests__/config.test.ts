@@ -27,15 +27,17 @@ describe('config', () => {
   it('resolves the backend host per platform', () => {
     expect(getDevBackendHost('android')).toBe('10.0.2.2');
     expect(getDevBackendHost('ios')).toBe('localhost');
-    expect(GRAPHQL_URL).toBe('http://localhost:4000/graphql');
-    expect(WEBFORM_INSTANCE_URL).toBe('http://localhost:4000/webform/instance');
+    expect(GRAPHQL_URL).toBe('http://localhost:4100/graphql');
+    expect(WEBFORM_INSTANCE_URL).toBe('http://localhost:4100/webform/instance');
   });
 
-  it('resolves the backend port, defaulting to 4000', () => {
+  it('resolves the backend port: the override, else the base, else 4100', () => {
     expect(resolveBackendPort('4010')).toBe(4010);
-    expect(resolveBackendPort('')).toBe(4000);
-    expect(resolveBackendPort('abc')).toBe(4000);
-    expect(resolveBackendPort(undefined)).toBe(4000);
+    expect(resolveBackendPort('4010', '4300')).toBe(4010);
+    expect(resolveBackendPort(undefined, '4300')).toBe(4300);
+    expect(resolveBackendPort('', '')).toBe(4100);
+    expect(resolveBackendPort('abc', 'abc')).toBe(4100);
+    expect(resolveBackendPort(undefined)).toBe(4100);
   });
 
   it('resolves the prefill override: a JSON object or nothing', () => {
