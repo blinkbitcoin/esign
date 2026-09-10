@@ -37,6 +37,8 @@ describe('the port table', () => {
       liveMint: 4107,
       liveHandler: 4108,
       smoke: 4109,
+      service: 4110,
+      terms: 4111,
     });
   });
 
@@ -91,6 +93,8 @@ describe('envLines', () => {
       'export LIVE_MINT_PORT=4107',
       'export LIVE_HANDLER_PORT=4108',
       'export SMOKE_PORT=4109',
+      'export SERVICE_PORT=4110',
+      'export TERMS_PORT=4111',
     ]);
   });
 });

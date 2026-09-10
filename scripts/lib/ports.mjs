@@ -52,6 +52,16 @@ export const SERVICES = {
     env: 'SMOKE_PORT',
     what: 'the service image (make docker-smoke)',
   },
+  service: {
+    offset: 10,
+    env: 'SERVICE_PORT',
+    what: 'the esign-service in the server-demos smoke',
+  },
+  terms: {
+    offset: 11,
+    env: 'TERMS_PORT',
+    what: "the smoke's terms callback host",
+  },
 };
 
 /**

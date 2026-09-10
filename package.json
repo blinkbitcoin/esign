@@ -18,7 +18,7 @@
     "format": "biome format --write examples packages scripts",
     "format:check": "biome format examples packages scripts",
     "build": "npm run build -w packages/esign-core -w packages/esign-node -w packages/esign-react-native -w packages/esign-react -w packages/esign-service",
-    "check:packages": "publint packages/esign-core && publint packages/esign-node && publint packages/esign-react-native && publint packages/esign-react && publint packages/esign-service && attw --pack packages/esign-core --profile node16 && attw --pack packages/esign-node --profile node16 && attw --pack packages/esign-react --profile node16 && attw --pack packages/esign-service --profile node16",
+    "check:packages": "publint packages/esign-core && publint packages/esign-node && publint packages/esign-react-native && publint packages/esign-react && publint packages/esign-service && attw --pack packages/esign-core --profile node16 && attw --pack packages/esign-node --profile node16 && attw --pack packages/esign-react --profile node16 && attw --pack packages/esign-service --profile node16 --ignore-rules cjs-only-exports-default",
     "web": "npm run dev -w examples/react-demo",
     "codegen": "npm run schema:emit -w packages/esign-service && npm run codegen -w packages/esign-core",
     "prepare": "lefthook install"

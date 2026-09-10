@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // The process entry point: what the image runs, and what `npx esign-service`
 // runs. `node dist/node.js` serves; `node dist/node.js migrate` applies the
 // migrations and exits.

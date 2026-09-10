@@ -4,7 +4,7 @@
   "main": "./dist/index.js",
   "scripts": {
     "dev": "tsx watch src/node.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "start": "node dist/node.js",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -20,7 +20,8 @@
     "schema:emit": "tsx scripts/emit-schema.ts",
     "docusign:check": "tsx scripts/docusign-check.ts",
     "test:live:env": "vitest run --config vitest.live.config.mts",
-    "docusign:template": "tsx scripts/docusign-template.ts"
+    "docusign:template": "tsx scripts/docusign-template.ts",
+    "clean": "rm -rf dist"
   },
   "keywords": [],
   "author": "",
