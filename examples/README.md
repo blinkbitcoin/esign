@@ -22,6 +22,11 @@ package and its `ghcr.io/blinkbitcoin/esign-service` image, whose targets are
 its [Deploy table](../packages/esign-service/README.md#deploy). The two tiers
 side by side: [Backend options](../README.md#backend-options).
 
+No example carries its own flake: each is a workspace under the root, so
+direnv gives it the repo's pinned toolchain, and each models a consumer -
+who installs a published package under its `engines` range and never needs
+Nix.
+
 Proxy and webform modes need the backend running (`make db-up migrate
 backend` from the repo root); public-URL mode runs without it. `make help` here fans common targets (`test`, `coverage`,
 `typecheck`) out to every example; examples with a `Makefile` are discovered

@@ -147,7 +147,7 @@ make e2e-ios                # or: make e2e-android
 3. [Running the mint in production](operations/production.md#3-backend-developer) - what a backend owes the mint, in either tier
 
 ### "I deploy and operate" (DevOps engineer)
-1. [Deploy table](../packages/esign-service/README.md#deploy) - the copy-paste per target (container, Compose, Kubernetes, Vercel, Cloudflare, Lambda)
+1. [Deploy table](../packages/esign-service/README.md#deploy) - the copy-paste per target (container, Compose, Kubernetes, NixOS, Vercel, Cloudflare, Lambda)
 2. [Running the mint in production](operations/production.md#4-devops) - the environment, the private key per platform, the boot guard, health and shutdown
 3. [Live DocuSign E2E in CI](operations/live-e2e-ci.md) for the opt-in CI job
 

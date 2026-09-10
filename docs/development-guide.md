@@ -38,6 +38,14 @@ Without direnv/nix, any Node 22.22+ or 24.15+ plus a JDK 17 and Ruby 3.2+ works 
 the flake is the convenient, pinned path, not a hard requirement (CI uses
 plain setup-node).
 
+The examples and the deploy templates carry no flake of their own. They are
+workspaces under the root, so direnv finds the root `.envrc` from any
+subdirectory and they already have the pinned toolchain; and each one models
+a consumer, who installs a published package under the `engines` range and
+never needs Nix. An operator whose hosts are Nix-managed has a Nix path too,
+and it is a deploy target rather than a dev shell: the NixOS row of
+[the deploy table](../packages/esign-service/README.md#deploy).
+
 ### 2. iOS Setup (macOS only)
 
 ```bash

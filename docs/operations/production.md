@@ -77,6 +77,7 @@ webhook, Postgres store).
 | The host API is not Node, or must not hold<br>DocuSign credentials | B | the [deploy table](../../packages/esign-service/README.md#deploy) |
 | Envelope orchestration, webhooks or the<br>GraphQL API are wanted | B | a target with Postgres |
 | Only a mint, on an edge runtime | B | Cloudflare (mint only) |
+| The host is NixOS and the fleet is declared<br>in Nix | B | the [NixOS row](../../packages/esign-service/README.md#deploy),<br>template `packages/esign-service/deploy/nix/` |
 
 Tier A and Tier B mint the same instance and are indistinguishable to the
 app: the mobile side in section 5 is identical for both.
@@ -252,8 +253,8 @@ boot, so replacing the key material means rolling the deployment.
 
 Every target runs the same image or the same package, on the same
 environment contract, with the same `/health`. The table of targets - the
-image, Compose, Kubernetes, Cloud Run/Fly/Render/Railway, Lambda, Vercel,
-Cloudflare - and the exact command per row lives with the templates it
+image, Compose, Kubernetes, NixOS, Cloud Run/Fly/Render/Railway, Lambda,
+Vercel, Cloudflare - and the exact command per row lives with the templates it
 refers to:
 [`packages/esign-service/README.md#deploy`](../../packages/esign-service/README.md#deploy).
 The templates themselves are
@@ -320,6 +321,7 @@ The PEM has three sources, tried in this order:
 |---|---|---|
 | Docker / Compose | `DOCUSIGN_PRIVATE_KEY_FILE` | a Compose secret mounted read-only, e.g.<br>`/run/secrets/docusign_pem` |
 | Kubernetes | `DOCUSIGN_PRIVATE_KEY_FILE` | its own Secret,<br>`deploy/k8s/secret-docusign-pem.yaml`,<br>mounted at `/run/secrets/docusign.pem` |
+| NixOS | `DOCUSIGN_PRIVATE_KEY_FILE` | a secret from agenix / sops-nix, or a<br>root-owned file, mounted read-only into<br>the container by `deploy/nix/` |
 | Vercel, Cloudflare,<br>other PaaS | `DOCUSIGN_PRIVATE_KEY_BASE64` | one-line env value; there is no file to<br>mount, and `_FILE` is refused on edge |
 | Anything with<br>multi-line secrets | `DOCUSIGN_PRIVATE_KEY` | the PEM verbatim |
 
