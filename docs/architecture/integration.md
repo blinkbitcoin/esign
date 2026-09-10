@@ -9,7 +9,7 @@
 |------|------|------|------|
 | `library` | `packages/esign-react-native/`, `packages/esign-react/` | Publishable client libraries | The product: signing UI component + `useESignature` over `esign-core` |
 | `server` | `packages/esign-node/` | Publishable Node library | The product's server half: DocuSign client, `createWebFormInstance`, envelope domain over the provider + store ports, Fetch handlers, `/express`, `/knex` |
-| `service` | `packages/esign-service/` | Express + Apollo host | Reference host of the full shape: envelope orchestration, persistence, webhooks; the E2E backend |
+| `service` | `packages/esign-service/` | Fetch-native deployable | The full shape as one deployable: the mint always, plus envelope orchestration, persistence and webhooks when `DATABASE_URL` is set; the E2E backend |
 | `demo` | `examples/react-native-demo/`, `examples/react-demo/` | RN app, Vite app | Integration demos hosting the libraries (manual + Maestro / Playwright E2E) |
 
 [![System Architecture](../diagrams/dist/system-architecture.svg)](../diagrams/src/system-architecture.mmd)

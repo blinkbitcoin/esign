@@ -10,8 +10,8 @@ The five packages publish to **GitHub Packages** under the
 | `@blinkbitcoin/esign-react-native` | React Native apps |
 | `@blinkbitcoin/esign-react` | React web apps |
 | `@blinkbitcoin/esign-core` | (transitive dependency of both; also usable standalone) |
-| `@blinkbitcoin/esign-node` | Your Node backend, in one of three shapes: one mutation that mints locked<br>Web Forms instances (`mint-only-demo`), the Fetch handlers behind a route<br>(`serverless-handler-demo`) - both worked examples under `examples/` - or<br>the whole service with the `/express` router and `/knex` store<br>(`@blinkbitcoin/esign-service`) |
-| `@blinkbitcoin/esign-service` | The whole service (Express router, Apollo, Postgres store, webhooks) as a<br>standalone deployable or `npm i` dependency; also ships as the<br>`ghcr.io/blinkbitcoin/esign-service` image |
+| `@blinkbitcoin/esign-node` | Your Node backend, in one of three shapes: one mutation that mints locked<br>Web Forms instances (`mint-only-demo`), the Fetch handlers behind a route<br>(`serverless-handler-demo`) - both worked examples under `examples/` - or<br>the whole service, deployed as `@blinkbitcoin/esign-service` |
+| `@blinkbitcoin/esign-service` | The whole service as one deployable: the mint always, plus the GraphQL<br>API, the webhook and the Postgres store when `DATABASE_URL` is set.<br>Entries for Node, Vercel and Cloudflare; also the<br>`ghcr.io/blinkbitcoin/esign-service` image |
 
 Publishing has two channels (both gated on the full test fleet - unit
 coverage thresholds + every E2E suite: backend, browser, Android, iOS - and the service image smoke):

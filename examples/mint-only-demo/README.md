@@ -25,7 +25,7 @@ app opens url in <ESignature source={createWebFormsSource({ mint: ... })}>
 - `src/mint.ts` - `hostedFormMint(hostedFormProviderFromEnv(env))`, the
   package's own preset: `ESIGN_PROVIDER=mock` swaps in the mock provider so
   the mutation runs with no DocuSign account (the URL points at the
-  full-service demo's mock Web Forms page); with `docusign` it requires the
+  service's mock Web Forms page); with `docusign` it requires the
   JWT grant plus `DOCUSIGN_WEBFORM_ID`/`DOCUSIGN_RETURN_URL` at boot, not on
   the first mutation.
 - `src/schema.ts`, `src/server.ts` - stand-ins for what the host already has:
@@ -99,3 +99,10 @@ straight into an existing API) rather than running this example's image.
 package's Fetch handlers in a route handler or edge function;
 [`@blinkbitcoin/esign-service`](../../packages/esign-service/README.md) runs
 the whole service.
+
+This example is an illustration, not a deployment. For the production shape
+of the same mint - session verification from JWKS or a shared secret, locked
+terms through a `TERMS_URL` callback, a boot guard, rate limits and a
+container, Kubernetes, Vercel or Cloudflare template - deploy the service
+package: its capabilities follow the environment, so it serves this same
+mint alone when `DATABASE_URL` is unset.

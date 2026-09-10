@@ -139,7 +139,7 @@ esign/
 │       │   └── index.ts           # Bootstrap (PORT, default ESIGN_PORT_BASE + 5 = 4105)
 │       └── tests/                 # Vitest, 100% enforced
 │
-├── 📦 PACKAGE - the whole service, published (Express + Apollo + Postgres)
+├── 📦 PACKAGE - the whole service, published (Fetch core; mint always, envelopes with DATABASE_URL)
 │   │
 │   └── packages/esign-service/
 │       ├── package.json           # Backend dependencies
@@ -154,7 +154,7 @@ esign/
 │       ├── src/
 │       │   ├── index.ts           # Bootstrap (dotenv + startServer)
 │       │   ├── server.ts          # startServer(port) - testable ⭐
-│       │   ├── app.ts             # Express + Apollo; mounts the package's router ⭐
+│       │   ├── app.ts             # The Fetch core (createESignApp): capabilities → routes ⭐
 │       │   ├── schema.ts          # createESignGraphQL over the envelope service ⭐
 │       │   ├── typeDefs.ts        # Re-exports the package SDL (schema.graphql source)
 │       │   ├── services.ts        # Composition: createEnvelopeService(provider, store) ⭐

@@ -15,7 +15,7 @@ demos and two server shapes, used for manual testing and every E2E suite.
 | `@blinkbitcoin/esign-node` | `packages/esign-node/` | Node-only server half: DocuSign client (JWT grant, envelopes, Web Forms) + `createWebFormInstance` (the one call for locked prefill) + the envelope domain (`createEnvelopeService` over the `ESignProvider` and `EnvelopeStore` ports); the backend is built on it, hosts with their own backend import it |
 | `@blinkbitcoin/esign-react-native` | `packages/esign-react-native/` | Publishable RN library: `ESignature` component (WebView) over core |
 | `@blinkbitcoin/esign-react` | `packages/esign-react/` | Publishable React **web** library: `ESignature` (iframe) + DocuSign.js source over core |
-| `@blinkbitcoin/esign-service` | `packages/esign-service/` | The whole service on the Node package: Express router + Apollo + Knex/PostgreSQL + webhooks; the backend every E2E suite runs against, ships as the `esign-service` image |
+| `@blinkbitcoin/esign-service` | `packages/esign-service/` | The whole service on the Node package as ONE deployable: a Fetch core that always mints and adds the GraphQL API, the webhook and the Knex/PostgreSQL store when `DATABASE_URL` is set; entries for Node (`./node`, also the image), Vercel and Cloudflare; the backend every E2E suite runs against, ships as the `esign-service` image |
 | `esign-react-native-example` | `examples/react-native-demo/` | RN 0.86 demo app hosting the RN library (Maestro E2E target) |
 | `esign-react-example` | `examples/react-demo/` | Vite web demo hosting the web library (`make web`) |
 | `esign-mint-only-example` | `examples/mint-only-demo/` | An existing GraphQL API adds one mutation that mints a locked Web Forms instance (the Blink API shape) |
@@ -112,10 +112,16 @@ npm run migrate:test         # Same against the .env.test database
   (the SDL lives in `packages/esign-node/src/graphql.ts`, re-exported by
   `src/typeDefs.ts`). After schema changes run `make codegen`;
   drift fails backend tests, client parity tests, and a CI step.
-- Security is fail-closed by default: `validateSecurityConfig` (`src/config.ts`)
-  refuses to boot without `JWT_SECRET` (and `DOCUSIGN_HMAC_KEY` when
-  `ESIGN_PROVIDER=docusign`) unless `ALLOW_INSECURE_DEV=true` is explicitly set.
-  This is NOT gated on `NODE_ENV`. Missing DocuSign provider config also throws
+- Capabilities come from the environment (`src/capabilities.ts`): the mint is
+  always on, `DATABASE_URL` adds envelope orchestration. `GET /health` reports
+  which; the envelope half is behind a dynamic import so a mint-only
+  deployment never loads Apollo or `pg`.
+- Security is fail-closed by default: `validateConfig` (`src/config.ts`, pure)
+  refuses to boot without a session source (`SESSION_JWKS_URL` or
+  `SESSION_HS256_SECRET`, `JWT_SECRET` an alias), without the settings a mint
+  needs, and without `DOCUSIGN_HMAC_KEY` when envelopes are on - unless
+  `ALLOW_INSECURE_DEV=true` is explicitly set. This is NOT gated on `NODE_ENV`
+  (`ESIGN_ENV=production` is the production switch). Missing DocuSign provider config also throws
   at boot. The webhook handler enforces a terminal-state machine (no
   transitions out of completed/voided/declined) to block replay-downgrades.
 

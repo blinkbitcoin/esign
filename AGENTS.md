@@ -22,7 +22,7 @@ libraries, and one demo app per platform for manual and E2E testing.
 │   ├── esign-node/              # 📦 server side: DocuSign client, createWebFormInstance, envelope domain over provider + store ports
 │   ├── esign-react-native/      # 📦 THE PRODUCT - RN (`ESignature` + `useESignature` over a WebView)
 │   ├── esign-react/             # 📦 THE PRODUCT - web (`ESignature` + `useESignature` over an iframe)
-│   └── esign-service/           # 📦 server shape 1: the whole service (Express 5 + Apollo 5 + Knex/Postgres), the E2E backend, the esign-service image
+│   └── esign-service/           # 📦 server shape 1: the whole service as one deployable (Fetch core; mint always, envelopes with DATABASE_URL), the E2E backend, the esign-service image
 ├── examples/
 │   ├── react-native-demo/       # 📱 RN integration demo (Maestro E2E)
 │   ├── react-demo/              # 🌐 Web integration demo (Vite, Playwright E2E)
