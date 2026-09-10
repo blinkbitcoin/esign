@@ -26,8 +26,14 @@ export {
 export type { ESignGraphQLOptions, GraphQLContext } from './graphql';
 export { createESignGraphQL, typeDefs } from './graphql';
 export type {
+  HostedFormApp,
+  HostedFormAppCors,
+  HostedFormAppOptions,
+  HostedFormAppPrefillInput,
   HostedFormHandlerOptions,
   HostedFormInstanceHandlerOptions,
+  HostedFormPrefillHook,
+  HostedFormPrefillInput,
   HttpResult,
   MintFn,
   MintHttpInput,
@@ -40,6 +46,7 @@ export type {
 } from './handlers';
 // --- Wire layer pieces that need no framework --------------------------------
 export {
+  createHostedFormApp,
   createHostedFormInstanceHandler,
   createWebFormInstanceHandler,
   createWebhookHandler,
@@ -90,19 +97,26 @@ export type {
 export { createDocuSignClient } from './providers/docusign/client';
 export type {
   DocuSignConfig,
+  DocuSignConfigFromEnvOptions,
   DocuSignConfigKey,
   Env,
+  ReadFile,
 } from './providers/docusign/config';
 export {
   assertDocuSignConfig,
   consentUrl,
   DOCUSIGN_DEMO_URLS,
   DOCUSIGN_ENV,
+  DOCUSIGN_PRIVATE_KEY_SOURCES,
   DOCUSIGN_SCOPES,
   DocuSignConfigError,
   docuSignConfigFromEnv,
+  docuSignDemoHostsInUse,
+  HOSTED_FORM_SETTINGS,
+  isDocuSignDemoHost,
   JWT_CREDENTIALS,
   missingDocuSignConfig,
+  privateKeyFromEnv,
 } from './providers/docusign/config';
 export type { DocuSignMintTarget } from './providers/docusign/handlers';
 export { mintFromDocuSign } from './providers/docusign/handlers';
@@ -148,14 +162,25 @@ export type {
   MockProviderOptions,
 } from './providers/mock/provider';
 export { createMockProvider } from './providers/mock/provider';
+// --- Production boot guard ---------------------------------------------------
+export type { ProductionConfig } from './production';
+export {
+  assertProductionConfig,
+  ESIGN_ALLOW_DEMO,
+  ESIGN_ENV,
+  ProductionConfigError,
+  productionErrors,
+} from './production';
 export type {
   DefaultRegistryOptions,
+  HostedFormProviderOptions,
   ProviderFromEnvOptions,
   ProviderRegistry,
 } from './registry';
 export {
   defaultRegistry,
   ESIGN_PROVIDER_ENV,
+  hostedFormProviderFromEnv,
   providerFromEnv,
 } from './registry';
 export {

@@ -5,7 +5,7 @@
 // `*Http` functions and is shared with the Express router.
 
 import type { EnvelopeService } from './envelopes';
-import { getErrorCode } from './errors';
+import { ErrorCodes, getErrorCode } from './errors';
 import { consoleLogger, type Logger } from './log';
 import {
   type ESignProvider,
@@ -16,7 +16,9 @@ import {
   type DocuSignMintTarget,
   mintFromDocuSign,
 } from './providers/docusign/handlers';
+import { renderSigningReturnBridge } from './providers/docusign/bridge';
 import { parseWebFormPrefill } from './providers/docusign/prefill';
+import { signingPageResponse } from './signingPage';
 import type { HostedFormPrefill, WebhookHeaders } from './types';
 
 // An HTTP outcome, independent of the framework that sends it
@@ -56,7 +58,12 @@ export interface MintHttpInput {
 // POST /webform/instance semantics: 401 unauthenticated, 400 when hosted
 // forms are unsupported or the prefill is outside the contract (with the
 // reason, before any provider call), 502 when minting fails, else 200 + the
-// instance
+// instance. A `prefill` hook (mintWithPrefillHook) runs inside the same
+// `mint` call this awaits, so a host rejecting the caller's own prefill
+// (units out of range, say) throws `Errors.validationError(message)` /
+// `Errors.unauthorized()` here too - those two coded errors map to 400 /
+// 401 with the thrown message, same as the provider's own contract; any
+// other error (a provider/network failure) still falls through to 502.
 export const mintWebFormInstanceHttp = async (
   input: MintHttpInput,
 ): Promise<HttpResult> => {
@@ -82,10 +89,53 @@ export const mintWebFormInstanceHttp = async (
       body: await input.mint(input.userId, parsed.prefill),
     };
   } catch (error) {
-    logger.error('Web Forms instance creation failed:', getErrorCode(error));
+    const code = getErrorCode(error);
+    if (code === ErrorCodes.VALIDATION_ERROR) {
+      return {
+        status: 400,
+        body: { error: error instanceof Error ? error.message : code },
+      };
+    }
+    if (code === ErrorCodes.UNAUTHORIZED) {
+      return { status: 401, body: { error: 'Unauthorized' } };
+    }
+    logger.error('Web Forms instance creation failed:', code);
     return { status: 502, body: { error: 'Could not create signing session' } };
   }
 };
+
+// --- The host's prefill hook -------------------------------------------------
+
+// What the hook is told: who is minting, and the prefill that caller sent -
+// already validated, never trusted for read-only fields. Each preset adds
+// its own request object (`req` on Express, `request` on Fetch).
+export interface HostedFormPrefillInput {
+  userId: string;
+  prefill: HostedFormPrefill;
+}
+
+// The host's chance to compute the terms it locks from its own data: it
+// returns the prefill that is actually minted. To reject the request
+// instead (the caller's own input is out of range, say), throw
+// `Errors.validationError(message)` - mintWebFormInstanceHttp maps it to
+// `400 { error: message }` (or `Errors.unauthorized()` for `401`); any
+// other thrown error still falls through to the generic `502`.
+export type HostedFormPrefillHook<TInput extends HostedFormPrefillInput> = (
+  input: TInput,
+) => HostedFormPrefill | Promise<HostedFormPrefill>;
+
+// The mint a preset hands to mintWebFormInstanceHttp: the same mint, with
+// the host's hook (if any) between the validated prefill and the provider.
+// Unsupported stays unsupported (undefined → the 400 contract).
+export const mintWithPrefillHook = <TExtra extends object>(
+  mint: MintFn | undefined,
+  hook: HostedFormPrefillHook<HostedFormPrefillInput & TExtra> | undefined,
+  extra: TExtra,
+): MintFn | undefined =>
+  mint && hook
+    ? async (userId, prefill) =>
+        mint(userId, await hook({ userId, prefill, ...extra }))
+    : mint;
 
 // --- Webhook -----------------------------------------------------------------
 
@@ -239,4 +289,137 @@ export const createWebhookHandler = (
         logger: options.logger,
       }),
     );
+};
+
+// --- The hosted-form app (a whole Fetch surface, not one handler) ------------
+
+// What the Fetch preset's prefill hook is told: the caller, the prefill that
+// caller sent (validated), and the Fetch Request behind it
+export interface HostedFormAppPrefillInput extends HostedFormPrefillInput {
+  request: Request;
+}
+
+export interface HostedFormAppCors {
+  // The origins allowed to call the mint endpoint from a browser; '*'
+  // allows any
+  origins: string[];
+}
+
+export type HostedFormAppOptions = MintTarget & {
+  // The host's authentication: the caller's user id, or null (→ 401)
+  authenticate: (request: Request) => string | null | Promise<string | null>;
+  // The host's chance to compute the terms it locks from its own data: it
+  // receives the caller's validated prefill and returns the prefill that is
+  // actually minted. Client values are input, never trusted for read-only
+  // fields.
+  prefill?: HostedFormPrefillHook<HostedFormAppPrefillInput>;
+  // Where the mint endpoint lives (default /webform/instance)
+  path?: string;
+  // Serve GET /health (default true)
+  health?: boolean;
+  // Answer the CORS preflight and mark the mint response (default: no CORS)
+  cors?: HostedFormAppCors;
+  // The provider's prefill validation (default: DocuSign's)
+  parsePrefill?: PrefillParser;
+  logger?: Logger;
+};
+
+// A whole HTTP surface behind one Fetch entry point - what a Vercel route,
+// a Worker or a Node server exports
+export interface HostedFormApp {
+  fetch: (request: Request) => Promise<Response>;
+}
+
+const MINT_PATH = '/webform/instance';
+const RETURN_PATH = '/signing/return';
+const HEALTH_PATH = '/health';
+
+// The CORS response headers for this request: the allowed origin echoed
+// back (or '*'), nothing but the Vary for an origin the host did not allow.
+// Every answer a configured CORS policy produces varies on Origin, so a
+// shared cache cannot serve the header-less one to an allowed origin.
+const corsHeaders = (
+  cors: HostedFormAppCors | undefined,
+  request: Request,
+): Record<string, string> => {
+  if (!cors) {
+    return {};
+  }
+  const vary = { vary: 'origin' };
+  const origin = request.headers.get('origin');
+  if (!origin) {
+    return vary;
+  }
+  if (cors.origins.includes('*')) {
+    return { ...vary, 'access-control-allow-origin': '*' };
+  }
+  return cors.origins.includes(origin)
+    ? { ...vary, 'access-control-allow-origin': origin }
+    : vary;
+};
+
+const withHeaders = (response: Response, headers: Record<string, string>) => {
+  for (const [key, value] of Object.entries(headers)) {
+    response.headers.set(key, value);
+  }
+  return response;
+};
+
+// The mint endpoint's own surface: POST {path} to mint, the return-URL
+// bridge the instance comes back to, a health check, and the CORS preflight
+// when the host configured origins. Everything else is 404. The Express
+// preset (createHostedFormRouter) mounts the same endpoints and shares this
+// one's decisions: both go through mintWebFormInstanceHttp and the same
+// prefill hook.
+export const createHostedFormApp = (
+  options: HostedFormAppOptions,
+): HostedFormApp => {
+  const path = options.path ?? MINT_PATH;
+  const health = options.health ?? true;
+  const mint = mintFor(options);
+
+  return {
+    fetch: async request => {
+      const { pathname, searchParams } = new URL(request.url);
+      const cors = corsHeaders(options.cors, request);
+
+      if (options.cors && request.method === 'OPTIONS' && pathname === path) {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            ...cors,
+            'access-control-allow-methods': 'POST, OPTIONS',
+            'access-control-allow-headers': 'authorization, content-type',
+            'access-control-max-age': '86400',
+          },
+        });
+      }
+
+      if (request.method === 'POST' && pathname === path) {
+        const handler = createHostedFormInstanceHandler({
+          mint: mintWithPrefillHook(mint, options.prefill, { request }),
+          authenticate: options.authenticate,
+          parsePrefill: options.parsePrefill,
+          logger: options.logger,
+        });
+        return withHeaders(await handler(request), cors);
+      }
+
+      if (request.method === 'GET' && pathname === RETURN_PATH) {
+        const event = searchParams.get('event') ?? undefined;
+        return signingPageResponse(nonce =>
+          renderSigningReturnBridge(event, nonce),
+        );
+      }
+
+      if (health && request.method === 'GET' && pathname === HEALTH_PATH) {
+        return json({
+          status: 200,
+          body: { status: 'ok', timestamp: new Date().toISOString() },
+        });
+      }
+
+      return json({ status: 404, body: { error: 'Not found' } });
+    },
+  };
 };

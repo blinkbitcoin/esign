@@ -3,7 +3,10 @@
 // with the Express router is exercised through them.
 
 import { createEnvelopeService } from '../envelopes';
+import { Errors } from '../errors';
 import {
+  createHostedFormApp,
+  type HostedFormAppPrefillInput,
   createHostedFormInstanceHandler,
   createWebFormInstanceHandler,
   createWebhookHandler,
@@ -212,6 +215,61 @@ describe('createHostedFormInstanceHandler', () => {
   });
 });
 
+describe("mintWebFormInstanceHttp: a thrown coded error from the mint (typically the prefill hook rejecting the caller's own input)", () => {
+  const call = (mint: () => Promise<never>) =>
+    mintWebFormInstanceHttp({
+      userId: 'u',
+      body: {},
+      mint,
+      logger: silent,
+    });
+
+  it('maps Errors.validationError to 400 with the thrown message', async () => {
+    const response = await call(async () => {
+      throw Errors.validationError(
+        'units must be an integer between 1 and 10000',
+      );
+    });
+    expect(response).toEqual({
+      status: 400,
+      body: { error: 'units must be an integer between 1 and 10000' },
+    });
+  });
+
+  it('maps a coded-but-non-Error validation rejection to 400 with the code as a fallback message', async () => {
+    // A coded rejection that is not an Error instance - getErrorCode's own
+    // contract allows a plain object with `extensions.code` or `code`.
+    const response = await call(() =>
+      Promise.reject({ extensions: { code: 'VALIDATION_ERROR' } }),
+    );
+    expect(response).toEqual({
+      status: 400,
+      body: { error: 'VALIDATION_ERROR' },
+    });
+  });
+
+  it('maps Errors.unauthorized to 401', async () => {
+    const response = await call(async () => {
+      throw Errors.unauthorized();
+    });
+    expect(response).toEqual({ status: 401, body: { error: 'Unauthorized' } });
+  });
+
+  it('still answers 502 for any other thrown error (a provider/network failure)', async () => {
+    const response = await call(async () => {
+      throw new Error('boom');
+    });
+    expect(response).toEqual({
+      status: 502,
+      body: { error: 'Could not create signing session' },
+    });
+    expect(silent.error).toHaveBeenCalledWith(
+      'Web Forms instance creation failed:',
+      'UNKNOWN_ERROR',
+    );
+  });
+});
+
 describe('createWebhookHandler', () => {
   const setup = () => {
     const store = createMemoryEnvelopeStore();
@@ -308,5 +366,275 @@ describe('the shared decision functions default to the console logger', () => {
     );
     expect(errorSpy).toHaveBeenCalledWith('Webhook processing error:', 'weird');
     errorSpy.mockRestore();
+  });
+});
+
+describe('createHostedFormApp', () => {
+  const app = (overrides: Record<string, unknown> = {}) => {
+    const p = provider();
+    const target = 'mint' in overrides ? {} : { provider: p };
+    const { fetch } = createHostedFormApp({
+      ...target,
+      authenticate: (request: Request) =>
+        request.headers.get('authorization') === 'Bearer user-1'
+          ? 'user-1'
+          : null,
+      logger: silent,
+      ...overrides,
+    } as Parameters<typeof createHostedFormApp>[0]);
+    return { fetch, p };
+  };
+
+  const get = (url: string, headers: Record<string, string> = {}) =>
+    new Request(url, { headers });
+
+  it('mints at /webform/instance for an authenticated caller', async () => {
+    const { fetch, p } = app();
+    const response = await fetch(
+      post(
+        'https://api.example.com/webform/instance',
+        JSON.stringify({ prefill: { units: 1000 } }),
+        { authorization: 'Bearer user-1' },
+      ),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      url: 'https://f#instanceToken=T',
+      instanceId: 'i-1',
+    });
+    expect(p.createWebFormInstance).toHaveBeenCalledWith('user-1', {
+      units: 1000,
+    });
+  });
+
+  it('answers 401 unauthenticated, 400 for a bad prefill and 502 when the mint fails', async () => {
+    const { fetch, p } = app();
+    expect((await fetch(post('https://x/webform/instance'))).status).toBe(401);
+    expect(p.createWebFormInstance).not.toHaveBeenCalled();
+
+    const bad = await fetch(
+      post(
+        'https://x/webform/instance',
+        JSON.stringify({ prefill: { units: true } }),
+        {
+          authorization: 'Bearer user-1',
+        },
+      ),
+    );
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toEqual({
+      error: 'Invalid prefill: unsupported value for field "units"',
+    });
+
+    const failing = createHostedFormApp({
+      provider: provider({
+        createWebFormInstance: jest
+          .fn()
+          .mockRejectedValue({ extensions: { code: 'PROVIDER_UNAVAILABLE' } }),
+      }),
+      authenticate: () => 'u',
+      logger: silent,
+    });
+    const failed = await failing.fetch(post('https://x/webform/instance'));
+    expect(failed.status).toBe(502);
+    expect(await failed.json()).toEqual({
+      error: 'Could not create signing session',
+    });
+  });
+
+  it('mints through a { mint } target and answers 400 without one', async () => {
+    const mint = jest.fn().mockResolvedValue({ url: 'https://h/1' });
+    const { fetch } = app({ mint });
+    const response = await fetch(
+      post(
+        'https://x/webform/instance',
+        JSON.stringify({ prefill: { units: 1 } }),
+        {
+          authorization: 'Bearer user-1',
+        },
+      ),
+    );
+    expect(response.status).toBe(200);
+    expect(mint).toHaveBeenCalledWith('user-1', { units: 1 });
+
+    const { fetch: unsupported } = app({ mint: undefined });
+    const refused = await unsupported(
+      post('https://x/webform/instance', undefined, {
+        authorization: 'Bearer user-1',
+      }),
+    );
+    expect(refused.status).toBe(400);
+  });
+
+  it('mints the prefill the host computes from the request, not the one the client sent', async () => {
+    const prefill = jest.fn(
+      ({ userId, prefill: sent, request }: HostedFormAppPrefillInput) => ({
+        ...sent,
+        units: userId === 'user-1' ? 1000 : 0,
+        source: new URL(request.url).host,
+      }),
+    );
+    const { fetch, p } = app({ prefill });
+    const response = await fetch(
+      post(
+        'https://api.example.com/webform/instance',
+        JSON.stringify({ prefill: { units: 1, name: 'Jane' } }),
+        { authorization: 'Bearer user-1' },
+      ),
+    );
+    expect(response.status).toBe(200);
+    expect(p.createWebFormInstance).toHaveBeenCalledWith('user-1', {
+      units: 1000,
+      name: 'Jane',
+      source: 'api.example.com',
+    });
+  });
+
+  it("answers 400 with the message when the prefill hook rejects the caller's own input", async () => {
+    const prefill = jest.fn(() => {
+      throw Errors.validationError(
+        'units must be an integer between 1 and 10000',
+      );
+    });
+    const { fetch, p } = app({ prefill });
+    const response = await fetch(
+      post(
+        'https://x/webform/instance',
+        JSON.stringify({ prefill: { units: '999999' } }),
+        { authorization: 'Bearer user-1' },
+      ),
+    );
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: 'units must be an integer between 1 and 10000',
+    });
+    expect(p.createWebFormInstance).not.toHaveBeenCalled();
+  });
+
+  it('takes a custom mint path and the host prefill contract', async () => {
+    const parsePrefill = jest.fn(() => ({
+      ok: false as const,
+      error: 'host says no',
+    }));
+    const { fetch } = app({ path: '/mint', parsePrefill });
+    expect(
+      (
+        await fetch(
+          post('https://x/webform/instance', undefined, {
+            authorization: 'Bearer user-1',
+          }),
+        )
+      ).status,
+    ).toBe(404);
+    const refused = await fetch(
+      post('https://x/mint', undefined, { authorization: 'Bearer user-1' }),
+    );
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({
+      error: 'Invalid prefill: host says no',
+    });
+  });
+
+  it('serves the return bridge under the nonce CSP and a health check', async () => {
+    const { fetch } = app();
+    const bridge = await fetch(get('https://x/signing/return?event=cancel'));
+    expect(bridge.status).toBe(200);
+    expect(bridge.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    const nonce = /script-src 'nonce-([^']+)'/.exec(
+      bridge.headers.get('content-security-policy') ?? '',
+    )?.[1];
+    expect(nonce).toBeTruthy();
+    expect(await bridge.text()).toContain('postSigningEvent("cancel")');
+
+    const missingEvent = await fetch(get('https://x/signing/return'));
+    expect(await missingEvent.text()).toContain(
+      'postSigningEvent("exception")',
+    );
+
+    const health = await fetch(get('https://x/health'));
+    expect(health.status).toBe(200);
+    expect(await health.json()).toEqual({
+      status: 'ok',
+      timestamp: expect.any(String),
+    });
+  });
+
+  it('leaves the health check out when health is false, and 404s everything else', async () => {
+    const { fetch } = app({ health: false });
+    expect((await fetch(get('https://x/health'))).status).toBe(404);
+    expect((await fetch(post('https://x/webhook/esign', '{}'))).status).toBe(
+      404,
+    );
+    expect((await fetch(get('https://x/nope'))).status).toBe(404);
+    const notFound = await fetch(get('https://x/nope'));
+    expect(await notFound.json()).toEqual({ error: 'Not found' });
+    // Without cors, a preflight is not a route either
+    expect(
+      (
+        await fetch(
+          new Request('https://x/webform/instance', { method: 'OPTIONS' }),
+        )
+      ).status,
+    ).toBe(404);
+  });
+
+  it('answers the preflight and echoes the allowed origin, ignoring others', async () => {
+    const { fetch } = app({ cors: { origins: ['https://app.example.com'] } });
+    const preflight = await fetch(
+      new Request('https://x/webform/instance', {
+        method: 'OPTIONS',
+        headers: { origin: 'https://app.example.com' },
+      }),
+    );
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get('access-control-allow-origin')).toBe(
+      'https://app.example.com',
+    );
+    expect(preflight.headers.get('access-control-allow-methods')).toContain(
+      'POST',
+    );
+    expect(preflight.headers.get('access-control-allow-headers')).toContain(
+      'authorization',
+    );
+
+    const minted = await fetch(
+      post('https://x/webform/instance', undefined, {
+        authorization: 'Bearer user-1',
+        origin: 'https://app.example.com',
+      }),
+    );
+    expect(minted.headers.get('access-control-allow-origin')).toBe(
+      'https://app.example.com',
+    );
+
+    const other = await fetch(
+      new Request('https://x/webform/instance', {
+        method: 'OPTIONS',
+        headers: { origin: 'https://evil.example.com' },
+      }),
+    );
+    expect(other.status).toBe(204);
+    expect(other.headers.get('access-control-allow-origin')).toBeNull();
+    // A shared cache must not serve the header-less answer to an allowed
+    // origin, so the response varies on Origin either way
+    expect(other.headers.get('vary')).toBe('origin');
+    expect(preflight.headers.get('vary')).toBe('origin');
+
+    const noOrigin = await fetch(
+      new Request('https://x/webform/instance', { method: 'OPTIONS' }),
+    );
+    expect(noOrigin.headers.get('access-control-allow-origin')).toBeNull();
+  });
+
+  it('allows every origin with a wildcard', async () => {
+    const { fetch } = app({ cors: { origins: ['*'] } });
+    const preflight = await fetch(
+      new Request('https://x/webform/instance', {
+        method: 'OPTIONS',
+        headers: { origin: 'https://anywhere.example.com' },
+      }),
+    );
+    expect(preflight.headers.get('access-control-allow-origin')).toBe('*');
+    expect(preflight.headers.get('vary')).toBe('origin');
   });
 });

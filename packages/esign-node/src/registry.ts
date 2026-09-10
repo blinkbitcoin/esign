@@ -4,8 +4,22 @@
 // Every host in this repo selects its provider this way; a host with its own
 // adapter adds an entry.
 
-import type { ESignProvider } from './provider';
-import { docuSignConfigFromEnv, type Env } from './providers/docusign/config';
+import { assertProductionConfig } from './production';
+import {
+  type ESignProvider,
+  type HostedFormProvider,
+  supportsHostedForms,
+} from './provider';
+import {
+  assertDocuSignConfig,
+  type DocuSignConfig,
+  type DocuSignConfigKey,
+  docuSignConfigFromEnv,
+  docuSignDemoHostsInUse,
+  type Env,
+  HOSTED_FORM_SETTINGS,
+  type ReadFile,
+} from './providers/docusign/config';
 import type { DocuSignWebhookOptions } from './providers/docusign/provider';
 import { createDocuSignProvider } from './providers/docusign/provider';
 import { createMockProvider } from './providers/mock/provider';
@@ -56,6 +70,15 @@ export interface DefaultRegistryOptions {
   // Default: MOCK_PAGES_ORIGIN, else http://localhost:4100 (the
   // service's default port; a dev-only fallback).
   mockBaseUrl?: () => string;
+  docusign?: {
+    // The settings that must be present when the DocuSign entry is selected
+    // (default: none - the adapter validates per operation). A host that
+    // mints hosted forms passes HOSTED_FORM_SETTINGS to fail at boot
+    // instead of on the first mutation.
+    required?: readonly DocuSignConfigKey[];
+    // How DOCUSIGN_PRIVATE_KEY_FILE is read (default: node:fs)
+    readFile?: ReadFile;
+  };
 }
 
 // The two adapters this package ships, configured from `env`:
@@ -65,24 +88,85 @@ export const defaultRegistry = (
   env: Env,
   options: DefaultRegistryOptions = {},
 ): ProviderRegistry => {
-  const docusign = () =>
+  const configFromEnv = () =>
+    docuSignConfigFromEnv(env, { readFile: options.docusign?.readFile });
+
+  // The adapter itself, with no boot checks: what the mock mirrors webhook
+  // verification with (it needs no DOCUSIGN_* values, and must never be
+  // refused because the DocuSign settings are absent or demo)
+  const docusignAdapter = (config: DocuSignConfig | (() => DocuSignConfig)) =>
     createDocuSignProvider({
-      // A getter: the client (and its token cache) is built on first use,
-      // so a selected mock never reads the credentials
-      config: () => docuSignConfigFromEnv(env),
+      config,
       webhook: {
         hmacKey: () => env.DOCUSIGN_HMAC_KEY,
         ...options.webhook,
       },
     });
+
   return {
-    docusign,
-    mock: () =>
-      createMockProvider({
+    // Selecting DocuSign is a boot check: the settings the host declared
+    // required must be present, and production must not be on demo hosts.
+    // The configuration is read once - a _FILE key is not re-read per call.
+    docusign: () => {
+      const config = configFromEnv();
+      assertDocuSignConfig(config, options.docusign?.required ?? []);
+      assertProductionConfig(env, {
+        provider: 'docusign',
+        demoHosts: docuSignDemoHostsInUse(config),
+      });
+      return docusignAdapter(config);
+    },
+    mock: () => {
+      assertProductionConfig(env, { provider: 'mock', demo: true });
+      return createMockProvider({
         baseUrl:
           options.mockBaseUrl ??
           (() => env.MOCK_PAGES_ORIGIN || 'http://localhost:4100'),
-        webhook: docusign(),
-      }),
+        // A getter: the mirror is built on first use, so a selected mock
+        // never reads the credentials
+        webhook: docusignAdapter(configFromEnv),
+      });
+    },
   };
+};
+
+export interface HostedFormProviderOptions
+  extends DefaultRegistryOptions,
+    ProviderFromEnvOptions {
+  // The registry to select from (default: defaultRegistry(env, options))
+  registry?: ProviderRegistry;
+}
+
+// The provider a hosted-form host mints with: ESIGN_PROVIDER over the
+// default registry, DocuSign unless set, with everything a mint needs
+// required at selection time. Throws when the settings are missing
+// (DocuSignConfigError), when production is on demo settings
+// (ProductionConfigError), or when the selected provider has no hosted-form
+// capability at all - all three at boot, never on the first request.
+export const hostedFormProviderFromEnv = (
+  env: Env,
+  options: HostedFormProviderOptions = {},
+): HostedFormProvider => {
+  const {
+    registry,
+    default: fallback,
+    onUnknown,
+    ...registryOptions
+  } = options;
+  const provider = providerFromEnv(
+    env,
+    registry ??
+      defaultRegistry(env, {
+        ...registryOptions,
+        docusign: {
+          ...registryOptions.docusign,
+          required: registryOptions.docusign?.required ?? HOSTED_FORM_SETTINGS,
+        },
+      }),
+    { default: fallback ?? 'docusign', onUnknown },
+  );
+  if (!supportsHostedForms(provider)) {
+    throw new Error('The selected provider cannot mint hosted forms');
+  }
+  return provider;
 };

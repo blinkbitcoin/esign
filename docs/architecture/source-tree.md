@@ -33,15 +33,16 @@ esign/
 │   └── packages/esign-node/
 │       ├── src/
 │       │   ├── index.ts           # Public API: client, domain, handlers, prefill ⭐
-│       │   ├── express.ts         # ./express entry: createESignRouter, pages via signingPage.ts (express is a peer) ⭐
+│       │   ├── express.ts         # ./express entry: createESignRouter + createHostedFormRouter (mint-only preset), pages via signingPage.ts (express is a peer) ⭐
 │       │   ├── knex.ts            # ./knex entry: Knex EnvelopeStore + migration source (knex is a peer) ⭐
 │       │   ├── docusign.ts        # ./docusign entry: the DocuSign adapter on its own (peer-free) ⭐
 │       │   ├── knex/              #   store.ts, migrations.ts (ESIGN_MIGRATIONS, programmatic source)
 │       │   ├── envelopes.ts       # createEnvelopeService: rules, audit, webhook state machine ⭐
 │       │   ├── provider.ts        # ESignProvider port (+ hosted-form capability: supportsHostedForms, hostedFormMint)
-│       │   ├── registry.ts        # providerFromEnv + defaultRegistry: ESIGN_PROVIDER → adapter, lazily
+│       │   ├── registry.ts        # providerFromEnv + defaultRegistry (boot checks) + hostedFormProviderFromEnv: ESIGN_PROVIDER → adapter, lazily
+│       │   ├── production.ts      # ESIGN_ENV=production guard: productionErrors / assertProductionConfig (provider-agnostic, never NODE_ENV)
 │       │   ├── store.ts           # EnvelopeStore port + in-memory implementation
-│       │   ├── handlers.ts        # Fetch-API mint + webhook handlers (serverless); MintTarget = provider | mint fn ⭐
+│       │   ├── handlers.ts        # Fetch-API mint + webhook handlers + createHostedFormApp (the whole mint-only surface); MintTarget = provider | mint fn ⭐
 │       │   ├── signingPage.ts     # Signing-page CSP + nonce; signingPageResponse (Fetch); signingPageExpress.ts is its Express spelling
 │       │   ├── graphql.ts         # SDL + resolvers factory (createESignGraphQL)
 │       │   ├── pages.ts           # Mock signing page + the neutral mock-form renderer (renderMockFormPage)

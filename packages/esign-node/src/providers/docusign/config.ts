@@ -1,6 +1,8 @@
 // DocuSign configuration: an explicit object (no hidden process.env reads in
 // the client) plus the conventional DOCUSIGN_* environment mapping.
 
+import { readFileSync } from 'node:fs';
+
 export interface DocuSignConfig {
   // eSignature REST base URL
   apiBaseUrl: string;
@@ -54,7 +56,71 @@ export const JWT_CREDENTIALS: readonly DocuSignConfigKey[] = [
   'userId',
 ];
 
+// What minting a hosted-form (Web Forms) instance needs on top of the grant:
+// the form to mint, and the returnUrl the signing bridge comes back to
+export const HOSTED_FORM_SETTINGS: readonly DocuSignConfigKey[] = [
+  ...JWT_CREDENTIALS,
+  'webFormId',
+  'returnUrl',
+];
+
 export type Env = Record<string, string | undefined>;
+
+// Where the RSA private key may come from, in precedence order: the PEM
+// itself, the same PEM base64-encoded (one-line env values), or a file
+// (a mounted Docker/Kubernetes secret).
+export const DOCUSIGN_PRIVATE_KEY_SOURCES = {
+  privateKey: DOCUSIGN_ENV.privateKey,
+  base64: 'DOCUSIGN_PRIVATE_KEY_BASE64',
+  file: 'DOCUSIGN_PRIVATE_KEY_FILE',
+} as const;
+
+// How the file source is read; injectable so callers (and tests) decide
+// whether the disk is touched at all
+export type ReadFile = (path: string) => string;
+
+const readFileUtf8: ReadFile = path => readFileSync(path, 'utf8');
+
+// A mounted secret that is missing or unreadable is a configuration
+// problem, so say which variable and which path - never the key material
+const readPrivateKeyFile = (file: string, readFile: ReadFile): string => {
+  try {
+    return readFile(file);
+  } catch (error) {
+    throw new Error(
+      `${DOCUSIGN_PRIVATE_KEY_SOURCES.file}=${file}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+};
+
+// A PEM pasted into a one-line environment variable arrives with literal
+// backslash-n; node:crypto needs real newlines.
+const normalizePem = (key: string): string => key.replace(/\\n/g, '\n');
+
+// The private key of the first source that is set, or undefined. Empty
+// values count as unset, like every other setting.
+export const privateKeyFromEnv = (
+  env: Env,
+  readFile: ReadFile = readFileUtf8,
+): string | undefined => {
+  const literal = env[DOCUSIGN_PRIVATE_KEY_SOURCES.privateKey];
+  if (literal) {
+    return normalizePem(literal);
+  }
+  const base64 = env[DOCUSIGN_PRIVATE_KEY_SOURCES.base64];
+  if (base64) {
+    return normalizePem(Buffer.from(base64, 'base64').toString('utf8'));
+  }
+  const file = env[DOCUSIGN_PRIVATE_KEY_SOURCES.file];
+  return file ? normalizePem(readPrivateKeyFile(file, readFile)) : undefined;
+};
+
+export interface DocuSignConfigFromEnvOptions {
+  // How DOCUSIGN_PRIVATE_KEY_FILE is read (default: node:fs readFileSync)
+  readFile?: ReadFile;
+}
 
 // Read the DOCUSIGN_* variables (defaults to the demo environment URLs)
 // The OAuth scopes the JWT grant asks for: eSignature (envelopes, embedded
@@ -74,6 +140,7 @@ export const consentUrl = (
 
 export const docuSignConfigFromEnv = (
   env: Env = process.env,
+  options: DocuSignConfigFromEnvOptions = {},
 ): DocuSignConfig => ({
   apiBaseUrl: env[DOCUSIGN_ENV.apiBaseUrl] || DOCUSIGN_DEMO_URLS.apiBaseUrl,
   oauthBaseUrl:
@@ -83,7 +150,7 @@ export const docuSignConfigFromEnv = (
   returnUrl: env[DOCUSIGN_ENV.returnUrl] || undefined,
   accountId: env[DOCUSIGN_ENV.accountId] || undefined,
   integrationKey: env[DOCUSIGN_ENV.integrationKey] || undefined,
-  privateKey: env[DOCUSIGN_ENV.privateKey] || undefined,
+  privateKey: privateKeyFromEnv(env, options.readFile),
   userId: env[DOCUSIGN_ENV.userId] || undefined,
   templateId: env[DOCUSIGN_ENV.templateId] || undefined,
   webFormId: env[DOCUSIGN_ENV.webFormId] || undefined,
@@ -99,7 +166,14 @@ export const missingDocuSignConfig = (
 // A setting the requested operation cannot do without
 export class DocuSignConfigError extends Error {
   constructor(public readonly missing: string[]) {
-    super(`DocuSign: missing configuration: ${missing.join(', ')}`);
+    // The key has three accepted sources, so naming only the first one
+    // sends an operator who set _BASE64 or _FILE hunting the wrong variable
+    const keySources = missing.includes(DOCUSIGN_ENV.privateKey)
+      ? `. The private key comes from ${DOCUSIGN_PRIVATE_KEY_SOURCES.privateKey}, ${DOCUSIGN_PRIVATE_KEY_SOURCES.base64} or ${DOCUSIGN_PRIVATE_KEY_SOURCES.file}.`
+      : '';
+    super(
+      `DocuSign: missing configuration: ${missing.join(', ')}${keySources}`,
+    );
     this.name = 'DocuSignConfigError';
   }
 }
@@ -114,3 +188,34 @@ export const assertDocuSignConfig = (
     throw new DocuSignConfigError(missing);
   }
 };
+
+// The DocuSign developer (demo) environment, by host: demo.docusign.net and
+// the `-d` OAuth/apps hosts. Every DOCUSIGN_DEMO_URLS default is one of
+// these, so a config left on the defaults is detected as demo.
+const DEMO_HOST = /^(demo\.docusign\.net|[a-z0-9-]+-d\.docusign\.com)$/i;
+
+// True when `url` points at the DocuSign developer environment
+export const isDocuSignDemoHost = (url: string | undefined): boolean => {
+  if (!url) {
+    return false;
+  }
+  try {
+    return DEMO_HOST.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+};
+
+// The three host settings, the ones that decide demo vs production
+const HOST_SETTINGS: readonly DocuSignConfigKey[] = [
+  'apiBaseUrl',
+  'oauthBaseUrl',
+  'webFormsBaseUrl',
+];
+
+// The demo hosts a configuration still points at, as "VAR=value" - what a
+// production boot check reports back to the operator
+export const docuSignDemoHostsInUse = (config: DocuSignConfig): string[] =>
+  HOST_SETTINGS.filter(key => isDocuSignDemoHost(config[key])).map(
+    key => `${DOCUSIGN_ENV[key]}=${config[key]}`,
+  );

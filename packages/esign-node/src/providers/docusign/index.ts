@@ -8,17 +8,28 @@ export { createJwtAssertion, createTokenProvider } from './auth';
 export { mapDocuSignReturnEvent, renderSigningReturnBridge } from './bridge';
 export type { DocuSignClient, DocuSignClientOptions } from './client';
 export { createDocuSignClient } from './client';
-export type { DocuSignConfig, DocuSignConfigKey, Env } from './config';
+export type {
+  DocuSignConfig,
+  DocuSignConfigFromEnvOptions,
+  DocuSignConfigKey,
+  Env,
+  ReadFile,
+} from './config';
 export {
   assertDocuSignConfig,
   consentUrl,
   DOCUSIGN_DEMO_URLS,
   DOCUSIGN_ENV,
+  DOCUSIGN_PRIVATE_KEY_SOURCES,
   DOCUSIGN_SCOPES,
   DocuSignConfigError,
   docuSignConfigFromEnv,
+  docuSignDemoHostsInUse,
+  HOSTED_FORM_SETTINGS,
+  isDocuSignDemoHost,
   JWT_CREDENTIALS,
   missingDocuSignConfig,
+  privateKeyFromEnv,
 } from './config';
 export type { DocuSignMintTarget } from './handlers';
 export { mintFromDocuSign } from './handlers';
