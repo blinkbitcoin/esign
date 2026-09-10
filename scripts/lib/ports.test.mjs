@@ -123,7 +123,7 @@ describe('the consumers', () => {
     ['examples/react-native-demo/src/config.ts', `PORT_BASE_DEFAULT = ${base}`],
     ['examples/react-demo/src/config.ts', `http://localhost:${api}`],
     ['examples/react-demo/e2e/ports.ts', `BASE_DEFAULT = ${base}`],
-    ['packages/esign-server/src/registry.ts', `http://localhost:${api}`],
+    ['packages/esign-node/src/registry.ts', `http://localhost:${api}`],
     ['examples/full-service-demo/Dockerfile', `EXPOSE ${api}`],
     ['examples/full-service-demo/Dockerfile', `\${PORT:-${api}}`],
     ['scripts/ci/docker-smoke.sh', `"$PORT:${api}"`],

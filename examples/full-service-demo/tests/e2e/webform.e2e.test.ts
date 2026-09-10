@@ -3,7 +3,7 @@
 // the sender's values are shown locked - the guarantee a host relies on when
 // it puts the economic terms of a document into the prefill.
 
-import { LOCKED_FIELDS_HINT } from '@blinkbitcoin/esign-server';
+import { LOCKED_FIELDS_HINT } from '@blinkbitcoin/esign-node';
 import type { Express } from 'express';
 import request from 'supertest';
 import { createApp } from '../../src/app';

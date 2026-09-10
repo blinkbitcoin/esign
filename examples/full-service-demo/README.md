@@ -1,7 +1,7 @@
 # examples/full-service-demo — the whole service, as a reference host
 
 Express 5 + Apollo Server 5 GraphQL API composed from
-`@blinkbitcoin/esign-server`: the package's Express router, envelope domain,
+`@blinkbitcoin/esign-node`: the package's Express router, envelope domain,
 Postgres store and provider adapters (DocuSign, or a local mock), wired to
 this host's auth, CORS, rate limits, config validation and telemetry.
 
@@ -38,7 +38,7 @@ semantics of `DOCUSIGN_HMAC_KEY` and `JWT_SECRET`).
   parity tests + a CI step fail on drift.
 - **Domain in the package**: authorization, validation, persistence with an
   audit trail, the restart rule and the webhook state machine are
-  `createEnvelopeService` from `@blinkbitcoin/esign-server`, composed in
+  `createEnvelopeService` from `@blinkbitcoin/esign-node`, composed in
   `src/services.ts`; resolvers never query inline. `src/store.ts` is the
   Knex implementation of the package's `EnvelopeStore` port (transactions
   for atomic writes).
@@ -62,7 +62,7 @@ make e2e            # 14 E2E tests against real Postgres
 ## Deploy
 
 The service ships as a container (`examples/full-service-demo/Dockerfile`, built from the repo
-root so the workspace lockfile and `packages/esign-server` are inputs):
+root so the workspace lockfile and `packages/esign-node` are inputs):
 
 ```sh
 make docker-build                     # → esign-api (node 24 alpine, production deps only)
@@ -87,7 +87,7 @@ layout with dummy values is `.env.docusign.example`); with
 `ESIGN_PROVIDER=docusign` the JWT credentials and `DOCUSIGN_HMAC_KEY` are
 required at boot (fail-closed). The image runs as the unprivileged `node`
 user, exposes `4100` (`PORT` overrides) and carries a `/health` healthcheck.
-Hosts that would rather not run a service import `@blinkbitcoin/esign-server`
+Hosts that would rather not run a service import `@blinkbitcoin/esign-node`
 instead (one function call, a Fetch handler, or the Express router).
 
 ## Key Paths
@@ -101,7 +101,7 @@ instead (one function call, a Fetch handler, or the Express router).
 | `src/services.ts` / `src/store.ts` | Domain composition (`createEnvelopeService`) / the package's Knex<br>`EnvelopeStore` over `src/db.ts` |
 | `src/app.ts` | Mounts the package's Express router (`/health`, signing pages,<br>`/webform/instance`, `/webhook/esign`) with this service's auth, CORS and<br>rate limits |
 | `src/auth.ts` | HS256 JWT verification, dev/prod split |
-| `src/migrate.ts` | Applies the package's migrations (`@blinkbitcoin/esign-server/knex`) |
+| `src/migrate.ts` | Applies the package's migrations (`@blinkbitcoin/esign-node/knex`) |
 | `tests/` / `tests/e2e/` | Unit (mocked DB) / E2E (real DB) |
 
 Full documentation: [architecture](../../docs/architecture/backend.md) ·

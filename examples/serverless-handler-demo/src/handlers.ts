@@ -18,7 +18,7 @@ import {
   type ESignProvider,
   type Logger,
   providerFromEnv as selectProvider,
-} from '@blinkbitcoin/esign-server';
+} from '@blinkbitcoin/esign-node';
 
 export type Handler = (request: Request) => Promise<Response>;
 

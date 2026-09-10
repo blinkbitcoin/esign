@@ -25,11 +25,11 @@
   "keywords": [],
   "author": "",
   "license": "MIT",
-  "description": "Reference host: the whole esign service (Express router, Apollo, Postgres store, webhooks) composed from @blinkbitcoin/esign-server",
+  "description": "Reference host: the whole esign service (Express router, Apollo, Postgres store, webhooks) composed from @blinkbitcoin/esign-node",
   "dependencies": {
     "@apollo/server": "^5.5.1",
     "@as-integrations/express5": "^1.1.2",
-    "@blinkbitcoin/esign-server": "0.0.0-development",
+    "@blinkbitcoin/esign-node": "0.0.0-development",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/instrumentation-express": "^0.70.0",
     "@opentelemetry/instrumentation-graphql": "^0.70.0",

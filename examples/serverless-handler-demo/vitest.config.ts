@@ -7,17 +7,17 @@ export default defineConfig({
       // The workspace package straight from source (no build needed); the
       // subpath first so the bare name does not swallow it
       {
-        find: '@blinkbitcoin/esign-server/docusign',
+        find: '@blinkbitcoin/esign-node/docusign',
         replacement: path.resolve(
           import.meta.dirname,
-          '../../packages/esign-server/src/docusign.ts',
+          '../../packages/esign-node/src/docusign.ts',
         ),
       },
       {
-        find: '@blinkbitcoin/esign-server',
+        find: '@blinkbitcoin/esign-node',
         replacement: path.resolve(
           import.meta.dirname,
-          '../../packages/esign-server/src/index.ts',
+          '../../packages/esign-node/src/index.ts',
         ),
       },
     ],

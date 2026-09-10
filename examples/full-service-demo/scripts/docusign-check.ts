@@ -4,7 +4,7 @@
 // exposes. `make docusign-check` (reads .env).
 import 'dotenv/config';
 
-import { consentUrl, createDocuSignClient } from '@blinkbitcoin/esign-server';
+import { consentUrl, createDocuSignClient } from '@blinkbitcoin/esign-node';
 import { localOrigin } from '../src/port';
 import { getConfig, validateConfig } from '../src/providers/docusign/config';
 

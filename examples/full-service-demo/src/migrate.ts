@@ -2,7 +2,7 @@
 // migrate` (tsx, loads .env) locally; `node dist/migrate.js` in the image.
 import 'dotenv/config';
 
-import { runESignMigrations } from '@blinkbitcoin/esign-server/knex';
+import { runESignMigrations } from '@blinkbitcoin/esign-node/knex';
 import { knex } from './db';
 
 runESignMigrations(knex)

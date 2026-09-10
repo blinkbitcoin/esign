@@ -15,7 +15,7 @@
 // Each run creates one real envelope on the demo account (status `sent`,
 // DEMONSTRATION watermark). Demo envelopes are throwaway; no cleanup needed.
 
-import { createDocuSignClient } from '@blinkbitcoin/esign-server';
+import { createDocuSignClient } from '@blinkbitcoin/esign-node';
 import { describe, expect, it } from 'vitest';
 import { getConfig } from '../../src/providers/docusign/config';
 

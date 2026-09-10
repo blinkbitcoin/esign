@@ -3,7 +3,7 @@
 // TRUNCATE CASCADE for test isolation
 // NOTE: Tests run sequentially (fileParallelism: false) to prevent parallel execution issues
 
-import { runESignMigrations } from '@blinkbitcoin/esign-server/knex';
+import { runESignMigrations } from '@blinkbitcoin/esign-node/knex';
 import createKnex from 'knex';
 
 const connectionString = process.env.DATABASE_URL;

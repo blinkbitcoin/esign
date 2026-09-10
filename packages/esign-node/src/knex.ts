@@ -1,4 +1,4 @@
-// @blinkbitcoin/esign-server/knex - the Postgres side for hosts that keep
+// @blinkbitcoin/esign-node/knex - the Postgres side for hosts that keep
 // envelopes in their own database: the Knex implementation of the
 // EnvelopeStore port and the schema it needs as a programmatic migration
 // source. The host passes its own Knex instance; `knex` is an optional peer

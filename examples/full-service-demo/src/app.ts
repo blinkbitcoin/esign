@@ -4,7 +4,7 @@
 
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@as-integrations/express5';
-import { createESignRouter } from '@blinkbitcoin/esign-server/express';
+import { createESignRouter } from '@blinkbitcoin/esign-node/express';
 import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';

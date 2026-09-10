@@ -8,7 +8,7 @@
 | Part | Root | Type | Role |
 |------|------|------|------|
 | `library` | `packages/esign-react-native/`, `packages/esign-react/` | Publishable client libraries | The product: signing UI component + `useESignature` over `esign-core` |
-| `server` | `packages/esign-server/` | Publishable Node library | The product's server half: DocuSign client, `createWebFormInstance`, envelope domain over the provider + store ports, Fetch handlers, `/express`, `/knex` |
+| `server` | `packages/esign-node/` | Publishable Node library | The product's server half: DocuSign client, `createWebFormInstance`, envelope domain over the provider + store ports, Fetch handlers, `/express`, `/knex` |
 | `service` | `examples/full-service-demo/` | Express + Apollo host | Reference host of the full shape: envelope orchestration, persistence, webhooks; the E2E backend |
 | `demo` | `examples/react-native-demo/`, `examples/react-demo/` | RN app, Vite app | Integration demos hosting the libraries (manual + Maestro / Playwright E2E) |
 
@@ -60,7 +60,7 @@ every client spot needing updates (ErrorCodes map, getErrorMessage copy).
   different messages needs a small injected mapping script (mobile concern,
   deliberately outside the backend provider interface)
 - Two backend-served pages complete this protocol layer
-  (`packages/esign-server/src/pages.ts` and `src/providers/docusign/bridge.ts`): `/signing/mock/:id` - the mock
+  (`packages/esign-node/src/pages.ts` and `src/providers/docusign/bridge.ts`): `/signing/mock/:id` - the mock
   provider's interactive signing page (what Maestro E2E drives) - and
   `/signing/return` - the bridge translating real DocuSign's redirect
   protocol (`?event=...`) into these postMessage events

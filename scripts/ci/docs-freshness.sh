@@ -22,7 +22,7 @@ fi
 CHANGED_FILES=$(git diff --name-only "$BASE"...HEAD 2>/dev/null || echo "")
 MERGE_BASE=$(git merge-base "$BASE" HEAD 2>/dev/null || echo "$BASE")
 
-ARCH_PATTERNS="esign-server/src/knex/migrations|\.graphql$|src/.*index\.ts$|providers/"
+ARCH_PATTERNS="esign-node/src/knex/migrations|\.graphql$|src/.*index\.ts$|providers/"
 ARCH_CHANGES=$(echo "$CHANGED_FILES" | grep -E "$ARCH_PATTERNS" || true)
 # shellcheck disable=SC2046 # manifest paths are one per line, whitespace-free
 MANIFEST_CHANGES=$(node scripts/ci/manifest-structural.mjs "$MERGE_BASE" \

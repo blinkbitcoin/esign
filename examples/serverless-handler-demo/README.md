@@ -1,6 +1,6 @@
 # examples/serverless-handler-demo — the handlers behind a route
 
-`@blinkbitcoin/esign-server` ships the two esign endpoints as Fetch API
+`@blinkbitcoin/esign-node` ships the two esign endpoints as Fetch API
 handlers, `Request → Response`, so a serverless route exports them as-is.
 This example mounts both: the Web Forms mint (`POST /webform/instance`,
 what `createWebFormsSource({ mint })` in the client packages calls) and the

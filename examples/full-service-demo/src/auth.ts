@@ -8,7 +8,7 @@
 //   - development: the bearer token is treated as an opaque userId, so local
 //     clients and E2E tests work without an identity provider
 
-import { bearerToken } from '@blinkbitcoin/esign-server';
+import { bearerToken } from '@blinkbitcoin/esign-node';
 import crypto from 'crypto';
 
 import { isInsecureDevAllowed } from './config';

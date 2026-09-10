@@ -60,7 +60,7 @@ endpoint) plus one route in the backend, one source in the app.
 
 ## 2. The backend side (Node; a GraphQL mutation or a REST endpoint)
 
-Install `@blinkbitcoin/esign-server` (Node only; registry setup in
+Install `@blinkbitcoin/esign-node` (Node only; registry setup in
 [consuming.md](consuming.md)). Environment (server secrets):
 
 | Variable | Value |
@@ -75,7 +75,7 @@ own session (the package never sees the token), compute the terms from the
 backend's own data, format them as the strings the signer must see, mint:
 
 ```ts
-import { createWebFormInstance, docuSignConfigFromEnv, assertDocuSignConfig } from '@blinkbitcoin/esign-server';
+import { createWebFormInstance, docuSignConfigFromEnv, assertDocuSignConfig } from '@blinkbitcoin/esign-node';
 
 const docusign = docuSignConfigFromEnv();  // once, at startup
 assertDocuSignConfig(docusign);            // fails fast on a missing variable
@@ -109,7 +109,7 @@ bridge page turns that into the postMessage the component understands.
 Serve it at the path `DOCUSIGN_RETURN_URL` points to:
 
 ```ts
-import { renderSigningReturnBridge, signingPageCsp, signingPageNonce } from '@blinkbitcoin/esign-server';
+import { renderSigningReturnBridge, signingPageCsp, signingPageNonce } from '@blinkbitcoin/esign-node';
 
 app.get('/signing/return', (req, res) => {
   const event = typeof req.query.event === 'string' ? req.query.event : undefined;
@@ -122,7 +122,7 @@ app.get('/signing/return', (req, res) => {
 A route handler that speaks Fetch (Next.js, Vercel, Workers) returns
 `signingPageResponse(nonce => renderSigningReturnBridge(event, nonce))`
 instead - the same page, CSP and nonce as a `Response`. (Express hosts can
-mount `createESignRouter` from `@blinkbitcoin/esign-server/express` instead,
+mount `createESignRouter` from `@blinkbitcoin/esign-node/express` instead,
 which serves the same route.)
 Without this route the form completes on DocuSign's side and the app never
 hears about it. The whole backend side, runnable: `examples/mint-only-demo`

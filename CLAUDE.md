@@ -6,18 +6,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 E-signature integration monorepo (npm workspaces). The deliverables are the
 **four publishable packages** (two client libraries, their core, and the
-server package). The examples are reference hosts: two client demos and
+Node package). The examples are reference hosts: two client demos and
 three server shapes, used for manual testing and every E2E suite.
 
 | Workspace | Path | Role |
 |-----------|------|------|
 | `@blinkbitcoin/esign-core` | `packages/esign-core/` | Platform-agnostic core: `SigningSource` abstraction + sources, Apollo factory, GraphQL operations + codegen (no React/DOM) |
-| `@blinkbitcoin/esign-server` | `packages/esign-server/` | Node-only server half: DocuSign client (JWT grant, envelopes, Web Forms) + `createWebFormInstance` (the one call for locked prefill) + the envelope domain (`createEnvelopeService` over the `ESignProvider` and `EnvelopeStore` ports); the backend is built on it, hosts with their own backend import it |
+| `@blinkbitcoin/esign-node` | `packages/esign-node/` | Node-only server half: DocuSign client (JWT grant, envelopes, Web Forms) + `createWebFormInstance` (the one call for locked prefill) + the envelope domain (`createEnvelopeService` over the `ESignProvider` and `EnvelopeStore` ports); the backend is built on it, hosts with their own backend import it |
 | `@blinkbitcoin/esign-react-native` | `packages/esign-react-native/` | Publishable RN library: `ESignature` component (WebView) over core |
 | `@blinkbitcoin/esign-react` | `packages/esign-react/` | Publishable React **web** library: `ESignature` (iframe) + DocuSign.js source over core |
 | `esign-react-native-example` | `examples/react-native-demo/` | RN 0.86 demo app hosting the RN library (Maestro E2E target) |
 | `esign-react-example` | `examples/react-demo/` | Vite web demo hosting the web library (`make web`) |
-| `esign-full-service-example` | `examples/full-service-demo/` | The whole service on the server package: Express router + Apollo + Knex/PostgreSQL + webhooks; the backend every E2E suite runs against, ships as the `esign-api` image |
+| `esign-full-service-example` | `examples/full-service-demo/` | The whole service on the Node package: Express router + Apollo + Knex/PostgreSQL + webhooks; the backend every E2E suite runs against, ships as the `esign-api` image |
 | `esign-mint-only-example` | `examples/mint-only-demo/` | An existing GraphQL API adds one mutation that mints a locked Web Forms instance (the Blink API shape) |
 | `esign-serverless-handler-example` | `examples/serverless-handler-demo/` | The package's Fetch handlers (mint + webhook) behind a route handler; plain Node adapter |
 | `tooling` | `scripts/` | CI/release scripts; `lib/*.mjs` unit-tested at 100% (Vitest) |
@@ -85,9 +85,9 @@ npm run migrate:test         # Same against the .env.test database
 
 - The domain (authorization, validation, persistence + audit, restart rule,
   webhook state machine) is `createEnvelopeService` from
-  `@blinkbitcoin/esign-server`, composed in `src/services.ts`; resolvers
+  `@blinkbitcoin/esign-node`, composed in `src/services.ts`; resolvers
   (`src/schema.ts`) and routes (`src/app.ts`) only map inputs/outputs.
-- DB access is the package's Knex `EnvelopeStore` (`@blinkbitcoin/esign-server/knex`),
+- DB access is the package's Knex `EnvelopeStore` (`@blinkbitcoin/esign-node/knex`),
   composed over the shared client in `src/store.ts`; the schema is the
   package's programmatic migration source (`src/migrate.ts` applies it, no
   migration files here). Never query inline in resolvers.
@@ -98,18 +98,18 @@ npm run migrate:test         # Same against the .env.test database
   (`src/providers/index.ts`). **Provider boundary, everywhere:** nothing
   provider-specific outside a `providers/<name>/` directory - in the packages
   (`packages/esign-core/src/providers/docusign/`,
-  `packages/esign-react/src/providers/docusign/`, `packages/esign-server/src/providers/docusign/`)
+  `packages/esign-react/src/providers/docusign/`, `packages/esign-node/src/providers/docusign/`)
   and in the service. The generic layers (`signing/`, the port, the pages, the
   handlers) never import a provider; guard tests enforce it. DocuSign code is
   reached through the `./docusign` subpaths, whose `src/docusign.ts` entry
   files are one-line re-exports of `providers/docusign/` (guard tests);
   `./webform` stays as an alias.
-- The api resolves `@blinkbitcoin/esign-server` from source for typecheck,
+- The api resolves `@blinkbitcoin/esign-node` from source for typecheck,
   tests and `tsx` dev (`tsconfig.json` paths + vitest aliases); `npm run
   build` (`tsconfig.build.json`) needs the package's dist, so build the
   packages first (`npm run build` at the root).
 - The wire contract is the `ErrorCode` enum in `examples/full-service-demo/schema.graphql`
-  (the SDL lives in `packages/esign-server/src/graphql.ts`, re-exported by
+  (the SDL lives in `packages/esign-node/src/graphql.ts`, re-exported by
   `src/typeDefs.ts`). After schema changes run `make codegen`;
   drift fails backend tests, client parity tests, and a CI step.
 - Security is fail-closed by default: `validateSecurityConfig` (`src/config.ts`)
@@ -178,9 +178,9 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   pre-push, `npm ci` on post-merge/post-checkout when the lockfile changed.
   Escape hatches: `git commit --no-verify`, `LEFTHOOK=0 git push`
 - Commit messages and PR titles follow Conventional Commits with an allowed
-  scope list: `core`, `server`, `rn`, `react`, `demo`, `e2e`, `ci`, `deps`,
-  `deps-dev`, `docs`, `release` (`commitlint.config.mjs` is the source of
-  truth; e.g. `feat(rn): ...`, `fix(server): ...`, `ci(e2e): ...`, `docs: ...`).
+  scope list: `core`, `node`, `service`, `rn`, `react`, `demo`, `e2e`, `ci`,
+  `deps`, `deps-dev`, `docs`, `release` (`commitlint.config.mjs` is the source of
+  truth; e.g. `feat(rn): ...`, `fix(node): ...`, `ci(e2e): ...`, `docs: ...`).
   Squash merges take the PR title, so name the PR like a commit. Details in
   `CONTRIBUTING.md`
 - Change code and the relevant `docs/` page in the same change; the CI Docs
@@ -245,7 +245,7 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
 - Tests are silent: `jest.setup.ts` / `vitest.setup.ts` in every workspace
   fail a test on any console output. Inject a logger instead of letting a
   module fall back to the console (`silentLogger` / `spyLogger()` from
-  `packages/esign-server/src/__tests__/support.ts`; the `logger` option of
+  `packages/esign-node/src/__tests__/support.ts`; the `logger` option of
   `createESignApolloClient`, `useESignature` and the demos' factories); wrap
   every React state update in an act-aware API (`fireEvent`, `waitFor`,
   `findBy*`, `ReactTestRenderer.act`), never a raw DOM `.click()` or a bare
@@ -256,7 +256,7 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
 ## Architecture Patterns
 
 - **Provider pattern**: a new e-sign provider is an adapter directory
-  (`packages/esign-server/src/<name>/` implementing the `ESignProvider` port,
+  (`packages/esign-node/src/<name>/` implementing the `ESignProvider` port,
   client-side interpreters under `packages/esign-core/src/providers/<name>/`)
   plus one entry in the `providerFromEnv` registry; hosts select it with
   `ESIGN_PROVIDER=<name>`

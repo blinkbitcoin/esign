@@ -16,7 +16,7 @@ export type {
   WebFormPrefillValue,
   WebhookEvent,
   WebhookHeaders,
-} from '@blinkbitcoin/esign-server';
+} from '@blinkbitcoin/esign-node';
 
 // Context type for Apollo Server resolvers
 export interface GraphQLContext {

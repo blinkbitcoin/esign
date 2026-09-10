@@ -12,7 +12,8 @@ export default {
       'always',
       [
         'core', // packages/esign-core
-        'server', // packages/esign-server
+        'node', // packages/esign-node
+        'service', // packages/esign-service (the deployable service)
         'rn', // packages/esign-react-native
         'react', // packages/esign-react
         'demo', // examples/* (client demos and the three server examples)

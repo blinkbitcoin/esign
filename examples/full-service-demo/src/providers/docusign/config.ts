@@ -6,7 +6,7 @@ import {
   docuSignConfigFromEnv,
   JWT_CREDENTIALS,
   missingDocuSignConfig,
-} from '@blinkbitcoin/esign-server';
+} from '@blinkbitcoin/esign-node';
 import { localOrigin } from '../../port';
 
 // The service's return-URL bridge (app.ts serves /signing/return) on this

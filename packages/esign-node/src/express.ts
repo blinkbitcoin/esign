@@ -1,4 +1,4 @@
-// @blinkbitcoin/esign-server/express - the HTTP surface as a mountable
+// @blinkbitcoin/esign-node/express - the HTTP surface as a mountable
 // Express router: the Web Forms mint endpoint, the provider webhook, the
 // signing pages (the mock provider's, and DocuSign's return-URL bridge and
 // mock Web Forms page via mountDocuSignPages) and a health check. The host

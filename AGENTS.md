@@ -19,7 +19,7 @@ libraries, and one demo app per platform for manual and E2E testing.
 ```
 ├── packages/
 │   ├── esign-core/              # 📦 shared core: SigningSource abstraction, Apollo factory, GraphQL codegen
-│   ├── esign-server/            # 📦 server side: DocuSign client, createWebFormInstance, envelope domain over provider + store ports
+│   ├── esign-node/              # 📦 server side: DocuSign client, createWebFormInstance, envelope domain over provider + store ports
 │   ├── esign-react-native/      # 📦 THE PRODUCT - RN (`ESignature` + `useESignature` over a WebView)
 │   └── esign-react/             # 📦 THE PRODUCT - web (`ESignature` + `useESignature` over an iframe)
 ├── examples/
@@ -46,7 +46,7 @@ one-line description. The ones you will reach for:
 | `make coverage` | Coverage - 100% enforced on the packages, the backend, and `scripts/lib` |
 | `make check-ci` | actionlint on the workflows + shellcheck on `scripts/**` |
 | `make codeql` | GitHub's CodeQL analysis locally (same config as `codeql.yml`, markers honoured);<br>never run in CI - GitHub runs it there |
-| `make codegen` | Regenerate `schema.graphql` + client types after editing the SDL in `packages/esign-server/src/graphql.ts` |
+| `make codegen` | Regenerate `schema.graphql` + client types after editing the SDL in `packages/esign-node/src/graphql.ts` |
 | `make diagrams` | Re-render `docs/diagrams/dist/*.svg` from `src/*.mmd` (CI fails on drift) |
 | `make docs-check` | Warn when architecture-relevant changes ship without a `docs/` update;<br>fail on a README table cell line wider than 72 characters (break with `<br>`) |
 | `make coverage` | 100% enforced everywhere; also fails on a coverage row with nothing to<br>cover (re-export / type-only modules go in the workspace's exclude list) |
@@ -65,8 +65,8 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
   that checkout, and a commit made there lands on whatever branch another
   session left checked out
 - Commit messages and PR titles are Conventional Commits with an allowed
-  scope list (`core`, `server`, `rn`, `react`, `demo`, `e2e`, `ci`, `deps`,
-  `deps-dev`, `docs`, `release`; source of truth `commitlint.config.mjs`).
+  scope list (`core`, `node`, `service`, `rn`, `react`, `demo`, `e2e`, `ci`,
+  `deps`, `deps-dev`, `docs`, `release`; source of truth `commitlint.config.mjs`).
   Squash merges take the PR title, so name the PR like a commit
 - Change code **and the relevant doc in the same change**; `docs/` is
   hand-maintained and CI's Docs check flags architecture changes without one
@@ -86,7 +86,7 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
   a service's own variable (`PORT`, `LIVE_PORT`, ...) overrides just that
   service. Nothing hard-codes a port outside those defaults
 - The `ESignProvider` port is the provider boundary - nothing provider-specific
-  outside a `providers/<name>/` directory: `packages/esign-server/src/providers/docusign/`,
+  outside a `providers/<name>/` directory: `packages/esign-node/src/providers/docusign/`,
   `packages/esign-core/src/providers/docusign/`, `packages/esign-react/src/providers/docusign/`
   and `examples/full-service-demo/src/providers/docusign/`; a package's
   `src/docusign.ts` is a one-line re-export of its `providers/docusign/`
@@ -145,7 +145,7 @@ cannot see changes.
   fails a test that lets `console.error`, `console.warn` or `console.log`
   fire. Two things cause it, and both are bugs in the test: a module built
   without an injected logger (pass `silentLogger` / `spyLogger()` from
-  `packages/esign-server/src/__tests__/support.ts`, or the `logger` option of
+  `packages/esign-node/src/__tests__/support.ts`, or the `logger` option of
   `createESignApolloClient` / `useESignature` / the demos' factories - every
   logger in this repo is injectable), and a React state update outside
   `act()`. Anything that updates React state in a test goes through an

@@ -71,7 +71,7 @@ Other modes swap only the source (the component and callbacks are identical):
 ```tsx
 // Mode 2 - DocuSign Web Forms (API-embedded): a thin backend mints the URL.
 const source = createWebFormsSource({
-  // Your backend mints the instance (one call from @blinkbitcoin/esign-server);
+  // Your backend mints the instance (one call from @blinkbitcoin/esign-node);
   // getAuthToken returns the app's own session token for THAT backend, which
   // verifies it and uses the user as DocuSign's clientUserId. Fields marked
   // read-only in the builder come back locked with the prefill - as Text

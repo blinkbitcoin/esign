@@ -2,7 +2,7 @@
 // signing pages served by this service (app.ts) and DocuSign's Connect
 // webhook format mirrored through the DocuSign adapter.
 
-import { createMockProvider } from '@blinkbitcoin/esign-server';
+import { createMockProvider } from '@blinkbitcoin/esign-node';
 import { localOrigin } from '../port';
 import { DocuSignProvider } from './docusign';
 

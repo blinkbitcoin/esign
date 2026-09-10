@@ -284,7 +284,7 @@ describe('WORKSPACES', () => {
   it('covers the four publishable packages plus the server examples and tooling', () => {
     expect(WORKSPACES.map(({ ws }) => ws)).toEqual([
       'packages/esign-core',
-      'packages/esign-server',
+      'packages/esign-node',
       'packages/esign-react-native',
       'packages/esign-react',
       'examples/full-service-demo',

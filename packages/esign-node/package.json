@@ -1,5 +1,5 @@
 {
-  "name": "@blinkbitcoin/esign-server",
+  "name": "@blinkbitcoin/esign-node",
   "version": "0.0.0-development",
   "description": "Server-side e-signature for Node: DocuSign client (JWT grant, envelopes, Web Forms), createWebFormInstance (the one call that locks read-only fields), the envelope domain over provider + store ports, an optional Express router, and a Knex/Postgres store with its migrations.",
   "main": "./dist/index.cjs",
@@ -89,7 +89,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/blinkbitcoin/esign.git",
-    "directory": "packages/esign-server"
+    "directory": "packages/esign-node"
   },
   "homepage": "https://github.com/blinkbitcoin/esign#readme",
   "bugs": {

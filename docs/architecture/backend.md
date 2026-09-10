@@ -36,7 +36,7 @@ Express Router
 │          └── MockProvider                 │
 └───────────────────────────────────────────┘
     ↓
-Envelope service (@blinkbitcoin/esign-server: rules, audit, webhook state machine)
+Envelope service (@blinkbitcoin/esign-node: rules, audit, webhook state machine)
     ↓
 EnvelopeStore port → Knex store (store.ts) → PostgreSQL
 ```
@@ -69,7 +69,7 @@ examples/full-service-demo/src/
 └── __mocks__/
     └── db.ts         # knex-mock-client instance for unit tests
 
-├── migrate.ts        # Applies the package's migrations (@blinkbitcoin/esign-server/knex)
+├── migrate.ts        # Applies the package's migrations (@blinkbitcoin/esign-node/knex)
 ```
 
 ## Provider Pattern
@@ -235,7 +235,7 @@ statuses only - never recipient names, emails, or document content.
 ## Database Schema
 
 Defined by the package's programmatic migration source
-(`@blinkbitcoin/esign-server/knex`, applied by `src/migrate.ts`); see
+(`@blinkbitcoin/esign-node/knex`, applied by `src/migrate.ts`); see
 [data-models.md](data-models.md) for full details.
 
 ### Envelope

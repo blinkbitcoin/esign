@@ -10,7 +10,7 @@ import 'dotenv/config';
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createDocuSignClient } from '@blinkbitcoin/esign-server';
+import { createDocuSignClient } from '@blinkbitcoin/esign-node';
 import { getConfig } from '../src/providers/docusign/config';
 
 export const TEMPLATE_NAME = 'esign proxy live template (demo fixture)';

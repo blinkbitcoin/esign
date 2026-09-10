@@ -1,4 +1,4 @@
-# @blinkbitcoin/esign-server
+# @blinkbitcoin/esign-node
 
 The server-side half of the e-signature packages, for any Node ≥ 18 backend,
 no framework, no peers:
@@ -39,7 +39,7 @@ session token); the `JWT_SECRET` of this repo's service is not part of it.
 ## Use
 
 ```ts
-import { createWebFormInstance, docuSignConfigFromEnv } from '@blinkbitcoin/esign-server';
+import { createWebFormInstance, docuSignConfigFromEnv } from '@blinkbitcoin/esign-node';
 
 // Once, at startup: DOCUSIGN_* env → config (one token cache per config object)
 const docusign = docuSignConfigFromEnv();
@@ -79,7 +79,7 @@ Lower-level pieces, for hosts that need them:
 import {
   createEnvelopeService, createDocuSignProvider, docuSignConfigFromEnv,
   createMemoryEnvelopeStore, type EnvelopeStore,
-} from '@blinkbitcoin/esign-server';
+} from '@blinkbitcoin/esign-node';
 
 const provider = createDocuSignProvider({
   config: docuSignConfigFromEnv(),
@@ -123,14 +123,14 @@ local runs and tests; `Tracing` and `Logger` are optional seams.
 | `createEnvelope`, `getEnvelopeById`, `getEnvelopeByIdForUser`,<br>`getEnvelopeByProviderEnvelopeId`, `updateEnvelopeStatus` | envelope rows; the user-scoped read returns `null` for a wrong owner (no<br>info leak); the update throws for an unknown id |
 | `appendAuditEntry`, `listAuditEntries` | audit rows, newest first |
 
-## The Postgres store (`@blinkbitcoin/esign-server/knex`)
+## The Postgres store (`@blinkbitcoin/esign-node/knex`)
 
 For a host that keeps envelopes in Postgres, the store port and its schema
 are already written. The host passes its own Knex instance; `knex` is an
 optional peer for the types only, nothing else is imported:
 
 ```ts
-import { createKnexEnvelopeStore, runESignMigrations } from '@blinkbitcoin/esign-server/knex';
+import { createKnexEnvelopeStore, runESignMigrations } from '@blinkbitcoin/esign-node/knex';
 
 await runESignMigrations(db);                        // once per database (knex.migrate.latest)
 const store = createKnexEnvelopeStore(db);           // any Knex instance; { logger } optional
@@ -151,7 +151,7 @@ adapters mount directly. Keep the config at module scope so a warm instance
 reuses its access token; a cold start costs one token exchange.
 
 ```ts
-import { createWebFormInstanceHandler, docuSignConfigFromEnv } from '@blinkbitcoin/esign-server';
+import { createWebFormInstanceHandler, docuSignConfigFromEnv } from '@blinkbitcoin/esign-node';
 
 const docusign = docuSignConfigFromEnv();
 
@@ -176,7 +176,7 @@ on Node runtimes (needs `node:crypto`); not on edge runtimes.
 The return-URL bridge every Web Forms host serves is a `Response` too:
 
 ```ts
-import { renderSigningReturnBridge, signingPageResponse } from '@blinkbitcoin/esign-server';
+import { renderSigningReturnBridge, signingPageResponse } from '@blinkbitcoin/esign-node';
 
 // e.g. app/signing/return/route.ts (Next.js)
 export const GET = (request: Request) => {
@@ -192,15 +192,15 @@ inline script and style allowed by a fresh `signingPageNonce()` only,
 host that writes the route itself sets the same header from the same two
 functions ([locked-terms.md](../../docs/integration/locked-terms.md#2-the-backend-side-node-a-graphql-mutation-or-a-rest-endpoint)).
 
-## The HTTP surface (`@blinkbitcoin/esign-server/express`)
+## The HTTP surface (`@blinkbitcoin/esign-node/express`)
 
 For a host that already runs Express and wants the esign endpoints without
 writing them: a mountable router plus the GraphQL schema. `express` is an
 optional peer - only this subpath imports it.
 
 ```ts
-import { createESignRouter } from '@blinkbitcoin/esign-server/express';
-import { createESignGraphQL } from '@blinkbitcoin/esign-server';
+import { createESignRouter } from '@blinkbitcoin/esign-node/express';
+import { createESignGraphQL } from '@blinkbitcoin/esign-node';
 
 app.use(createESignRouter({ // mounts DocuSign's pages via mountDocuSignPages (also exported here)
   envelopes, provider,
@@ -223,7 +223,7 @@ The signing pages go out under `signingPageCsp(nonce)` with a
 `signingPageNonce()` per response - the same CSP `signingPageResponse` gives
 a framework-neutral host.
 
-## The DocuSign adapter (`@blinkbitcoin/esign-server/docusign`)
+## The DocuSign adapter (`@blinkbitcoin/esign-node/docusign`)
 
 Everything DocuSign-specific is also on its own entry, peer-free: the
 client, `docuSignConfigFromEnv` and the `DOCUSIGN_*` mapping,
@@ -235,15 +235,15 @@ the subpath is the canonical import for DocuSign names going forward
 (`mountDocuSignPages` stays on `./express`, which needs the peer).
 
 ```ts
-import { createDocuSignProvider, docuSignConfigFromEnv } from '@blinkbitcoin/esign-server/docusign';
+import { createDocuSignProvider, docuSignConfigFromEnv } from '@blinkbitcoin/esign-node/docusign';
 ```
 
 | Entry | What | Peer |
 |---|---|---|
-| `@blinkbitcoin/esign-server` | everything: domain, ports, registry, handlers, pages, DocuSign + mock<br>adapters | none |
-| `@blinkbitcoin/esign-server/docusign` | the DocuSign adapter | none |
-| `@blinkbitcoin/esign-server/express` | `createESignRouter`, `mountDocuSignPages` | `express` |
-| `@blinkbitcoin/esign-server/knex` | the Postgres store + migrations | `knex` (types only) |
+| `@blinkbitcoin/esign-node` | everything: domain, ports, registry, handlers, pages, DocuSign + mock<br>adapters | none |
+| `@blinkbitcoin/esign-node/docusign` | the DocuSign adapter | none |
+| `@blinkbitcoin/esign-node/express` | `createESignRouter`, `mountDocuSignPages` | `express` |
+| `@blinkbitcoin/esign-node/knex` | the Postgres store + migrations | `knex` (types only) |
 
 ## Configuration
 

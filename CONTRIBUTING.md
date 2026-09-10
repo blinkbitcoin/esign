@@ -67,7 +67,8 @@ area names (`commitlint.config.mjs` is the source of truth):
 | Scope | Covers |
 |-------|--------|
 | `core` | `packages/esign-core` |
-| `server` | `packages/esign-server` |
+| `node` | `packages/esign-node` |
+| `service` | `packages/esign-service` (the deployable service) |
 | `rn` | `packages/esign-react-native` |
 | `react` | `packages/esign-react` |
 | `demo` | `examples/*` (the client demos and the three server examples) |

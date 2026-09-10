@@ -4,7 +4,7 @@
 // tracing. Consumers import the `provider` singleton (or `getProvider` for
 // tests); nothing else imports the adapters.
 
-import { type ProviderRegistry, providerFromEnv } from '@blinkbitcoin/esign-server';
+import { type ProviderRegistry, providerFromEnv } from '@blinkbitcoin/esign-node';
 import { instrumentProvider } from '../tracing';
 import { DocuSignProvider, validateConfig as validateDocuSignConfig } from './docusign';
 import { MockProvider } from './mock';

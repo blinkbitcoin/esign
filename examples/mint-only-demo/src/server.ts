@@ -13,7 +13,7 @@ import {
   renderSigningReturnBridge,
   signingPageCsp,
   signingPageNonce,
-} from '@blinkbitcoin/esign-server';
+} from '@blinkbitcoin/esign-node';
 import express from 'express';
 import type { Mint } from './mint';
 import { type Context, resolvers, typeDefs } from './schema';

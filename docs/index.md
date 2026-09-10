@@ -20,20 +20,20 @@
 - **`esign-react-native/`:** publishable React Native library (react-native-builder-bob); `ESignature` (WebView) + `useESignature` over the core; peers react, react-native, @apollo/client, graphql, webview, netinfo
 - **`esign-react/`:** the same API for the browser (iframe embed, DocuSign.js source)
 - **`esign-core/`:** platform-agnostic `SigningSource` abstraction, sources (proxy / Web Forms / public URL), Apollo factory, codegen - a dependency of both
-- **`esign-server/`:** Node-only: DocuSign client (JWT grant), `createWebFormInstance` (locked prefill), the envelope domain over the `ESignProvider` + `EnvelopeStore` ports, Fetch handlers, `/express` router; the backend is built on it
+- **`esign-node/`:** Node-only: DocuSign client (JWT grant), `createWebFormInstance` (locked prefill), the envelope domain over the `ESignProvider` + `EnvelopeStore` ports, Fetch handlers, `/express` router; the backend is built on it
 
 #### Demo app (`examples/react-native-demo/`) - integration/E2E host
 - **Framework:** React Native 0.86.0
 - **Entry Point:** `App.tsx` (hosts the library component)
 - **E2E:** `.maestro/` flows
 
-#### Server examples (`examples/*-demo/`, the three shapes on `esign-server`)
+#### Server examples (`examples/*-demo/`, the three shapes on `esign-node`)
 - **`full-service-demo/`:** the whole service, below
 - **`mint-only-demo/`:** an existing GraphQL API adds one mutation that mints a locked Web Forms instance (the smallest backend footprint)
 - **`serverless-handler-demo/`:** the Fetch handlers (mint + webhook) behind a route handler, plain Node adapter
 
 #### The service (`examples/full-service-demo/`)
-- **Framework:** Express 5.2.x + Apollo Server 5.5.x, composed from `@blinkbitcoin/esign-server`
+- **Framework:** Express 5.2.x + Apollo Server 5.5.x, composed from `@blinkbitcoin/esign-node`
 - **Database:** PostgreSQL via Knex 3.3.x (the Knex `EnvelopeStore`)
 - **Entry Point:** `examples/full-service-demo/src/index.ts`
 - **Role:** The reference host for mode 3 (and the Web Forms mint endpoint); the backend every E2E suite runs against; ships as a container image (`ghcr.io/blinkbitcoin/esign-api`)

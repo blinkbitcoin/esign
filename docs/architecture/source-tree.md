@@ -30,7 +30,7 @@ esign/
 │
 ├── 🖥️ SERVER LIBRARY (Node-only; the backend is built on it)
 │   │
-│   └── packages/esign-server/
+│   └── packages/esign-node/
 │       ├── src/
 │       │   ├── index.ts           # Public API: client, domain, handlers, prefill ⭐
 │       │   ├── express.ts         # ./express entry: createESignRouter, pages via signingPage.ts (express is a peer) ⭐
@@ -251,7 +251,7 @@ esign/
 | `examples/full-service-demo/src/webhook.ts` | Generic webhook processing |
 | `examples/full-service-demo/src/types.ts` | ESignProvider interface |
 | `examples/full-service-demo/src/providers/index.ts` | Provider registry (providerFromEnv) + singleton |
-| `packages/esign-server/src/knex/migrations.ts` | Database schema (programmatic Knex migration source) |
+| `packages/esign-node/src/knex/migrations.ts` | Database schema (programmatic Knex migration source) |
 | `examples/full-service-demo/tests/e2e/` | E2E tests |
 
 ## Integration Points

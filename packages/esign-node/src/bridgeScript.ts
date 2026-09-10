@@ -3,5 +3,5 @@
 
 /** @deprecated Import from './bridge/script' */
 export { POST_SIGNING_EVENT_SCRIPT } from './bridge/script';
-/** @deprecated Import from '@blinkbitcoin/esign-server/docusign' */
+/** @deprecated Import from '@blinkbitcoin/esign-node/docusign' */
 export { POST_SESSION_END_SCRIPT } from './providers/docusign/mockWebFormPage';

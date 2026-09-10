@@ -1,7 +1,7 @@
 // Minting a hosted-form instance through the host's own backend: the POST the
 // app makes with its session token, so read-only fields come back locked
 // with the sender's values. The backend holds the provider credentials
-// (@blinkbitcoin/esign-server does the provider call); this is only the
+// (@blinkbitcoin/esign-node does the provider call); this is only the
 // client half. Provider-neutral - a provider narrows the prefill shape via
 // the generic. No Apollo/GraphQL dependency.
 

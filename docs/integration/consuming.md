@@ -10,7 +10,7 @@ The four packages publish to **GitHub Packages** under the
 | `@blinkbitcoin/esign-react-native` | React Native apps |
 | `@blinkbitcoin/esign-react` | React web apps |
 | `@blinkbitcoin/esign-core` | (transitive dependency of both; also usable standalone) |
-| `@blinkbitcoin/esign-server` | Your Node backend, in one of three shapes (each has a worked example under `examples/`): one mutation that mints locked Web Forms instances (`mint-only-demo`), the Fetch handlers behind a route (`serverless-handler-demo`), or the whole service with the `/express` router and `/knex` store (`full-service-demo`) |
+| `@blinkbitcoin/esign-node` | Your Node backend, in one of three shapes (each has a worked example under `examples/`): one mutation that mints locked Web Forms instances (`mint-only-demo`), the Fetch handlers behind a route (`serverless-handler-demo`), or the whole service with the `/express` router and `/knex` store (`full-service-demo`) |
 
 Publishing has two channels (both gated on the full test fleet - unit
 coverage thresholds + every E2E suite: backend, browser, Android, iOS - and the service image smoke):
@@ -77,7 +77,7 @@ import {
 // hosted-form layer (createHostedFormSource, interpretBridgeEvent) is on both.
 
 // Shape 1 - API-embedded (recommended: prefill stays server-side, read-only
-// fields come back locked). Your backend mints with @blinkbitcoin/esign-server
+// fields come back locked). Your backend mints with @blinkbitcoin/esign-node
 // (createWebFormInstance); the app sends its own session token.
 const source = createWebFormsSource({
   mint: { url: 'https://your-backend.example.com/webform/instance', getAuthToken },

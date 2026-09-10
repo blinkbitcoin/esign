@@ -55,7 +55,7 @@ existence oracle). `providerEnvelopeId` is never returned to clients.
 - **Apollo**: introspection disabled in production; stack traces never returned
 - `trust proxy` enabled in production so rate-limit/IP reflect the real client
 
-## Signing pages (`packages/esign-server/src/pages.ts` and `src/providers/docusign/{bridge,mockWebFormPage}.ts`, served by the package's Express router)
+## Signing pages (`packages/esign-node/src/pages.ts` and `src/providers/docusign/{bridge,mockWebFormPage}.ts`, served by the package's Express router)
 
 - Served with a strict, per-response **nonce-based CSP** (`default-src 'none'`,
   `script-src 'nonce-…'`); no `unsafe-inline`. Buttons use `data-event` +

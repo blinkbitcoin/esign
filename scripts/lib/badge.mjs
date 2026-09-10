@@ -12,7 +12,7 @@ export class BadgeError extends Error {}
 // Jest uses the lcov reporter's `coverage/lcov-report`.
 export const WORKSPACES = [
   { ws: 'packages/esign-core', reportDir: 'coverage/lcov-report' },
-  { ws: 'packages/esign-server', reportDir: 'coverage/lcov-report' },
+  { ws: 'packages/esign-node', reportDir: 'coverage/lcov-report' },
   { ws: 'packages/esign-react-native', reportDir: 'coverage/lcov-report' },
   { ws: 'packages/esign-react', reportDir: 'coverage/lcov-report' },
   { ws: 'examples/full-service-demo', reportDir: 'coverage' },

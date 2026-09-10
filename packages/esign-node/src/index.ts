@@ -1,4 +1,4 @@
-// @blinkbitcoin/esign-server - the server-side half of the e-signature
+// @blinkbitcoin/esign-node - the server-side half of the e-signature
 // packages: a DocuSign client (JWT grant, envelopes, Web Forms) and the one
 // call a host needs for locked prefill, createWebFormInstance. Node only.
 

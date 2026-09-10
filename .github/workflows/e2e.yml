@@ -233,7 +233,7 @@ jobs:
         run: bash scripts/pack-smoke.sh
 
       - name: Pack the publishable tarballs
-        run: mkdir -p "$RUNNER_TEMP/tarballs" && npm pack -w packages/esign-core -w packages/esign-server -w packages/esign-react-native -w packages/esign-react --pack-destination "$RUNNER_TEMP/tarballs"
+        run: mkdir -p "$RUNNER_TEMP/tarballs" && npm pack -w packages/esign-core -w packages/esign-node -w packages/esign-react-native -w packages/esign-react --pack-destination "$RUNNER_TEMP/tarballs"
 
       - name: Publish dist for the Web job
         uses: actions/upload-artifact@v7
@@ -241,7 +241,7 @@ jobs:
           name: packages-dist
           path: |
             packages/esign-core/dist
-            packages/esign-server/dist
+            packages/esign-node/dist
             packages/esign-react/dist
             packages/esign-react-native/lib
           retention-days: 1 # only the Web job of this run needs it

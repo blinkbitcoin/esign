@@ -93,7 +93,7 @@ if (!DRY_RUN) {
     });
   }
   // Every workspace that depends on a published package by version follows
-  // it (the examples on esign-server, the platform packages on core), or
+  // it (the examples on esign-node, the platform packages on core), or
   // `npm ci` in the service image asks the registry for the stamped version
   for (const { dir, args } of dependencyStamps(VERSION)) {
     execFileSync('npm', args, { cwd: dir, stdio: 'inherit' });

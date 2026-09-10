@@ -14,7 +14,7 @@
 // contract mismatch fails with DocuSign's raw HTTP status + body instead of
 // the provider's mapped generic error.
 
-import { createDocuSignClient, createWebFormInstance } from '@blinkbitcoin/esign-server';
+import { createDocuSignClient, createWebFormInstance } from '@blinkbitcoin/esign-node';
 import { describe, expect, it } from 'vitest';
 import { getConfig } from '../../src/providers/docusign/config';
 
@@ -45,7 +45,7 @@ describe.runIf(missing.length === 0)('DocuSign Web Forms API (live, demo account
       }
     );
 
-    // The contract assumed by @blinkbitcoin/esign-server's client:
+    // The contract assumed by @blinkbitcoin/esign-node's client:
     // { formUrl, instanceToken } -> url = formUrl#instanceToken=<token>
     const url = new URL(result.url);
     expect(url.protocol).toBe('https:');

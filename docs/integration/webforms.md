@@ -58,11 +58,11 @@ So the recipe is: mark the fixed fields Read only (keep Required) in the
 builder - **as Text (or Dropdown) fields**: a read-only Number or Date
 field makes DocuSign refuse the form's submission, see "Submitting a form
 with read-only fields" below - and mint every instance server-side with
-those values in the prefill. That mint is one call from `@blinkbitcoin/esign-server`, which any
+those values in the prefill. That mint is one call from `@blinkbitcoin/esign-node`, which any
 Node backend can make (the values are usually computed there anyway):
 
 ```ts
-import { createWebFormInstance, docuSignConfigFromEnv } from '@blinkbitcoin/esign-server';
+import { createWebFormInstance, docuSignConfigFromEnv } from '@blinkbitcoin/esign-node';
 
 const docusign = docuSignConfigFromEnv(); // once; DOCUSIGN_* env
 const { url } = await createWebFormInstance({

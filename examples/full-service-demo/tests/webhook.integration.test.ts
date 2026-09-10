@@ -1,6 +1,6 @@
 // Integration tests for webhook endpoint using supertest
 // Tests the full HTTP endpoint behavior, with the real envelope domain
-// (@blinkbitcoin/esign-server) running over an in-memory store: outcomes are
+// (@blinkbitcoin/esign-node) running over an in-memory store: outcomes are
 // asserted on the stored status and audit trail.
 
 import { randomUUID } from 'node:crypto';
@@ -8,11 +8,11 @@ import request from 'supertest';
 import { vi } from 'vitest';
 
 vi.mock('../src/store', async () => {
-  const { createMemoryEnvelopeStore } = await import('@blinkbitcoin/esign-server');
+  const { createMemoryEnvelopeStore } = await import('@blinkbitcoin/esign-node');
   return { store: createMemoryEnvelopeStore(), createKnexEnvelopeStore: vi.fn() };
 });
 
-import type { EnvelopeStatus } from '@blinkbitcoin/esign-server';
+import type { EnvelopeStatus } from '@blinkbitcoin/esign-node';
 import type { Express } from 'express';
 import type { MockInstance } from 'vitest';
 import { createApp } from '../src/app';

@@ -7,7 +7,7 @@
 ## Overview
 
 The backend uses two primary models for envelope management and audit tracking.
-Schema and data access both come from `@blinkbitcoin/esign-server/knex`:
+Schema and data access both come from `@blinkbitcoin/esign-node/knex`:
 `ESIGN_MIGRATIONS` (a programmatic Knex migration source, no migration files
 or knexfile in the service) and `createKnexEnvelopeStore`, the Knex
 implementation of the `EnvelopeStore` port. The service composes the store
@@ -131,7 +131,7 @@ Metadata is sanitized at write time against an allow-list
 ## The Store Port
 
 Data access is not done inline in resolvers. The domain
-(`createEnvelopeService` in `@blinkbitcoin/esign-server`) talks to an
+(`createEnvelopeService` in `@blinkbitcoin/esign-node`) talks to an
 `EnvelopeStore` port; `examples/full-service-demo/src/store.ts` implements it with Knex, and
 the package ships an in-memory implementation for tests and for hosts that
 keep envelope state elsewhere.
@@ -182,13 +182,13 @@ const logs = await store.listAuditEntries(envelopeId);
 ## Migration Commands
 
 The migrations live in the package
-(`packages/esign-server/src/knex/migrations.ts`, `ESIGN_MIGRATIONS`, in
+(`packages/esign-node/src/knex/migrations.ts`, `ESIGN_MIGRATIONS`, in
 order; append, never edit a shipped one). Their names are the original file
 names, so a database migrated before the move keeps its `knex_migrations`
 history. Hosts run them through their own Knex instance:
 
 ```ts
-import { runESignMigrations, createESignMigrationSource } from '@blinkbitcoin/esign-server/knex';
+import { runESignMigrations, createESignMigrationSource } from '@blinkbitcoin/esign-node/knex';
 await runESignMigrations(db);                                          // migrate.latest
 await db.migrate.rollback({ migrationSource: createESignMigrationSource() });
 ```

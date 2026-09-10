@@ -1,4 +1,4 @@
-// The DocuSign Web Forms prefill contract, mirroring @blinkbitcoin/esign-server
+// The DocuSign Web Forms prefill contract, mirroring @blinkbitcoin/esign-node
 // (parity-tested): keys are field API reference names, the value shape
 // follows the field type. Number → number (unquoted), CheckboxGroup →
 // string[], PhoneNumber → object.

@@ -1,5 +1,5 @@
 // Tests for GraphQL schema and resolvers
-// Runs the real envelope domain (@blinkbitcoin/esign-server) over an in-memory
+// Runs the real envelope domain (@blinkbitcoin/esign-node) over an in-memory
 // store, so no Postgres connection is needed and behaviour is asserted on the
 // resulting state rather than on mocked repository calls.
 
@@ -8,11 +8,11 @@ import { ApolloServer } from '@apollo/server';
 import { vi } from 'vitest';
 
 vi.mock('../src/store', async () => {
-  const { createMemoryEnvelopeStore } = await import('@blinkbitcoin/esign-server');
+  const { createMemoryEnvelopeStore } = await import('@blinkbitcoin/esign-node');
   return { store: createMemoryEnvelopeStore(), createKnexEnvelopeStore: vi.fn() };
 });
 
-import type { EnvelopeStatus } from '@blinkbitcoin/esign-server';
+import type { EnvelopeStatus } from '@blinkbitcoin/esign-node';
 import { ErrorCodes, Errors } from '../src/errors';
 import { provider } from '../src/providers';
 import { addEnvelope, clearEnvelopes } from '../src/providers/mock';

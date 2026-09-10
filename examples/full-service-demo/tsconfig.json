@@ -13,10 +13,10 @@
     "declaration": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@blinkbitcoin/esign-server": ["../../packages/esign-server/src/index.ts"],
-      "@blinkbitcoin/esign-server/express": ["../../packages/esign-server/src/express.ts"],
-      "@blinkbitcoin/esign-server/knex": ["../../packages/esign-server/src/knex.ts"],
-      "@blinkbitcoin/esign-server/docusign": ["../../packages/esign-server/src/docusign.ts"]
+      "@blinkbitcoin/esign-node": ["../../packages/esign-node/src/index.ts"],
+      "@blinkbitcoin/esign-node/express": ["../../packages/esign-node/src/express.ts"],
+      "@blinkbitcoin/esign-node/knex": ["../../packages/esign-node/src/knex.ts"],
+      "@blinkbitcoin/esign-node/docusign": ["../../packages/esign-node/src/docusign.ts"]
     }
   },
   "include": ["src/**/*"],

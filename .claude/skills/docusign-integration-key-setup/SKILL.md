@@ -49,7 +49,7 @@ form's preview is `https://apps-d.docusign.com/send/forms/view/<form-id>`.
 
 ## 3. Consent, with the right scopes
 
-The JWT grant asks for `DOCUSIGN_SCOPES` (`packages/esign-server/src/docusign/config.ts`):
+The JWT grant asks for `DOCUSIGN_SCOPES` (`packages/esign-node/src/docusign/config.ts`):
 `signature impersonation webforms_read webforms_instance_read webforms_instance_write`.
 A consent granted for `signature impersonation` alone lets the grant succeed
 but every Web Forms call answers 401 `AUTHORIZATION_INSUFFICIENT_SCOPE`.

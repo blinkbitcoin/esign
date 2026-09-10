@@ -9,7 +9,7 @@ import { ApolloServer } from '@apollo/server';
 import { vi } from 'vitest';
 
 vi.mock('../src/store', async () => {
-  const { createMemoryEnvelopeStore } = await import('@blinkbitcoin/esign-server');
+  const { createMemoryEnvelopeStore } = await import('@blinkbitcoin/esign-node');
   return { store: createMemoryEnvelopeStore(), createKnexEnvelopeStore: vi.fn() };
 });
 

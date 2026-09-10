@@ -3,7 +3,7 @@
 The smallest server-side footprint that still gives you **locked, server-set
 values** in a DocuSign Web Form: an existing GraphQL API (Apollo Server here,
 any framework works) adds one mutation whose resolver makes one call into
-`@blinkbitcoin/esign-server`. No envelope domain, no store, no webhooks, no
+`@blinkbitcoin/esign-node`. No envelope domain, no store, no webhooks, no
 esign service to run - the shape for a host that already has an API and
 only needs locked terms (the example's domain is a subscription quote).
 

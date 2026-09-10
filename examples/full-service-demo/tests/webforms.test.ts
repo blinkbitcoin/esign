@@ -11,7 +11,7 @@ vi.mock('../src/db', () => ({
   knex: { transaction: (cb: (trx: unknown) => unknown) => cb({}) },
 }));
 
-import { LOCKED_FIELDS_HINT } from '@blinkbitcoin/esign-server';
+import { LOCKED_FIELDS_HINT } from '@blinkbitcoin/esign-node';
 import type { Express } from 'express';
 import { createApp } from '../src/app';
 import { provider } from '../src/providers';

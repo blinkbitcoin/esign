@@ -185,14 +185,14 @@ export const renderMockFormPage = (page: MockFormPage): string => {
 export type { ClientEvent } from './bridge/script';
 /** @deprecated Import from './bridge/script' (CLIENT_EVENTS) */
 export { CLIENT_EVENTS } from './bridge/script';
-/** @deprecated Import from '@blinkbitcoin/esign-server/docusign' */
+/** @deprecated Import from '@blinkbitcoin/esign-node/docusign' */
 export {
   mapDocuSignReturnEvent,
   renderSigningReturnBridge,
 } from './providers/docusign/bridge';
-/** @deprecated Import from '@blinkbitcoin/esign-server/docusign' (or use MockFormField) */
+/** @deprecated Import from '@blinkbitcoin/esign-node/docusign' (or use MockFormField) */
 export type { MockWebFormField } from './providers/docusign/mockWebFormPage';
-/** @deprecated Import from '@blinkbitcoin/esign-server/docusign' */
+/** @deprecated Import from '@blinkbitcoin/esign-node/docusign' */
 export {
   LOCKED_FIELDS_HINT,
   mockWebFormFields,

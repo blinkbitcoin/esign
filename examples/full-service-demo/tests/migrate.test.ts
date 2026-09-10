@@ -6,7 +6,7 @@ import { vi } from 'vitest';
 const destroy = vi.fn(async () => undefined);
 vi.mock('../src/db', () => ({ knex: { destroy } }));
 const runESignMigrations = vi.fn();
-vi.mock('@blinkbitcoin/esign-server/knex', () => ({
+vi.mock('@blinkbitcoin/esign-node/knex', () => ({
   runESignMigrations: (...args: unknown[]) => runESignMigrations(...args),
 }));
 
