@@ -12,7 +12,15 @@ const [base, ...files] = process.argv.slice(2);
 const readAt = (ref, file) => {
   try {
     return JSON.parse(
-      execFileSync('git', ['show', `${ref}:${file}`], { encoding: 'utf8' }),
+      execFileSync('git', ['show', `${ref}:${file}`], {
+        encoding: 'utf8',
+        // A path that did not exist at `ref` is the answer below, not a
+        // failure: git's own "fatal: path ... exists on disk, but not in
+        // <ref>" would otherwise reach the terminal from a green run. A
+        // workspace renamed since the merge base hits this for every one of
+        // its manifests.
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }),
     );
   } catch {
     return undefined; // did not exist at that ref
