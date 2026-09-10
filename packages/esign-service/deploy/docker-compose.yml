@@ -20,6 +20,9 @@ services:
     env_file:
       - .env
     environment:
+      # The image already defaults to this; naming it here is the reminder
+      # that a production posture refuses demo hosts and the mock provider
+      ESIGN_ENV: production
       PORT: 4100
       # Behind a load balancer, so the rate limits key on the real client
       TRUST_PROXY: "true"

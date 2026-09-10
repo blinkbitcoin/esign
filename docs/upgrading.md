@@ -63,12 +63,16 @@ An existing deployment that sets `DATABASE_URL` keeps every route it had.
 |---|---|
 | `node dist/index.js` (image `CMD`) | `node dist/node.js`; migrations are<br>`node dist/node.js migrate` (was<br>`node dist/migrate.js`) |
 | `JWT_SECRET` (HS256 only) | `SESSION_JWKS_URL` (RS/ES) or<br>`SESSION_HS256_SECRET`; `JWT_SECRET` stays<br>as an accepted alias |
-| Introspection off when<br>`NODE_ENV=production` | Introspection off when<br>`ESIGN_ENV=production`. **Behaviour change:**<br>a deployment that relied on `NODE_ENV` must<br>set `ESIGN_ENV` |
+| Introspection off when<br>`NODE_ENV=production` | Introspection off when<br>`ESIGN_ENV=production`. The image now sets<br>`ESIGN_ENV=production` itself, so a container<br>keeps the strict posture - and refuses the mock<br>provider and demo DocuSign hosts unless<br>`ESIGN_ALLOW_DEMO=true`, and refuses to mint a<br>client's own prefill unless<br>`ESIGN_ALLOW_CLIENT_PREFILL=true`. A non-container<br>deployment that relied on `NODE_ENV` must set<br>`ESIGN_ENV` |
 | `DOCUSIGN_HMAC_KEY` required<br>whenever the provider is DocuSign | Required only when envelope orchestration is<br>on (it verifies the webhook) |
 | `DOCUSIGN_TEMPLATE_ID` required<br>at provider selection | Required only when envelope orchestration is<br>on; a mint needs `DOCUSIGN_WEBFORM_ID` and<br>`DOCUSIGN_RETURN_URL` instead |
 | `validateSecurityConfig()` | `validateConfig(env, { runtime })` - pure,<br>lists every problem plus the capabilities<br>that are on |
 | `createApp()` (Express) | `createESignApp(env, deps) → { fetch }`;<br>`startServer(env) → { url, stop }` on<br>`@blinkbitcoin/esign-service/node` |
 | Express, helmet, cors,<br>express-rate-limit dependencies | gone: the headers and CORS are in the Fetch<br>core, the rate limits in the Node target |
+
+`TRUST_PROXY` now decides the client address for the webhook's security log
+as well as for the rate limits: without it, `x-forwarded-for` is ignored
+everywhere (it is a caller-controlled header).
 
 New, optional: `TERMS_URL` (the host computes the prefill actually minted;
 its answer wins over client values key by key), `TERMS_SHARED_SECRET`,

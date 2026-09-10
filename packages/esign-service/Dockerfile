@@ -34,7 +34,13 @@ COPY packages/esign-service packages/esign-service
 RUN npm run build -w packages/esign-node && npm run build -w packages/esign-service
 
 FROM node:${NODE_VERSION}-alpine AS runtime
+# NODE_ENV is Node's own switch (dependency resolution, framework defaults).
+# ESIGN_ENV is this service's: the image defaults to the production posture,
+# so a container refuses demo DocuSign hosts and the mock provider, keeps
+# GraphQL introspection off, and will not mint a client's own prefill.
+# ESIGN_ALLOW_DEMO=true / ESIGN_ALLOW_CLIENT_PREFILL=true opt back out.
 ENV NODE_ENV=production
+ENV ESIGN_ENV=production
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages/esign-service/package.json packages/esign-service/

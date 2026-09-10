@@ -23,7 +23,15 @@ NAME="esign-smoke-$$"
 # its own default (CONTAINER_PORT)
 PORT="$SMOKE_PORT"
 MODE="mint only"
-ENV_ARGS=(-e ESIGN_PROVIDER=mock -e ALLOW_INSECURE_DEV=true)
+# The image defaults to ESIGN_ENV=production, which refuses the mock provider
+# and a client-supplied prefill: a smoke says so out loud rather than
+# weakening the image's default.
+ENV_ARGS=(
+  -e ESIGN_PROVIDER=mock
+  -e ALLOW_INSECURE_DEV=true
+  -e ESIGN_ALLOW_DEMO=true
+  -e ESIGN_ALLOW_CLIENT_PREFILL=true
+)
 if [ -n "${DATABASE_URL:-}" ]; then
   MODE="full"
   ENV_ARGS+=(-e "DATABASE_URL=$DATABASE_URL")

@@ -34,7 +34,7 @@ environment variables.
 
 | Target | What you deploy | Capabilities |
 |---|---|---|
-| Docker | `docker run -p 4100:4100 --env-file .env`<br>`ghcr.io/blinkbitcoin/esign-service:latest` | mint;<br>+ envelopes<br>with a database |
+| Docker | `docker run -p 4100:4100 --env-file .env`<br>`ghcr.io/blinkbitcoin/esign-service:latest`<br>(the image defaults to `ESIGN_ENV=production`) | mint;<br>+ envelopes<br>with a database |
 | Compose | `cp deploy/docker-compose.yml .` then<br>`docker compose up -d` (`--profile postgres` adds<br>a database, `--profile migrate` applies its schema) | mint;<br>+ envelopes |
 | Kubernetes | fill `deploy/k8s/secret.yaml`, then<br>`kubectl apply -k deploy/k8s` (Deployment, Service,<br>migrate Job, probes on `/health`) | mint;<br>+ envelopes |
 | Cloud Run<br>Fly, Render<br>Railway | the same image, the platform's env UI, port 4100 | mint;<br>+ envelopes |
@@ -78,11 +78,12 @@ list with comments.
 | `ESIGN_PROVIDER` | `mock` (default) or `docusign` |
 | `MOCK_PAGES` | `false` turns the mock provider's signing pages off |
 | `DOCUSIGN_*` | Provider settings (`.env.docusign.example`) |
-| `ESIGN_ENV` | `production` refuses demo settings and disables<br>introspection (`ESIGN_ALLOW_DEMO=true` overrides) |
+| `ESIGN_ENV` | `production` refuses demo settings and disables<br>introspection (`ESIGN_ALLOW_DEMO=true` overrides).<br>**The image sets it**, so a container refuses the mock<br>provider and demo DocuSign hosts unless you opt out |
 | `CORS_ALLOWED_ORIGINS` | Browser origins allowed to call the API |
 | `ALLOW_INSECURE_DEV` | The explicit opt-in to no verification (never in<br>production) |
 | `OTEL_*` | Standard OpenTelemetry variables; tracing is off<br>unless set |
-| `PORT`, `TRUST_PROXY`,<br>`RATE_LIMIT_*_PER_MIN`,<br>`DOCUSIGN_PRIVATE_KEY_FILE` | **Container only.** A function relies on its<br>platform for the port, the proxy and the limits;<br>`DOCUSIGN_PRIVATE_KEY_BASE64` works everywhere |
+| `TRUST_PROXY` | `true` when a proxy you trust rewrites<br>`x-forwarded-for`: it then names the client for the<br>rate limits and for the webhook's security log.<br>Without it the header is ignored everywhere |
+| `PORT`,<br>`RATE_LIMIT_*_PER_MIN`,<br>`DOCUSIGN_PRIVATE_KEY_FILE` | **Container only.** A function relies on its<br>platform for the port and the limits;<br>`DOCUSIGN_PRIVATE_KEY_BASE64` works everywhere |
 
 ## Quick Start
 
@@ -131,7 +132,13 @@ make dev            # service at http://localhost:4100 (PORT, default ESIGN_PORT
   IDs never leave this service.
 - **Fail-closed at boot**: `validateConfig` (`src/config.ts`) is pure - env
   in, problems out - so a container refuses to start and a function fails at
-  first import, on the same rules.
+  first import, on the same rules. The image defaults to
+  `ESIGN_ENV=production`, so the strict posture is what you get unless you
+  opt out.
+- **One provider per app**: `selectProvider(env)` builds the adapters an app
+  mints, verifies webhooks and resolves GraphQL with. There is no module-level
+  singleton, so a Worker's bindings decide what it mints with and the
+  resolvers can never run on a different adapter than the mint.
 - **Observability**: opt-in OpenTelemetry tracing via standard `OTEL_*` env
   vars (`src/instrumentation.ts`) - http/graphql/pg/undici spans to any OTLP
   backend, or `OTEL_TRACES_EXPORTER=console` locally.
@@ -158,7 +165,8 @@ templates (`docker compose config` always, `kubeconform` when installed).
 | `src/config.ts` | The boot guard (`validateConfig`, pure) |
 | `src/session.ts` | Session verification (JWKS or HS256, via `jose`) |
 | `src/terms.ts` | The `TERMS_URL` callback and its merge rule |
-| `src/envelopes.ts` | The envelope capability: Fetch webhook + GraphQL<br>(Node-only, dynamically imported) |
+| `src/envelopes.ts` | The envelope capability: Fetch webhook + GraphQL<br>(Node-only; reached through the loader an entry passes) |
+| `src/proxy.ts` | `TRUST_PROXY`: who may be believed about the client |
 | `src/server.ts` / `src/node.ts` | `startServer` (rate limits, drain) / the process entry point |
 | `src/vercel.ts` / `src/cloudflare.ts` | The two function targets |
 | `src/typeDefs.ts` → `schema.graphql` | GraphQL SDL → emitted schema artifact |
