@@ -5,8 +5,12 @@
 // tests); nothing else imports the adapters.
 
 import { type ProviderRegistry, providerFromEnv } from '@blinkbitcoin/esign-node';
+import type { Env } from '../env';
 import { instrumentProvider } from '../tracing';
-import { DocuSignProvider, validateConfig as validateDocuSignConfig } from './docusign';
+import {
+  createProvider as createDocuSignProvider,
+  validateConfig as validateDocuSignConfig,
+} from './docusign';
 import { MockProvider } from './mock';
 
 import type { ESignProvider } from './port';
@@ -15,21 +19,22 @@ import type { ESignProvider } from './port';
 // instrumented by construction (see instrumentProvider in tracing.ts). The
 // entries are lazy: DocuSign's configuration is validated only when selected
 // (fail-fast at startup, never per request).
-export const registry: ProviderRegistry = {
+export const createRegistry = (env: Env = process.env): ProviderRegistry => ({
   mock: () => instrumentProvider(MockProvider, 'mock'),
   docusign: () => {
-    validateDocuSignConfig();
-    return instrumentProvider(DocuSignProvider, 'docusign');
+    validateDocuSignConfig(env);
+    return instrumentProvider(createDocuSignProvider(env), 'docusign');
   },
-};
+});
 
-// Provider factory function - exported for testing. An unknown name warns
-// and falls back to the mock (the package's providerFromEnv default).
-export const getProvider = (providerName?: string): ESignProvider =>
-  providerFromEnv(
-    providerName === undefined ? process.env : { ESIGN_PROVIDER: providerName },
-    registry
-  );
+export const registry: ProviderRegistry = createRegistry();
+
+// The adapter ESIGN_PROVIDER names in `env`. Taking the environment (rather
+// than a name) is what lets a function target hand in its platform env
+// instead of process.env. An unknown name warns and falls back to the mock
+// (the package's providerFromEnv default).
+export const getProvider = (env: Env = process.env): ESignProvider =>
+  providerFromEnv(env, createRegistry(env));
 
 // Provider instance for use in resolvers/routes
 export const provider = getProvider();

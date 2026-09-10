@@ -58,9 +58,9 @@ describe('initTelemetry', () => {
     expect(nodeSdkConstructor).toHaveBeenCalledWith(
       expect.objectContaining({ serviceName: 'esign-service' })
     );
-    // The full stack is instrumented: http, express, graphql, pg, undici (fetch)
+    // The full stack is instrumented: http, graphql, pg, undici (fetch)
     const config = nodeSdkConstructor.mock.calls[0][0] as { instrumentations: unknown[] };
-    expect(config.instrumentations).toHaveLength(5);
+    expect(config.instrumentations).toHaveLength(4);
   });
 
   it('respects OTEL_SERVICE_NAME', () => {

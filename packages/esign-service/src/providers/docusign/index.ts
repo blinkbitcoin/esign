@@ -4,16 +4,21 @@
 // tests see the current environment).
 
 import { createDocuSignProvider } from '@blinkbitcoin/esign-node';
-import { isInsecureDevAllowed } from '../../config';
+import { type Env, isInsecureDevAllowed } from '../../env';
 import { getConfig } from './config';
 
-const handle = createDocuSignProvider({
-  config: getConfig,
-  webhook: {
-    hmacKey: () => process.env.DOCUSIGN_HMAC_KEY,
-    allowMissingKey: () => isInsecureDevAllowed(),
-  },
-});
+// The adapter over one environment. Values are read per call, so credential
+// rotation (and a test changing process.env) is seen without a rebuild.
+export const createProvider = (env: Env = process.env) =>
+  createDocuSignProvider({
+    config: () => getConfig(env),
+    webhook: {
+      hmacKey: () => env.DOCUSIGN_HMAC_KEY,
+      allowMissingKey: () => isInsecureDevAllowed(env),
+    },
+  });
+
+const handle = createProvider();
 
 export const DocuSignProvider = handle;
 

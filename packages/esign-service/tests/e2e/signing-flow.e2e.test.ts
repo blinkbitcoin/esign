@@ -3,16 +3,14 @@
 
 import { ApolloServer } from '@apollo/server';
 import crypto from 'crypto';
-import type { Express } from 'express';
-import request from 'supertest';
-import { createApp } from '../../src/app';
+import { envApp, post } from '../support/app';
 import { resolvers, typeDefs } from '../../src/schema';
 import type { GraphQLContext } from '../../src/types';
 import { cleanTestData } from './factories';
 import { knex } from './setup';
 
 describe('Signing Flow E2E Tests', () => {
-  let app: Express;
+  const app = envApp();
   let server: ApolloServer<GraphQLContext>;
   const testHmacKey = 'e2e-signing-flow-hmac-key';
 
@@ -20,7 +18,6 @@ describe('Signing Flow E2E Tests', () => {
   const originalHmacKey = process.env.DOCUSIGN_HMAC_KEY;
 
   beforeAll(async () => {
-    app = await createApp();
     server = new ApolloServer<GraphQLContext>({ typeDefs, resolvers });
     await server.start();
   });
@@ -150,11 +147,9 @@ describe('Signing Flow E2E Tests', () => {
       const rawBody = JSON.stringify(webhookPayload);
       const validSignature = computeSignature(rawBody, testHmacKey);
 
-      const webhookResponse = await request(app)
-        .post('/webhook/esign')
-        .set('x-docusign-signature-1', validSignature)
-        .set('Content-Type', 'application/json')
-        .send(rawBody);
+      const webhookResponse = await post(app, '/webhook/esign', rawBody, {
+        'x-docusign-signature-1': validSignature,
+      });
 
       expect(webhookResponse.status).toBe(200);
 

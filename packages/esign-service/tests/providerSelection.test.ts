@@ -12,7 +12,7 @@ describe('Provider Selection (getProvider)', () => {
   describe('when providerName is "mock"', () => {
     it('should return MockProvider', async () => {
       // Arrange & Act
-      const provider = getProvider('mock');
+      const provider = getProvider({ ESIGN_PROVIDER: 'mock' });
 
       // Assert - MockProvider returns specific URL pattern
       const result = await provider.createEnvelope('user-1', 'contract', {
@@ -24,56 +24,47 @@ describe('Provider Selection (getProvider)', () => {
     });
   });
 
-  describe('when providerName is "docusign"', () => {
-    const REQUIRED_ENV_VARS = [
-      'DOCUSIGN_ACCOUNT_ID',
-      'DOCUSIGN_INTEGRATION_KEY',
-      'DOCUSIGN_PRIVATE_KEY',
-      'DOCUSIGN_USER_ID',
-      'DOCUSIGN_TEMPLATE_ID',
-    ];
-
-    const setDocuSignConfig = () => {
-      for (const name of REQUIRED_ENV_VARS) {
-        process.env[name] = `test-${name.toLowerCase()}`;
-      }
+  describe('when the environment selects "docusign"', () => {
+    // Dummy values in the real shape - nothing here is a credential
+    const CREDENTIALS = {
+      DOCUSIGN_ACCOUNT_ID: 'test-account-id',
+      DOCUSIGN_INTEGRATION_KEY: 'test-integration-key',
+      DOCUSIGN_PRIVATE_KEY: 'test-private-key',
+      DOCUSIGN_USER_ID: 'test-user-id',
     };
 
-    afterEach(() => {
-      for (const name of REQUIRED_ENV_VARS) {
-        delete process.env[name];
-      }
-    });
+    it('returns the DocuSign adapter when the credentials are present', () => {
+      const provider = getProvider({ ESIGN_PROVIDER: 'docusign', ...CREDENTIALS });
 
-    it('should return DocuSignProvider when config is present', () => {
-      // Arrange
-      setDocuSignConfig();
-
-      // Act
-      const provider = getProvider('docusign');
-
-      // Assert - should return a provider with the expected interface
-      expect(provider).toBeDefined();
       expect(typeof provider.createEnvelope).toBe('function');
       expect(typeof provider.getEnvelopeStatus).toBe('function');
     });
 
-    it('should throw at startup when DocuSign config is missing (fail-fast)', () => {
-      // Act & Assert - misconfiguration must fail at provider selection,
-      // not surface as a cryptic crypto error on the first request
-      expect(() => getProvider('docusign')).toThrow(
+    it('throws at selection when the credentials are missing (fail-fast)', () => {
+      // Misconfiguration must fail at provider selection, not surface as a
+      // cryptic crypto error on the first request
+      expect(() => getProvider({ ESIGN_PROVIDER: 'docusign' })).toThrow(
         /Missing required environment variables.*DOCUSIGN_ACCOUNT_ID/
       );
     });
 
-    it('should name every missing variable in the error', () => {
-      // Arrange - set only one of the five required vars
-      process.env.DOCUSIGN_ACCOUNT_ID = 'test-account-id';
+    it('names every missing variable in the error', () => {
+      expect(() =>
+        getProvider({ ESIGN_PROVIDER: 'docusign', DOCUSIGN_ACCOUNT_ID: 'test-account-id' })
+      ).toThrow(/DOCUSIGN_INTEGRATION_KEY, DOCUSIGN_PRIVATE_KEY, DOCUSIGN_USER_ID/);
+    });
 
-      // Act & Assert
-      expect(() => getProvider('docusign')).toThrow(
-        /DOCUSIGN_INTEGRATION_KEY, DOCUSIGN_PRIVATE_KEY, DOCUSIGN_USER_ID, DOCUSIGN_TEMPLATE_ID/
-      );
+    it('asks for the envelope template only when envelopes are on', () => {
+      // Mint only: no template is sent, so none is required
+      expect(() => getProvider({ ESIGN_PROVIDER: 'docusign', ...CREDENTIALS })).not.toThrow();
+
+      expect(() =>
+        getProvider({
+          ESIGN_PROVIDER: 'docusign',
+          ...CREDENTIALS,
+          DATABASE_URL: 'postgres://u@h/db',
+        })
+      ).toThrow(/DOCUSIGN_TEMPLATE_ID/);
     });
   });
 
@@ -83,7 +74,7 @@ describe('Provider Selection (getProvider)', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       // Act
-      const provider = getProvider('unknown-provider');
+      const provider = getProvider({ ESIGN_PROVIDER: 'unknown-provider' });
 
       // Assert - falls back to mock
       const result = await provider.createEnvelope('user-1', 'contract', {
@@ -107,7 +98,7 @@ describe('Provider Selection (getProvider)', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       // Act
-      const provider = getProvider('');
+      const provider = getProvider({ ESIGN_PROVIDER: '' });
 
       // Assert - falls back to mock (empty string triggers default case)
       const result = await provider.createEnvelope('user-1', 'contract', {

@@ -1,10 +1,8 @@
-// Integration tests for webhook endpoint using supertest
-// Tests the full HTTP endpoint behavior, with the real envelope domain
-// (@blinkbitcoin/esign-node) running over an in-memory store: outcomes are
-// asserted on the stored status and audit trail.
+// The webhook route end to end through the Fetch core, with the real
+// envelope domain (@blinkbitcoin/esign-node) running over an in-memory
+// store: outcomes are asserted on the stored status and audit trail.
 
 import { randomUUID } from 'node:crypto';
-import request from 'supertest';
 import { vi } from 'vitest';
 
 vi.mock('../src/store', async () => {
@@ -13,11 +11,10 @@ vi.mock('../src/store', async () => {
 });
 
 import type { EnvelopeStatus } from '@blinkbitcoin/esign-node';
-import type { Express } from 'express';
 import type { MockInstance } from 'vitest';
-import { createApp } from '../src/app';
 import type { DocuSignWebhookPayload } from '../src/providers/docusign';
 import { store } from '../src/store';
+import { asJson, get, post, testFullApp } from './support/app';
 
 // Helper to create a mock DocuSign webhook payload
 const createWebhookPayload = (envelopeId: string, status: string): DocuSignWebhookPayload => ({
@@ -49,27 +46,39 @@ const seedEnvelope = async (status: EnvelopeStatus = 'sent') =>
     status,
   });
 
-const postWebhook = (app: Express, payload: DocuSignWebhookPayload) =>
-  request(app).post('/webhook/esign').send(payload).set('Content-Type', 'application/json');
+// The route's answer in the shape the assertions below read
+const answer = async (response: Response) => ({
+  status: response.status,
+  body: await asJson(response),
+});
 
 describe('Webhook Endpoint Integration', () => {
-  let app: Express;
+  let app: ReturnType<typeof testFullApp>;
+
+  const postWebhook = (payload: DocuSignWebhookPayload, headers: HeadersInit = {}) =>
+    post(app, '/webhook/esign', payload, headers).then(answer);
+
   let consoleWarnSpy: MockInstance;
   let consoleErrorSpy: MockInstance;
   let consoleLogSpy: MockInstance;
 
-  beforeAll(async () => {
-    app = await createApp();
+  beforeAll(() => {
+    app = testFullApp();
+  });
+
+  afterAll(async () => {
+    await app.stop();
   });
 
   // No DOCUSIGN_HMAC_KEY is configured in this suite, so every request hits
   // the expected dev-mode "not configured" warning. Some tests also
-  // intentionally exercise malformed-JSON and DB-failure error paths, and
-  // successful requests log via the service's console.log. All expected: the
-  // service composes the package on its console logger (no seam of its own),
-  // so each test opts out of the silent-tests gate by spying on the console
-  // itself (vitest.setup.ts) - per test, so the spy sits on top of the gate's.
+  // intentionally exercise malformed-JSON and DB-failure error paths, and a
+  // successful request logs. The service composes the package on the
+  // console and has no seam of its own, so this suite opts out of the
+  // silent-tests gate (vitest.setup.ts) by spying on the console itself -
+  // per test, so the spy sits on top of the gate's, never underneath it.
   beforeEach(() => {
+    vi.clearAllMocks();
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -81,10 +90,6 @@ describe('Webhook Endpoint Integration', () => {
     consoleLogSpy.mockRestore();
   });
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('POST /webhook/esign', () => {
     it('should return 200 OK for valid webhook payload', async () => {
       // Arrange
@@ -92,7 +97,7 @@ describe('Webhook Endpoint Integration', () => {
       const payload = createWebhookPayload(envelope.providerEnvelopeId, 'completed');
 
       // Act
-      const response = await postWebhook(app, payload);
+      const response = await postWebhook(payload);
 
       // Assert
       expect(response.status).toBe(200);
@@ -106,7 +111,7 @@ describe('Webhook Endpoint Integration', () => {
       const payload = createWebhookPayload(envelope.providerEnvelopeId, 'completed');
 
       // Act
-      await postWebhook(app, payload);
+      await postWebhook(payload);
 
       // Assert - the payload was parsed and processed: the envelope matched by
       // its provider id was updated and the transition audited (PII-free)
@@ -125,7 +130,7 @@ describe('Webhook Endpoint Integration', () => {
       const payload = createWebhookPayload(`unknown-envelope-${randomUUID()}`, 'completed');
 
       // Act
-      const response = await postWebhook(app, payload);
+      const response = await postWebhook(payload);
 
       // Assert - should still return 200 to prevent DocuSign retries
       expect(response.status).toBe(200);
@@ -138,7 +143,7 @@ describe('Webhook Endpoint Integration', () => {
       const payload = createWebhookPayload(envelope.providerEnvelopeId, 'delivered-to-mars');
 
       // Act
-      const response = await postWebhook(app, payload);
+      const response = await postWebhook(payload);
 
       // Assert - acknowledged (no retry), nothing changed
       expect(response.status).toBe(200);
@@ -152,8 +157,8 @@ describe('Webhook Endpoint Integration', () => {
       const payload = createWebhookPayload(envelope.providerEnvelopeId, 'completed');
 
       // Act - the same event delivered twice (DocuSign retries)
-      const first = await postWebhook(app, payload);
-      const second = await postWebhook(app, payload);
+      const first = await postWebhook(payload);
+      const second = await postWebhook(payload);
 
       // Assert
       expect(first.status).toBe(200);
@@ -168,7 +173,7 @@ describe('Webhook Endpoint Integration', () => {
       const payload = createWebhookPayload(envelope.providerEnvelopeId, 'sent');
 
       // Act
-      const response = await postWebhook(app, payload);
+      const response = await postWebhook(payload);
 
       // Assert - acknowledged but ignored: status and audit trail unchanged
       expect(response.status).toBe(200);
@@ -186,7 +191,7 @@ describe('Webhook Endpoint Integration', () => {
       const payload = createWebhookPayload(envelope.providerEnvelopeId, 'completed');
 
       // Act
-      const response = await postWebhook(app, payload);
+      const response = await postWebhook(payload);
 
       // Assert - transient failure must trigger a DocuSign retry; the handler
       // is idempotent so the retried delivery converges to the right status
@@ -195,7 +200,7 @@ describe('Webhook Endpoint Integration', () => {
       expect((await store.getEnvelopeById(envelope.id))!.status).toBe('sent');
 
       // The retry (DB recovered) converges
-      const retry = await postWebhook(app, payload);
+      const retry = await postWebhook(payload);
       expect(retry.status).toBe(200);
       expect((await store.getEnvelopeById(envelope.id))!.status).toBe('completed');
       expect(await store.listAuditEntries(envelope.id)).toHaveLength(1);
@@ -212,7 +217,7 @@ describe('Webhook Endpoint Integration', () => {
       const payload = createWebhookPayload(envelope.providerEnvelopeId, 'completed');
 
       // Act
-      const response = await postWebhook(app, payload);
+      const response = await postWebhook(payload);
 
       // Assert - nothing half-applied
       expect(response.status).toBe(500);
@@ -232,7 +237,7 @@ describe('Webhook Endpoint Integration', () => {
       const payload = createWebhookPayload(envelope.providerEnvelopeId, 'completed');
 
       // Act
-      const response = await postWebhook(app, payload);
+      const response = await postWebhook(payload);
 
       // Assert
       expect(response.status).toBe(500);
@@ -247,10 +252,7 @@ describe('Webhook Endpoint Integration', () => {
 
     it('should handle malformed JSON gracefully', async () => {
       // Act
-      const response = await request(app)
-        .post('/webhook/esign')
-        .send('not valid json')
-        .set('Content-Type', 'application/json');
+      const response = await answer(await post(app, '/webhook/esign', 'not valid json'));
 
       // Assert - the provider's parser rejects it with 400
       // This is acceptable as it tells DocuSign not to retry invalid payloads
@@ -263,10 +265,9 @@ describe('Webhook Endpoint Integration', () => {
       const payload = createWebhookPayload(envelope.providerEnvelopeId, 'completed');
 
       // Act
-      const response = await postWebhook(app, payload).set(
-        'X-DocuSign-Signature-1',
-        'fake-hmac-signature'
-      );
+      const response = await postWebhook(payload, {
+        'X-DocuSign-Signature-1': 'fake-hmac-signature',
+      });
 
       // Assert
       expect(response.status).toBe(200);
@@ -278,7 +279,7 @@ describe('Webhook Endpoint Integration', () => {
   describe('Health check', () => {
     it('should return 200 OK for health endpoint', async () => {
       // Act
-      const response = await request(app).get('/health');
+      const response = await answer(await get(app, '/health'));
 
       // Assert
       expect(response.status).toBe(200);

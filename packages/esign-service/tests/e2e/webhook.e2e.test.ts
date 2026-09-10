@@ -2,22 +2,16 @@
 // Tests real database interactions when webhooks are received
 
 import crypto from 'crypto';
-import type { Express } from 'express';
-import request from 'supertest';
-import { createApp } from '../../src/app';
+import { asJson, envApp, post } from '../support/app';
 import { cleanTestData, createTestEnvelope } from './factories';
 import { knex } from './setup';
 
 describe('Webhook E2E Tests', () => {
-  let app: Express;
+  const app = envApp();
   const testHmacKey = 'e2e-test-hmac-key';
 
   // Store original env value
   const originalHmacKey = process.env.DOCUSIGN_HMAC_KEY;
-
-  beforeAll(async () => {
-    app = await createApp();
-  });
 
   beforeEach(async () => {
     await cleanTestData();
@@ -38,6 +32,11 @@ describe('Webhook E2E Tests', () => {
   const computeSignature = (body: string, key: string): string => {
     return crypto.createHmac('sha256', key).update(body, 'utf8').digest('base64');
   };
+
+  // Deliver a raw body with its signature header (the exact bytes are what
+  // got signed)
+  const deliver = (rawBody: string, signature: string) =>
+    post(app, '/webhook/esign', rawBody, { 'x-docusign-signature-1': signature });
 
   // Create webhook payload
   const createWebhookPayload = (providerEnvelopeId: string, status: string) => ({
@@ -71,15 +70,11 @@ describe('Webhook E2E Tests', () => {
       const validSignature = computeSignature(rawBody, testHmacKey);
 
       // Act - send webhook
-      const response = await request(app)
-        .post('/webhook/esign')
-        .set('x-docusign-signature-1', validSignature)
-        .set('Content-Type', 'application/json')
-        .send(rawBody);
+      const response = await deliver(rawBody, validSignature);
 
       // Assert - webhook accepted
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ received: true });
+      expect(await asJson(response)).toEqual({ received: true });
 
       // Verify database was updated
       const updatedEnvelope = await knex('Envelope').where({ id: envelope.id }).first();
@@ -100,11 +95,7 @@ describe('Webhook E2E Tests', () => {
       const validSignature = computeSignature(rawBody, testHmacKey);
 
       // Act
-      await request(app)
-        .post('/webhook/esign')
-        .set('x-docusign-signature-1', validSignature)
-        .set('Content-Type', 'application/json')
-        .send(rawBody);
+      await deliver(rawBody, validSignature);
 
       // Assert - audit log created
       const auditLogs = await knex('AuditLog')
@@ -129,11 +120,7 @@ describe('Webhook E2E Tests', () => {
       const validSignature = computeSignature(rawBody, testHmacKey);
 
       // Act
-      await request(app)
-        .post('/webhook/esign')
-        .set('x-docusign-signature-1', validSignature)
-        .set('Content-Type', 'application/json')
-        .send(rawBody);
+      await deliver(rawBody, validSignature);
 
       // Assert
       const updatedEnvelope = await knex('Envelope').where({ id: envelope.id }).first();
@@ -152,11 +139,7 @@ describe('Webhook E2E Tests', () => {
       const validSignature = computeSignature(rawBody, testHmacKey);
 
       // Act
-      await request(app)
-        .post('/webhook/esign')
-        .set('x-docusign-signature-1', validSignature)
-        .set('Content-Type', 'application/json')
-        .send(rawBody);
+      await deliver(rawBody, validSignature);
 
       // Assert
       const updatedEnvelope = await knex('Envelope').where({ id: envelope.id }).first();
@@ -175,17 +158,9 @@ describe('Webhook E2E Tests', () => {
       const validSignature = computeSignature(rawBody, testHmacKey);
 
       // Act - send same webhook twice
-      await request(app)
-        .post('/webhook/esign')
-        .set('x-docusign-signature-1', validSignature)
-        .set('Content-Type', 'application/json')
-        .send(rawBody);
+      await deliver(rawBody, validSignature);
 
-      await request(app)
-        .post('/webhook/esign')
-        .set('x-docusign-signature-1', validSignature)
-        .set('Content-Type', 'application/json')
-        .send(rawBody);
+      await deliver(rawBody, validSignature);
 
       // Assert - no audit logs created (status was already completed)
       const auditLogs = await knex('AuditLog').where({ envelopeId: envelope.id });
@@ -200,11 +175,7 @@ describe('Webhook E2E Tests', () => {
       const validSignature = computeSignature(rawBody, testHmacKey);
 
       // Act
-      const response = await request(app)
-        .post('/webhook/esign')
-        .set('x-docusign-signature-1', validSignature)
-        .set('Content-Type', 'application/json')
-        .send(rawBody);
+      const response = await deliver(rawBody, validSignature);
 
       // Assert - returns 200 to prevent retries
       expect(response.status).toBe(200);
@@ -221,11 +192,7 @@ describe('Webhook E2E Tests', () => {
       const invalidSignature = 'aW52YWxpZC1zaWduYXR1cmU=';
 
       // Act
-      const response = await request(app)
-        .post('/webhook/esign')
-        .set('x-docusign-signature-1', invalidSignature)
-        .set('Content-Type', 'application/json')
-        .send(JSON.stringify(payload));
+      const response = await deliver(JSON.stringify(payload), invalidSignature);
 
       // Assert
       expect(response.status).toBe(401);

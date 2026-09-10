@@ -2,7 +2,6 @@
 // fetch), the /webform/instance route, and the mock-webform page.
 
 import { generateKeyPairSync } from 'crypto';
-import request from 'supertest';
 import { vi } from 'vitest';
 
 vi.mock('../src/envelope');
@@ -12,12 +11,11 @@ vi.mock('../src/db', () => ({
 }));
 
 import { LOCKED_FIELDS_HINT } from '@blinkbitcoin/esign-node';
-import type { Express } from 'express';
-import { createApp } from '../src/app';
 import { provider } from '../src/providers';
 import { clearTokenCache, DocuSignProvider } from '../src/providers/docusign';
 import { clearEnvelopes, getWebFormPrefill, MockProvider } from '../src/providers/mock';
 import { supportsHostedForms, supportsWebForms } from '../src/providers/port';
+import { asJson, get, post, testApp } from './support/app';
 
 const { privateKey: testPrivateKey } = generateKeyPairSync('rsa', {
   modulusLength: 2048,
@@ -169,43 +167,27 @@ describe('DocuSignProvider.createWebFormInstance', () => {
 });
 
 describe('POST /webform/instance', () => {
-  let app: Express;
-  beforeAll(async () => {
-    app = await createApp();
-  });
-  // The dev-mode bearer passthrough warns (no JWT_SECRET): expected here
-  beforeEach(() => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-  });
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+  // A fresh app per call: the package binds the provider's mint once, at
+  // construction, so a spy installed by a test has to be in place first
+  const mint = (body?: unknown, headers: HeadersInit = { authorization: 'Bearer user-1' }) =>
+    post(testApp({}, { provider }), '/webform/instance', body, headers);
 
   it('mints an instance for an authenticated caller', async () => {
-    const response = await request(app)
-      .post('/webform/instance')
-      .set('authorization', 'Bearer user-1')
-      .send({ prefill: { full_name: 'Jane', email: 'jane@example.com' } });
+    const response = await mint({ prefill: { full_name: 'Jane', email: 'jane@example.com' } });
 
     expect(response.status).toBe(200);
-    expect(response.body.url).toMatch(/\/signing\/mock-webform\//);
+    expect((await asJson<{ url: string }>(response)).url).toMatch(/\/signing\/mock-webform\//);
   });
 
   it('accepts a request with no prefill body', async () => {
-    const response = await request(app)
-      .post('/webform/instance')
-      .set('authorization', 'Bearer user-1')
-      .send();
-    expect(response.status).toBe(200);
+    expect((await mint()).status).toBe(200);
   });
 
   it('forwards typed prefill (numbers unquoted) to the provider', async () => {
     const spy = vi.spyOn(provider, 'createWebFormInstance');
     const prefill = { full_name: 'Jane', units: 1000, settlement_btc: 0.01268231 };
-    const response = await request(app)
-      .post('/webform/instance')
-      .set('authorization', 'Bearer user-1')
-      .send({ prefill });
+
+    const response = await mint({ prefill });
 
     expect(response.status).toBe(200);
     expect(spy).toHaveBeenCalledWith('user-1', prefill);
@@ -214,13 +196,11 @@ describe('POST /webform/instance', () => {
 
   it('rejects a malformed prefill with 400 and a reason, before touching the provider', async () => {
     const spy = vi.spyOn(provider, 'createWebFormInstance');
-    const response = await request(app)
-      .post('/webform/instance')
-      .set('authorization', 'Bearer user-1')
-      .send({ prefill: { units: true } });
+
+    const response = await mint({ prefill: { units: true } });
 
     expect(response.status).toBe(400);
-    expect(response.body).toEqual({
+    expect(await asJson(response)).toEqual({
       error: 'Invalid prefill: unsupported value for field "units"',
     });
     expect(spy).not.toHaveBeenCalled();
@@ -228,8 +208,7 @@ describe('POST /webform/instance', () => {
   });
 
   it('rejects an unauthenticated caller with 401', async () => {
-    const response = await request(app).post('/webform/instance').send({ prefill: {} });
-    expect(response.status).toBe(401);
+    expect((await mint({ prefill: {} }, {})).status).toBe(401);
   });
 
   it('returns 502 when the provider fails to mint an instance', async () => {
@@ -238,12 +217,8 @@ describe('POST /webform/instance', () => {
       .spyOn(provider, 'createWebFormInstance')
       .mockRejectedValueOnce({ extensions: { code: 'PROVIDER_UNAVAILABLE' } });
 
-    const response = await request(app)
-      .post('/webform/instance')
-      .set('authorization', 'Bearer user-1')
-      .send({ prefill: {} });
+    expect((await mint({ prefill: {} })).status).toBe(502);
 
-    expect(response.status).toBe(502);
     spy.mockRestore();
     errorSpy.mockRestore();
   });
@@ -254,67 +229,68 @@ describe('POST /webform/instance', () => {
       .spyOn(provider, 'createWebFormInstance')
       .mockRejectedValueOnce(new Error('boom'));
 
-    const response = await request(app)
-      .post('/webform/instance')
-      .set('authorization', 'Bearer user-1')
-      .send({ prefill: {} });
+    expect((await mint({ prefill: {} })).status).toBe(502);
 
-    expect(response.status).toBe(502);
     spy.mockRestore();
     errorSpy.mockRestore();
   });
 
   it('returns 400 when the provider does not support Web Forms', async () => {
-    // Temporarily strip the capability from the singleton
-    const original = provider.createWebFormInstance;
-    delete (provider as { createWebFormInstance?: unknown }).createWebFormInstance;
+    // A provider without the optional capability: the mint answers 400
+    // rather than pretending it minted something
+    const { createWebFormInstance: _unsupported, ...withoutWebForms } = provider;
+    const unsupported = testApp({}, { provider: withoutWebForms });
 
-    const response = await request(app)
-      .post('/webform/instance')
-      .set('authorization', 'Bearer user-1')
-      .send({ prefill: {} });
+    const response = await post(
+      unsupported,
+      '/webform/instance',
+      { prefill: {} },
+      { authorization: 'Bearer user-1' }
+    );
 
     expect(response.status).toBe(400);
-    provider.createWebFormInstance = original;
   });
 });
 
 describe('GET /signing/mock-webform/:id', () => {
-  let app: Express;
-  beforeAll(async () => {
-    app = await createApp();
-  });
+  const app = testApp({}, { provider });
 
   it('serves the mock web-form page with a nonce CSP', async () => {
-    const response = await request(app).get('/signing/mock-webform/abc-123');
+    const response = await get(app, '/signing/mock-webform/abc-123');
+    const html = await response.text();
+
     expect(response.status).toBe(200);
-    expect(response.headers['content-security-policy']).toMatch(/script-src 'nonce-/);
-    expect(response.text).toContain('Instance abc-123');
-    expect(response.text).toContain('data-event="signingResult"');
-    expect(response.text).not.toContain('<form');
+    expect(response.headers.get('content-security-policy')).toMatch(/script-src 'nonce-/);
+    expect(html).toContain('Instance abc-123');
+    expect(html).toContain('data-event="signingResult"');
+    expect(html).not.toContain('<form');
   });
 
   it('shows the prefill a minted instance carries as locked fields', async () => {
-    const minted = await request(app)
-      .post('/webform/instance')
-      .set('authorization', 'Bearer user-1')
-      .send({ prefill: { units: 1000, total_usd: 1000.5 } });
-    const path = new URL(minted.body.url).pathname;
+    const minted = await post(
+      app,
+      '/webform/instance',
+      { prefill: { units: 1000, total_usd: 1000.5 } },
+      { authorization: 'Bearer user-1' }
+    );
+    const { pathname } = new URL((await asJson<{ url: string }>(minted)).url);
 
-    const response = await request(app).get(path);
+    const response = await get(app, pathname);
+    const html = await response.text();
+
     expect(response.status).toBe(200);
-    expect(response.text).toContain('name="units" value="1000" readonly');
-    expect(response.text).toContain('name="total_usd" value="1000.5" readonly');
-    expect(response.text).toContain(LOCKED_FIELDS_HINT);
+    expect(html).toContain('name="units" value="1000" readonly');
+    expect(html).toContain('name="total_usd" value="1000.5" readonly');
+    expect(html).toContain(LOCKED_FIELDS_HINT);
   });
 
   it('shows query-string prefill (public-form URL style) as editable fields', async () => {
-    const response = await request(app).get(
-      '/signing/mock-webform/public-demo?full_name=Test+User'
-    );
+    const response = await get(app, '/signing/mock-webform/public-demo?full_name=Test+User');
+    const html = await response.text();
+
     expect(response.status).toBe(200);
-    expect(response.text).toContain('name="full_name" value="Test User" />');
-    expect(response.text).not.toContain('data-locked');
-    expect(response.text).not.toContain(LOCKED_FIELDS_HINT);
+    expect(html).toContain('name="full_name" value="Test User" />');
+    expect(html).not.toContain('data-locked');
+    expect(html).not.toContain(LOCKED_FIELDS_HINT);
   });
 });

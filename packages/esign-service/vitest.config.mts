@@ -42,6 +42,13 @@ export default defineConfig({
       // errors, typeDefs, types and providers/port re-export the package
       exclude: [
         'src/generated/**',
+        // A test double (knex-mock-client) that happens to live in src/
+        'src/__mocks__/**',
+        // The process entry point (dotenv + telemetry ordering, then the
+        // server or the migration) - never imported by a test
+        'src/node.ts',
+        // Re-export / type-only modules (nothing to cover): the library
+        // barrel, and the modules that re-export the package's surface
         'src/index.ts',
         'src/errors.ts',
         'src/typeDefs.ts',

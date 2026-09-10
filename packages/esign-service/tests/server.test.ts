@@ -1,68 +1,263 @@
-// Tests for the real HTTP server startup (src/server.ts).
-// Uses port 0 so the OS assigns an ephemeral port - no collisions, no mocks.
+// The Node server: rate limits, the proxy-aware client key, and the SIGTERM
+// drain. Port 0 so the OS assigns an ephemeral port - no collisions, no mocks.
 
-import type http from 'http';
-import type { AddressInfo } from 'net';
 import { vi } from 'vitest';
-import { startServer } from '../src/server';
+
+import {
+  createRateLimiter,
+  DEFAULT_RATE_LIMITS,
+  rateLimitsFromEnv,
+  type RunningServer,
+  shutdown,
+  startServer,
+} from '../src/server';
+import { DEV_ENV } from './support/app';
+
+describe('rateLimitsFromEnv', () => {
+  it('defaults to what the Express limiters allowed', () => {
+    expect(rateLimitsFromEnv({})).toEqual(DEFAULT_RATE_LIMITS);
+  });
+
+  it('reads RATE_LIMIT_*_PER_MIN', () => {
+    expect(
+      rateLimitsFromEnv({
+        RATE_LIMIT_WEBFORM_PER_MIN: '5',
+        RATE_LIMIT_WEBHOOK_PER_MIN: '6',
+        RATE_LIMIT_GRAPHQL_PER_MIN: '7',
+      })
+    ).toEqual({ webform: 5, webhook: 6, graphql: 7 });
+  });
+
+  it('ignores a value that is not a number or is negative', () => {
+    expect(
+      rateLimitsFromEnv({ RATE_LIMIT_WEBFORM_PER_MIN: 'lots', RATE_LIMIT_WEBHOOK_PER_MIN: '-1' })
+    ).toEqual(DEFAULT_RATE_LIMITS);
+  });
+});
+
+describe('createRateLimiter', () => {
+  const limits = { webform: 2, webhook: 2, graphql: 2 };
+
+  it('does not limit routes outside the three API endpoints', () => {
+    const limiter = createRateLimiter(limits);
+    expect(limiter('/health', 'ip')).toBeUndefined();
+    expect(limiter('/signing/return', 'ip')).toBeUndefined();
+  });
+
+  it('limits each API route', () => {
+    const limiter = createRateLimiter(limits);
+    for (const path of ['/webform/instance', '/webhook/esign', '/graphql']) {
+      expect(limiter(path, 'ip')?.allowed).toBe(true);
+      expect(limiter(path, 'ip')?.allowed).toBe(true);
+      expect(limiter(path, 'ip')?.allowed).toBe(false);
+    }
+  });
+
+  it('counts each client separately', () => {
+    const limiter = createRateLimiter(limits);
+    limiter('/graphql', 'a');
+    limiter('/graphql', 'a');
+
+    expect(limiter('/graphql', 'a')?.allowed).toBe(false);
+    expect(limiter('/graphql', 'b')?.allowed).toBe(true);
+  });
+
+  it('reports what is left and when the window resets', () => {
+    let now = 1_000;
+    const limiter = createRateLimiter(limits, () => now);
+
+    expect(limiter('/graphql', 'a')).toEqual({
+      allowed: true,
+      limit: 2,
+      remaining: 1,
+      resetSeconds: 60,
+    });
+
+    now += 30_000;
+    expect(limiter('/graphql', 'a')).toEqual({
+      allowed: true,
+      limit: 2,
+      remaining: 0,
+      resetSeconds: 30,
+    });
+
+    now += 30_000;
+    // The window elapsed: the count starts over
+    expect(limiter('/graphql', 'a')?.remaining).toBe(1);
+  });
+
+  it('is off for a route whose limit is 0', () => {
+    const limiter = createRateLimiter({ ...limits, graphql: 0 });
+    for (let i = 0; i < 5; i += 1) {
+      expect(limiter('/graphql', 'a')).toBeUndefined();
+    }
+  });
+});
+
+describe('shutdown', () => {
+  it('reports a failure instead of throwing at a signal handler', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(
+      shutdown(async () => {
+        throw new Error('still draining');
+      })
+    ).resolves.toBeUndefined();
+    expect(error).toHaveBeenCalledWith('Shutdown failed:', expect.any(Error));
+
+    error.mockRestore();
+  });
+
+  it('is silent when the close succeeds', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await shutdown(async () => undefined);
+
+    expect(error).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+});
 
 describe('startServer', () => {
-  let server: http.Server;
-  let logSpy: ReturnType<typeof vi.spyOn>;
-  let warnSpy: ReturnType<typeof vi.spyOn>;
-  const originalProvider = process.env.ESIGN_PROVIDER;
+  let server: RunningServer | undefined;
+  let logs: ReturnType<typeof vi.spyOn>;
+  let warns: ReturnType<typeof vi.spyOn>;
+
+  const start = (
+    env: Record<string, string | undefined> = {},
+    deps: Parameters<typeof startServer>[1] = {}
+  ) => startServer({ ...DEV_ENV, PORT: '0', ...env }, deps);
 
   beforeEach(() => {
-    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    // Boot warns about ALLOW_INSECURE_DEV (tests/setup.ts sets it)
-    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    logs = vi.spyOn(console, 'log').mockImplementation(() => {});
+    warns = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterEach(async () => {
-    logSpy.mockRestore();
-    warnSpy.mockRestore();
-    if (originalProvider !== undefined) {
-      process.env.ESIGN_PROVIDER = originalProvider;
-    } else {
-      delete process.env.ESIGN_PROVIDER;
-    }
-    if (server?.listening) {
-      await new Promise<void>((resolve, reject) =>
-        server.close((err) => (err ? reject(err) : resolve()))
-      );
-    }
+    await server?.stop();
+    server = undefined;
+    logs.mockRestore();
+    warns.mockRestore();
   });
 
-  it('starts listening and serves the health endpoint', async () => {
-    server = await startServer(0);
+  it('listens and serves the health endpoint with its capabilities', async () => {
+    server = await start();
 
-    expect(server.listening).toBe(true);
-    const { port } = server.address() as AddressInfo;
-    expect(port).toBeGreaterThan(0);
-
-    const response = await fetch(`http://localhost:${port}/health`);
+    const response = await fetch(`${server.url}/health`);
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { status: string };
-    expect(body.status).toBe('ok');
+    expect(await response.json()).toMatchObject({ status: 'ok', capabilities: ['mint'] });
   });
 
-  it('logs the bound endpoints and the configured provider', async () => {
-    process.env.ESIGN_PROVIDER = 'mock';
+  it('logs where it is listening and which provider it runs', async () => {
+    server = await start();
 
-    server = await startServer(0);
-    const { port } = server.address() as AddressInfo;
-
-    expect(logSpy).toHaveBeenCalledWith(
-      expect.stringContaining(`http://localhost:${port}/graphql`)
-    );
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('E-signature provider: mock'));
+    expect(logs).toHaveBeenCalledWith(expect.stringContaining(`${server.url}/health`));
+    expect(logs).toHaveBeenCalledWith(expect.stringContaining('E-signature provider: mock'));
   });
 
   it('defaults the logged provider to mock when ESIGN_PROVIDER is unset', async () => {
-    delete process.env.ESIGN_PROVIDER;
+    server = await start({ ESIGN_PROVIDER: undefined });
 
-    server = await startServer(0);
+    expect(logs).toHaveBeenCalledWith(expect.stringContaining('E-signature provider: mock'));
+  });
 
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('E-signature provider: mock'));
+  it('answers 429 once a route is over its limit, and marks every answer', async () => {
+    server = await start({ RATE_LIMIT_WEBFORM_PER_MIN: '2' });
+    const mint = () =>
+      fetch(`${server?.url}/webform/instance`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer user-1' },
+        body: JSON.stringify({ prefill: {} }),
+      });
+
+    const first = await mint();
+    expect(first.status).toBe(200);
+    expect(first.headers.get('ratelimit')).toContain('limit=2');
+
+    expect((await mint()).status).toBe(200);
+
+    const limited = await mint();
+    expect(limited.status).toBe(429);
+    expect(await limited.json()).toEqual({ error: 'Too many requests' });
+    expect(limited.headers.get('retry-after')).toBeTruthy();
+  });
+
+  it('leaves unlimited routes unmarked', async () => {
+    server = await start();
+
+    const response = await fetch(`${server.url}/health`);
+    expect(response.headers.get('ratelimit')).toBeNull();
+  });
+
+  it('keys the limit on the forwarded client when TRUST_PROXY is set', async () => {
+    server = await start({ TRUST_PROXY: 'true', RATE_LIMIT_GRAPHQL_PER_MIN: '1' });
+    const call = (client: string) =>
+      fetch(`${server?.url}/graphql`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': `${client}, 10.0.0.1` },
+        body: JSON.stringify({ query: '{ __typename }' }),
+      });
+
+    // Without the capability the route is 404, but the limiter still counts
+    expect((await call('203.0.113.1')).status).not.toBe(429);
+    expect((await call('203.0.113.1')).status).toBe(429);
+    // A different client has its own window
+    expect((await call('203.0.113.2')).status).not.toBe(429);
+  });
+
+  it('ignores the forwarded header without TRUST_PROXY', async () => {
+    server = await start({ RATE_LIMIT_GRAPHQL_PER_MIN: '1' });
+    const call = (client: string) =>
+      fetch(`${server?.url}/graphql`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': client },
+        body: JSON.stringify({ query: '{ __typename }' }),
+      });
+
+    await call('203.0.113.1');
+    // Same socket, so a forged forwarded header buys nothing
+    expect((await call('203.0.113.2')).status).toBe(429);
+  });
+
+  it('falls back to an unknown client when the platform reports no address', async () => {
+    server = await start(
+      {
+        RATE_LIMIT_GRAPHQL_PER_MIN: '1',
+      },
+      { clientAddress: () => undefined }
+    );
+    const call = () =>
+      fetch(`${server?.url}/graphql`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query: '{ __typename }' }),
+      });
+
+    await call();
+    // Everything shares the one 'unknown' window
+    expect((await call()).status).toBe(429);
+  });
+
+  it('reports a failure to close (a second stop finds no server)', async () => {
+    const running = await start();
+
+    await running.stop();
+    await expect(running.stop()).rejects.toThrow();
+  });
+
+  it('drains on SIGTERM', async () => {
+    const running = await start();
+
+    process.emit('SIGTERM');
+    // The listener closes asynchronously
+    await vi.waitFor(async () => {
+      await expect(fetch(`${running.url}/health`)).rejects.toThrow();
+    });
+  });
+
+  it('refuses to listen when the configuration is wrong', async () => {
+    await expect(startServer({ ESIGN_PROVIDER: 'mock', PORT: '0' })).rejects.toThrow(
+      /Refusing to start/
+    );
   });
 });
