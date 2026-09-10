@@ -223,6 +223,61 @@ The signing pages go out under `signingPageCsp(nonce)` with a
 `signingPageNonce()` per response - the same CSP `signingPageResponse` gives
 a framework-neutral host.
 
+### Mint only: the whole surface in three lines
+
+A host that hands its app a locked hosted-form instance and nothing else
+(no envelope domain, no store, no webhook) mounts the mint-only preset. It
+serves the mint endpoint, the return-URL bridge the instance comes back to
+and a health check:
+
+```ts
+import { createHostedFormRouter } from '@blinkbitcoin/esign-node/express';
+import { bearerToken, hostedFormProviderFromEnv } from '@blinkbitcoin/esign-node';
+
+app.use(createHostedFormRouter({
+  provider: hostedFormProviderFromEnv(process.env),      // ESIGN_PROVIDER, checked at boot
+  authenticate: req => yourAuth(bearerToken(req.headers.authorization)), // user id or null
+  prefill: ({ userId, prefill }) => ({ ...prefill, ...yourTerms(userId) }), // what is actually minted
+}));
+```
+
+`hostedFormProviderFromEnv` selects the provider (DocuSign unless
+`ESIGN_PROVIDER` says otherwise) and refuses to boot when a setting a mint
+needs is missing, when the selected provider cannot mint hosted forms, or
+when `ESIGN_ENV=production` still points at demo settings
+(`ESIGN_ALLOW_DEMO=true` overrides). The `prefill` hook receives the
+caller's *validated* prefill and returns the prefill that is actually
+minted, so client values stay input and never decide a read-only field.
+
+The same surface with no framework at all is `createHostedFormApp`, a
+single Fetch entry point (the thing a Vercel route, a Cloudflare Worker or
+a Node server exports):
+
+```ts
+import { createHostedFormApp } from '@blinkbitcoin/esign-node';
+
+const { fetch } = createHostedFormApp({
+  provider,
+  authenticate: async request => verifySession(request.headers.get('authorization')),
+  prefill: ({ userId, prefill, request }) => yourTerms(userId, prefill),
+  cors: { origins: ['https://app.example.com'] },       // answers the preflight too
+});
+export default { fetch };
+```
+
+| Option | Router (`createHostedFormRouter`) | App (`createHostedFormApp`) |
+|---|---|---|
+| target | `{ provider }` or `{ mint }` | same |
+| mint path | `path` (default `/webform/instance`) | same |
+| prefill hook | `({ userId, prefill, req })` | `({ userId, prefill, request })` |
+| health | `health` (default `true`) | same |
+| CORS | `middleware.cors` + `middleware.webform` | `cors: { origins }` |
+| pages | `GET /signing/return`, `mockPages` | `GET /signing/return` |
+
+Both answer the same status codes (`401`, `400` with the reason, `502`)
+because both go through `mintWebFormInstanceHttp`; anything else is a
+`404`.
+
 ## The DocuSign adapter (`@blinkbitcoin/esign-node/docusign`)
 
 Everything DocuSign-specific is also on its own entry, peer-free: the
@@ -242,18 +297,24 @@ import { createDocuSignProvider, docuSignConfigFromEnv } from '@blinkbitcoin/esi
 |---|---|---|
 | `@blinkbitcoin/esign-node` | everything: domain, ports, registry, handlers, pages, DocuSign + mock<br>adapters | none |
 | `@blinkbitcoin/esign-node/docusign` | the DocuSign adapter | none |
-| `@blinkbitcoin/esign-node/express` | `createESignRouter`, `mountDocuSignPages` | `express` |
+| `@blinkbitcoin/esign-node/express` | `createESignRouter`, `createHostedFormRouter`,<br>`mountDocuSignPages` | `express` |
 | `@blinkbitcoin/esign-node/knex` | the Postgres store + migrations | `knex` (types only) |
 
 ## Configuration
 
 | Variable | Setting | Notes |
 |---|---|---|
+| `ESIGN_PROVIDER` | provider | the registry entry to select (`docusign`, `mock`); the hosted-form<br>presets default to `docusign` |
+| `ESIGN_ENV` | boot guard | `production` refuses a demo provider and demo DocuSign hosts, at<br>selection time; `NODE_ENV` is never the gate |
+| `ESIGN_ALLOW_DEMO` | boot guard | `true` allows demo settings under `ESIGN_ENV=production` (a staging<br>deployment on the sandbox) |
 | `DOCUSIGN_INTEGRATION_KEY`, `DOCUSIGN_USER_ID`, `DOCUSIGN_ACCOUNT_ID`,<br>`DOCUSIGN_PRIVATE_KEY` | JWT grant | consent granted once per integration key |
+| `DOCUSIGN_PRIVATE_KEY_BASE64`, `DOCUSIGN_PRIVATE_KEY_FILE` | JWT grant | the same PEM base64-encoded, or a file (a mounted secret); used in<br>that order after `DOCUSIGN_PRIVATE_KEY`, literal `\n` normalised |
 | `DOCUSIGN_WEBFORM_ID` | Web Forms | the form to mint instances of |
 | `DOCUSIGN_TEMPLATE_ID` | envelopes | only for template envelopes |
 | `DOCUSIGN_RETURN_URL` | both | default `returnUrl` for instances / signing views |
 | `DOCUSIGN_BASE_URL`, `DOCUSIGN_OAUTH_URL`, `DOCUSIGN_WEBFORMS_BASE_URL` | hosts | default to the developer (demo) environment |
+| `DOCUSIGN_HMAC_KEY` | webhooks | the Connect HMAC key; without it signed webhooks cannot be verified |
+| `MOCK_PAGES_ORIGIN` | mock | where the mock provider's signing pages are served (default<br>`http://localhost:4100`) |
 
 ## Development (in this monorepo)
 

@@ -51,6 +51,28 @@ same env names, routes, Dockerfile). The image is renamed
 The demo is now the service package; the two remaining server examples are
 `mint-only-demo` and `serverless-handler-demo`.
 
+## Additive since 0.3 (`@blinkbitcoin/esign-node`)
+
+Nothing changes for existing code; these are new exports. Hosts that mint
+hosted forms and hand-rolled the boot checks, the mint route or the return
+bridge can delete that code.
+
+| You want | Use |
+|---|---|
+| The whole mint-only HTTP surface on Express (mint + return bridge +<br>health) | `createHostedFormRouter` (`@blinkbitcoin/esign-node/express`) |
+| The same surface with no framework, as one Fetch entry point | `createHostedFormApp({ ... }).fetch` |
+| Compute the locked terms server-side | the presets' `prefill` hook: it receives the caller's validated<br>prefill and returns the prefill actually minted |
+| The provider a mint needs, checked at boot | `hostedFormProviderFromEnv(env, options?)` - `ESIGN_PROVIDER`,<br>DocuSign by default, `HOSTED_FORM_SETTINGS` required |
+| Refuse demo settings in production | `ESIGN_ENV=production` + `productionErrors` /<br>`assertProductionConfig` / `ProductionConfigError`;<br>`ESIGN_ALLOW_DEMO=true` overrides. Never gated on `NODE_ENV` |
+| The private key from a mounted secret | `DOCUSIGN_PRIVATE_KEY_BASE64` / `DOCUSIGN_PRIVATE_KEY_FILE`, or<br>`privateKeyFromEnv(env, readFile?)` |
+| Know whether a config is still on the DocuSign sandbox | `isDocuSignDemoHost(url)`, `docuSignDemoHostsInUse(config)` |
+
+`docuSignConfigFromEnv(env)` takes an optional second argument
+(`{ readFile }`), so the file source is injectable and tests never touch
+disk. `defaultRegistry(env, options)` takes `docusign.required`: the
+settings that must be present when the DocuSign entry is selected (nothing
+by default, so existing hosts are unaffected).
+
 ## Deprecated names (kept until the next major)
 
 Each carries `@deprecated` JSDoc naming the canonical import; behaviour is

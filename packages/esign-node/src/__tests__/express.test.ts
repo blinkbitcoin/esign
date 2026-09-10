@@ -6,7 +6,14 @@ import { spyLogger } from './support';
 import express, { type RequestHandler } from 'express';
 import request from 'supertest';
 import { createEnvelopeService } from '../envelopes';
-import { createESignRouter, type ESignRouterOptions } from '../express';
+import {
+  createESignRouter,
+  createHostedFormRouter,
+  type ESignRouterOptions,
+  type HostedFormRouterOptions,
+  type HostedFormRouterPrefillInput,
+} from '../express';
+
 import { LOCKED_FIELDS_HINT } from '../pages';
 import type { ESignProvider } from '../provider';
 import { createMemoryEnvelopeStore } from '../store';
@@ -379,5 +386,213 @@ describe('POST /webhook/esign', () => {
       .send(tooBig);
     expect(seen).toEqual(['limit']);
     expect(response.status).toBe(413);
+  });
+});
+
+describe('createHostedFormRouter', () => {
+  const hosted = (
+    overrides: Partial<HostedFormRouterOptions> = {},
+    provider = fakeProvider(),
+  ) => {
+    const app = express();
+    // A { mint } target replaces the { provider } one (MintTarget is a union)
+    const target = 'mint' in overrides ? {} : { provider };
+    app.use(
+      createHostedFormRouter({
+        ...target,
+        authenticate: req =>
+          req.headers.authorization === 'Bearer user-1' ? 'user-1' : null,
+        logger: silentLogger,
+        ...overrides,
+      } as HostedFormRouterOptions),
+    );
+    return { app, provider };
+  };
+
+  it('mints at /webform/instance for an authenticated caller', async () => {
+    const { app, provider } = hosted();
+    const response = await request(app)
+      .post('/webform/instance')
+      .set('authorization', 'Bearer user-1')
+      .send({ prefill: { units: 1000 } });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      url: 'https://f#instanceToken=T',
+      instanceId: 'i-1',
+    });
+    expect(provider.createWebFormInstance).toHaveBeenCalledWith('user-1', {
+      units: 1000,
+    });
+  });
+
+  it('answers 401 unauthenticated, 400 for a bad prefill and 502 when the mint fails', async () => {
+    const { app, provider } = hosted();
+    expect((await request(app).post('/webform/instance')).status).toBe(401);
+    expect(provider.createWebFormInstance).not.toHaveBeenCalled();
+
+    const bad = await request(app)
+      .post('/webform/instance')
+      .set('authorization', 'Bearer user-1')
+      .send({ prefill: { units: true } });
+    expect(bad.status).toBe(400);
+    expect(bad.body).toEqual({
+      error: 'Invalid prefill: unsupported value for field "units"',
+    });
+
+    const { app: failing } = hosted(
+      {},
+      fakeProvider({
+        createWebFormInstance: jest
+          .fn()
+          .mockRejectedValue({ extensions: { code: 'PROVIDER_UNAVAILABLE' } }),
+      }),
+    );
+    const failed = await request(failing)
+      .post('/webform/instance')
+      .set('authorization', 'Bearer user-1');
+    expect(failed.status).toBe(502);
+    expect(failed.body).toEqual({ error: 'Could not create signing session' });
+  });
+
+  it('mints through a { mint } target and answers 400 without one', async () => {
+    const mint = jest.fn().mockResolvedValue({ url: 'https://h/1' });
+    const { app } = hosted({ mint } as never);
+    const response = await request(app)
+      .post('/webform/instance')
+      .set('authorization', 'Bearer user-1')
+      .send({ prefill: { units: 1 } });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ url: 'https://h/1' });
+    expect(mint).toHaveBeenCalledWith('user-1', { units: 1 });
+
+    const { app: unsupported } = hosted({ mint: undefined } as never);
+    const refused = await request(unsupported)
+      .post('/webform/instance')
+      .set('authorization', 'Bearer user-1');
+    expect(refused.status).toBe(400);
+    expect(refused.body.error).toMatch(/not supported/);
+  });
+
+  it('mints the prefill the host computes, not the one the client sent', async () => {
+    const prefill = jest.fn(
+      ({ userId, prefill: sent, req }: HostedFormRouterPrefillInput) => ({
+        ...sent,
+        units: userId === 'user-1' ? 1000 : 0,
+        agent: String(req.headers['user-agent']),
+      }),
+    );
+    const { app, provider } = hosted({ prefill });
+    const response = await request(app)
+      .post('/webform/instance')
+      .set('authorization', 'Bearer user-1')
+      .set('user-agent', 'jest')
+      .send({ prefill: { units: 1, name: 'Jane' } });
+    expect(response.status).toBe(200);
+    expect(prefill).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        prefill: { units: 1, name: 'Jane' },
+      }),
+    );
+    expect(provider.createWebFormInstance).toHaveBeenCalledWith('user-1', {
+      units: 1000,
+      name: 'Jane',
+      agent: 'jest',
+    });
+  });
+
+  it('runs the prefill hook only after validation, and awaits an async hook', async () => {
+    const prefill = jest.fn().mockResolvedValue({ units: 7 });
+    const { app, provider } = hosted({ prefill });
+    const bad = await request(app)
+      .post('/webform/instance')
+      .set('authorization', 'Bearer user-1')
+      .send({ prefill: { units: true } });
+    expect(bad.status).toBe(400);
+    expect(prefill).not.toHaveBeenCalled();
+
+    await request(app)
+      .post('/webform/instance')
+      .set('authorization', 'Bearer user-1');
+    expect(provider.createWebFormInstance).toHaveBeenCalledWith('user-1', {
+      units: 7,
+    });
+  });
+
+  it('takes a custom mint path, a host prefill contract and a body limit', async () => {
+    const parsePrefill = jest.fn(() => ({
+      ok: false as const,
+      error: 'host says no',
+    }));
+    const { app } = hosted({ path: '/mint', parsePrefill, bodyLimit: '1kb' });
+    expect((await request(app).post('/webform/instance')).status).toBe(404);
+    const refused = await request(app)
+      .post('/mint')
+      .set('authorization', 'Bearer user-1')
+      .send({ prefill: {} });
+    expect(refused.status).toBe(400);
+    expect(refused.body).toEqual({ error: 'Invalid prefill: host says no' });
+
+    const tooBig = await request(app)
+      .post('/mint')
+      .set('authorization', 'Bearer user-1')
+      .send({ prefill: { pad: 'x'.repeat(2000) } });
+    expect(tooBig.status).toBe(413);
+  });
+
+  it('serves the return bridge under the nonce CSP and a health check, and no webhook route', async () => {
+    const { app } = hosted();
+    const bridge = await request(app).get('/signing/return?event=cancel');
+    expect(bridge.status).toBe(200);
+    const nonce = /script-src 'nonce-([^']+)'/.exec(
+      bridge.headers['content-security-policy'],
+    )?.[1];
+    expect(nonce).toBeTruthy();
+    expect(bridge.text).toContain('postSigningEvent("cancel")');
+
+    const health = await request(app).get('/health');
+    expect(health.status).toBe(200);
+    expect(health.body.status).toBe('ok');
+
+    expect((await request(app).post('/webhook/esign')).status).toBe(404);
+  });
+
+  it('leaves the health check out when health is false', async () => {
+    const { app } = hosted({ health: false });
+    expect((await request(app).get('/health')).status).toBe(404);
+    expect((await request(app).get('/signing/return')).status).toBe(200);
+  });
+
+  it('serves the mock web-form page when mockPages is given', async () => {
+    const { app } = hosted({
+      mockPages: {
+        getWebFormPrefill: (id: string) =>
+          id === 'minted' ? { units: 1000 } : undefined,
+      },
+    });
+    const minted = await request(app).get('/signing/mock-webform/minted');
+    expect(minted.text).toContain('name="units" value="1000" readonly');
+    const { app: without } = hosted();
+    expect(
+      (await request(without).get('/signing/mock-webform/minted')).status,
+    ).toBe(404);
+  });
+
+  it('runs cors on the preflight and the webform chain before the mint', async () => {
+    const seen: string[] = [];
+    const tag =
+      (name: string): RequestHandler =>
+      (_req, _res, next) => {
+        seen.push(name);
+        next();
+      };
+    const { app } = hosted({
+      middleware: { cors: tag('cors'), webform: [tag('limit'), tag('cors')] },
+    });
+    await request(app).options('/webform/instance');
+    await request(app)
+      .post('/webform/instance')
+      .set('authorization', 'Bearer user-1');
+    expect(seen).toEqual(['cors', 'limit', 'cors']);
   });
 });
