@@ -1,10 +1,10 @@
 import type { CodegenConfig } from '@graphql-codegen/cli';
 
 // Generates client types from the backend's emitted schema artifact
-// (examples/full-service-demo/schema.graphql). Run via `npm run codegen` (root) after schema
+// (packages/esign-service/schema.graphql). Run via `npm run codegen` (root) after schema
 // changes; parity tests fail if this output drifts.
 const config: CodegenConfig = {
-  schema: '../../examples/full-service-demo/schema.graphql',
+  schema: '../../packages/esign-service/schema.graphql',
   documents: ['src/operations.ts'],
   generates: {
     // Operation + input types (typescript-operations v7 is self-contained)

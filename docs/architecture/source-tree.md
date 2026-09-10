@@ -23,7 +23,7 @@ esign/
 │       │   │                      #   entry.ts is the ./docusign surface (provider + the neutral layer), Apollo-free
 │       │   ├── client.ts          # createESignApolloClient + ErrorCodes
 │       │   ├── operations.ts      # GraphQL mutations (wire contract)
-│       │   ├── generated/         # Codegen output (from examples/full-service-demo schema)
+│       │   ├── generated/         # Codegen output (from packages/esign-service schema)
 │       │   └── __tests__/         # incl. the webform-entry Apollo-free guard + the signing/ ↛ providers/ guard
 │       ├── codegen.ts             # GraphQL Codegen config
 │       └── dist/                  # tsup output (gitignored)
@@ -118,7 +118,7 @@ esign/
 │       ├── metro.config.js        # watchFolders -> workspace root
 │       └── Gemfile / .bundle/     # CocoaPods tooling
 │
-├── 🖥️ SERVER EXAMPLE 2 - one mutation on an existing API (the smallest footprint)
+├── 🖥️ SERVER EXAMPLE 1 - one mutation on an existing API (the smallest footprint)
 │   │
 │   └── examples/mint-only-demo/
 │       ├── src/
@@ -129,7 +129,7 @@ esign/
 │       │   └── index.ts           # Bootstrap (PORT, default ESIGN_PORT_BASE + 4 = 4104)
 │       └── tests/                 # Vitest, 100% enforced
 │
-├── 🖥️ SERVER EXAMPLE 3 - the Fetch handlers behind a route
+├── 🖥️ SERVER EXAMPLE 2 - the Fetch handlers behind a route
 │   │
 │   └── examples/serverless-handler-demo/
 │       ├── src/
@@ -138,9 +138,9 @@ esign/
 │       │   └── index.ts           # Bootstrap (PORT, default ESIGN_PORT_BASE + 5 = 4105)
 │       └── tests/                 # Vitest, 100% enforced
 │
-├── 🖥️ SERVER EXAMPLE 1 - the whole service (Express + Apollo + Postgres)
+├── 📦 PACKAGE - the whole service, published (Express + Apollo + Postgres)
 │   │
-│   └── examples/full-service-demo/
+│   └── packages/esign-service/
 │       ├── package.json           # Backend dependencies
 │       ├── tsconfig.json          # TypeScript configuration
 │       ├── biome.json             # Biome lint + format configuration
@@ -246,13 +246,13 @@ esign/
 
 | Path | Purpose |
 |------|---------|
-| `examples/full-service-demo/src/app.ts` | Server factory |
-| `examples/full-service-demo/src/schema.ts` | GraphQL API |
-| `examples/full-service-demo/src/webhook.ts` | Generic webhook processing |
-| `examples/full-service-demo/src/types.ts` | ESignProvider interface |
-| `examples/full-service-demo/src/providers/index.ts` | Provider registry (providerFromEnv) + singleton |
+| `packages/esign-service/src/app.ts` | Server factory |
+| `packages/esign-service/src/schema.ts` | GraphQL API |
+| `packages/esign-service/src/webhook.ts` | Generic webhook processing |
+| `packages/esign-service/src/types.ts` | ESignProvider interface |
+| `packages/esign-service/src/providers/index.ts` | Provider registry (providerFromEnv) + singleton |
 | `packages/esign-node/src/knex/migrations.ts` | Database schema (programmatic Knex migration source) |
-| `examples/full-service-demo/tests/e2e/` | E2E tests |
+| `packages/esign-service/tests/e2e/` | E2E tests |
 
 ## Integration Points
 

@@ -56,7 +56,7 @@ describe('initTelemetry', () => {
     expect(sdk).not.toBeNull();
     expect(sdkStart).toHaveBeenCalledOnce();
     expect(nodeSdkConstructor).toHaveBeenCalledWith(
-      expect.objectContaining({ serviceName: 'esign-api' })
+      expect.objectContaining({ serviceName: 'esign-service' })
     );
     // The full stack is instrumented: http, express, graphql, pg, undici (fetch)
     const config = nodeSdkConstructor.mock.calls[0][0] as { instrumentations: unknown[] };
@@ -66,11 +66,11 @@ describe('initTelemetry', () => {
   it('respects OTEL_SERVICE_NAME', () => {
     initTelemetry({
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://otel:4318',
-      OTEL_SERVICE_NAME: 'esign-api-staging',
+      OTEL_SERVICE_NAME: 'esign-service-staging',
     });
 
     expect(nodeSdkConstructor).toHaveBeenCalledWith(
-      expect.objectContaining({ serviceName: 'esign-api-staging' })
+      expect.objectContaining({ serviceName: 'esign-service-staging' })
     );
   });
 

@@ -1,20 +1,21 @@
-# examples/full-service-demo — the whole service, as a reference host
+# `@blinkbitcoin/esign-service` — the whole service, published
 
 Express 5 + Apollo Server 5 GraphQL API composed from
 `@blinkbitcoin/esign-node`: the package's Express router, envelope domain,
 Postgres store and provider adapters (DocuSign, or a local mock), wired to
-this host's auth, CORS, rate limits, config validation and telemetry.
+this service's auth, CORS, rate limits, config validation and telemetry.
 
-It is one of the three server shapes the package supports (see
-[`examples/`](../README.md)) and the backend the two client demos and every
-E2E suite run against. Nobody deploys it as a product; the `esign-api`
-image exists so a host team can run it locally or start from it.
+It is the one of three server shapes on `esign-node` that ships as a
+standalone deployable (see [`examples/`](../../examples/README.md) for the
+other two, in-process shapes) and the backend the two client demos and
+every E2E suite run against: `npm i @blinkbitcoin/esign-service`, or run the
+`esign-service` image straight from GHCR.
 
 ## Quick Start
 
 ```sh
 # From repo root, once per machine:
-direnv allow . && direnv allow examples/full-service-demo   # env + nix dev shell
+direnv allow . && direnv allow packages/esign-service   # env + nix dev shell
 
 # From this directory:
 make db-up          # dev Postgres (docker, port 5432)
@@ -61,25 +62,25 @@ make e2e            # 14 E2E tests against real Postgres
 
 ## Deploy
 
-The service ships as a container (`examples/full-service-demo/Dockerfile`, built from the repo
+The service ships as a container (`packages/esign-service/Dockerfile`, built from the repo
 root so the workspace lockfile and `packages/esign-node` are inputs):
 
 ```sh
-make docker-build                     # → esign-api (node 24 alpine, production deps only)
+make docker-build                     # → esign-service (node 24 alpine, production deps only)
 make docker-smoke                     # boots it with the mock provider, checks /health
-docker run --rm --env-file examples/full-service-demo/.env esign-api node dist/migrate.js   # once per database
-docker run --rm -p 4100:4100 --env-file examples/full-service-demo/.env esign-api      # serve
+docker run --rm --env-file packages/esign-service/.env esign-service node dist/migrate.js   # once per database
+docker run --rm -p 4100:4100 --env-file packages/esign-service/.env esign-service      # serve
 ```
 
 CI builds and smokes the same image on every branch (E2E / Docker) and
 publishes it to GHCR next to the npm packages, under the same version and
-dist-tag: `ghcr.io/blinkbitcoin/esign-api:<version>`, `:latest` for a
+dist-tag: `ghcr.io/blinkbitcoin/esign-service:<version>`, `:latest` for a
 release, `:next` for every green push to `main` ([releasing.md](../../docs/releasing.md)).
 Deploying is then a pull instead of a build:
 
 ```sh
-docker pull ghcr.io/blinkbitcoin/esign-api:latest
-docker run --rm -p 4100:4100 --env-file .env ghcr.io/blinkbitcoin/esign-api:latest
+docker pull ghcr.io/blinkbitcoin/esign-service:latest
+docker run --rm -p 4100:4100 --env-file .env ghcr.io/blinkbitcoin/esign-service:latest
 ```
 
 Configuration is the same `.env` as local (`.env.example`; the live DocuSign

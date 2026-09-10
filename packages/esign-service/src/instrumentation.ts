@@ -31,7 +31,7 @@ export const initTelemetry = (env: Env = process.env): NodeSDK | null => {
   }
 
   const sdk = new NodeSDK({
-    serviceName: env.OTEL_SERVICE_NAME || 'esign-api',
+    serviceName: env.OTEL_SERVICE_NAME || 'esign-service',
     instrumentations: [
       new HttpInstrumentation(),
       new ExpressInstrumentation(),

@@ -174,7 +174,7 @@ generated types.
 
 ```sh
 make test        # 89 Jest (jsdom + Testing Library) tests, 100% coverage (enforced threshold)
-make codegen     # regenerate types from ../../examples/full-service-demo/schema.graphql
+make codegen     # regenerate types from ../../packages/esign-service/schema.graphql
 make build       # tsup (ESM + CJS + types)
 ```
 

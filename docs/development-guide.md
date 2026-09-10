@@ -31,7 +31,7 @@ npm ci
 # Enable direnv (once per machine) - loads .env files, enters the nix
 # flake dev shell (pinned node/jdk/ruby/watchman), and puts workspace
 # bins (tsx, knex, biome, ...) on PATH
-direnv allow . && direnv allow examples/full-service-demo
+direnv allow . && direnv allow packages/esign-service
 ```
 
 Without direnv/nix, any Node 22.22+ or 24.15+ plus a JDK 17 and Ruby 3.2+ works -
@@ -50,7 +50,7 @@ cd ios && bundle exec pod install  # iOS native deps
 
 ```bash
 # Start development database
-cd examples/full-service-demo
+cd packages/esign-service
 docker-compose up -d
 
 # Run migrations
@@ -64,7 +64,7 @@ Environment is managed with **direnv** (house convention): `.envrc` files load
 `dotenv/config` as a fallback for non-direnv environments (CI, IDE launchers) -
 dotenv never overrides direnv-exported values, so precedence is consistent.
 
-**Backend (`examples/full-service-demo/.env`):**
+**Backend (`packages/esign-service/.env`):**
 ```env
 DATABASE_URL=postgresql://dev:dev@localhost:5432/esign
 ESIGN_PROVIDER=mock            # 'docusign' for the real integration
@@ -87,7 +87,7 @@ PORT=4100                      # ESIGN_PORT_BASE + 0 (docs/architecture/backend.
 ### Start Backend
 
 ```bash
-cd examples/full-service-demo
+cd packages/esign-service
 npm run dev
 # Server runs at http://localhost:4100
 # GraphQL Playground at http://localhost:4100/graphql
@@ -170,7 +170,7 @@ Three tiers, by what they touch:
    at real DocuSign.
 2. **Live API verification is env-gated:** `make test-live` runs real JWT
    auth + envelope creation + Web Forms instance minting against a DocuSign
-   demo account when `DOCUSIGN_*` is set in `examples/full-service-demo/.env`, and skips
+   demo account when `DOCUSIGN_*` is set in `packages/esign-service/.env`, and skips
    itself entirely when not. Safe to run anytime; in CI only as the opt-in
    `Live DocuSign` job ([operations/live-e2e-ci.md](operations/live-e2e-ci.md)).
 3. **Live UI verification is automated too, locally:** `make e2e-live`
@@ -199,7 +199,7 @@ npm test -- --watch
 ### Backend Unit Tests
 
 ```bash
-cd examples/full-service-demo
+cd packages/esign-service
 
 # Run all tests
 npm test
@@ -253,7 +253,7 @@ docker-compose -f docker-compose.test.yml down
 curl -Ls "https://get.maestro.mobile.dev" | bash
 
 # Start backend with mock provider against the test database
-cd examples/full-service-demo && ESIGN_PROVIDER=mock npx dotenv-cli -e .env.test -- npm run dev &
+cd packages/esign-service && ESIGN_PROVIDER=mock npx dotenv-cli -e .env.test -- npm run dev &
 
 # Build and run app on simulator
 npm run ios
@@ -308,7 +308,7 @@ npm run lint:fix
 ### Knex Commands
 
 ```bash
-cd examples/full-service-demo
+cd packages/esign-service
 
 # Create migration
 npx tsx "$(command -v knex)" migrate:make -x ts <migration-name>
@@ -357,7 +357,7 @@ npm install
 
 ### Migration Issues
 ```bash
-cd examples/full-service-demo
+cd packages/esign-service
 npx tsx "$(command -v knex)" migrate:status
 npm run migrate
 ```
@@ -418,10 +418,10 @@ diagram: [CI / Release Pipeline](diagrams/README.md#ci--release-pipeline).
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| `ci.yml` | Push to main, PRs, release tag (dispatched by `release.yml`, or a hand-cut GitHub Release), manual | The one pipeline every branch runs, staged so a failure never spends the next stage's minutes: `Checks` (calls `checks.yml`) → `Unit` (calls `test.yml`) → `E2E` (calls `e2e.yml`; its `Build Packages` job is the one build of the packages), then `Badges` (coverage + Unit / E2E pass-fail badges for the branch to `gh-pages/badges/<branch>/`, after E2E so it never delays it), and on main pushes / releases / dispatch `Publish` (ships the tarballs `Build Packages` made and `Web` tested to GitHub Packages and the service image `Docker` built and smoked to GHCR as `ghcr.io/blinkbitcoin/esign-api:<version>` + `:latest` / `:next`, nothing is rebuilt: release → stable `latest`, version = the tag; main → prerelease `next`) + `Verify` (installs the published packages from GitHub Packages into a clean project and asserts the consumer contract; pulls the published image and smokes it). Workflow badge, if needed: `ci.yml/badge.svg?branch=<branch>` |
+| `ci.yml` | Push to main, PRs, release tag (dispatched by `release.yml`, or a hand-cut GitHub Release), manual | The one pipeline every branch runs, staged so a failure never spends the next stage's minutes: `Checks` (calls `checks.yml`) → `Unit` (calls `test.yml`) → `E2E` (calls `e2e.yml`; its `Build Packages` job is the one build of the packages), then `Badges` (coverage + Unit / E2E pass-fail badges for the branch to `gh-pages/badges/<branch>/`, after E2E so it never delays it), and on main pushes / releases / dispatch `Publish` (ships the tarballs `Build Packages` made and `Web` tested to GitHub Packages and the service image `Docker` built and smoked to GHCR as `ghcr.io/blinkbitcoin/esign-service:<version>` + `:latest` / `:next`, nothing is rebuilt: release → stable `latest`, version = the tag; main → prerelease `next`) + `Verify` (installs the published packages from GitHub Packages into a clean project and asserts the consumer contract; pulls the published image and smokes it). Workflow badge, if needed: `ci.yml/badge.svg?branch=<branch>` |
 | `checks.yml` | `workflow_call` only | First stage, all static: `Changes` (classifies the PR: when every changed file is docs/, `*.md`, `LICENSE` or a template, Unit and E2E are skipped; main pushes get the same via `paths-ignore`), `Code` (audit-ci, actionlint, diagram freshness, `make check-code` = lint + typecheck + format), `Commits` (Conventional Commits on the PR's commits and title; PRs only), `Docs` (warns when architecture-relevant files change without a docs/ update; fails for a diagram source without its SVG) |
 | `test.yml` | `workflow_call` only | Unit tests + coverage thresholds; uploads the coverage badge (1 day, consumed by `Badges`) and the combined HTML coverage report (`coverage-report` artifact, 30 days) |
-| `e2e.yml` | `workflow_call` only | `build-packages` (version stamp, build, publint + arethetypeswrong, pack smoke; uploads the dist for `web` and the tarballs for `Publish`), `docker` (the service image from `examples/full-service-demo/Dockerfile`, same version stamp, booted with the mock provider against `/health` - `make docker-smoke` locally - and uploaded for `Publish`), `server-demos` (boots the mint-only and serverless examples with the mock provider and calls their routes - `make e2e-server-demos`), `live` (opt-in live DocuSign: JWT grant, real mint, Playwright on the real form; [operations/live-e2e-ci.md](operations/live-e2e-ci.md)) plus the E2E suites as jobs: `backend`, `web` (Playwright, bundles the demo against that dist - what a web consumer installs), `build-android` → `android` (emulator), and `build-ios` → `ios` (simulator) **only when opted in** (see below). Outputs the stamped `version` / `disttag` for `Publish` |
+| `e2e.yml` | `workflow_call` only | `build-packages` (version stamp, build, publint + arethetypeswrong, pack smoke; uploads the dist for `web` and the tarballs for `Publish`), `docker` (the service image from `packages/esign-service/Dockerfile`, same version stamp, booted with the mock provider against `/health` - `make docker-smoke` locally - and uploaded for `Publish`), `server-demos` (boots the mint-only and serverless examples with the mock provider and calls their routes - `make e2e-server-demos`), `live` (opt-in live DocuSign: JWT grant, real mint, Playwright on the real form; [operations/live-e2e-ci.md](operations/live-e2e-ci.md)) plus the E2E suites as jobs: `backend`, `web` (Playwright, bundles the demo against that dist - what a web consumer installs), `build-android` → `android` (emulator), and `build-ios` → `ios` (simulator) **only when opted in** (see below). Outputs the stamped `version` / `disttag` for `Publish` |
 | `release.yml` | Push to main; CI completed on main | `Release PR / Tag` (push): keeps the `chore(release): X.Y.Z` PR current (version from the Conventional Commits since the last tag, `CHANGELOG.md` entry); when that PR merges, tags `vX.Y.Z`, creates the GitHub Release and dispatches `ci.yml` at the tag with `release_tag` (a release the workflow token creates never fires the `release:` trigger). `Re-run blocked releases` (CI completed green): re-runs the failed Publish of any release run for that commit (releases wait for / refuse a red main run). See [releasing.md](releasing.md) |
 | `pull-request.yml` | PR closed; PR title edited | `Cancel in-flight runs` + `Remove branch badge` (closed): cancels the PR's still-running runs (the push-to-main run is unaffected) and removes its `gh-pages` badge directory. `Title` (edited): re-lints the PR title only; the gating lint is the `Commits` job in `checks.yml` (a title edit must not re-run the whole pipeline) |
 | `codeql.yml` | Push to main, PRs, weekly | CodeQL security-and-quality analysis<br>(suite + alert-suppression query:<br>`.github/codeql/codeql-config.yml`);<br>`make codeql` runs the same analysis locally |

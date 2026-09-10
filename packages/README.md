@@ -17,5 +17,5 @@ Apollo-free `/webform` subpath entries (guard-tested; `@apollo/client` and
 `make help` here fans common targets (`test`, `coverage`, `typecheck`,
 `build`, `codegen`, `clean`) out to every package; packages with a `Makefile`
 are discovered automatically. Types under `esign-core/src/generated/`
-come from `examples/full-service-demo/schema.graphql` — edit the backend schema and run
+come from `packages/esign-service/schema.graphql` — edit the backend schema and run
 `make codegen`, never the generated files.

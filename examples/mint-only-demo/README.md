@@ -24,7 +24,7 @@ app opens url in <ESignature source={createWebFormsSource({ mint: ... })}>
   decimals anyway - [webforms.md](../../docs/integration/webforms.md)).
 - `src/mint.ts` - `hostedFormMint(providerFromEnv(...))`, the one package call. `ESIGN_PROVIDER=mock` swaps in the
   mock provider so the mutation runs with no DocuSign account (the URL
-  points at the full-service demo's mock Web Forms page).
+  points at the service's mock Web Forms page).
 - `src/schema.ts`, `src/server.ts` - stand-ins for what the host already has:
   its schema and its session handling. The bearer token is taken as the user
   id here; a real host verifies its own session in that spot. `server.ts`
@@ -61,8 +61,9 @@ make test          # Vitest, 100% coverage enforced (make coverage)
 CI also boots this example with the mock provider and runs the mutation end
 to end (`scripts/e2e/server-demos-smoke.sh`, `make e2e-server-demos`).
 
-## The other server shapes
+## Two in-process examples and the service
 
-[`full-service-demo`](../full-service-demo/README.md) runs the whole service;
 [`serverless-handler-demo`](../serverless-handler-demo/README.md) mounts the
-package's Fetch handlers in a route handler or edge function.
+package's Fetch handlers in a route handler or edge function;
+[`@blinkbitcoin/esign-service`](../../packages/esign-service/README.md) runs
+the whole service.

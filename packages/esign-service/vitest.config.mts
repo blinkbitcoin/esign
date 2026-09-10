@@ -8,10 +8,7 @@ export default defineConfig({
       // the subpath first so the bare name does not swallow it
       {
         find: '@blinkbitcoin/esign-node/express',
-        replacement: path.resolve(
-          import.meta.dirname,
-          '../../packages/esign-node/src/express.ts'
-        ),
+        replacement: path.resolve(import.meta.dirname, '../../packages/esign-node/src/express.ts'),
       },
       {
         find: '@blinkbitcoin/esign-node/knex',
@@ -19,10 +16,7 @@ export default defineConfig({
       },
       {
         find: '@blinkbitcoin/esign-node/docusign',
-        replacement: path.resolve(
-          import.meta.dirname,
-          '../../packages/esign-node/src/docusign.ts'
-        ),
+        replacement: path.resolve(import.meta.dirname, '../../packages/esign-node/src/docusign.ts'),
       },
       {
         find: '@blinkbitcoin/esign-node',

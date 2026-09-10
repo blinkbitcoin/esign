@@ -1,4 +1,4 @@
-# Security Model — examples/full-service-demo
+# Security Model — packages/esign-service
 
 **Updated:** 2026-07-03
 

@@ -6,7 +6,7 @@ description: Use when running or debugging the live DocuSign verification (make 
 # Live DocuSign E2E: running and debugging
 
 Everything lives behind three targets (`scripts/e2e/live.sh`,
-`examples/full-service-demo/scripts/docusign-check.ts`, docs in
+`packages/esign-service/scripts/docusign-check.ts`, docs in
 `docs/integration/webforms.md`):
 
 ```sh
@@ -23,7 +23,7 @@ make e2e-live          # check → Web Forms live API test → E2E Postgres → 
 In CI the same runner reads the DocuSign values from the environment
 (job `E2E / Live DocuSign`, opt-in; `docs/operations/live-e2e-ci.md`).
 
-Prerequisites locally: `examples/full-service-demo/.env` from `make docusign-env`
+Prerequisites locally: `packages/esign-service/.env` from `make docusign-env`
 (see the docusign-integration-key-setup skill), consent granted with the
 Web Forms scopes, the packages built (`npm run build`) for Playwright.
 

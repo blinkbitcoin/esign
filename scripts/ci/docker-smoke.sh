@@ -8,7 +8,7 @@ set -euo pipefail
 IMAGE="${1:?image name}"
 NAME="esign-smoke-$$"
 # The host side is SMOKE_PORT (ESIGN_PORT_BASE + 9); the image listens on
-# its own default, 4100 (examples/full-service-demo/Dockerfile)
+# its own default, 4100 (packages/esign-service/Dockerfile)
 PORT="$SMOKE_PORT"
 docker run -d --rm --name "$NAME" -p "$PORT:4100" \
   -e ESIGN_PROVIDER=mock -e ALLOW_INSECURE_DEV=true \

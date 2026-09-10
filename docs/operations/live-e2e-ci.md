@@ -86,7 +86,7 @@ see.
 |---|---|---|
 | `consent_required` | consent never granted for this key + user | step 3 |
 | `AUTHORIZATION_INSUFFICIENT_SCOPE` | consent granted without the `webforms_*` scopes | step 3 with the full URL above |
-| `no examples/full-service-demo/.env … and no DOCUSIGN_* in the environment` | the job ran without the environment's secrets (wrong environment name, or a fork PR) | check the environment name and the trigger |
+| `no packages/esign-service/.env … and no DOCUSIGN_* in the environment` | the job ran without the environment's secrets (wrong environment name, or a fork PR) | check the environment name and the trigger |
 | Playwright cannot find the Start button / sees a CAPTCHA | DocuSign challenged the runner's datacenter IP | nothing to fix in the repo; the API half still passed - run the browser half locally (`make e2e-live`) |
 | `the form did not advance past …` | the capability test form changed (a new required field) | update the defaults in `scripts/e2e/live.sh` |
 

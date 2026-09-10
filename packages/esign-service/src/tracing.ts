@@ -13,7 +13,7 @@ import { SpanStatusCode, trace } from '@opentelemetry/api';
 import type { ESignProvider } from './providers/port';
 import type { RecipientData, WebFormPrefill } from './types';
 
-const tracer = trace.getTracer('esign-api');
+const tracer = trace.getTracer('esign-service');
 
 // Run an async operation inside an active span: records exceptions, sets
 // error status, and always ends the span. The callback receives the span

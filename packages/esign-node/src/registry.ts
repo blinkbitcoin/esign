@@ -54,7 +54,7 @@ export interface DefaultRegistryOptions {
   webhook?: Partial<DocuSignWebhookOptions>;
   // Where the mock's signing pages are served (the esign service does).
   // Default: MOCK_PAGES_ORIGIN, else http://localhost:4100 (the
-  // full-service-demo's default port; a dev-only fallback).
+  // service's default port; a dev-only fallback).
   mockBaseUrl?: () => string;
 }
 

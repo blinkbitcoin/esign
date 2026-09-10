@@ -10,7 +10,7 @@ libraries, and one demo app per platform for manual and E2E testing.
 
 - **Language**: TypeScript 6.0 everywhere
 - **Node**: `^22.22.2 || >= 24.15.0`; toolchain pinned by `flake.nix`, entered
-  via direnv (`direnv allow . && direnv allow examples/full-service-demo`, once per machine)
+  via direnv (`direnv allow . && direnv allow packages/esign-service`, once per machine)
 - **Docs**: `docs/index.md` is the current-state entry point; CLAUDE.md has
   the full command reference; `CONTRIBUTING.md` has the commit and release rules
 
@@ -21,11 +21,11 @@ libraries, and one demo app per platform for manual and E2E testing.
 │   ├── esign-core/              # 📦 shared core: SigningSource abstraction, Apollo factory, GraphQL codegen
 │   ├── esign-node/              # 📦 server side: DocuSign client, createWebFormInstance, envelope domain over provider + store ports
 │   ├── esign-react-native/      # 📦 THE PRODUCT - RN (`ESignature` + `useESignature` over a WebView)
-│   └── esign-react/             # 📦 THE PRODUCT - web (`ESignature` + `useESignature` over an iframe)
+│   ├── esign-react/             # 📦 THE PRODUCT - web (`ESignature` + `useESignature` over an iframe)
+│   └── esign-service/           # 📦 server shape 1: the whole service (Express 5 + Apollo 5 + Knex/Postgres), the E2E backend, the esign-service image
 ├── examples/
 │   ├── react-native-demo/       # 📱 RN integration demo (Maestro E2E)
 │   ├── react-demo/              # 🌐 Web integration demo (Vite, Playwright E2E)
-│   ├── full-service-demo/       # 🖥️ server shape 1: the whole service (Express 5 + Apollo 5 + Knex/Postgres), the E2E backend, the esign-api image
 │   ├── mint-only-demo/          # 🖥️ server shape 2: an existing GraphQL API adds one mint mutation (the Blink API shape)
 │   └── serverless-handler-demo/ # 🖥️ server shape 3: the Fetch handlers behind a route handler
 ├── docs/                        # Current-state documentation (hand-maintained)
@@ -88,13 +88,13 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
 - The `ESignProvider` port is the provider boundary - nothing provider-specific
   outside a `providers/<name>/` directory: `packages/esign-node/src/providers/docusign/`,
   `packages/esign-core/src/providers/docusign/`, `packages/esign-react/src/providers/docusign/`
-  and `examples/full-service-demo/src/providers/docusign/`; a package's
+  and `packages/esign-service/src/providers/docusign/`; a package's
   `src/docusign.ts` is a one-line re-export of its `providers/docusign/`
   surface (guard tests); generic layers never
   import a provider (guard tests), and providers are selected through
   `providerFromEnv` (`ESIGN_PROVIDER`)
 - GraphQL error codes are a wire contract: the `ErrorCode` enum in
-  `examples/full-service-demo/schema.graphql` (emitted from `src/typeDefs.ts`) and the generated
+  `packages/esign-service/schema.graphql` (emitted from `src/typeDefs.ts`) and the generated
   client types in `packages/esign-core/src/generated/` - run `make codegen`
   after schema changes; drift fails tests and a CI step
 - The libraries take no URLs/tokens/platform detection - host apps inject via
@@ -133,7 +133,7 @@ cannot see changes.
 - Core / RN / web library tests: `packages/*/src/__tests__/`
 - Demo tests: `examples/react-native-demo/{__tests__,src/__tests__}/`,
   `examples/react-demo/src/__tests__/`; browser E2E in `examples/react-demo/e2e/` (Playwright)
-- Backend unit tests: `examples/full-service-demo/tests/` (DB mocked); E2E: `examples/full-service-demo/tests/e2e/`
+- Backend unit tests: `packages/esign-service/tests/` (DB mocked); E2E: `packages/esign-service/tests/e2e/`
   (real Postgres via `docker-compose.test.yml`); `tests/live/` runs only with
   real DocuSign credentials (`make test-live`)
 - Tooling scripts: `scripts/lib/*.test.mjs` (100% Vitest coverage) for the

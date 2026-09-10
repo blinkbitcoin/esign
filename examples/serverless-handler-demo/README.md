@@ -51,8 +51,9 @@ make test          # Vitest, 100% coverage enforced (make coverage)
 CI boots this example with the mock provider and calls both routes
 (`scripts/e2e/server-demos-smoke.sh`, `make e2e-server-demos`).
 
-## The other server shapes
+## Two in-process examples and the service
 
-[`full-service-demo`](../full-service-demo/README.md) runs the whole service;
 [`mint-only-demo`](../mint-only-demo/README.md) adds one mutation to an API
-you already have.
+you already have;
+[`@blinkbitcoin/esign-service`](../../packages/esign-service/README.md) runs
+the whole service.

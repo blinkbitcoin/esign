@@ -8,7 +8,7 @@
 <sub>E2E covers backend, web, Android and the iOS simulator suite, see [CI/CD](docs/development-guide.md#ios-e2e-and-the-macos-runner).</sub>
 
 <p align="center">
-  <img src="docs/assets/readme-hero.svg" alt="Your React Native or React web app renders one ESignature component. A SigningSource picks one of three modes: public URL (no backend), Web Forms instance (one backend endpoint), or proxy envelope (this repo's GraphQL backend). The backend-backed modes talk to DocuSign through the optional examples/full-service-demo service." width="960">
+  <img src="docs/assets/readme-hero.svg" alt="Your React Native or React web app renders one ESignature component. A SigningSource picks one of three modes: public URL (no backend), Web Forms instance (one backend endpoint), or proxy envelope (this repo's GraphQL backend). The backend-backed modes talk to DocuSign through the optional packages/esign-service service." width="960">
 </p>
 
 Embedded e-signing for React Native and React web apps. One `ESignature`
@@ -19,7 +19,7 @@ mode**, and for two of the three that is a single small package:
 |------|-----------|------------------------|------------------|
 | **1. Public URL** | A published public form<br>URL embedded directly | One package via the<br>Apollo-free `/webform`<br>entry - **no Apollo,<br>no GraphQL** | **None** |
 | **2. Web Forms<br>instances** | Prefilled per-signer forms<br>(read-only fields locked);<br>your backend mints an<br>instance URL with one<br>API call | Same minimal `/webform`<br>entry | One authenticated<br>endpoint on *your*<br>backend: one call from<br>`@blinkbitcoin/esign-node`<br>(or run this repo's service) |
-| **3. Proxy envelope** | Full envelope orchestration:<br>templates, per-recipient<br>sessions, restart on expiry,<br>webhook status sync | The package +<br>`@apollo/client` +<br>`graphql` | This repo's backend<br>service (`examples/full-service-demo`) |
+| **3. Proxy envelope** | Full envelope orchestration:<br>templates, per-recipient<br>sessions, restart on expiry,<br>webhook status sync | The package +<br>`@apollo/client` +<br>`graphql` | This repo's backend<br>service (`packages/esign-service`) |
 
 The GraphQL backend, Apollo wiring, and provider adapters in this repo exist
 for **mode 3 only**. If you need modes 1 or 2, none of that ships with you -
@@ -121,10 +121,10 @@ Web Forms specifics - event model, real-DocuSign caveats:
 **Use when:** you need real envelope workflows: creation from DocuSign
 templates, a distinct session per recipient, session restart after expiry,
 and webhook-driven status tracking in a database. This is the mode the rest
-of this repo exists for - `examples/full-service-demo` (GraphQL service, provider adapters,
+of this repo exists for - `packages/esign-service` (GraphQL service, provider adapters,
 webhooks) plus the Apollo client wiring.
 
-1. Deploy this repo's backend ([examples/full-service-demo](examples/full-service-demo/README.md)).
+1. Deploy this repo's backend ([packages/esign-service](packages/esign-service/README.md)).
 2. Install the package **plus** the Apollo peers:
 
 ```sh
@@ -194,7 +194,7 @@ Ordered by how likely you are to need each part:
 | [`packages/esign-node/`](packages/esign-node/README.md) | The Node-only server half for your own backend: mint Web Forms<br>instances with locked prefill in one call, or run the whole<br>envelope domain (mode 3) over your own store, as a Fetch<br>handler or an Express router. The service below is built on it. |
 | [`examples/mint-only-demo/`](examples/mint-only-demo/README.md) | Server shape for most hosts: your existing API adds one<br>mutation that mints a locked Web Forms instance. |
 | [`examples/serverless-handler-demo/`](examples/serverless-handler-demo/README.md) | Server shape for route handlers and edge functions: the<br>package's mint and webhook handlers, `Request → Response`. |
-| [`examples/full-service-demo/`](examples/full-service-demo/README.md) | Server shape for mode 3, the whole service: a GraphQL API that creates<br>envelopes through provider adapters (DocuSign and a mock),<br>persists status in PostgreSQL, and receives provider<br>webhooks. Not needed for modes 1 and 2. |
+| [`packages/esign-service/`](packages/esign-service/README.md) | Server shape for mode 3, the whole service: a GraphQL API that creates<br>envelopes through provider adapters (DocuSign and a mock),<br>persists status in PostgreSQL, and receives provider<br>webhooks. Not needed for modes 1 and 2. |
 | [`examples/react-native-demo/`](examples/react-native-demo/README.md) | A complete React Native app hosting the component. Used for<br>manual testing, and the mobile end-to-end suites drive it. |
 | [`examples/react-demo/`](examples/react-demo/README.md) | The same for the browser: a small React app hosting the web<br>component, driven by the browser end-to-end suites. |
 | `docs/` | Documentation of how everything currently works -<br>start at [docs/index.md](docs/index.md); upgrading notes in<br>[docs/upgrading.md](docs/upgrading.md). |
@@ -210,7 +210,7 @@ One-time setup:
 
 ```sh
 make install                             # npm ci across all workspaces (also installs git hooks)
-direnv allow . && direnv allow examples/full-service-demo  # once per machine (loads env + nix flake dev shell)
+direnv allow . && direnv allow packages/esign-service  # once per machine (loads env + nix flake dev shell)
 ```
 
 **Working on the libraries** requires nothing else - no backend, no

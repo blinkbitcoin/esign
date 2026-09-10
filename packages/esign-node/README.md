@@ -12,15 +12,15 @@ no framework, no peers:
   with authorization and ownership, input bounds, atomic persistence with an
   audit trail, the restart rule and the webhook state machine.
 
-The esign service (`examples/full-service-demo`) is this package plus Express, Apollo and a
+The esign service (`packages/esign-service`) is this package plus Express, Apollo and a
 Postgres store; a host that already has a backend imports the package
 instead of running that service.
 
 Three worked hosts live in this repo, one per shape:
 [`examples/mint-only-demo`](../../examples/mint-only-demo/README.md) (one
 mutation on an existing API), [`examples/serverless-handler-demo`](../../examples/serverless-handler-demo/README.md)
-(the Fetch handlers behind a route) and [`examples/full-service-demo`](../../examples/full-service-demo/README.md)
-(the whole service, also shipped as the `esign-api` image).
+(the Fetch handlers behind a route) and [`packages/esign-service`](../../packages/esign-service/README.md)
+(the whole service, also shipped as the `esign-service` image).
 
 ## Why a server call at all
 
@@ -262,7 +262,7 @@ make test        # Jest, 100% coverage enforced
 make build       # tsup (ESM + CJS + types)
 ```
 
-The reference host is `examples/full-service-demo` (Knex store, Express + Apollo, the same
+The reference host is `packages/esign-service` (Knex store, Express + Apollo, the same
 router mounted); it also ships as a container image,
-`ghcr.io/blinkbitcoin/esign-api`, for hosts that would rather run the
-service than import the package ([examples/full-service-demo/README.md](../../examples/full-service-demo/README.md#deploy)).
+`ghcr.io/blinkbitcoin/esign-service`, for hosts that would rather run the
+service than import the package ([packages/esign-service/README.md](../../packages/esign-service/README.md#deploy)).

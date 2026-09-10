@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Decides what a CI run publishes and stamps it into the four packages.
+// Decides what a CI run publishes and stamps it into the five packages.
 //   release event : the tag IS the version (vX.Y.Z -> X.Y.Z, dist-tag latest;
 //                   vX.Y.Z-<pre> -> dist-tag next). The commit must be on main.
 //   anything else : prerelease <next-patch-after-latest-v*-tag>-pre.<run>.<sha>

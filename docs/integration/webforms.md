@@ -25,7 +25,7 @@ The embedded page reports back via postMessage
 
 The backend endpoint is provider-agnostic (`POST /webform/instance`,
 authenticated); the mode is chosen by `ESIGN_PROVIDER`. Nothing DocuSign-specific
-lives outside the DocuSign adapter (`examples/full-service-demo/src/providers/docusign/`).
+lives outside the DocuSign adapter (`packages/esign-service/src/providers/docusign/`).
 
 ## Toggling the demos
 
@@ -95,12 +95,12 @@ no DocuSign.js needed on React Native. The request body is:
 ```
 
 Keys are the fields' API reference names; the value shape follows the field
-type (`examples/full-service-demo/src/types.ts`): text / email / date (`yyyy-mm-dd`) / dropdown /
+type (`packages/esign-service/src/types.ts`): text / email / date (`yyyy-mm-dd`) / dropdown /
 radio → string, **Number → a JSON number** (unquoted, `.` decimal, no
 thousands separators; for *editable* Number fields - locked amounts and
 dates are Text fields, hence the strings above), checkbox group → string array, phone →
 `{ countryCode?, nationalNumber }`. The endpoint validates that contract at the
-edge (`examples/full-service-demo/src/webFormPrefill.ts`) and answers 400 with a reason for
+edge (`packages/esign-service/src/webFormPrefill.ts`) and answers 400 with a reason for
 anything else, before the provider is called. Mint the instance right before
 opening it: the instance token expires about five minutes after creation.
 
@@ -223,14 +223,14 @@ enabled and disables its options); dates render as `yyyy/mm/dd`. Step by step:
 2. Build and **publish a Web Form** in the DocuSign Web Forms builder, mapped to
    a template; note its **form id** and the fields' **API reference names**
    (these are the `formValues`/prefill keys).
-3. Configure the backend (`examples/full-service-demo/.env`):
+3. Configure the backend (`packages/esign-service/.env`):
    ```env
    ESIGN_PROVIDER=docusign
    DOCUSIGN_WEBFORM_ID=<form id>   # the capability test form v2 for the live suite
    DOCUSIGN_WEBFORMS_BASE_URL=https://apps-d.docusign.com/api/webforms/v1.1
    # + the standard DOCUSIGN_* JWT config (see docusign-proxy.md)
    ```
-4. Verify the API contract without a UI: `make test-live` in `examples/full-service-demo` runs
+4. Verify the API contract without a UI: `make test-live` in `packages/esign-service` runs
    `tests/live/webforms.live.test.ts` — real JWT auth + a real
    `createInstance` call, asserting the response shape and that the minted
    URL is served. Skips itself when the `DOCUSIGN_*` env vars are unset, so

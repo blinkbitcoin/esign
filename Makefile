@@ -112,14 +112,14 @@ web: ## Vite dev server for the web example app
 
 # ---------- Database ----------
 
-db-up: ## Start the dev Postgres (examples/full-service-demo/docker-compose.yml, port 5432)
-	cd examples/full-service-demo && docker compose up -d --wait
+db-up: ## Start the dev Postgres (packages/esign-service/docker-compose.yml, port 5432)
+	cd packages/esign-service && docker compose up -d --wait
 
 db-down: ## Stop the dev Postgres
-	cd examples/full-service-demo && docker compose down
+	cd packages/esign-service && docker compose down
 
 migrate: ## Apply Knex migrations to the dev database
-	npm run migrate -w examples/full-service-demo
+	npm run migrate -w packages/esign-service
 
 # ---------- E2E ----------
 
@@ -131,22 +131,22 @@ test-db-down: ## Stop the E2E Postgres
 	docker compose -f docker-compose.test.yml down
 
 e2e-backend: test-db-up ## Backend E2E suite against real Postgres (then tears DB down)
-	npm run migrate:test -w examples/full-service-demo
-	npm run test:e2e -w examples/full-service-demo
+	npm run migrate:test -w packages/esign-service
+	npm run test:e2e -w packages/esign-service
 	$(MAKE) test-db-down
 
 e2e-web: test-db-up build ## Playwright browser E2E for the web demo (proxy mode; then tears DB down) - builds the libraries first (the demo bundles their dist)
-	npm run migrate:test -w examples/full-service-demo
+	npm run migrate:test -w packages/esign-service
 	npm run test:e2e -w examples/react-demo
 	$(MAKE) test-db-down
 
 e2e-web-webform: test-db-up build ## Playwright browser E2E for the web demo in DocuSign Web Forms mode - builds the libraries first (the demo bundles their dist)
-	npm run migrate:test -w examples/full-service-demo
+	npm run migrate:test -w packages/esign-service
 	npm run test:e2e:webform -w examples/react-demo
 	$(MAKE) test-db-down
 
 e2e-web-publicurl: test-db-up build ## Playwright browser E2E for the web demo in public-URL mode - builds the libraries first (the demo bundles their dist)
-	npm run migrate:test -w examples/full-service-demo
+	npm run migrate:test -w packages/esign-service
 	npm run test:e2e:publicurl -w examples/react-demo
 	$(MAKE) test-db-down
 
@@ -171,17 +171,17 @@ e2e-ios: ## Maestro E2E, iOS (needs: booted simulator with the app installed, Me
 e2e-android: ## Maestro E2E, Android (needs: emulator, debug APK built, Metro + backend running)
 	bash scripts/e2e/android-maestro.sh
 
-test-live: ## Live verification against real DocuSign (skips unless DOCUSIGN_* set in examples/full-service-demo/.env)
-	npm run test:live -w examples/full-service-demo
+test-live: ## Live verification against real DocuSign (skips unless DOCUSIGN_* set in packages/esign-service/.env)
+	npm run test:live -w packages/esign-service
 
-docusign-env: ## Write examples/full-service-demo/.env for a live run (ACCOUNT_ID= INTEGRATION_KEY= USER_ID= TEMPLATE_ID= WEBFORM_ID= [PEM=] [FORCE=1])
+docusign-env: ## Write packages/esign-service/.env for a live run (ACCOUNT_ID= INTEGRATION_KEY= USER_ID= TEMPLATE_ID= WEBFORM_ID= [PEM=] [FORCE=1])
 	bash scripts/e2e/docusign-env.sh
 
 docusign-template: ## Create (or reuse) the proxy-flow template in the DocuSign account from the fixture PDF; WRITE=1 sets DOCUSIGN_TEMPLATE_ID in .env
-	npm run docusign:template -w examples/full-service-demo
+	npm run docusign:template -w packages/esign-service
 
 docusign-check: ## JWT grant + fetch the configured Web Form with that .env; prints the consent URL when consent is missing
-	npm run docusign:check -w examples/full-service-demo
+	npm run docusign:check -w packages/esign-service
 
 e2e-live: ## Full live run: start the service on DocuSign, API live test, Playwright locked-fields check against the fixture form, stop
 	bash scripts/e2e/live.sh
@@ -191,17 +191,17 @@ e2e-ios-live: ## React Native live run: service on DocuSign + Metro (webform mod
 
 # ---------- Container ----------
 
-docker-build: ## Build the service image (examples/full-service-demo/Dockerfile, from the repo root)
-	bash scripts/ci/docker-build.sh esign-api
+docker-build: ## Build the service image (packages/esign-service/Dockerfile, from the repo root)
+	bash scripts/ci/docker-build.sh esign-service
 
 docker-smoke: docker-build ## Boot the image with the mock provider and hit /health
-	bash scripts/ci/docker-smoke.sh esign-api
+	bash scripts/ci/docker-smoke.sh esign-service
 
 # ---------- Housekeeping ----------
 
 clean: ## Remove build output and caches (library lib/, coverage)
 	npm run clean -w packages/esign-react-native -w packages/esign-react
-	rm -rf coverage packages/*/coverage examples/*/coverage examples/full-service-demo/coverage
+	rm -rf coverage packages/*/coverage examples/*/coverage
 
 reset: ## Full dependency reinstall (root lockfile only)
 	rm -rf node_modules package-lock.json

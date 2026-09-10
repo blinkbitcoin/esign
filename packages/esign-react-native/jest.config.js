@@ -19,7 +19,7 @@ module.exports = {
   collectCoverageFrom: ['src/**/*.{ts,tsx}'],
   coveragePathIgnorePatterns: [
     '/node_modules/',
-    // Generated from examples/full-service-demo/schema.graphql (see codegen.ts)
+    // Generated from packages/esign-service/schema.graphql (see codegen.ts)
     'src/generated/',
     // Type-only file - no executable code to cover
     'src/types\\.ts$',

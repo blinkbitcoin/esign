@@ -11,6 +11,7 @@ export const PUBLISHED_PACKAGES = [
   'packages/esign-node',
   'packages/esign-react-native',
   'packages/esign-react',
+  'packages/esign-service',
 ];
 
 /**
@@ -21,7 +22,7 @@ export const PUBLISHED_PACKAGES = [
 export const INTERNAL_DEPENDENCIES = {
   'packages/esign-react-native': ['@blinkbitcoin/esign-core'],
   'packages/esign-react': ['@blinkbitcoin/esign-core'],
-  'examples/full-service-demo': ['@blinkbitcoin/esign-node'],
+  'packages/esign-service': ['@blinkbitcoin/esign-node'],
   'examples/mint-only-demo': ['@blinkbitcoin/esign-node'],
   'examples/serverless-handler-demo': ['@blinkbitcoin/esign-node'],
   'examples/react-demo': ['@blinkbitcoin/esign-react'],

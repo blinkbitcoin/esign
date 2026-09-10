@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# Packs the four packages and installs them into a clean project, then
-# asserts the consumer contract: the /docusign + /webform entries resolve and
-# never load Apollo, and the Node package loads on plain Node. Run from the repo root after `npm run build` (CI: E2E / Build Packages).
+# Packs the five packages and installs the four client/server libraries into
+# a clean project, then asserts the consumer contract: the /docusign +
+# /webform entries resolve and never load Apollo, and the Node package loads
+# on plain Node. The service package has no library entry points to assert
+# against (it is an app); packing it here still proves the tarball builds.
+# Run from the repo root after `npm run build` (CI: E2E / Build Packages).
 set -euo pipefail
 SMOKE="$(mktemp -d)"
 trap 'rm -rf "$SMOKE"' EXIT
 
-for p in packages/esign-core packages/esign-node packages/esign-react-native packages/esign-react; do
+for p in packages/esign-core packages/esign-node packages/esign-react-native packages/esign-react packages/esign-service; do
   (cd "$p" && npm pack --pack-destination "$SMOKE" >/dev/null)
 done
 

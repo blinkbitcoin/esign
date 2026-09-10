@@ -16,10 +16,10 @@ one thing a human does along the way: merge the release PR.
 4. Approve it and merge it: `make release`, or the Merge button. That is the
    release. release-please tags `vX.Y.Z`, creates the GitHub Release with the
    changelog entry as its body, and starts the release run of `ci.yml`, which
-   stamps the version into the four packages, runs the full gate, waits for
+   stamps the version into the five packages, runs the full gate, waits for
    the commit's main run to be green, and publishes under `latest`.
 
-Nothing else is edited by hand. `package.json` in the four publishable
+Nothing else is edited by hand. `package.json` in the five publishable
 packages stays at `0.0.0-development`; the root `package.json` carries the
 released version because release-please maintains it.
 
@@ -105,11 +105,11 @@ changes the bump class).
    The explicit dispatch exists because GitHub never triggers workflows
    from events the workflow token created; a release made by the bot would
    not fire the `release:` trigger.
-3. That release run stamps `X.Y.Z` into the four packages, builds them and
+3. That release run stamps `X.Y.Z` into the five packages, builds them and
    the service image, runs Checks, Unit and every E2E suite, then the
    Publish job waits for the commit's push-to-`main` run to be green (fails
-   on a red one) and publishes under `latest`: the four packages to GitHub
-   Packages and the image to GHCR as `ghcr.io/blinkbitcoin/esign-api:X.Y.Z`
+   on a red one) and publishes under `latest`: the five packages to GitHub
+   Packages and the image to GHCR as `ghcr.io/blinkbitcoin/esign-service:X.Y.Z`
    (+ `:latest`). Verify installs the published packages, pulls the
    published image and asserts the consumer contract on both.
 4. If the main run was red (a flaky E2E job), re-run its failed job
@@ -124,7 +124,7 @@ tagged run executes the full pipeline before anything ships.
 
 `make release-rc V=X.Y.Z-rc.1` creates a `vX.Y.Z-rc.1` tag and prerelease
 by hand. It goes through the `release:` trigger and ships under `next`
-(`npm i @blinkbitcoin/esign-react@next`, `ghcr.io/blinkbitcoin/esign-api:next`). release-please ignores such tags;
+(`npm i @blinkbitcoin/esign-react@next`, `ghcr.io/blinkbitcoin/esign-service:next`). release-please ignores such tags;
 the next stable release is still computed from the last `vX.Y.Z`.
 
 ## When something goes wrong

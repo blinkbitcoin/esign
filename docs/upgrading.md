@@ -42,6 +42,15 @@ stay as Apollo-free aliases of the `/docusign` entries.
 
 Hosts that only need the mint call: [locked-terms.md](integration/locked-terms.md).
 
+## Package promotion: `examples/full-service-demo` → `packages/esign-service`
+
+`examples/full-service-demo/` is renamed `packages/esign-service/` and joins
+the publishable set as `@blinkbitcoin/esign-service` (no behaviour change;
+same env names, routes, Dockerfile). The image is renamed
+`ghcr.io/blinkbitcoin/esign-service` (was `ghcr.io/blinkbitcoin/esign-api`).
+The demo is now the service package; the two remaining server examples are
+`mint-only-demo` and `serverless-handler-demo`.
+
 ## Deprecated names (kept until the next major)
 
 Each carries `@deprecated` JSDoc naming the canonical import; behaviour is
