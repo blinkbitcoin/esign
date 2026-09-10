@@ -5,8 +5,10 @@
 # e2e-server-demos; CI: E2E / Server demos). PROVIDER=docusign: the real
 # provider with the DOCUSIGN_* values from the environment - both examples
 # mint real instances (part of make e2e-live). Ports: MINT_PORT and
-# HANDLER_PORT (ESIGN_PORT_BASE + 4 / + 5, default 4104 / 4105; the mock
-# pages' origin is ESIGN_API_PORT's - scripts/lib/ports.mjs).
+# HANDLER_PORT (ESIGN_PORT_BASE + 4 / + 5, default 4104 / 4105); the service
+# and its terms callback are SERVICE_PORT / TERMS_PORT (+ 10 / + 11, default
+# 4110 / 4111); the mock pages' origin is ESIGN_API_PORT's. All of them come
+# from scripts/lib/ports.mjs through ports-env.sh.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 # shellcheck source=scripts/e2e/wait-lib.sh
@@ -86,4 +88,42 @@ BODY=$(curl -fsS -X POST "http://127.0.0.1:$HANDLER_PORT/webhook/esign" \
   -H 'content-type: application/json' \
   -d '{"event":"envelope-completed","data":{"envelopeId":"smoke-1","envelopeSummary":{"status":"completed"}}}')
 expect_match "serverless webhook" '"received":true' "$BODY"
+
+# The service (the deployable) with locked terms. The stub stands in for the
+# host endpoint TERMS_URL points at: it answers a price the client never sent.
+PORT="$TERMS_PORT" node -e '
+  const { createServer } = require("node:http");
+  createServer((req, res) => {
+    let body = "";
+    req.on("data", chunk => { body += chunk; });
+    req.on("end", () => {
+      const { userId, input } = JSON.parse(body || "{}");
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({
+        prefill: { total_subscription_usd: "1000.00", locked_for: userId, ...(input.full_name ? { full_name: input.full_name } : {}) },
+      }));
+    });
+  }).listen(Number(process.env.PORT));
+' > "$LOG_DIR/terms-stub.log" 2>&1 &
+PIDS+=($!)
+DATABASE_URL='' ESIGN_PROVIDER=mock ALLOW_INSECURE_DEV=true PORT="$SERVICE_PORT" \
+  TERMS_URL="http://127.0.0.1:$TERMS_PORT/terms" \
+  npm run dev -w packages/esign-service > "$LOG_DIR/esign-service.log" 2>&1 &
+PIDS+=($!)
+up esign-service "http://127.0.0.1:$SERVICE_PORT/health"
+
+BODY=$(curl -fsS "http://127.0.0.1:$SERVICE_PORT/health")
+expect_match "service /health is mint-only" '"capabilities":\["mint"\]' "$BODY"
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:$SERVICE_PORT/webhook/esign" \
+  -H 'content-type: application/json' -d '{"event":"envelope-completed"}')
+expect_match "service has no webhook without DATABASE_URL" '^404$' "$CODE"
+
+BODY=$(curl -fsS -X POST "http://127.0.0.1:$SERVICE_PORT/webform/instance" \
+  -H 'content-type: application/json' -H 'authorization: Bearer smoke-user' \
+  -d '{"prefill":{"full_name":"Jane Signer","total_subscription_usd":"1"}}')
+expect_match "service mint through the terms callback" '"url":"http://localhost:'"$SERVICE_PORT"'/signing/mock-webform/' "$BODY"
+PAGE=$(curl -fsS "$(printf '%s' "$BODY" | sed -E 's/.*"url":"([^"]+)".*/\1/')")
+expect_match "terms answer is what gets minted" 'name="total_subscription_usd" value="1000.00" readonly' "$PAGE"
+expect_match "terms answer is locked to the caller" 'name="locked_for" value="smoke-user" readonly' "$PAGE"
+
 echo "server demos smoke: all ok"

@@ -21,23 +21,25 @@
 - **`esign-react/`:** the same API for the browser (iframe embed, DocuSign.js source)
 - **`esign-core/`:** platform-agnostic `SigningSource` abstraction, sources (proxy / Web Forms / public URL), Apollo factory, codegen - a dependency of both
 - **`esign-node/`:** Node-only: DocuSign client (JWT grant), `createWebFormInstance` (locked prefill), the envelope domain over the `ESignProvider` + `EnvelopeStore` ports, Fetch handlers, `/express` router; the backend is built on it
-- **`esign-service/`:** the whole service, published and deployable on its own; see below
+- **`esign-service/`:** the whole service as one deployable - a Fetch core that always mints and adds envelope orchestration when `DATABASE_URL` is set; runs as a container, a Node process, a Vercel route or a Cloudflare Worker from one env contract; see below
 
 #### Demo app (`examples/react-native-demo/`) - integration/E2E host
 - **Framework:** React Native 0.86.0
 - **Entry Point:** `App.tsx` (hosts the library component)
 - **E2E:** `.maestro/` flows
 
-#### Server examples (`examples/*-demo/`, two of the three shapes on `esign-node`)
+#### Server examples (`examples/*-demo/`, the two in-process shapes on `esign-node`; the third is the service)
 - **`mint-only-demo/`:** an existing GraphQL API adds one mutation that mints a locked Web Forms instance (the smallest backend footprint)
 - **`serverless-handler-demo/`:** the Fetch handlers (mint + webhook) behind a route handler, plain Node adapter
 
 #### The service (`packages/esign-service/`)
-- **Framework:** Express 5.2.x + Apollo Server 5.5.x, composed from `@blinkbitcoin/esign-node`
-- **Database:** PostgreSQL via Knex 3.3.x (the Knex `EnvelopeStore`)
-- **Entry Point:** `packages/esign-service/src/index.ts`
-- **Role:** The reference host for mode 3 (and the Web Forms mint endpoint); the backend every E2E suite runs against; ships as a container image (`ghcr.io/blinkbitcoin/esign-service`)
-- **API:** GraphQL at `/graphql`, mint at `POST /webform/instance`, webhook at `/webhook/esign`
+- **Framework:** none - a Fetch-native core (`createESignApp(env)`), composed from `@blinkbitcoin/esign-node`; `@hono/node-server` bridges it to Node, Apollo Server 5.5.x executes GraphQL when envelopes are on
+- **Database:** PostgreSQL via Knex 3.3.x (the Knex `EnvelopeStore`), only with `DATABASE_URL`
+- **Entry Points:** `src/index.ts` (the core), `src/node.ts` (the process; also `npx esign-service`), `src/vercel.ts`, `src/cloudflare.ts`
+- **Capabilities by env:** the mint is always on; `DATABASE_URL` adds the GraphQL API, the webhook and the store. `GET /health` reports which
+- **Role:** The reference host for mode 3 (and the Web Forms mint endpoint); the backend every E2E suite runs against; ships as a container image (`ghcr.io/blinkbitcoin/esign-service`) and as a package with deploy templates in `deploy/`
+- **API:** mint at `POST /webform/instance`, bridge at `GET /signing/return`, health at `GET /health`; with envelopes, GraphQL at `/graphql` and the webhook at `/webhook/esign`
+- **The host's two obligations:** expose JWKS or share an HS256 secret (session verification), and expose `TERMS_URL` when the locked terms come from host data
 
 #### Tooling (`scripts/`)
 - **Type:** `tooling` npm workspace: ci/, e2e/, release/ shell + node; `lib/*.mjs` Vitest-covered at 100%

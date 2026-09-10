@@ -1,0 +1,25 @@
+# wrangler deploy
+#
+# nodejs_compat is required: the DocuSign JWT assertion signs with
+# node:crypto. The Worker's vars and secrets ARE the environment - the same
+# names a container reads from its env file.
+#
+# Secrets (wrangler secret put <NAME>), never vars:
+#   SESSION_HS256_SECRET (or nothing, when SESSION_JWKS_URL is used)
+#   TERMS_SHARED_SECRET
+#   DOCUSIGN_PRIVATE_KEY_BASE64   (_FILE paths are container-only)
+#   DOCUSIGN_INTEGRATION_KEY, DOCUSIGN_ACCOUNT_ID, DOCUSIGN_USER_ID
+name = "esign-service"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ESIGN_ENV = "production"
+ESIGN_PROVIDER = "docusign"
+SESSION_JWKS_URL = "https://id.example.com/.well-known/jwks.json"
+TERMS_URL = "https://api.example.com/internal/esign/terms"
+DOCUSIGN_WEBFORM_ID = "change-me"
+DOCUSIGN_RETURN_URL = "https://esign.example.com/signing/return"
+DOCUSIGN_BASE_URL = "https://na4.docusign.net/restapi"
+DOCUSIGN_OAUTH_URL = "https://account.docusign.com"

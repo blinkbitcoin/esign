@@ -139,7 +139,7 @@ esign/
 │       │   └── index.ts           # Bootstrap (PORT, default ESIGN_PORT_BASE + 5 = 4105)
 │       └── tests/                 # Vitest, 100% enforced
 │
-├── 📦 PACKAGE - the whole service, published (Express + Apollo + Postgres)
+├── 📦 PACKAGE - the whole service, published (Fetch core; mint always, envelopes with DATABASE_URL)
 │   │
 │   └── packages/esign-service/
 │       ├── package.json           # Backend dependencies
@@ -154,7 +154,7 @@ esign/
 │       ├── src/
 │       │   ├── index.ts           # Bootstrap (dotenv + startServer)
 │       │   ├── server.ts          # startServer(port) - testable ⭐
-│       │   ├── app.ts             # Express + Apollo; mounts the package's router ⭐
+│       │   ├── app.ts             # The Fetch core (createESignApp): capabilities → routes ⭐
 │       │   ├── schema.ts          # createESignGraphQL over the envelope service ⭐
 │       │   ├── typeDefs.ts        # Re-exports the package SDL (schema.graphql source)
 │       │   ├── services.ts        # Composition: createEnvelopeService(provider, store) ⭐
@@ -167,7 +167,7 @@ esign/
 │       │   │
 │       │   ├── providers/         # The package's adapters wired to this service ⭐
 │       │   │   ├── port.ts        #   Re-exports ESignProvider + supportsHostedForms
-│       │   │   ├── index.ts       #   registry + providerFromEnv, singleton (tracing-wrapped)
+│       │   │   ├── index.ts       #   selectProvider(env): registry + providerFromEnv, tracing-wrapped, per app
 │       │   │   ├── mock.ts        #   mock adapter handle (pages served by the router)
 │       │   │   └── docusign/      #   DocuSign adapter handle + env config
 │       │   │
@@ -251,7 +251,7 @@ esign/
 | `packages/esign-service/src/schema.ts` | GraphQL API |
 | `packages/esign-service/src/webhook.ts` | Generic webhook processing |
 | `packages/esign-service/src/types.ts` | ESignProvider interface |
-| `packages/esign-service/src/providers/index.ts` | Provider registry (providerFromEnv) + singleton |
+| `packages/esign-service/src/providers/index.ts` | Provider selection per app (`selectProvider`, `providerFromEnv`) |
 | `packages/esign-node/src/knex/migrations.ts` | Database schema (programmatic Knex migration source) |
 | `packages/esign-service/tests/e2e/` | E2E tests |
 

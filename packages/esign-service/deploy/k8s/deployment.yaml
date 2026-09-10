@@ -1,0 +1,75 @@
+# The service itself. Its whole configuration is the Secret: capabilities
+# follow DATABASE_URL, so this same Deployment serves the mint alone or the
+# mint plus envelope orchestration.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: esign-service
+  labels:
+    app.kubernetes.io/name: esign-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: esign-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: esign-service
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: esign-service
+          image: ghcr.io/blinkbitcoin/esign-service:latest
+          ports:
+            - name: http
+              containerPort: 4100
+          envFrom:
+            - secretRef:
+                name: esign-service
+          env:
+            - name: PORT
+              value: "4100"
+            # Behind the Service and an ingress: key the rate limits on the
+            # forwarded client, not on the proxy
+            - name: TRUST_PROXY
+              value: "true"
+            - name: DOCUSIGN_PRIVATE_KEY_FILE
+              value: /run/secrets/docusign.pem
+          volumeMounts:
+            - name: docusign-pem
+              mountPath: /run/secrets
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        # Mounted, never injected: the PEM has its own Secret so that the one
+        # above (read with envFrom) holds only valid variable names
+        - name: docusign-pem
+          secret:
+            secretName: esign-service-docusign-pem
+            items:
+              - key: docusign.pem
+                path: docusign.pem

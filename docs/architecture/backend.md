@@ -1,21 +1,21 @@
 # Architecture - Backend
 
 **Part:** backend
-**Type:** Express + Apollo GraphQL API
-**Updated:** 2026-07-02
+**Type:** Fetch-native service, capability by environment
+**Updated:** 2026-09-10
 
 ## Technology Stack
 
 | Category | Technology | Version |
 |----------|------------|---------|
-| Framework | Express | 5.2.x |
-| GraphQL | Apollo Server | 5.5.x |
+| Framework | none (a Fetch core); `@hono/node-server` bridges it to Node | 2.1.x |
+| GraphQL | Apollo Server (`executeHTTPGraphQLRequest`) | 5.5.x |
+| Sessions | jose (JWKS / HS256) | 6.2.x |
 | Language | TypeScript | 6.0.x |
 | Query Builder | Knex.js | 3.3.x |
 | Database Driver | pg | 8.22.x |
 | Database | PostgreSQL | 15+ |
-| Testing | Vitest | 4.1.x |
-| HTTP Testing | Supertest | 7.2.x |
+| Testing | Vitest (Fetch `Request`/`Response`, no HTTP server) | 4.1.x |
 | Lint/Format | Biome | 2.5.x |
 | Dev Runner | tsx (watch mode) | 4.x |
 
@@ -23,18 +23,23 @@
 
 **Provider Pattern + Repository Layer** with clean separation of concerns:
 
+Capabilities come from the environment: the mint is always on, and
+`DATABASE_URL` adds envelope orchestration. The envelope half is behind a
+dynamic import, so a mint-only deployment never loads Apollo or `pg`.
+
 ```
-HTTP Request
+Fetch Request (container, Vercel route, Worker - the same core)
     ↓
-Express Router
+createESignApp(env)  - boot guard, session verification, CORS, headers
     ↓
-┌───────────────────────────────────────────┐
-│  Apollo Server (GraphQL)   Webhook Route  │
-│  └── Resolvers             /webhook/esign │
-│      └── ESignProvider Interface          │
-│          ├── DocuSignProvider             │
-│          └── MockProvider                 │
-└───────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│  ALWAYS: POST /webform/instance  → TERMS_URL → the provider │
+│          GET  /signing/return, GET /health                  │
+│  DATABASE_URL: /graphql (Apollo)   POST /webhook/esign      │
+│      └── Resolvers                 └── ESignProvider        │
+│                                        ├── DocuSignProvider │
+│                                        └── MockProvider     │
+└────────────────────────────────────────────────────────────┘
     ↓
 Envelope service (@blinkbitcoin/esign-node: rules, audit, webhook state machine)
     ↓
@@ -45,24 +50,36 @@ EnvelopeStore port → Knex store (store.ts) → PostgreSQL
 
 ```
 packages/esign-service/src/
-├── index.ts          # Bootstrap (dotenv + startServer)
-├── server.ts         # HTTP server startup (testable startServer factory)
-├── app.ts            # Express + Apollo setup (createApp factory): this service's policy
-│                     #   (helmet, CORS, rate limits, JWT auth) around the package's
-│                     #   Express router (/health, signing pages, /webform/instance,
-│                     #   /webhook/esign) and GraphQL schema
-├── schema.ts         # typeDefs + resolvers = createESignGraphQL({ envelopes }) from the package
-├── services.ts       # Composition root: createEnvelopeService({ provider, store, tracing })
+├── index.ts          # The library entry: createESignApp + the pure pieces
+├── node.ts           # The process entry point (dotenv, telemetry, serve | migrate)
+├── server.ts         # ./node: startServer over @hono/node-server, rate limits, drain
+├── vercel.ts         # ./vercel: GET/POST/OPTIONS route handlers
+├── cloudflare.ts     # ./cloudflare: the Worker default export (mint only)
+├── app.ts            # The Fetch core (createESignApp): capabilities → routes, with
+│                     #   session verification, locked terms, CORS and the security
+│                     #   headers around the package's createHostedFormApp
+├── capabilities.ts   # What the environment turns on (pure)
+├── session.ts        # Session verification: JWKS or HS256, via jose (pure factory)
+├── terms.ts          # The TERMS_URL callback: the host's prefill wins key by key
+├── envelopes.ts      # The envelope capability: Fetch webhook + Apollo over Fetch
+│                     #   (Node-only; reached only by dynamic import)
+├── schema.ts         # createGraphQL(envelopes): typeDefs + resolvers from the package
+├── services.ts       # createServices(provider): createEnvelopeService over the store
 ├── store.ts          # Knex implementation of the package's EnvelopeStore port
 ├── db.ts             # Knex instance (fail-fast on missing DATABASE_URL)
-├── auth.ts           # JWT verification (HS256) with dev/prod split
+├── env.ts            # The Env type + ALLOW_INSECURE_DEV (nothing depends on it)
+├── proxy.ts          # TRUST_PROXY: whether x-forwarded-for names the client
+├── loadEnvelopes.ts  # The one place that names ./envelopes (Node targets only)
 ├── providers/        # Hexagonal provider layer
 │   ├── port.ts       #   ESignProvider port + supportsHostedForms (supportsWebForms kept as alias)
-│   ├── index.ts      #   Registry + providerFromEnv (ESIGN_PROVIDER) + tracing-wrapped singleton
+│   ├── index.ts      #   selectProvider(env): the registry + providerFromEnv
+│                     #   (ESIGN_PROVIDER), tracing-wrapped, per app - no singleton
 │   ├── mock.ts       #   The package's mock adapter, wired to this service's pages
+│   ├── pages.ts      #   The mock provider's signing pages as Fetch responses
 │   └── docusign/     #   The package's DocuSign adapter wired to the service's
 │                     #   config (config.ts) and webhook policy
-├── config.ts         # Boot-time security validation (fail-closed)
+├── config.ts         # The boot guard: validateConfig(env, { runtime }), pure and
+│                     #   fail-closed; lists every problem plus the capabilities on
 ├── tracing.ts        # OTel domain spans + provider instrumentation
 ├── errors.ts         # Re-exports the package's coded errors (extensions.code)
 ├── types.ts          # Re-exports the package's domain types + GraphQLContext
@@ -182,8 +199,8 @@ type EnvelopeResult {
   header, keyed by `DOCUSIGN_HMAC_KEY`)
 - Missing HMAC key: dev mode allows with a warning; **production rejects all
   webhooks (fail-closed)**
-- Raw body is used for verification (`express.text()`) - re-serializing JSON
-  would invalidate the signature
+- Raw body is used for verification (`await request.text()`) - re-serializing
+  JSON would invalidate the signature
 
 ### Flow
 
@@ -211,10 +228,10 @@ blink-kyc) - **opt-in and vendor-neutral**:
 - Configured entirely through standard `OTEL_*` env vars - no exporter is
   constructed in code, so any OTLP backend works without code changes;
   `OTEL_TRACES_EXPORTER=console` prints spans to stdout for local debugging
-- Instruments the full stack: http, express, graphql (resolver spans),
-  pg (per-query spans - transactions appear as BEGIN/INSERT/COMMIT), and
-  undici (`fetch` - the DocuSign API calls)
-- Initialized in `index.ts` BEFORE server modules load (require-time
+- Instruments the full stack: http, graphql (resolver spans), pg (per-query
+  spans - transactions appear as BEGIN/INSERT/COMMIT), and undici (`fetch` -
+  the DocuSign API calls). The Express instrumentation is gone with Express
+- Initialized in `node.ts` BEFORE the server modules load (require-time
   patching); spans are flushed on SIGTERM/SIGINT
 
 Domain spans (`src/tracing.ts`, zero-cost no-ops when tracing is off):

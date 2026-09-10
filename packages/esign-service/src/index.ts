@@ -1,24 +1,24 @@
-// Server bootstrap: load env, init telemetry, start listening. All testable
-// logic lives in instrumentation.ts, server.ts (startServer), and app.ts.
+// @blinkbitcoin/esign-service - the deployable, as a library.
 //
-// Ordering is load-bearing, hence the dynamic import:
-// 1. 'dotenv/config' FIRST - importing server.ts transitively evaluates
-//    db.ts, which fails fast when DATABASE_URL is unset.
-// 2. initTelemetry() BEFORE server.ts loads - OpenTelemetry patches
-//    express/pg/graphql at require time, so they must not be loaded yet.
+// The root entry is the Fetch core and the pieces a host may want to reuse
+// or inspect. It is runtime-neutral: importing it pulls in no Node server, no
+// Postgres driver and no GraphQL executor. The targets are the subpath
+// entries - ./node (a container or any Node process), ./vercel, ./cloudflare.
 
-import 'dotenv/config';
-
-import { initTelemetry } from './instrumentation';
-import { resolvePort } from './port';
-
-initTelemetry();
-
-const PORT = resolvePort();
-
-import('./server.js')
-  .then(({ startServer }) => startServer(PORT))
-  .catch((error) => {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  });
+export type { ESignApp, ESignAppDeps } from './app';
+export { createESignApp } from './app';
+export type { Capability } from './capabilities';
+export {
+  capabilitiesFromEnv,
+  describeCapabilities,
+  hasEnvelopes,
+  mockPagesEnabled,
+} from './capabilities';
+export type { Runtime, ValidateConfigOptions } from './config';
+export { configErrors, getAllowedOrigins, validateConfig } from './config';
+export type { Env } from './env';
+export { isInsecureDevAllowed } from './env';
+export type { SessionSource, SessionVerifier } from './session';
+export { sessionSourceFromEnv, sessionVerifierFromEnv } from './session';
+export type { TermsConfig } from './terms';
+export { createTermsPrefill, TermsError, termsConfigFromEnv } from './terms';

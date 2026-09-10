@@ -3,7 +3,9 @@
 import 'dotenv/config';
 
 import { runESignMigrations } from '@blinkbitcoin/esign-node/knex';
-import { knex } from './db';
+import { createKnexClient } from './db';
+
+const knex = createKnexClient();
 
 runESignMigrations(knex)
   .then(async () => {

@@ -1,18 +1,29 @@
-// The service composes the package's Knex store over its shared client;
-// the store's behaviour is tested in the package (knex-mock-client).
-
 import { vi } from 'vitest';
 
-vi.mock('../src/db', () => ({ knex: { fake: true } }));
+const createKnexClient = vi.fn((env: Record<string, string | undefined>) => ({
+  fake: env.DATABASE_URL,
+}));
+vi.mock('../src/db', () => ({
+  DATABASE_URL: 'DATABASE_URL',
+  createKnexClient: (env: Record<string, string | undefined>) => createKnexClient(env),
+}));
 vi.mock('@blinkbitcoin/esign-node/knex', () => ({
-  createKnexEnvelopeStore: vi.fn(() => ({ composed: true })),
+  createKnexEnvelopeStore: vi.fn((knex: unknown) => ({ composed: knex })),
 }));
 
-describe('store', () => {
-  it('is the package Knex store over the shared knex client', async () => {
+describe('createStore', () => {
+  it('is the package Knex store over a client built from the env it was given', async () => {
     const { createKnexEnvelopeStore } = await import('@blinkbitcoin/esign-node/knex');
-    const { store } = await import('../src/store');
-    expect(createKnexEnvelopeStore).toHaveBeenCalledWith({ fake: true });
-    expect(store).toEqual({ composed: true });
+    const { createStore } = await import('../src/store');
+
+    const store = createStore({ DATABASE_URL: 'postgres://injected@host/db' });
+
+    expect(createKnexClient).toHaveBeenCalledWith({
+      DATABASE_URL: 'postgres://injected@host/db',
+    });
+    expect(createKnexEnvelopeStore).toHaveBeenCalledWith({
+      fake: 'postgres://injected@host/db',
+    });
+    expect(store).toEqual({ composed: { fake: 'postgres://injected@host/db' } });
   });
 });

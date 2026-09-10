@@ -3,13 +3,13 @@ import { generateKeyPairSync } from 'crypto';
 import type { MockInstance } from 'vitest';
 import { vi } from 'vitest';
 import { ErrorCodes } from '../src/errors';
-import {
-  clearTokenCache,
-  DocuSignProvider,
-  HttpError,
-  RETRY_CONFIG,
-  withRetry,
-} from '../src/providers/docusign';
+import { createProvider, HttpError, RETRY_CONFIG, withRetry } from '../src/providers/docusign';
+
+// One adapter for this file. The service builds a fresh one per app (the
+// factory reads process.env per call), so a test builds its own and resets
+// its cached token between cases.
+const DocuSignProvider = createProvider();
+const clearTokenCache = (): void => DocuSignProvider.reset();
 
 // Generate a valid test RSA key pair for JWT signing
 const { privateKey: testPrivateKey } = generateKeyPairSync('rsa', {

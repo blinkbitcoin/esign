@@ -4,7 +4,11 @@
 
 import crypto from 'crypto';
 import { vi } from 'vitest';
-import { DocuSignProvider } from '../src/providers/docusign';
+import { createProvider } from '../src/providers/docusign';
+
+// One adapter for this file: the service builds a fresh one per app, so a
+// test builds its own too
+const DocuSignProvider = createProvider();
 
 const sign = (body: string, key: string): string =>
   crypto.createHmac('sha256', key).update(body, 'utf8').digest('base64');

@@ -194,8 +194,15 @@ e2e-ios-live: ## React Native live run: service on DocuSign + Metro (webform mod
 docker-build: ## Build the service image (packages/esign-service/Dockerfile, from the repo root)
 	bash scripts/ci/docker-build.sh esign-service
 
-docker-smoke: docker-build ## Boot the image with the mock provider and hit /health
+docker-smoke: docker-build ## Boot the image in both modes (mint only, then with Postgres) and assert its capabilities
 	bash scripts/ci/docker-smoke.sh esign-service
+	$(MAKE) test-db-up
+	DATABASE_URL=postgresql://test:test@host.docker.internal:5433/esign_test \
+		bash scripts/ci/docker-smoke.sh esign-service
+	$(MAKE) test-db-down
+
+deploy-check: ## Validate the deploy templates (compose + the Worker bundle; k8s when kubeconform is installed)
+	bash scripts/ci/deploy-check.sh
 
 docker-build-mint-only: ## Build the mint-only demo image (examples/mint-only-demo/Dockerfile, from the repo root) - a demo, not published
 	DOCKERFILE=examples/mint-only-demo/Dockerfile bash scripts/ci/docker-build.sh esign-mint-only-demo
@@ -220,4 +227,4 @@ help: ## List available targets
 .PHONY: install hooks pods release release-rc version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
 	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check codeql start ios android backend web db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-web-webform-live \
-	e2e-server-demos e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live docker-build docker-smoke docker-build-mint-only docker-smoke-mint-only clean reset help
+	e2e-server-demos e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live docker-build docker-smoke docker-build-mint-only docker-smoke-mint-only deploy-check clean reset help

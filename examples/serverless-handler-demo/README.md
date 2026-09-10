@@ -57,3 +57,9 @@ CI boots this example with the mock provider and calls both routes
 you already have;
 [`@blinkbitcoin/esign-service`](../../packages/esign-service/README.md) runs
 the whole service.
+
+This example is an illustration, not a deployment. The service package is
+the same Fetch surface hardened for production - session verification,
+locked terms, a boot guard - and ships route-handler and Worker entries
+(`@blinkbitcoin/esign-service/vercel`, `/cloudflare`) with templates, so the
+serverless shape is two lines and environment variables.

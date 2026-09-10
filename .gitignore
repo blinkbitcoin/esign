@@ -104,6 +104,12 @@ lefthook-local.yml
 # CodeQL database + SARIF from make codeql (local only)
 .codeql/
 
+# wrangler's working directory. make deploy-check runs the dry-run on a copy
+# so the tracked deploy/cloudflare template never gets one, but a hand-run
+# `wrangler deploy` in any directory would - and it must never be committed
+# or packed (see packages/esign-service/.npmignore).
+.wrangler/
+
 # Declarations are emitted into dist/ by the build; never next to the sources
 packages/*/src/**/*.d.ts
 packages/*/src/**/*.d.ts.map

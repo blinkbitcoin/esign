@@ -1,11 +1,11 @@
 import { ErrorCodes } from '../src/errors';
 import { resolvePort } from '../src/port';
-import {
-  addEnvelope,
-  clearEnvelopes,
-  MockProvider,
-  setEnvelopeStatus,
-} from '../src/providers/mock';
+import { createMock } from '../src/providers/mock';
+
+// One handle for this file: the service builds a fresh mock per app, so a
+// test builds its own and clears it between cases
+const MockProvider = createMock();
+const { addEnvelope, clearEnvelopes, setEnvelopeStatus } = MockProvider;
 
 describe('MockProvider', () => {
   beforeEach(() => {

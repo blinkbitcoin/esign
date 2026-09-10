@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# Boots an image with the mock provider (no database traffic is needed for
-# /health) and asserts the health endpoint answers. Usage:
+# Boots an image with the mock provider and asserts the capabilities it should
+# have. Usage:
 #   scripts/ci/docker-smoke.sh <image> [container-port]     (make docker-smoke builds first)
+#
+# Two modes, both of which the esign-service image must pass:
+#   mint only  - no DATABASE_URL: /health reports ["mint"] and the envelope
+#                webhook route is absent (404)
+#   full       - DATABASE_URL set: /health reports envelopes too and the
+#                webhook route answers
+# The mode is the presence of DATABASE_URL in this script's own environment.
+#
 # container-port defaults to 4100, the esign-service image's own port
 # (ESIGN_PORT_BASE + 0, scripts/lib/ports.mjs); the mint-only demo image
-# answers on 4104 (+ 4) instead. The extra env below is the esign-service
-# image's boot guard - harmless for an image (like the demo) that ignores it.
+# answers on 4104 (+ 4) instead and ignores the rest of the environment below.
 set -euo pipefail
 # shellcheck source=scripts/e2e/ports-env.sh
 . "$(dirname "$0")/../e2e/ports-env.sh"
@@ -15,18 +22,73 @@ NAME="esign-smoke-$$"
 # The host side is SMOKE_PORT (ESIGN_PORT_BASE + 9); the image listens on
 # its own default (CONTAINER_PORT)
 PORT="$SMOKE_PORT"
-docker run -d --rm --name "$NAME" -p "$PORT:$CONTAINER_PORT" \
-  -e ESIGN_PROVIDER=mock -e ALLOW_INSECURE_DEV=true \
-  -e DATABASE_URL=postgresql://smoke:smoke@localhost:5432/smoke \
-  "$IMAGE" > /dev/null
+MODE="mint only"
+# The image defaults to ESIGN_ENV=production, which refuses the mock provider
+# and a client-supplied prefill: a smoke says so out loud rather than
+# weakening the image's default.
+ENV_ARGS=(
+  -e ESIGN_PROVIDER=mock
+  -e ALLOW_INSECURE_DEV=true
+  -e ESIGN_ALLOW_DEMO=true
+  -e ESIGN_ALLOW_CLIENT_PREFILL=true
+)
+if [ -n "${DATABASE_URL:-}" ]; then
+  MODE="full"
+  ENV_ARGS+=(-e "DATABASE_URL=$DATABASE_URL")
+fi
+
+docker run -d --rm --name "$NAME" --add-host host.docker.internal:host-gateway \
+  -p "$PORT:$CONTAINER_PORT" "${ENV_ARGS[@]}" "$IMAGE" > /dev/null
 trap 'docker stop "$NAME" > /dev/null 2>&1 || true' EXIT
+
+HEALTH=""
 for _ in $(seq 1 30); do
-  if curl -fsS "http://127.0.0.1:$PORT/health" > /dev/null 2>&1; then
-    echo "docker smoke: /health ok on $IMAGE"
-    exit 0
+  if HEALTH=$(curl -fsS "http://127.0.0.1:$PORT/health" 2> /dev/null); then
+    break
   fi
+  HEALTH=""
   sleep 1
 done
-echo "::error::the service in $IMAGE did not answer /health within 30s"
-docker logs "$NAME" || true
-exit 1
+if [ -z "$HEALTH" ]; then
+  echo "::error::the service in $IMAGE did not answer /health within 30s ($MODE)"
+  docker logs "$NAME" || true
+  exit 1
+fi
+echo "docker smoke ($MODE): /health ok on $IMAGE - $HEALTH"
+
+# Only the esign-service image reports capabilities and serves the webhook
+# route; another image (the mint-only demo) is done once /health answers.
+if ! printf '%s' "$HEALTH" | grep -q '"capabilities"'; then
+  exit 0
+fi
+
+WEBHOOK=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+  "http://127.0.0.1:$PORT/webhook/esign" -H 'content-type: application/json' \
+  -d '{"event":"envelope-completed"}')
+
+if [ "$MODE" = "full" ]; then
+  if ! printf '%s' "$HEALTH" | grep -q '"envelopes"'; then
+    echo "::error::DATABASE_URL is set but /health does not report the envelopes capability: $HEALTH"
+    docker logs "$NAME" || true
+    exit 1
+  fi
+  # The route exists: an unsigned, incomplete payload is refused (400), never 404
+  if [ "$WEBHOOK" = "404" ]; then
+    echo "::error::the envelope webhook route is absent with DATABASE_URL set"
+    docker logs "$NAME" || true
+    exit 1
+  fi
+  echo "docker smoke (full): the envelope webhook answers ($WEBHOOK)"
+  exit 0
+fi
+
+if printf '%s' "$HEALTH" | grep -q '"envelopes"'; then
+  echo "::error::no DATABASE_URL, but /health reports the envelopes capability: $HEALTH"
+  exit 1
+fi
+if [ "$WEBHOOK" != "404" ]; then
+  echo "::error::the envelope webhook route answered $WEBHOOK without DATABASE_URL (expected 404)"
+  docker logs "$NAME" || true
+  exit 1
+fi
+echo "docker smoke (mint only): the envelope webhook is absent (404)"
