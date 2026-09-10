@@ -1,4 +1,4 @@
-import { prefillFromQuote, quoteFor } from '../src/quote';
+import { prefillFromQuote, quoteFor, unitsFrom } from '../src/quote';
 
 describe('quoteFor', () => {
   it('prices units at the example rate with the time of the quote', () => {
@@ -41,5 +41,19 @@ describe('prefillFromQuote', () => {
       quotedAt: new Date(0),
     });
     expect(prefill.total_subscription_usd).toBe('100.00');
+  });
+});
+
+describe('unitsFrom', () => {
+  it('coerces the client prefill - text (the DocuSign contract) or a number', () => {
+    expect(unitsFrom({ number_of_units: '10' })).toBe(10);
+    expect(unitsFrom({ number_of_units: 10 })).toBe(10);
+  });
+
+  it('is never trusted directly: quoteFor(unitsFrom(...)) rejects out-of-range or missing input the same as any other units value', () => {
+    expect(() => quoteFor(unitsFrom({}))).toThrow(RangeError);
+    expect(() => quoteFor(unitsFrom({ number_of_units: '999999' }))).toThrow(
+      RangeError,
+    );
   });
 });

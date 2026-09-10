@@ -1,13 +1,13 @@
 // The host's own GraphQL API with the one mutation added. Everything else
 // here (types, auth in the context) stands in for what the host already has.
 
-import type { Mint } from './mint';
+import type { HostedFormMint } from '@blinkbitcoin/esign-node';
 import { prefillFromQuote, quoteFor } from './quote';
 
 export interface Context {
   // The caller, resolved by the host's own session handling (see server.ts)
   userId: string | null;
-  mint: Mint;
+  mint: HostedFormMint;
 }
 
 export const typeDefs = `#graphql
