@@ -1,24 +1,21 @@
 # CodeQL configuration for .github/workflows/codeql.yml.
 #
 # Queries: the default security suite plus the maintainability/reliability
-# queries (what GitHub's separate "Code quality" product runs).
+# queries (what GitHub's separate "Code quality" product runs), and the
+# pack's alert-suppression query, which is what makes an inline
+#   // codeql[<rule-id>]
+# comment (alone on its line, covering the next line) suppress one finding
+# at one place. Without that query the marker is ignored - which is why the
+# JWT-grant false positive in packages/esign-server/src/providers/docusign/auth.ts
+# came back as alerts 1, 10 and 15 despite the marker from #58.
 #
-# Query filters are the one durable way to silence a false positive here:
-# an API dismissal is keyed on the alert's fingerprint and re-opens after
-# every file move or nearby edit (alerts 1, 10 and 15 were the same finding
-# three times), and inline `codeql[...]` / `lgtm[...]` markers are not
-# honoured by this setup. Excluding the query removes the finding at the
-# source, on every branch, forever.
+# A suppression travels with the code (an API dismissal is keyed on the
+# alert's fingerprint and re-opens after every file move) and silences one
+# site, not the query: a real weak password hash elsewhere still fails.
 name: esign
 
 queries:
   - uses: security-and-quality
 
-query-filters:
-  # js/insufficient-password-hash: fires on the DocuSign JWT-grant signature
-  # (createSign('RSA-SHA256') in packages/esign-server/src/providers/docusign/auth.ts)
-  # because the JWT's `aud` claim is read from `config.oauthBaseUrl`, whose
-  # name trips the query's password heuristic. Nothing in this repo hashes a
-  # password; the DocuSign keys are RSA keypairs, not secrets to hash.
-  - exclude:
-      id: js/insufficient-password-hash
+packs:
+  - codeql/javascript-queries:AlertSuppression.ql

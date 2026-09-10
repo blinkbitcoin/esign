@@ -37,10 +37,12 @@ export const createJwtAssertion = (
 
   // JWT-grant signature (RS256), not a password hash: the payload carries the
   // OAuth host as the `aud` claim, which is why CodeQL's
-  // js/insufficient-password-hash flagged it. That query is excluded for the
-  // whole repo in .github/codeql/codeql-config.yml (dismissals re-open on
-  // every file move; inline markers are not honoured).
+  // js/insufficient-password-hash flags it. The marker below suppresses that
+  // one finding on the next line (honoured because .github/codeql/codeql-config.yml
+  // runs the pack's AlertSuppression query); it travels with the code, unlike
+  // an alert dismissal, and leaves the query on for everything else.
   const sign = createSign('RSA-SHA256');
+  // codeql[js/insufficient-password-hash]
   sign.update(signingInput);
   const signature = base64Url(sign.sign(config.privateKey as string));
   return `${signingInput}.${signature}`;

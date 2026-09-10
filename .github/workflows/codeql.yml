@@ -42,9 +42,8 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
-          # The query suite and the query filters (the durable way to drop a
-          # false positive: dismissals re-open on file moves, inline markers
-          # are not honoured) live in the config file.
+          # The query suite and the alert-suppression query (what makes an
+          # inline `codeql[rule-id]` marker count) live in the config file.
           config-file: ./.github/codeql/codeql-config.yml
 
       - name: Analyze
