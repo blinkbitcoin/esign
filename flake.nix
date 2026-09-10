@@ -63,6 +63,19 @@
         '';
       };
 
+      # The CodeQL CLI for `make codeql` (scripts/codeql-local.sh): pinned by
+      # flake.lock like the shell's tools, but fetched on demand
+      # (`nix shell .#codeql`) rather than put in the shell - its closure is
+      # large and only that one target needs it. Its nixpkgs package is
+      # marked unfree (GitHub's CodeQL terms: free for open-source code, which
+      # this is), so it is allowed by name and nothing else is. CI runs
+      # CodeQL on GitHub.
+      packages.codeql =
+        (import nixpkgs {
+          inherit system;
+          config.allowUnfreePredicate = pkg: lib.getName pkg == "codeql";
+        }).codeql;
+
       formatter = pkgs.alejandra;
     });
 }
