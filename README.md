@@ -293,6 +293,14 @@ the `coverage-report` artifact of every run. For the Maestro suites,
 simulator app.
 
 See [docs/development-guide.md](docs/development-guide.md) for full setup,
-environment variables, and troubleshooting, and [CONTRIBUTING.md](CONTRIBUTING.md)
-for commit conventions (Conventional Commits, enforced by hooks + CI), git
-hooks, and the PR checklist.
+environment variables, and troubleshooting.
+
+## Documentation and contributing
+
+- [docs/index.md](docs/index.md) - the map of every page, by what you are doing
+- [docs/integration/](docs/integration/consuming.md) - using the packages: registry, the three modes, [locked terms](docs/integration/locked-terms.md), [error codes](docs/integration/error-codes.md), DocuSign
+- [docs/architecture/](docs/architecture/source-tree.md) - how it works inside, [security](docs/architecture/security.md), the [nine diagrams](docs/diagrams/README.md)
+- [docs/operations/](docs/operations/live-e2e-ci.md) - the live DocuSign job in CI; [releasing](docs/releasing.md) and [upgrading](docs/upgrading.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Conventional Commits (enforced by hooks and CI), the quality gates, the PR checklist
+- [SECURITY.md](SECURITY.md) - reporting a vulnerability privately
+- [LICENSE](LICENSE) - MIT
