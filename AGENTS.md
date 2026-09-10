@@ -102,6 +102,10 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
   `examples/*/src/`. `ESignature` is provider-agnostic - adding a provider is a
   new `SigningSource`, the component never changes
 - `graphql` stays on 16.x repo-wide (Apollo Server 5 peer range)
+- A CodeQL false positive is excluded by query id in
+  `.github/codeql/codeql-config.yml` (`query-filters`), never dismissed in
+  the UI/API (fingerprint-keyed: the same finding re-opened three times
+  across file moves) and never marked inline (not honoured)
 - The git hooks (lefthook) run format, lint, commitlint and typecheck; CI is
   the authoritative gate and every workflow must be green before merge
 

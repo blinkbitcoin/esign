@@ -221,6 +221,10 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
 - Live DocuSign E2E is opt-in: repo variable `E2E_LIVE=true` (main, releases,
   dispatch) or PR label `e2e:live` (same-repo PRs); secrets live in the
   `docusign-demo` environment. `docs/operations/live-e2e-ci.md`.
+- CodeQL (`codeql.yml`, informational) reads `.github/codeql/codeql-config.yml`.
+  A false positive is silenced there with a `query-filters` exclude - never
+  by dismissing the alert (fingerprint-keyed, re-opens on every file move)
+  or an inline `codeql[...]` marker (not honoured by this setup).
 - Native E2E builds are cached on the inputs `scripts/native-deps-hash.sh`
   sees plus `android/**` / `ios/**`; bump the cache key's `v` suffix when an
   input the script cannot see changes.
