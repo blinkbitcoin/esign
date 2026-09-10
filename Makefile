@@ -201,7 +201,7 @@ docker-smoke: docker-build ## Boot the image in both modes (mint only, then with
 		bash scripts/ci/docker-smoke.sh esign-service
 	$(MAKE) test-db-down
 
-deploy-check: ## Validate the deploy templates (compose always, k8s when kubeconform is installed)
+deploy-check: ## Validate the deploy templates (compose + the Worker bundle; k8s when kubeconform is installed)
 	bash scripts/ci/deploy-check.sh
 
 docker-build-mint-only: ## Build the mint-only demo image (examples/mint-only-demo/Dockerfile, from the repo root) - a demo, not published

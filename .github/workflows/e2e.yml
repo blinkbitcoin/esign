@@ -226,6 +226,16 @@ jobs:
       - name: Build packages (core first - the platform packages need its dist)
         run: npm run build
 
+      # Here, not in Docker: the Worker dry-run bundles the deploy/cloudflare
+      # template, whose entry re-exports @blinkbitcoin/esign-service/cloudflare,
+      # so it needs the dist the step above just built. It is the only check
+      # that proves the Worker bundle really excludes pg and Apollo - the
+      # guard test reads TypeScript source, which cannot see a bundler's
+      # graph. wrangler comes from npx (pinned major, see the script);
+      # kubeconform is not installed on this runner and is skipped.
+      - name: Validate the deploy templates
+        run: bash scripts/ci/deploy-check.sh
+
       - name: Package shape (publint + arethetypeswrong)
         run: npm run check:packages
 
@@ -306,12 +316,6 @@ jobs:
       - name: Stop the E2E Postgres
         if: always()
         run: docker compose -f docker-compose.test.yml down
-
-      # The deploy templates ship in the tarball, so they are checked where
-      # docker already is. kubeconform is not installed here; the script
-      # skips the k8s manifests when it is missing.
-      - name: Validate the deploy templates
-        run: bash scripts/ci/deploy-check.sh
 
       # 7 days like the tarballs: a blocked release's Publish is re-run later
       # from this same artifact.
