@@ -172,10 +172,40 @@ app.use(createHostedFormRouter({
 ```
 
 `createHostedFormApp` is the same surface with no framework - one Fetch
-entry point for a route handler, a Worker or a plain Node server. The
-mint itself, without the HTTP surface, is `hostedFormMint(provider)`.
+entry point for a route handler, a Worker or a plain Node server.
 
-What the host still owns, in both spellings:
+**The mutation alternative.** A host that already has a GraphQL API adds
+one mutation instead of mounting a route: the mint without any HTTP
+surface is `hostedFormMint(hostedFormProviderFromEnv(env))`, called from
+the resolver once the resolver has authenticated the caller and computed
+the terms from the host's own data.
+
+```ts
+// examples/mint-only-demo/src/mint.ts
+export const createMint = (env = process.env) =>
+  hostedFormMint(hostedFormProviderFromEnv(env))!;   // once, at startup
+
+// examples/mint-only-demo/src/schema.ts (the resolver)
+investSigningUrl: async (_parent, args, context) => {
+  if (!context.userId) throw new Error('Unauthenticated');
+  const prefill = prefillFromQuote(quoteFor(args.units));  // the host's terms
+  return context.mint(context.userId, prefill);            // { url, instanceId }
+},
+```
+
+`createWebFormInstance` (`@blinkbitcoin/esign-node/docusign`) is the same
+call one level lower, for a host that wants the DocuSign config in hand
+rather than the provider registry -
+[locked-terms.md](../integration/locked-terms.md) section 2 spells that
+spelling out. The whole runnable shape, including the return-URL bridge,
+is [`examples/mint-only-demo`](../../examples/mint-only-demo/README.md)
+(`src/mint.ts`, `src/schema.ts`).
+
+Whichever spelling, the return-URL bridge route must exist:
+`DOCUSIGN_RETURN_URL` points at it, and without it the form completes on
+DocuSign's side and the app never hears about it.
+
+What the host still owns, in every spelling:
 
 - **The session.** `authenticate` returns the user id or `null`; the
   package never sees the token. `null` is `401`.
@@ -266,10 +296,12 @@ comments. In production the ones that matter:
 | `OTEL_*` | standard OpenTelemetry; tracing off unless set |
 | `PORT`, `TRUST_PROXY`,<br>`RATE_LIMIT_*_PER_MIN` | container only (defaults 4100; 60/120/100 per min) |
 
-**Tier A** takes the same table **minus `SESSION_*`, `TERMS_*`,
-`DATABASE_URL`, `DOCUSIGN_HMAC_KEY` and the container-only row** - the
-host API already has a session, computes its own terms in the `prefill`
-hook, and brings its own port, proxy and limits. What is left is
+**Tier A** takes the same table **minus everything only the service
+reads**: `SESSION_*`, `TERMS_*`, `ESIGN_ALLOW_CLIENT_PREFILL`,
+`DATABASE_URL`, `DOCUSIGN_HMAC_KEY`, `CORS_ALLOWED_ORIGINS`,
+`ALLOW_INSECURE_DEV`, `OTEL_*` and the container-only row. The host API
+already has a session, computes its own terms in the `prefill` hook, and
+brings its own CORS, telemetry, port, proxy and limits. What is left is
 `ESIGN_PROVIDER`, `ESIGN_ENV`, `ESIGN_ALLOW_DEMO` and the `DOCUSIGN_*`
 settings, applied to the host API's own deployment.
 
@@ -307,6 +339,10 @@ refuses:
 - envelopes on with DocuSign and no `DOCUSIGN_HMAC_KEY`;
 - `DATABASE_URL` on the Cloudflare runtime.
 
+`ESIGN_ENV=production` does one more thing that is not a refusal: GraphQL
+introspection is off, so a deployment with envelopes on does not publish
+its schema.
+
 `NODE_ENV` gates none of this: every Node image sets it, so it says
 nothing about the e-signature configuration.
 
@@ -319,7 +355,11 @@ nothing about the e-signature configuration.
 - **SIGTERM** stops the listener and drains in-flight requests before
   exiting, so a rolling deploy loses nothing. Give the orchestrator a
   grace period longer than the slowest mint.
-- The service logs no minted URL: it carries a five-minute instance token.
+- A minted URL carries a five-minute instance token, so it is a
+  credential: the service does not log one, and anything that captures
+  the service's output (a log shipper, a CI artifact) should be treated
+  as carrying one anyway - which is why
+  [live-e2e-ci.md](live-e2e-ci.md) does not upload the service log.
 
 ---
 
@@ -355,10 +395,14 @@ const source = createWebFormsSource({
 ```
 
 That is the whole app surface. `allowedOrigin` is a **web-only** option
-(React Native ignores it), and on web it is the *bridge page's* origin -
-the backend's - never DocuSign's. Web is the same code with
-`@blinkbitcoin/esign-react`. Error codes:
-[error-codes.md](../integration/error-codes.md).
+(React Native ignores it); for *this* source - a mint whose completion
+arrives through the return-URL bridge - it is the bridge page's origin,
+the backend's, not DocuSign's. (`createPublicUrlSource`, the published
+form link, is the case where DocuSign's own origin is the right value.)
+
+Web is the same code from `@blinkbitcoin/esign-react/docusign` - the web
+package exports `.` and `./docusign`, there is no `./webform` subpath
+there. Error codes: [error-codes.md](../integration/error-codes.md).
 
 ---
 
