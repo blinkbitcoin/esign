@@ -262,12 +262,17 @@ describe('privateKeyFromEnv', () => {
   });
 
   it('reads the file from disk when no reader is injected', () => {
-    const file = path.join(os.tmpdir(), `esign-key-${process.pid}.pem`);
+    // mkdtempSync, not a predictable name in os.tmpdir(): a fixed path is
+    // guessable and world-writable, so another process can pre-create or
+    // swap it (js/insecure-temporary-file). The directory it returns is
+    // fresh and owner-only, and the key never exists outside it.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'esign-key-'));
+    const file = path.join(dir, 'key.pem');
     fs.writeFileSync(file, PEM);
     try {
       expect(privateKeyFromEnv({ DOCUSIGN_PRIVATE_KEY_FILE: file })).toBe(PEM);
     } finally {
-      fs.unlinkSync(file);
+      fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 });
