@@ -2,13 +2,36 @@
 // default registry wires the two shipped adapters from the environment.
 
 import { silentLogger } from './support';
-import type { ESignProvider } from '../provider';
+import {
+  hostedFormMint,
+  type ESignProvider,
+  supportsHostedForms,
+} from '../provider';
+import {
+  DOCUSIGN_DEMO_URLS,
+  DocuSignConfigError,
+  HOSTED_FORM_SETTINGS,
+  JWT_CREDENTIALS,
+} from '../providers/docusign/config';
+import { ProductionConfigError } from '../production';
 import {
   defaultRegistry,
   ESIGN_PROVIDER_ENV,
+  hostedFormProviderFromEnv,
   type ProviderRegistry,
   providerFromEnv,
 } from '../registry';
+
+// The silent logger and the DocuSign settings the boot checks look at
+const silent = silentLogger;
+const webhook = { logger: silent };
+const credentials = {
+  DOCUSIGN_ACCOUNT_ID: 'acc',
+  DOCUSIGN_INTEGRATION_KEY: 'key',
+  DOCUSIGN_USER_ID: 'uid',
+  DOCUSIGN_PRIVATE_KEY: 'pem',
+  DOCUSIGN_WEBFORM_ID: 'form',
+};
 
 const stub = (name: string): ESignProvider =>
   ({ name }) as unknown as ESignProvider;
@@ -105,16 +128,6 @@ describe('providerFromEnv', () => {
 });
 
 describe('defaultRegistry', () => {
-  const silent = silentLogger;
-  const webhook = { logger: silent };
-  const credentials = {
-    DOCUSIGN_ACCOUNT_ID: 'acc',
-    DOCUSIGN_INTEGRATION_KEY: 'key',
-    DOCUSIGN_USER_ID: 'uid',
-    DOCUSIGN_PRIVATE_KEY: 'pem',
-    DOCUSIGN_WEBFORM_ID: 'form',
-  };
-
   it('mock: mints onto MOCK_PAGES_ORIGIN with no DocuSign settings at all', async () => {
     const provider = providerFromEnv(
       { ESIGN_PROVIDER: 'mock', MOCK_PAGES_ORIGIN: 'http://pages:4000' },
@@ -186,5 +199,136 @@ describe('defaultRegistry', () => {
     await expect(
       provider.createHostedFormInstance!('u', {}),
     ).rejects.toMatchObject({ extensions: { code: 'VALIDATION_ERROR' } });
+  });
+});
+
+describe('defaultRegistry boot checks', () => {
+  const hostedFormEnv = {
+    ...credentials,
+    DOCUSIGN_RETURN_URL: 'https://api.example.com/signing/return',
+  };
+  const productionHosts = {
+    DOCUSIGN_BASE_URL: 'https://na1.docusign.net/restapi',
+    DOCUSIGN_OAUTH_URL: 'https://account.docusign.com',
+    DOCUSIGN_WEBFORMS_BASE_URL: 'https://apps.docusign.com/api/webforms/v1.1',
+  };
+
+  it('docusign: checks only the settings the host declares required, at selection', () => {
+    expect(() => defaultRegistry({}).docusign()).not.toThrow();
+    try {
+      defaultRegistry(
+        {},
+        { docusign: { required: HOSTED_FORM_SETTINGS } },
+      ).docusign();
+      throw new Error('did not throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(DocuSignConfigError);
+      expect((error as DocuSignConfigError).missing).toEqual([
+        'DOCUSIGN_ACCOUNT_ID',
+        'DOCUSIGN_INTEGRATION_KEY',
+        'DOCUSIGN_PRIVATE_KEY',
+        'DOCUSIGN_USER_ID',
+        'DOCUSIGN_WEBFORM_ID',
+        'DOCUSIGN_RETURN_URL',
+      ]);
+    }
+    expect(() =>
+      defaultRegistry(hostedFormEnv, {
+        docusign: { required: HOSTED_FORM_SETTINGS },
+      }).docusign(),
+    ).not.toThrow();
+  });
+
+  it('mock: the DocuSign adapter it mirrors webhooks with stays unguarded', () => {
+    const mock = defaultRegistry(
+      { DOCUSIGN_HMAC_KEY: 'k' },
+      { webhook, docusign: { required: HOSTED_FORM_SETTINGS } },
+    ).mock();
+    expect(mock.verifyWebhook({}, '{}')).toBe(false);
+  });
+
+  it('refuses the mock in production, unless demo is explicitly allowed', () => {
+    const production = { ESIGN_ENV: 'production' };
+    expect(() => defaultRegistry(production).mock()).toThrow(
+      ProductionConfigError,
+    );
+    expect(() => defaultRegistry(production).mock()).toThrow(
+      'ESIGN_ENV=production: the mock provider is a demo provider',
+    );
+    expect(() =>
+      defaultRegistry({ ...production, ESIGN_ALLOW_DEMO: 'true' }).mock(),
+    ).not.toThrow();
+    expect(() => defaultRegistry({}).mock()).not.toThrow();
+  });
+
+  it('refuses DocuSign on the demo hosts in production, naming them', () => {
+    const production = { ...hostedFormEnv, ESIGN_ENV: 'production' };
+    expect(() => defaultRegistry(production).docusign()).toThrow(
+      `ESIGN_ENV=production: DOCUSIGN_BASE_URL=${DOCUSIGN_DEMO_URLS.apiBaseUrl} is a demo host`,
+    );
+    expect(() =>
+      defaultRegistry({ ...production, ...productionHosts }).docusign(),
+    ).not.toThrow();
+    expect(() =>
+      defaultRegistry({ ...production, ESIGN_ALLOW_DEMO: 'true' }).docusign(),
+    ).not.toThrow();
+  });
+});
+
+describe('hostedFormProviderFromEnv', () => {
+  const hostedFormEnv = {
+    ...credentials,
+    DOCUSIGN_RETURN_URL: 'https://api.example.com/signing/return',
+  };
+
+  it('defaults to DocuSign and requires everything a hosted-form mint needs', () => {
+    expect(() => hostedFormProviderFromEnv({})).toThrow(DocuSignConfigError);
+    expect(() => hostedFormProviderFromEnv({})).toThrow(
+      /DOCUSIGN_WEBFORM_ID, DOCUSIGN_RETURN_URL/,
+    );
+    const provider = hostedFormProviderFromEnv(hostedFormEnv);
+    expect(supportsHostedForms(provider)).toBe(true);
+  });
+
+  it('lets a host without a return bridge declare its own required set', () => {
+    expect(() =>
+      hostedFormProviderFromEnv(credentials, {
+        docusign: { required: JWT_CREDENTIALS },
+      }),
+    ).not.toThrow();
+  });
+
+  it('selects the mock when ESIGN_PROVIDER says so, and mints with it', async () => {
+    const provider = hostedFormProviderFromEnv({
+      ESIGN_PROVIDER: 'mock',
+      MOCK_PAGES_ORIGIN: 'http://pages:4000',
+    });
+    const { url } = await hostedFormMint(provider)!('u', { units: 1 });
+    expect(url).toMatch(/^http:\/\/pages:4000\/signing\/mock-webform\//);
+  });
+
+  it('takes the registry, the default entry and the webhook policy of defaultRegistry', async () => {
+    const provider = hostedFormProviderFromEnv(
+      { ESIGN_PROVIDER: 'mock' },
+      {
+        mockBaseUrl: () => 'http://svc:9',
+        webhook: { ...webhook, allowMissingKey: () => true },
+      },
+    );
+    expect(provider.verifyWebhook({}, '{}')).toBe(true);
+    const { url } = await hostedFormMint(provider)!('u', {});
+    expect(url).toMatch(/^http:\/\/svc:9\//);
+  });
+
+  it('throws when the selected provider cannot mint hosted forms', () => {
+    const noCapability = {
+      none: () => ({}) as unknown as ESignProvider,
+    };
+    expect(() =>
+      hostedFormProviderFromEnv(
+        { ESIGN_PROVIDER: 'none' },
+        { registry: noCapability, default: 'none' },
+      ),
+    ).toThrow('The selected provider cannot mint hosted forms');
   });
 });
