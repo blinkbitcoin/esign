@@ -76,6 +76,32 @@ export const post = (
 export const asJson = async <T = Record<string, unknown>>(response: Response): Promise<T> =>
   (await response.json()) as T;
 
+export interface GraphQLResult<T> {
+  data?: T;
+  errors?: { message: string; extensions?: { code?: string } }[];
+}
+
+// A GraphQL operation through the app under test: the real /graphql route,
+// over the app's own executor, provider and store. Never a second Apollo
+// server built beside it - a suite that composed its own would be proving
+// the domain, not the service's wiring. Under ALLOW_INSECURE_DEV (what the
+// E2E .env.test sets) the bearer token IS the user id, which is how a caller
+// is chosen here.
+export const graphql = async <T = Record<string, unknown>>(
+  app: App,
+  query: string,
+  variables: Record<string, unknown> = {},
+  userId?: string
+): Promise<GraphQLResult<T>> =>
+  asJson<GraphQLResult<T>>(
+    await post(
+      app,
+      '/graphql',
+      { query, variables },
+      userId === undefined ? {} : { authorization: `Bearer ${userId}` }
+    )
+  );
+
 // The app exactly as this process is configured (the E2E suites run against
 // a real Postgres from .env.test, so the environment is already right).
 // process.env itself, not a copy: those suites set DOCUSIGN_HMAC_KEY per

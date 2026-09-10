@@ -1,34 +1,25 @@
 // E2E tests for full signing flow lifecycle
 // Tests: createEnvelope → getSigningUrl → webhook completion → query
+//
+// Every step goes through the same app (`envApp()`): the mutations and
+// queries over its /graphql route, the webhook over its /webhook/esign
+// route. One executor, one provider, one store - which is what makes
+// "the webhook completed the envelope the mutation created" mean anything.
 
-import { ApolloServer } from '@apollo/server';
 import crypto from 'crypto';
-import { envApp, post } from '../support/app';
-import { getProvider } from '../../src/providers';
-import { createGraphQL } from '../../src/schema';
-import { createServices } from '../../src/services';
-import type { GraphQLContext } from '../../src/types';
+import { envApp, graphql, post } from '../support/app';
 import { cleanTestData } from './factories';
 import { knex } from './setup';
 
 describe('Signing Flow E2E Tests', () => {
   const app = envApp();
-  let server: ApolloServer<GraphQLContext>;
   const testHmacKey = 'e2e-signing-flow-hmac-key';
 
   // Store original env value
   const originalHmacKey = process.env.DOCUSIGN_HMAC_KEY;
 
-  beforeAll(async () => {
-    // The service composes these per app; this suite drives the resolvers
-    // directly, over the same provider and the real store
-    const { typeDefs, resolvers } = createGraphQL(createServices(getProvider()));
-    server = new ApolloServer<GraphQLContext>({ typeDefs, resolvers });
-    await server.start();
-  });
-
   afterAll(async () => {
-    await server.stop();
+    await app.stop();
   });
 
   beforeEach(async () => {
@@ -64,29 +55,13 @@ describe('Signing Flow E2E Tests', () => {
         }
       `;
 
-      const createResponse = await server.executeOperation(
-        {
-          query: createMutation,
-          variables: {
-            input: {
-              contractType: 'purchase_agreement',
-              recipient,
-            },
-          },
-        },
-        { contextValue: { userId } }
-      );
-
-      expect(createResponse.body.kind).toBe('single');
-      if (createResponse.body.kind !== 'single') return;
-
-      expect(createResponse.body.singleResult.errors).toBeUndefined();
-      const createData = createResponse.body.singleResult.data as {
+      const createResult = await graphql<{
         createEnvelope: { envelopeId: string; signingUrl: string };
-      };
+      }>(app, createMutation, { input: { contractType: 'purchase_agreement', recipient } }, userId);
 
-      const envelopeId = createData.createEnvelope.envelopeId;
-      const signingUrl = createData.createEnvelope.signingUrl;
+      expect(createResult.errors).toBeUndefined();
+      const envelopeId = createResult.data!.createEnvelope.envelopeId;
+      const signingUrl = createResult.data!.createEnvelope.signingUrl;
 
       expect(envelopeId).toBeDefined();
       expect(signingUrl).toContain('/signing/mock/');
@@ -106,27 +81,15 @@ describe('Signing Flow E2E Tests', () => {
         }
       `;
 
-      const restartResponse = await server.executeOperation(
-        {
-          query: getSigningUrlMutation,
-          variables: {
-            input: {
-              envelopeId,
-              recipient,
-            },
-          },
-        },
-        { contextValue: { userId } }
+      const restartResult = await graphql<{ getSigningUrl: { signingUrl: string } }>(
+        app,
+        getSigningUrlMutation,
+        { input: { envelopeId, recipient } },
+        userId
       );
 
-      expect(restartResponse.body.kind).toBe('single');
-      if (restartResponse.body.kind !== 'single') return;
-
-      expect(restartResponse.body.singleResult.errors).toBeUndefined();
-      const restartData = restartResponse.body.singleResult.data as {
-        getSigningUrl: { signingUrl: string };
-      };
-      expect(restartData.getSigningUrl.signingUrl).toContain('/signing/mock/');
+      expect(restartResult.errors).toBeUndefined();
+      expect(restartResult.data!.getSigningUrl.signingUrl).toContain('/signing/mock/');
 
       // Step 3: Simulate webhook completion
       const envelope = await knex('Envelope').where({ id: envelopeId }).first();
@@ -169,21 +132,13 @@ describe('Signing Flow E2E Tests', () => {
         }
       `;
 
-      const queryResponse = await server.executeOperation(
-        { query: envelopeQuery, variables: { id: envelopeId } },
-        { contextValue: { userId } }
-      );
-
-      expect(queryResponse.body.kind).toBe('single');
-      if (queryResponse.body.kind !== 'single') return;
-
-      expect(queryResponse.body.singleResult.errors).toBeUndefined();
-      const queryData = queryResponse.body.singleResult.data as {
+      const queryResult = await graphql<{
         envelope: { id: string; status: string; contractType: string };
-      };
+      }>(app, envelopeQuery, { id: envelopeId }, userId);
 
-      expect(queryData.envelope.status).toBe('completed');
-      expect(queryData.envelope.contractType).toBe('purchase_agreement');
+      expect(queryResult.errors).toBeUndefined();
+      expect(queryResult.data!.envelope.status).toBe('completed');
+      expect(queryResult.data!.envelope.contractType).toBe('purchase_agreement');
 
       // Step 5: Verify audit trail
       const auditLogsQuery = `
@@ -195,18 +150,12 @@ describe('Signing Flow E2E Tests', () => {
         }
       `;
 
-      const auditResponse = await server.executeOperation(
-        { query: auditLogsQuery, variables: { envelopeId } },
-        { contextValue: { userId } }
-      );
-
-      expect(auditResponse.body.kind).toBe('single');
-      if (auditResponse.body.kind !== 'single') return;
-
-      expect(auditResponse.body.singleResult.errors).toBeUndefined();
-      const auditData = auditResponse.body.singleResult.data as {
+      const auditResult = await graphql<{
         auditLogs: { action: string; metadata: string | null }[];
-      };
+      }>(app, auditLogsQuery, { envelopeId }, userId);
+
+      expect(auditResult.errors).toBeUndefined();
+      const auditData = auditResult.data!;
 
       // Verify all expected audit actions are present
       const actions = auditData.auditLogs.map((log) => log.action);
@@ -234,22 +183,15 @@ describe('Signing Flow E2E Tests', () => {
         }
       `;
 
-      const createResponse = await server.executeOperation(
-        {
-          query: createMutation,
-          variables: { input: { contractType: 'test_contract', recipient } },
-        },
-        { contextValue: { userId } }
+      const createResult = await graphql<{ createEnvelope: { envelopeId: string } }>(
+        app,
+        createMutation,
+        { input: { contractType: 'test_contract', recipient } },
+        userId
       );
 
-      expect(createResponse.body.kind).toBe('single');
-      if (createResponse.body.kind !== 'single') return;
-
-      const envelopeId = (
-        createResponse.body.singleResult.data as {
-          createEnvelope: { envelopeId: string };
-        }
-      ).createEnvelope.envelopeId;
+      expect(createResult.errors).toBeUndefined();
+      const envelopeId = createResult.data!.createEnvelope.envelopeId;
 
       // Manually set status to completed (simulating webhook)
       await knex('Envelope').where({ id: envelopeId }).update({ status: 'completed' });
@@ -263,22 +205,16 @@ describe('Signing Flow E2E Tests', () => {
         }
       `;
 
-      const restartResponse = await server.executeOperation(
-        {
-          query: getSigningUrlMutation,
-          variables: { input: { envelopeId, recipient } },
-        },
-        { contextValue: { userId } }
+      const restartResult = await graphql(
+        app,
+        getSigningUrlMutation,
+        { input: { envelopeId, recipient } },
+        userId
       );
 
-      expect(restartResponse.body.kind).toBe('single');
-      if (restartResponse.body.kind !== 'single') return;
-
-      expect(restartResponse.body.singleResult.errors).toBeDefined();
-      expect(restartResponse.body.singleResult.errors![0].extensions?.code).toBe(
-        'VALIDATION_ERROR'
-      );
-      expect(restartResponse.body.singleResult.errors![0].message).toContain('Cannot restart');
+      expect(restartResult.errors).toBeDefined();
+      expect(restartResult.errors![0].extensions?.code).toBe('VALIDATION_ERROR');
+      expect(restartResult.errors![0].message).toContain('Cannot restart');
     });
   });
 });

@@ -1,31 +1,21 @@
-// E2E tests for envelope CRUD operations
-// Tests real database interactions via knex
+// E2E tests for envelope CRUD operations against a real database.
+//
+// Driven through the app's own /graphql route (`envApp()`), not through a
+// second ApolloServer composed beside it: the executor, the provider and the
+// store under test are the ones the service serves with, so this suite
+// proves the wiring and not just the domain.
 
-import { ApolloServer } from '@apollo/server';
 import { randomUUID } from 'crypto';
 
-import { getProvider } from '../../src/providers';
-import { createGraphQL } from '../../src/schema';
-import { createServices } from '../../src/services';
-import type { GraphQLContext } from '../../src/types';
+import { envApp, graphql } from '../support/app';
 import { cleanTestData, createTestEnvelope } from './factories';
 import { knex } from './setup';
 
 describe('Envelope E2E Tests', () => {
-  let server: ApolloServer<GraphQLContext>;
-
-  beforeAll(async () => {
-    // Tests exercise resolvers directly via executeOperation(), without going
-    // through the HTTP layer, so no Express app instance is needed here.
-    // The service composes these per app; this suite drives the resolvers
-    // directly, over the same provider and the real store
-    const { typeDefs, resolvers } = createGraphQL(createServices(getProvider()));
-    server = new ApolloServer<GraphQLContext>({ typeDefs, resolvers });
-    await server.start();
-  });
+  const app = envApp();
 
   afterAll(async () => {
-    await server.stop();
+    await app.stop();
   });
 
   beforeEach(async () => {
@@ -49,60 +39,56 @@ describe('Envelope E2E Tests', () => {
     };
 
     it('should persist envelope to database and return envelopeId', async () => {
-      // Act - call mutation via ApolloServer.executeOperation
-      const response = await server.executeOperation(
-        { query: CREATE_ENVELOPE_MUTATION, variables: { input: validInput } },
-        { contextValue: { userId: 'e2e-user-123' } }
-      );
+      // Act - call the mutation over the app's /graphql route
+      const result = await graphql<{
+        createEnvelope: { envelopeId: string; signingUrl: string };
+      }>(app, CREATE_ENVELOPE_MUTATION, { input: validInput }, 'e2e-user-123');
 
       // Assert - response contains envelopeId
-      expect(response.body.kind).toBe('single');
-      if (response.body.kind === 'single') {
-        expect(response.body.singleResult.errors).toBeUndefined();
-        const data = response.body.singleResult.data as {
-          createEnvelope: { envelopeId: string; signingUrl: string };
-        };
-        expect(data.createEnvelope.envelopeId).toBeDefined();
-        expect(data.createEnvelope.signingUrl).toBeDefined();
+      expect(result.errors).toBeUndefined();
+      expect(result.data!.createEnvelope.envelopeId).toBeDefined();
+      expect(result.data!.createEnvelope.signingUrl).toBeDefined();
 
-        // Verify database persistence
-        const envelope = await knex('Envelope')
-          .where({ id: data.createEnvelope.envelopeId })
-          .first();
+      // Verify database persistence
+      const envelope = await knex('Envelope')
+        .where({ id: result.data!.createEnvelope.envelopeId })
+        .first();
 
-        expect(envelope).not.toBeUndefined();
-        expect(envelope!.userId).toBe('e2e-user-123');
-        expect(envelope!.contractType).toBe('loan_agreement');
-        expect(envelope!.status).toBe('sent');
-        expect(envelope!.providerEnvelopeId).toBeDefined();
-      }
+      expect(envelope).not.toBeUndefined();
+      expect(envelope!.userId).toBe('e2e-user-123');
+      expect(envelope!.contractType).toBe('loan_agreement');
+      expect(envelope!.status).toBe('sent');
+      expect(envelope!.providerEnvelopeId).toBeDefined();
     });
 
     it('should create audit log when envelope is created', async () => {
       // Act
-      const response = await server.executeOperation(
-        { query: CREATE_ENVELOPE_MUTATION, variables: { input: validInput } },
-        { contextValue: { userId: 'e2e-user-456' } }
+      const result = await graphql<{ createEnvelope: { envelopeId: string } }>(
+        app,
+        CREATE_ENVELOPE_MUTATION,
+        { input: validInput },
+        'e2e-user-456'
       );
 
       // Assert - audit log created
-      expect(response.body.kind).toBe('single');
-      if (response.body.kind === 'single') {
-        const data = response.body.singleResult.data as {
-          createEnvelope: { envelopeId: string };
-        };
+      expect(result.errors).toBeUndefined();
+      const auditLogs = await knex('AuditLog').where({
+        envelopeId: result.data!.createEnvelope.envelopeId,
+      });
 
-        const auditLogs = await knex('AuditLog').where({
-          envelopeId: data.createEnvelope.envelopeId,
-        });
+      expect(auditLogs).toHaveLength(1);
+      expect(auditLogs[0].action).toBe('initiated');
+      expect(auditLogs[0].metadata).toMatchObject({
+        contractType: 'loan_agreement',
+        userId: 'e2e-user-456',
+      });
+    });
 
-        expect(auditLogs).toHaveLength(1);
-        expect(auditLogs[0].action).toBe('initiated');
-        expect(auditLogs[0].metadata).toMatchObject({
-          contractType: 'loan_agreement',
-          userId: 'e2e-user-456',
-        });
-      }
+    it('should refuse an unauthenticated caller', async () => {
+      const result = await graphql(app, CREATE_ENVELOPE_MUTATION, { input: validInput });
+
+      expect(result.errors![0].extensions?.code).toBe('UNAUTHORIZED');
+      expect(await knex('Envelope').select('id')).toHaveLength(0);
     });
   });
 
@@ -127,22 +113,15 @@ describe('Envelope E2E Tests', () => {
       });
 
       // Act
-      const response = await server.executeOperation(
-        { query: ENVELOPE_QUERY, variables: { id: envelope.id } },
-        { contextValue: { userId: 'e2e-user-owner' } }
-      );
+      const result = await graphql<{
+        envelope: { id: string; status: string; contractType: string };
+      }>(app, ENVELOPE_QUERY, { id: envelope.id }, 'e2e-user-owner');
 
       // Assert
-      expect(response.body.kind).toBe('single');
-      if (response.body.kind === 'single') {
-        expect(response.body.singleResult.errors).toBeUndefined();
-        const data = response.body.singleResult.data as {
-          envelope: { id: string; status: string; contractType: string };
-        };
-        expect(data.envelope.id).toBe(envelope.id);
-        expect(data.envelope.status).toBe('sent');
-        expect(data.envelope.contractType).toBe('rental_agreement');
-      }
+      expect(result.errors).toBeUndefined();
+      expect(result.data!.envelope.id).toBe(envelope.id);
+      expect(result.data!.envelope.status).toBe('sent');
+      expect(result.data!.envelope.contractType).toBe('rental_agreement');
     });
 
     it('should return ENVELOPE_NOT_FOUND for non-owner', async () => {
@@ -152,17 +131,11 @@ describe('Envelope E2E Tests', () => {
       });
 
       // Act - query as different user
-      const response = await server.executeOperation(
-        { query: ENVELOPE_QUERY, variables: { id: envelope.id } },
-        { contextValue: { userId: 'e2e-user-attacker' } }
-      );
+      const result = await graphql(app, ENVELOPE_QUERY, { id: envelope.id }, 'e2e-user-attacker');
 
       // Assert - should not leak existence
-      expect(response.body.kind).toBe('single');
-      if (response.body.kind === 'single') {
-        expect(response.body.singleResult.errors).toBeDefined();
-        expect(response.body.singleResult.errors![0].extensions?.code).toBe('ENVELOPE_NOT_FOUND');
-      }
+      expect(result.errors).toBeDefined();
+      expect(result.errors![0].extensions?.code).toBe('ENVELOPE_NOT_FOUND');
     });
   });
 
@@ -199,24 +172,20 @@ describe('Envelope E2E Tests', () => {
       ]);
 
       // Act
-      const response = await server.executeOperation(
-        { query: AUDIT_LOGS_QUERY, variables: { envelopeId: envelope.id } },
-        { contextValue: { userId: 'e2e-user-logs' } }
+      const result = await graphql<{ auditLogs: { action: string }[] }>(
+        app,
+        AUDIT_LOGS_QUERY,
+        { envelopeId: envelope.id },
+        'e2e-user-logs'
       );
 
       // Assert
-      expect(response.body.kind).toBe('single');
-      if (response.body.kind === 'single') {
-        expect(response.body.singleResult.errors).toBeUndefined();
-        const data = response.body.singleResult.data as {
-          auditLogs: { action: string }[];
-        };
-        expect(data.auditLogs).toHaveLength(2);
-        // Verify actions are present (order may vary based on timestamp)
-        const actions = data.auditLogs.map((log) => log.action);
-        expect(actions).toContain('initiated');
-        expect(actions).toContain('completed');
-      }
+      expect(result.errors).toBeUndefined();
+      expect(result.data!.auditLogs).toHaveLength(2);
+      // Verify actions are present (order may vary based on timestamp)
+      const actions = result.data!.auditLogs.map((log) => log.action);
+      expect(actions).toContain('initiated');
+      expect(actions).toContain('completed');
     });
   });
 });
