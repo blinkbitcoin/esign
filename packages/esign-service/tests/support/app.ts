@@ -10,6 +10,10 @@ import type { Env } from '../../src/env';
 // bearer token IS the user id) and the mock provider, mint only.
 export const DEV_ENV: Env = { ALLOW_INSECURE_DEV: 'true', ESIGN_PROVIDER: 'mock' };
 
+// How the Node targets reach the envelope module; the tests are a Node
+// target too, so they hand in the same loader
+export const loadEnvelopes = () => import('../../src/envelopes');
+
 // Run `body` with the console silenced, for a single expression that logs
 // (a boot warning, an import that builds its app)
 export const silently = async <T>(run: () => T | Promise<T>): Promise<T> => {
@@ -30,7 +34,7 @@ export const silently = async <T>(run: () => T | Promise<T>): Promise<T> => {
 export const testApp = (env: Env = {}, deps: ESignAppDeps = {}) => {
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
   try {
-    return createESignApp({ ...DEV_ENV, ...env }, deps);
+    return createESignApp({ ...DEV_ENV, ...env }, { loadEnvelopes, ...deps });
   } finally {
     warn.mockRestore();
   }
@@ -73,5 +77,14 @@ export const asJson = async <T = Record<string, unknown>>(response: Response): P
   (await response.json()) as T;
 
 // The app exactly as this process is configured (the E2E suites run against
-// a real Postgres from .env.test, so the environment is already right)
-export const envApp = (deps: ESignAppDeps = {}) => testApp(process.env, deps);
+// a real Postgres from .env.test, so the environment is already right).
+// process.env itself, not a copy: those suites set DOCUSIGN_HMAC_KEY per
+// test, and the adapter reads the env object it was handed on every call.
+export const envApp = (deps: ESignAppDeps = {}) => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    return createESignApp(process.env, { loadEnvelopes, ...deps });
+  } finally {
+    warn.mockRestore();
+  }
+};

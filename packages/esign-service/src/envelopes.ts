@@ -2,16 +2,19 @@
 // GraphQL API.
 //
 // This module is the Node-only half of the service - it reaches the Knex
-// store (and through it `pg`) and runs Apollo Server. createESignApp imports
-// it dynamically, and only when DATABASE_URL turned the capability on, so a
-// mint-only deployment never loads either, and the Cloudflare entry cannot
-// reach them at all.
+// store (and through it `pg`) and runs Apollo Server. Nothing imports it
+// statically: `createESignApp` receives a `loadEnvelopes` loader from the
+// entry that can supply one (./node, ./vercel), and the Cloudflare entry
+// supplies none, so no bundler can reach `pg` or `@apollo/server` from a
+// Worker's entry point at all.
 
 import { ApolloServer, HeaderMap, type HTTPGraphQLResponse } from '@apollo/server';
 import { createWebhookHandler } from '@blinkbitcoin/esign-node';
 
 import type { ESignProvider } from './providers/port';
-import { resolvers, typeDefs } from './schema';
+import { forwardedClientIp } from './proxy';
+import { createGraphQL } from './schema';
+import { createServices } from './services';
 import { setActiveSpanAttributes } from './tracing';
 import type { GraphQLContext } from './types';
 
@@ -27,17 +30,24 @@ export interface EnvelopeCapability {
 }
 
 export interface EnvelopeCapabilityOptions {
+  // The adapter the app resolved: the resolvers and the webhook run on the
+  // same one the mint does
   provider: ESignProvider;
   // The session verification the mint uses, applied to the GraphQL context
   authenticate: (request: Request) => Promise<string | null>;
   // Apollo's schema discovery: on outside production, exactly as before
   introspection: boolean;
+  // Believe x-forwarded-for when logging the webhook's caller (the same
+  // TRUST_PROXY the rate limits key on)
+  trustProxy: boolean;
 }
 
-// The client IP as the platform reports it: whatever sits in front of the
-// service put it in x-forwarded-for (the first entry is the client).
-const clientIp = (request: Request): string | undefined =>
-  request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined;
+// What `createESignApp` is handed to reach this module without naming it
+export interface EnvelopeModule {
+  createEnvelopeCapability: (options: EnvelopeCapabilityOptions) => Promise<EnvelopeCapability>;
+}
+
+export type LoadEnvelopes = () => Promise<EnvelopeModule>;
 
 // A Fetch Request as Apollo's transport-neutral HTTP request. Apollo parses
 // the body itself for GET (persisted queries, the landing page) and expects
@@ -78,9 +88,8 @@ export const graphQLResponseBody = async (body: HTTPGraphQLResponseBody): Promis
 export const createEnvelopeCapability = async (
   options: EnvelopeCapabilityOptions
 ): Promise<EnvelopeCapability> => {
-  // Deferred to here so the module graph of a mint-only deployment never
-  // reaches the Knex client
-  const { envelopeService } = await import('./services.js');
+  const envelopes = createServices(options.provider);
+  const { typeDefs, resolvers } = createGraphQL(envelopes);
 
   const apollo = new ApolloServer<GraphQLContext>({
     typeDefs,
@@ -94,8 +103,8 @@ export const createEnvelopeCapability = async (
 
   const webhook = createWebhookHandler({
     provider: options.provider,
-    envelopes: envelopeService,
-    clientIp,
+    envelopes,
+    clientIp: (request) => forwardedClientIp(request, options.trustProxy),
   });
 
   return {

@@ -11,11 +11,21 @@ vi.mock('../src/db', () => ({
 }));
 
 import { LOCKED_FIELDS_HINT } from '@blinkbitcoin/esign-node';
-import { provider } from '../src/providers';
-import { clearTokenCache, DocuSignProvider } from '../src/providers/docusign';
-import { clearEnvelopes, getWebFormPrefill, MockProvider } from '../src/providers/mock';
+import { selectProvider } from '../src/providers';
+import { createProvider } from '../src/providers/docusign';
+import { createMock } from '../src/providers/mock';
 import { supportsHostedForms, supportsWebForms } from '../src/providers/port';
 import { asJson, get, post, testApp } from './support/app';
+
+// One adapter of each for this file: the service builds a fresh set per
+// app, so a test builds its own. The app under test is driven with the very
+// selection below, so a spy on `provider` is the adapter it mints through.
+const DocuSignProvider = createProvider();
+const clearTokenCache = (): void => DocuSignProvider.reset();
+const MockProvider = createMock();
+const { clearEnvelopes, getWebFormPrefill } = MockProvider;
+const selection = selectProvider({ ESIGN_PROVIDER: 'mock' });
+const provider = selection.provider;
 
 const { privateKey: testPrivateKey } = generateKeyPairSync('rsa', {
   modulusLength: 2048,
@@ -170,7 +180,7 @@ describe('POST /webform/instance', () => {
   // A fresh app per call: the package binds the provider's mint once, at
   // construction, so a spy installed by a test has to be in place first
   const mint = (body?: unknown, headers: HeadersInit = { authorization: 'Bearer user-1' }) =>
-    post(testApp({}, { provider }), '/webform/instance', body, headers);
+    post(testApp({}, selection), '/webform/instance', body, headers);
 
   it('mints an instance for an authenticated caller', async () => {
     const response = await mint({ prefill: { full_name: 'Jane', email: 'jane@example.com' } });
@@ -239,7 +249,7 @@ describe('POST /webform/instance', () => {
     // A provider without the optional capability: the mint answers 400
     // rather than pretending it minted something
     const { createWebFormInstance: _unsupported, ...withoutWebForms } = provider;
-    const unsupported = testApp({}, { provider: withoutWebForms });
+    const unsupported = testApp({}, { ...selection, provider: withoutWebForms });
 
     const response = await post(
       unsupported,
@@ -253,7 +263,7 @@ describe('POST /webform/instance', () => {
 });
 
 describe('GET /signing/mock-webform/:id', () => {
-  const app = testApp({}, { provider });
+  const app = testApp({}, selection);
 
   it('serves the mock web-form page with a nonce CSP', async () => {
     const response = await get(app, '/signing/mock-webform/abc-123');

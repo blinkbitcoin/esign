@@ -63,14 +63,17 @@ packages/esign-service/src/
 ├── terms.ts          # The TERMS_URL callback: the host's prefill wins key by key
 ├── envelopes.ts      # The envelope capability: Fetch webhook + Apollo over Fetch
 │                     #   (Node-only; reached only by dynamic import)
-├── schema.ts         # typeDefs + resolvers = createESignGraphQL({ envelopes }) from the package
-├── services.ts       # Composition root: createEnvelopeService({ provider, store, tracing })
+├── schema.ts         # createGraphQL(envelopes): typeDefs + resolvers from the package
+├── services.ts       # createServices(provider): createEnvelopeService over the store
 ├── store.ts          # Knex implementation of the package's EnvelopeStore port
 ├── db.ts             # Knex instance (fail-fast on missing DATABASE_URL)
 ├── env.ts            # The Env type + ALLOW_INSECURE_DEV (nothing depends on it)
+├── proxy.ts          # TRUST_PROXY: whether x-forwarded-for names the client
+├── loadEnvelopes.ts  # The one place that names ./envelopes (Node targets only)
 ├── providers/        # Hexagonal provider layer
 │   ├── port.ts       #   ESignProvider port + supportsHostedForms (supportsWebForms kept as alias)
-│   ├── index.ts      #   Registry + providerFromEnv (ESIGN_PROVIDER) + tracing-wrapped singleton
+│   ├── index.ts      #   selectProvider(env): the registry + providerFromEnv
+│                     #   (ESIGN_PROVIDER), tracing-wrapped, per app - no singleton
 │   ├── mock.ts       #   The package's mock adapter, wired to this service's pages
 │   ├── pages.ts      #   The mock provider's signing pages as Fetch responses
 │   └── docusign/     #   The package's DocuSign adapter wired to the service's

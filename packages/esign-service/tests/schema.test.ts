@@ -14,10 +14,17 @@ vi.mock('../src/store', async () => {
 
 import type { EnvelopeStatus } from '@blinkbitcoin/esign-node';
 import { ErrorCodes, Errors } from '../src/errors';
-import { provider } from '../src/providers';
-import { addEnvelope, clearEnvelopes } from '../src/providers/mock';
-import { resolvers, typeDefs } from '../src/schema';
+import { createMock } from '../src/providers/mock';
+import { createGraphQL } from '../src/schema';
+import { createServices } from '../src/services';
 import { store } from '../src/store';
+
+// The service composes these per app; a test composes its own over the
+// in-memory store mocked above, so the resolvers run on the very provider
+// this file drives
+const provider = createMock();
+const { addEnvelope, clearEnvelopes } = provider;
+const { resolvers, typeDefs } = createGraphQL(createServices(provider));
 
 import type { GraphQLContext } from '../src/types';
 

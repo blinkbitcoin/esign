@@ -14,8 +14,14 @@ vi.mock('../src/store', async () => {
 });
 
 import { ErrorCodes } from '../src/errors';
-import { resolvers, typeDefs } from '../src/schema';
+import { createMock } from '../src/providers/mock';
+import { createGraphQL } from '../src/schema';
+import { createServices } from '../src/services';
 import { store } from '../src/store';
+
+// The service composes these per app; a test composes its own over the
+// in-memory store mocked above
+const { resolvers, typeDefs } = createGraphQL(createServices(createMock()));
 
 import type { GraphQLContext } from '../src/types';
 

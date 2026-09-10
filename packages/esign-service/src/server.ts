@@ -17,11 +17,11 @@ import { serve } from '@hono/node-server';
 
 import { createESignApp, type ESignAppDeps } from './app';
 import type { Env } from './env';
+import { loadEnvelopes } from './loadEnvelopes';
 import { resolvePort } from './port';
+import { forwardedClientIp, trustsProxy } from './proxy';
 
-// Trust the proxy in front of the service: take the client address from
-// x-forwarded-for instead of the socket
-export const TRUST_PROXY = 'TRUST_PROXY';
+export { TRUST_PROXY } from './proxy';
 
 // The rate-limit window. Limits are per client, per route, per minute.
 export const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -61,6 +61,37 @@ const limitedRoute = (pathname: string): keyof RateLimits | undefined => {
   return pathname === '/graphql' ? 'graphql' : undefined;
 };
 
+// How many windows the limiter keeps before it sweeps. A flood from many
+// source addresses must not grow the heap without bound.
+export const RATE_LIMIT_MAX_WINDOWS = 10_000;
+
+export interface RateWindow {
+  count: number;
+  resetAt: number;
+}
+
+// Drop every window that has already elapsed. If that leaves the map still
+// at the cap - a genuine flood of live clients - drop the oldest entries
+// too: a Map keeps insertion order, so those are the ones closest to
+// expiring anyway.
+export const sweepWindows = (
+  windows: Map<string, RateWindow>,
+  now: number,
+  max: number = RATE_LIMIT_MAX_WINDOWS
+): void => {
+  for (const [key, window] of windows) {
+    if (window.resetAt <= now) {
+      windows.delete(key);
+    }
+  }
+  for (const key of windows.keys()) {
+    if (windows.size < max) {
+      return;
+    }
+    windows.delete(key);
+  }
+};
+
 export interface RateLimitDecision {
   allowed: boolean;
   limit: number;
@@ -77,7 +108,7 @@ export const createRateLimiter = (
   limits: RateLimits,
   now: () => number = Date.now
 ): ((pathname: string, client: string) => RateLimitDecision | undefined) => {
-  const windows = new Map<string, { count: number; resetAt: number }>();
+  const windows = new Map<string, RateWindow>();
 
   return (pathname, client) => {
     const route = limitedRoute(pathname);
@@ -87,6 +118,9 @@ export const createRateLimiter = (
     const limit = limits[route];
     const key = `${route}:${client}`;
     const current = now();
+    if (windows.size >= RATE_LIMIT_MAX_WINDOWS) {
+      sweepWindows(windows, current);
+    }
     const window = windows.get(key);
     if (!window || window.resetAt <= current) {
       windows.set(key, { count: 1, resetAt: current + RATE_LIMIT_WINDOW_MS });
@@ -145,19 +179,16 @@ export const startServer = async (
   deps: StartServerDeps = {}
 ): Promise<RunningServer> => {
   // Fail closed before the listener exists: a misconfigured container never
-  // accepts a connection
-  const app = createESignApp(env, deps);
+  // accepts a connection. This target can serve envelopes, so it is the one
+  // that knows how to reach the Node-only module.
+  const app = createESignApp(env, { loadEnvelopes, ...deps });
 
   const limiter = createRateLimiter(rateLimitsFromEnv(env));
-  const trustProxy = env[TRUST_PROXY] === 'true';
+  const trustProxy = trustsProxy(env);
   const address = deps.clientAddress ?? socketAddress;
 
-  const clientOf = (request: Request, bindings: unknown): string => {
-    const forwarded = trustProxy
-      ? request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-      : undefined;
-    return forwarded || address(bindings) || 'unknown';
-  };
+  const clientOf = (request: Request, bindings: unknown): string =>
+    forwardedClientIp(request, trustProxy) || address(bindings) || 'unknown';
 
   const server = serve({
     port: resolvePort(env),

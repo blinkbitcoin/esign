@@ -7,8 +7,11 @@ import {
   createRateLimiter,
   DEFAULT_RATE_LIMITS,
   rateLimitsFromEnv,
+  RATE_LIMIT_MAX_WINDOWS,
+  type RateWindow,
   type RunningServer,
   shutdown,
+  sweepWindows,
   startServer,
 } from '../src/server';
 import { DEV_ENV } from './support/app';
@@ -32,6 +35,42 @@ describe('rateLimitsFromEnv', () => {
     expect(
       rateLimitsFromEnv({ RATE_LIMIT_WEBFORM_PER_MIN: 'lots', RATE_LIMIT_WEBHOOK_PER_MIN: '-1' })
     ).toEqual(DEFAULT_RATE_LIMITS);
+  });
+});
+
+describe('sweepWindows', () => {
+  const windowsOf = (entries: [string, RateWindow][]) => new Map<string, RateWindow>(entries);
+
+  it('drops the windows that have elapsed and keeps the live ones', () => {
+    const windows = windowsOf([
+      ['graphql:a', { count: 3, resetAt: 500 }],
+      ['graphql:b', { count: 1, resetAt: 2_000 }],
+      ['webhook:a', { count: 9, resetAt: 1_000 }],
+    ]);
+
+    sweepWindows(windows, 1_000);
+
+    expect([...windows.keys()]).toEqual(['graphql:b']);
+  });
+
+  it('keeps the map under the cap even when every window is live', () => {
+    const windows = windowsOf(
+      Array.from({ length: 6 }, (_, i) => [`graphql:${i}`, { count: 1, resetAt: 10_000 }])
+    );
+
+    sweepWindows(windows, 1_000, 4);
+
+    // The oldest (first inserted, so closest to expiring) go first
+    expect(windows.size).toBe(3);
+    expect([...windows.keys()]).toEqual(['graphql:3', 'graphql:4', 'graphql:5']);
+  });
+
+  it('leaves a map under the cap alone', () => {
+    const windows = windowsOf([['graphql:a', { count: 1, resetAt: 10_000 }]]);
+
+    sweepWindows(windows, 1_000, 4);
+
+    expect(windows.size).toBe(1);
   });
 });
 
@@ -84,6 +123,24 @@ describe('createRateLimiter', () => {
     now += 30_000;
     // The window elapsed: the count starts over
     expect(limiter('/graphql', 'a')?.remaining).toBe(1);
+  });
+
+  it('does not grow without bound when every client is new', () => {
+    // A flood from many source addresses: the limiter sweeps at the cap, so
+    // the windows it keeps stay bounded rather than one per address forever
+    let now = 1_000;
+    const limiter = createRateLimiter({ webform: 1, webhook: 1, graphql: 1 }, () => now);
+
+    for (let i = 0; i < RATE_LIMIT_MAX_WINDOWS + 100; i += 1) {
+      // Half the clients' windows have elapsed by the time the cap is hit
+      if (i === RATE_LIMIT_MAX_WINDOWS / 2) {
+        now += 61_000;
+      }
+      limiter('/graphql', `client-${i}`);
+    }
+
+    // The one that came last still gets its own fresh window
+    expect(limiter('/graphql', 'client-last')?.remaining).toBe(0);
   });
 
   it('is off for a route whose limit is 0', () => {

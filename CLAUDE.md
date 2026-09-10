@@ -94,8 +94,10 @@ npm run migrate:test         # Same against the .env.test database
 - Provider work goes through the package's `ESignProvider` port - including
   webhooks + hosted forms (`createHostedFormInstance`). `src/providers/docusign/`
   and `src/providers/mock.ts` are the package adapters wired to the service's
-  config and policy; selection is the package's `providerFromEnv` registry
-  (`src/providers/index.ts`). **Provider boundary, everywhere:** nothing
+  config and policy; selection is `selectProvider(env)` over the package's
+  `providerFromEnv` registry (`src/providers/index.ts`) - one set of adapters
+  per app, never a module-level singleton, so the mint, the webhook and the
+  GraphQL resolvers always run on the same one. **Provider boundary, everywhere:** nothing
   provider-specific outside a `providers/<name>/` directory - in the packages
   (`packages/esign-core/src/providers/docusign/`,
   `packages/esign-react/src/providers/docusign/`, `packages/esign-node/src/providers/docusign/`)

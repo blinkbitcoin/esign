@@ -11,6 +11,7 @@
 // request - the same boot guard a container gets.
 
 import { createESignApp, type ESignApp } from './app';
+import { loadEnvelopes } from './loadEnvelopes';
 
 export interface RouteHandlers {
   GET: (request: Request) => Promise<Response>;
@@ -25,4 +26,4 @@ export const handlers = (app: ESignApp): RouteHandlers => {
   return { GET: handle, POST: handle, OPTIONS: handle };
 };
 
-export const { GET, POST, OPTIONS } = handlers(createESignApp(process.env));
+export const { GET, POST, OPTIONS } = handlers(createESignApp(process.env, { loadEnvelopes }));

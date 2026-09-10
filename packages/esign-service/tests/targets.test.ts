@@ -50,12 +50,16 @@ describe('the Cloudflare entry', () => {
   });
 
   // The Worker has no Postgres driver and no GraphQL executor. The envelope
-  // capability is behind a dynamic import for exactly that reason, so this
-  // walks the entry's static import graph and fails if either becomes
-  // reachable - a guard, not a snapshot.
-  it('reaches no Node-only module through a static import', () => {
+  // capability is reached through a loader the entry supplies for exactly
+  // that reason - a bundler following this entry must not find `pg` or
+  // Apollo, whether the import is static, a side effect, or a literal
+  // `import('…')` a bundler would resolve anyway. A guard, not a snapshot.
+  it('reaches no Node-only module, and never names the envelope module', () => {
     const src = path.resolve(__dirname, '../src');
+    // Prefixes, so a subpath (@blinkbitcoin/esign-node/knex) is caught too
     const forbidden = ['pg', 'knex', '@apollo/server', '@hono/node-server', 'dotenv'];
+    const isForbidden = (specifier: string) =>
+      forbidden.some((name) => specifier === name || specifier.startsWith(`${name}/`));
     const seen = new Set<string>();
     const offenders: string[] = [];
 
@@ -71,12 +75,22 @@ describe('the Cloudflare entry', () => {
         return;
       }
       seen.add(file);
-      const source = readFileSync(file, 'utf8');
-      // Value imports only: `import type` is erased by the build, and
-      // `await import(...)` is what keeps the envelope half off this graph
-      for (const match of source.matchAll(/^import\s+(?!type\s)[^;]*?from\s+'([^']+)'/gm)) {
-        const specifier = match[1];
-        if (forbidden.includes(specifier)) {
+      // Prose, not code: these files document the loader by writing
+      // `import('./envelopes.js')` in a comment, and a bundler does not
+      // follow comments either
+      const source = readFileSync(file, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
+      // Value imports only, including side-effect ones (`import 'x'`):
+      // `import type` is erased by the build, and the envelope half is
+      // reached through an injected loader that this graph never names
+      const specifiers = [
+        ...[...source.matchAll(/^import\s+(?!type\s)[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]),
+        ...[...source.matchAll(/^import\s+'([^']+)'/gm)].map((m) => m[1]),
+        ...[...source.matchAll(/\bimport\(\s*'([^']+)'\s*\)/g)].map((m) => m[1]),
+      ];
+      for (const specifier of specifiers) {
+        if (isForbidden(specifier)) {
           offenders.push(`${path.relative(src, file)} imports ${specifier}`);
           continue;
         }
@@ -89,8 +103,22 @@ describe('the Cloudflare entry', () => {
     walk(path.join(src, 'cloudflare.ts'));
 
     expect(offenders).toEqual([]);
+    // Not even by name: a literal import('./envelopes.js') anywhere on this
+    // graph is what a bundler would follow into Apollo and pg
+    expect([...seen].filter((file) => file.endsWith('envelopes.ts'))).toEqual([]);
     // The walk really did follow the graph (not silently stop at the entry)
     expect(seen.size).toBeGreaterThan(5);
+  });
+});
+
+describe('the envelope loader', () => {
+  it('is how a Node target reaches the envelope module', async () => {
+    const { loadEnvelopes } = await import('../src/loadEnvelopes');
+
+    await expect(loadEnvelopes()).resolves.toHaveProperty(
+      'createEnvelopeCapability',
+      expect.any(Function)
+    );
   });
 });
 

@@ -167,7 +167,7 @@ esign/
 │       │   │
 │       │   ├── providers/         # The package's adapters wired to this service ⭐
 │       │   │   ├── port.ts        #   Re-exports ESignProvider + supportsHostedForms
-│       │   │   ├── index.ts       #   registry + providerFromEnv, singleton (tracing-wrapped)
+│       │   │   ├── index.ts       #   selectProvider(env): registry + providerFromEnv, tracing-wrapped, per app
 │       │   │   ├── mock.ts        #   mock adapter handle (pages served by the router)
 │       │   │   └── docusign/      #   DocuSign adapter handle + env config
 │       │   │
@@ -251,7 +251,7 @@ esign/
 | `packages/esign-service/src/schema.ts` | GraphQL API |
 | `packages/esign-service/src/webhook.ts` | Generic webhook processing |
 | `packages/esign-service/src/types.ts` | ESignProvider interface |
-| `packages/esign-service/src/providers/index.ts` | Provider registry (providerFromEnv) + singleton |
+| `packages/esign-service/src/providers/index.ts` | Provider selection per app (`selectProvider`, `providerFromEnv`) |
 | `packages/esign-node/src/knex/migrations.ts` | Database schema (programmatic Knex migration source) |
 | `packages/esign-service/tests/e2e/` | E2E tests |
 

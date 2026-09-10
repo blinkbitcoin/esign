@@ -4,7 +4,9 @@
 import { ApolloServer } from '@apollo/server';
 import { randomUUID } from 'crypto';
 
-import { resolvers, typeDefs } from '../../src/schema';
+import { getProvider } from '../../src/providers';
+import { createGraphQL } from '../../src/schema';
+import { createServices } from '../../src/services';
 import type { GraphQLContext } from '../../src/types';
 import { cleanTestData, createTestEnvelope } from './factories';
 import { knex } from './setup';
@@ -15,6 +17,9 @@ describe('Envelope E2E Tests', () => {
   beforeAll(async () => {
     // Tests exercise resolvers directly via executeOperation(), without going
     // through the HTTP layer, so no Express app instance is needed here.
+    // The service composes these per app; this suite drives the resolvers
+    // directly, over the same provider and the real store
+    const { typeDefs, resolvers } = createGraphQL(createServices(getProvider()));
     server = new ApolloServer<GraphQLContext>({ typeDefs, resolvers });
     await server.start();
   });

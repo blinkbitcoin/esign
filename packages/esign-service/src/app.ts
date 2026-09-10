@@ -6,10 +6,12 @@
 // decide which routes exist, and the routes themselves are the package's
 // presets - createHostedFormApp for the mint half, and, only when
 // DATABASE_URL turned envelopes on, this service's Fetch webhook + GraphQL
-// handlers behind a dynamic import.
+// handlers, reached through the loader its entry supplied.
 //
-// Node-only pieces (Apollo, Knex, `pg`) are reachable only through that
-// dynamic import, so the Cloudflare entry never loads them.
+// Node-only pieces (Apollo, Knex, `pg`) are reachable only through the
+// `loadEnvelopes` loader an entry hands in - this module never names
+// ./envelopes, so a bundler following the Cloudflare entry cannot reach them
+// either.
 //
 // The host's two obligations are the two hooks:
 //   - session verification (JWKS or a shared secret) turns the caller's
@@ -21,11 +23,12 @@ import { bearerToken, createHostedFormApp } from '@blinkbitcoin/esign-node';
 
 import { type Capability, ENVELOPES, mockPagesEnabled } from './capabilities';
 import { ESIGN_ENV, getAllowedOrigins, type Runtime, validateConfig } from './config';
-import type { EnvelopeCapability, EnvelopeCapabilityOptions } from './envelopes';
+import type { LoadEnvelopes } from './envelopes';
 import type { Env } from './env';
-import { getProvider } from './providers';
+import { type MockPrefillLookup, selectProvider } from './providers';
 import { mockPageResponse } from './providers/pages';
 import type { ESignProvider } from './providers/port';
+import { trustsProxy } from './proxy';
 import { sessionVerifierFromEnv } from './session';
 import { createTermsPrefill, TERMS_FAILURE_MESSAGE, termsConfigFromEnv } from './terms';
 
@@ -49,9 +52,13 @@ export interface ESignAppDeps {
   // The provider to mint with (default: ESIGN_PROVIDER over this service's
   // registry)
   provider?: ESignProvider;
-  // How the envelope capability is built (default: the dynamic import of
-  // ./envelopes). Injectable so a mint-only test never loads Apollo or pg.
-  envelopes?: (options: EnvelopeCapabilityOptions) => Promise<EnvelopeCapability>;
+  // What a minted instance locked, when `provider` is the mock: the mock
+  // signing pages render it (selectProvider returns the pair together)
+  mockPrefill?: MockPrefillLookup;
+  // How the Node-only envelope module is reached. An entry that can serve
+  // envelopes passes `() => import('./envelopes.js')`; the Cloudflare entry
+  // passes nothing, and a DATABASE_URL it cannot honour is a boot error.
+  loadEnvelopes?: LoadEnvelopes;
   // The fetch the TERMS_URL callback uses (default: the platform's)
   fetch?: typeof globalThis.fetch;
   // The target this app runs on (default 'node'); the boot guard refuses a
@@ -111,7 +118,10 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
   // and the capabilities that were on.
   const capabilities = validateConfig(env, { runtime: deps.runtime });
 
-  const provider = deps.provider ?? getProvider(env);
+  const selected = deps.provider
+    ? { provider: deps.provider, mockPrefill: deps.mockPrefill }
+    : selectProvider(env);
+  const provider = selected.provider;
   const verify = sessionVerifierFromEnv(env);
   const origins = getAllowedOrigins(env);
   const terms = termsConfigFromEnv(env);
@@ -143,21 +153,24 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
       : {}),
   });
 
-  // Envelope orchestration, built once and only when it is on. The import is
-  // dynamic so nothing here pulls Apollo or `pg` into a mint-only deployment.
-  const envelopes = capabilities.includes(ENVELOPES)
-    ? (
-        deps.envelopes ??
-        (async (options: EnvelopeCapabilityOptions) => {
-          const { createEnvelopeCapability } = await import('./envelopes.js');
-          return createEnvelopeCapability(options);
-        })
-      )({
-        provider,
-        authenticate,
-        introspection: env[ESIGN_ENV] !== 'production',
-      })
-    : undefined;
+  // Envelope orchestration, built once and only when it is on, through the
+  // loader the entry supplied. A target without one cannot serve the
+  // capability at all, and saying so at construction beats 404ing the routes
+  // the environment asked for.
+  const load = capabilities.includes(ENVELOPES) ? deps.loadEnvelopes : undefined;
+  if (capabilities.includes(ENVELOPES) && !load) {
+    throw new Error(
+      'Refusing to start: DATABASE_URL asks for envelope orchestration, but this target was built without the envelope module. Deploy the container, or @blinkbitcoin/esign-service/node'
+    );
+  }
+  const envelopes = load?.().then((module) =>
+    module.createEnvelopeCapability({
+      provider,
+      authenticate,
+      introspection: env[ESIGN_ENV] !== 'production',
+      trustProxy: trustsProxy(env),
+    })
+  );
   // A failure surfaces on the first request that needs the capability; this
   // only marks the promise handled so it is not an unhandled rejection
   envelopes?.catch(() => undefined);
@@ -176,7 +189,7 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
     }
 
     if (mockPages) {
-      const page = mockPageResponse(url);
+      const page = mockPageResponse(url, selected.mockPrefill);
       if (page) {
         return page;
       }

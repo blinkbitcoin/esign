@@ -17,7 +17,7 @@ vi.mock('../src/store', async () => {
 
 import { createESignApp } from '../src/app';
 import { store } from '../src/store';
-import { asJson, get, options, post, testApp, testFullApp } from './support/app';
+import { asJson, get, options, post, silently, testApp, testFullApp } from './support/app';
 
 const mintHeaders = { authorization: 'Bearer user-1' };
 
@@ -57,6 +57,20 @@ describe('capabilities', () => {
 
   it('refuses to construct when the configuration is wrong', () => {
     expect(() => createESignApp({ ESIGN_PROVIDER: 'mock' })).toThrow(/Refusing to start/);
+  });
+
+  it('refuses a database it was not built to serve (no envelope module)', async () => {
+    // What the Cloudflare entry does: it passes no loader, so envelope
+    // orchestration is not something this target can offer at all
+    await silently(() =>
+      expect(() =>
+        createESignApp({
+          ALLOW_INSECURE_DEV: 'true',
+          ESIGN_PROVIDER: 'mock',
+          DATABASE_URL: 'postgres://u@h/db',
+        })
+      ).toThrow(/without the envelope module/)
+    );
   });
 
   it('refuses envelope orchestration on the edge runtime', () => {
@@ -300,21 +314,31 @@ describe('the envelope webhook', () => {
   let warns: ReturnType<typeof vi.spyOn>;
 
   beforeAll(() => {
-    process.env.DOCUSIGN_HMAC_KEY = HMAC_KEY;
-    app = testFullApp();
-    // The security-event logging on a bad signature, the "unknown envelope"
-    // warning and the processed-webhook log are expected here
+    // The key belongs to the app's own environment: the adapter reads the
+    // env the app was built with, not process.env
+    app = testFullApp({ DOCUSIGN_HMAC_KEY: HMAC_KEY });
+  });
+
+  afterAll(async () => {
+    await app.stop();
+  });
+
+  // The security-event logging on a bad signature, the "unknown envelope"
+  // warning and the processed-webhook log are expected here. The service
+  // composes the package on the console and has no seam of its own, so this
+  // suite opts out of the silent-tests gate (vitest.setup.ts) by spying on
+  // the console itself - per test, so the spy sits on top of the gate's,
+  // never underneath it.
+  beforeEach(() => {
     errors = vi.spyOn(console, 'error').mockImplementation(() => {});
     logs = vi.spyOn(console, 'log').mockImplementation(() => {});
     warns = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
-  afterAll(async () => {
-    delete process.env.DOCUSIGN_HMAC_KEY;
+  afterEach(() => {
     errors.mockRestore();
     logs.mockRestore();
     warns.mockRestore();
-    await app.stop();
   });
 
   it('refuses an invalid signature', async () => {
@@ -381,15 +405,40 @@ describe('the envelope webhook', () => {
     expect(await asJson(response)).toEqual({ error: 'Invalid payload' });
   });
 
-  it('logs the client ip a proxy reports', async () => {
+  it('logs the client a trusted proxy reports', async () => {
+    const trusting = testFullApp({ DOCUSIGN_HMAC_KEY: HMAC_KEY, TRUST_PROXY: 'true' });
     const body = payload('docusign-test-123');
 
-    const response = await post(app, '/webhook/esign', body, {
+    const response = await post(trusting, '/webhook/esign', body, {
       'x-docusign-signature-1': 'aW52YWxpZA==',
       'x-forwarded-for': '203.0.113.7, 10.0.0.1',
     });
 
     expect(response.status).toBe(401);
+    // The security log names the forwarded client, not the proxy
+    expect(errors).toHaveBeenCalledWith(
+      'Security event:',
+      expect.stringContaining('"ip":"203.0.113.7"')
+    );
+    await trusting.stop();
+  });
+
+  it('ignores a forwarded client the deployment does not trust', async () => {
+    // Without TRUST_PROXY the header is caller-controlled, so it must not
+    // reach the audit trail as if it were the caller's address
+    errors.mockClear();
+    const body = payload('docusign-test-123');
+
+    const response = await post(app, '/webhook/esign', body, {
+      'x-docusign-signature-1': 'aW52YWxpZA==',
+      'x-forwarded-for': '203.0.113.7',
+    });
+
+    expect(response.status).toBe(401);
+    expect(errors).not.toHaveBeenCalledWith(
+      'Security event:',
+      expect.stringContaining('203.0.113.7')
+    );
   });
 });
 
@@ -487,7 +536,7 @@ describe('the GraphQL API', () => {
     const failing = testFullApp(
       {},
       {
-        envelopes: async () => {
+        loadEnvelopes: async () => {
           throw new Error('no database');
         },
       }

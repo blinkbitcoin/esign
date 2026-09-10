@@ -4,7 +4,9 @@
 import { ApolloServer } from '@apollo/server';
 import crypto from 'crypto';
 import { envApp, post } from '../support/app';
-import { resolvers, typeDefs } from '../../src/schema';
+import { getProvider } from '../../src/providers';
+import { createGraphQL } from '../../src/schema';
+import { createServices } from '../../src/services';
 import type { GraphQLContext } from '../../src/types';
 import { cleanTestData } from './factories';
 import { knex } from './setup';
@@ -18,6 +20,9 @@ describe('Signing Flow E2E Tests', () => {
   const originalHmacKey = process.env.DOCUSIGN_HMAC_KEY;
 
   beforeAll(async () => {
+    // The service composes these per app; this suite drives the resolvers
+    // directly, over the same provider and the real store
+    const { typeDefs, resolvers } = createGraphQL(createServices(getProvider()));
     server = new ApolloServer<GraphQLContext>({ typeDefs, resolvers });
     await server.start();
   });

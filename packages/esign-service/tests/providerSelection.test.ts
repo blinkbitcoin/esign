@@ -2,13 +2,8 @@
 import { vi } from 'vitest';
 
 import { getProvider } from '../src/providers';
-import { clearEnvelopes } from '../src/providers/mock';
 
 describe('Provider Selection (getProvider)', () => {
-  // Clean up envelopes between tests to prevent test pollution
-  beforeEach(() => {
-    clearEnvelopes();
-  });
   describe('when providerName is "mock"', () => {
     it('should return MockProvider', async () => {
       // Arrange & Act

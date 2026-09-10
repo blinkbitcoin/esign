@@ -2,6 +2,10 @@
 // service's configuration and webhook policy (ALLOW_INSECURE_DEV allows
 // unsigned webhooks; DOCUSIGN_HMAC_KEY is read per call so rotation and
 // tests see the current environment).
+//
+// A factory, not an instance: the environment an app was handed decides the
+// credentials, and nothing is constructed at import time - the Cloudflare
+// entry reaches this module and must not build anything from `process.env`.
 
 import { createDocuSignProvider } from '@blinkbitcoin/esign-node';
 import { type Env, isInsecureDevAllowed } from '../../env';
@@ -17,13 +21,6 @@ export const createProvider = (env: Env = process.env) =>
       allowMissingKey: () => isInsecureDevAllowed(env),
     },
   });
-
-const handle = createProvider();
-
-export const DocuSignProvider = handle;
-
-// Forget the client and its cached token (tests, credential rotation)
-export const clearTokenCache = (): void => handle.reset();
 
 export type { DocuSignWebhookPayload } from '@blinkbitcoin/esign-node';
 // Re-exports: the package's testable utilities (imported by tests), config
