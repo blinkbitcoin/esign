@@ -39,8 +39,8 @@ app opens url in <ESignature source={createWebFormsSource({ mint: ... })}>
 
 ```sh
 cp .env.example .env
-make dev                     # http://localhost:4100 (PORT overrides), mock provider
-curl -s http://localhost:4100 -H 'content-type: application/json' \
+make dev                     # http://localhost:4104 (PORT overrides; ESIGN_PORT_BASE + 4), mock provider
+curl -s http://localhost:4104 -H 'content-type: application/json' \
   -H 'authorization: Bearer user-1' \
   -d '{"query":"mutation { investSigningUrl(units: 10) { url } }"}'
 ```

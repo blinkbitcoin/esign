@@ -135,7 +135,7 @@ describe('defaultRegistry', () => {
     const defaulted = await defaultRegistry({}).mock()
       .createHostedFormInstance!('u', {});
     expect(defaulted.url).toMatch(
-      /^http:\/\/localhost:4000\/signing\/mock-webform\//,
+      /^http:\/\/localhost:4100\/signing\/mock-webform\//,
     );
     const custom = await defaultRegistry(
       {},

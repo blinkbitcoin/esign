@@ -677,7 +677,7 @@ jobs:
       - name: Start backend with mock provider
         run: make e2e-backend-up
 
-      # The emulator reaches the backend as 10.0.2.2:4000 (host loopback
+      # The emulator reaches the backend as 10.0.2.2:4100 (host loopback
       # alias - see examples/react-native-demo/src/config.ts); Metro is
       # reached via adb reverse in scripts/e2e/android-maestro.sh. Metro
       # starts in the background so its boot overlaps the emulator caches; it

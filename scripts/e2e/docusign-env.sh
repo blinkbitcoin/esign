@@ -8,6 +8,8 @@
 # overwrite an existing .env unless FORCE=1. Local only, never CI.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+# shellcheck source=scripts/e2e/ports-env.sh
+. scripts/e2e/ports-env.sh
 : "${ACCOUNT_ID:?API Account ID}" "${INTEGRATION_KEY:?integration key}" "${USER_ID:?user id}" \
   "${TEMPLATE_ID:?template id}" "${WEBFORM_ID:?web form id}"
 PEM="${PEM:-examples/full-service-demo/.docusign.pem}"
@@ -18,7 +20,7 @@ if [ -f "$OUT" ] && [ -z "${FORCE:-}" ]; then
 fi
 {
   echo "# Written by make docusign-env ($(date -u +%Y-%m-%dT%H:%M:%SZ)); local only"
-  echo "PORT=${PORT:-4000}"
+  echo "PORT=${PORT:-$ESIGN_API_PORT}"
   echo "DATABASE_URL=${DATABASE_URL:-postgresql://dev:dev@localhost:5432/esign}"
   # No JWT_SECRET: with ALLOW_INSECURE_DEV the bearer token is the user id,
   # which is what the live specs send (E2E_LIVE_AUTH_TOKEN). Set JWT_SECRET=
@@ -33,7 +35,7 @@ fi
   echo "DOCUSIGN_TEMPLATE_ID=$TEMPLATE_ID"
   echo "DOCUSIGN_WEBFORM_ID=$WEBFORM_ID"
   echo "DOCUSIGN_WEBFORMS_BASE_URL=${DOCUSIGN_WEBFORMS_BASE_URL:-https://apps-d.docusign.com/api/webforms/v1.1}"
-  echo "DOCUSIGN_RETURN_URL=${DOCUSIGN_RETURN_URL:-http://localhost:${PORT:-4000}/signing/return}"
+  echo "DOCUSIGN_RETURN_URL=${DOCUSIGN_RETURN_URL:-http://localhost:${PORT:-$ESIGN_API_PORT}/signing/return}"
   printf 'DOCUSIGN_PRIVATE_KEY="'
   cat "$PEM"
   echo '"'

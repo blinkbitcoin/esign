@@ -6,7 +6,7 @@
 # fields, then the form submitted and signed inside the web component,
 # then a proxy-mode signature; docs/integration/webforms.md), and stop the
 # service. Local only. The React Native counterpart is ios-live.sh.
-#   make e2e-live [LIVE_PORT=4010]
+#   make e2e-live [LIVE_PORT=4106]
 # Override the fixture defaults with E2E_LIVE_PREFILL / E2E_LIVE_LOCKED_LABELS.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -23,8 +23,8 @@ echo "== api live test (Web Forms)"
 npm run --silent "$LIVE_TEST" -w "$SERVICE" -- tests/live/webforms.live.test.ts
 
 # The web demo (webform-live-demo spec) calls the service from the browser:
-# allow this worktree's Vite origins
-ORIGINS=$(cd examples/react-demo && npx tsx -e "import { MODES, PORTS } from './e2e/ports'; console.log(MODES.map(m => 'http://localhost:' + PORTS.vite[m]).join(','))" | tail -1)
+# allow this worktree's Vite origins (ports-env.sh, sourced by live-service.sh)
+ORIGINS="http://localhost:$ESIGN_WEB_PORT,http://localhost:$ESIGN_WEB_WEBFORM_PORT,http://localhost:$ESIGN_WEB_PUBLICURL_PORT"
 trap live_service_down EXIT
 live_service_up CORS_ALLOWED_ORIGINS="$ORIGINS"
 
@@ -38,5 +38,5 @@ echo "== playwright: proxy mode - a real signature inside the web component"
 E2E_LIVE_API_ORIGIN="http://localhost:$LIVE_PORT" npm run --silent test:e2e:proxy:live:demo -w examples/react-demo
 
 echo "== the mint-only and serverless examples mint real instances"
-PROVIDER=docusign MINT_PORT="${MINT_PORT:-4110}" HANDLER_PORT="${HANDLER_PORT:-4210}" bash scripts/e2e/server-demos-smoke.sh
+PROVIDER=docusign MINT_PORT="$LIVE_MINT_PORT" HANDLER_PORT="$LIVE_HANDLER_PORT" bash scripts/e2e/server-demos-smoke.sh
 echo "live run: all ok (screenshots in examples/react-demo/test-results/)"

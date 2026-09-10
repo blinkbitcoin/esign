@@ -20,8 +20,8 @@
 
 - **From:** `packages/esign-react-native/src/client.ts` (Apollo Client 4, `createESignApolloClient` factory)
 - **To:** `examples/full-service-demo/src/app.ts` `/graphql` (Apollo Server 5)
-- **URL resolution:** host app's concern - the demo resolves it in `examples/react-native-demo/src/config.ts` — iOS simulator `localhost:4000`,
-  Android emulator `10.0.2.2:4000` (host alias), physical devices need the
+- **URL resolution:** host app's concern - the demo resolves it in `examples/react-native-demo/src/config.ts` — iOS simulator `localhost:4100`,
+  Android emulator `10.0.2.2:4100` (host alias), physical devices need the
   host LAN IP
 - **Auth:** `Authorization: Bearer <token>` attached by a `SetContextLink`;
   backend resolves it in `src/auth.ts` (HS256 JWT when `JWT_SECRET` set,
@@ -124,8 +124,8 @@ mobile↔backend boundary; the provider's envelope ID never leaves the backend.
 - **Playwright** (`examples/react-demo/e2e/`) drives the web demo in real
   Chromium against the same backend+DB stack — the built demo (`vite
   preview`, bundling the libraries' dist) embeds the backend's mock signing
-  page on another origin (per-worktree ports, `examples/react-demo/e2e/ports.ts`;
-  :5173 / :4000 with `E2E_PORT_OFFSET=0`) in a genuinely cross-origin iframe, so the
+  page on another origin (`ESIGN_PORT_BASE` + offset per service,
+  `examples/react-demo/e2e/ports.ts`; :4101 / :4100 by default) in a genuinely cross-origin iframe, so the
   window.postMessage path is exercised for real. Same four journeys as
   Maestro: smoke, happy path, cancel-from-page, timeout → restart
   (`make e2e-web` at the repo root runs the full lifecycle)

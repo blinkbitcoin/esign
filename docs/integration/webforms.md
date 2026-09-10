@@ -161,9 +161,9 @@ make e2e-web-webform
 
 Both exercise `createWebFormsSource` + `interpretDocuSignEvent` against a page
 emitting the real DocuSign event names — so a green run proves the actual
-protocol, not a lenient stand-in. The web suites pick their ports per git
-worktree (`examples/react-demo/e2e/ports.ts`; `E2E_PORT_OFFSET=0` for the
-canonical :4000 / :5174), so parallel sessions never collide.
+protocol, not a lenient stand-in. The web suites take their ports from
+`ESIGN_PORT_BASE` (`examples/react-demo/e2e/ports.ts`; :4100 / :4102 by
+default, `ESIGN_PORT_BASE=4300` moves them), so parallel sessions never collide.
 
 ## Live run against real DocuSign
 
@@ -173,7 +173,7 @@ The one-command version, once `.env` exists (`make docusign-env`, see
 
 ```sh
 make docusign-check   # JWT grant + the form is reachable (names the consent URL otherwise)
-make e2e-live         # service on DocuSign (LIVE_PORT, default 4010) → API live test → Playwright locked-fields check → stop
+make e2e-live         # service on DocuSign (LIVE_PORT, default 4106) → API live test → Playwright locked-fields check → stop
 make e2e-ios-live     # the same journey in the React Native demo's WebView (booted simulator with the app installed, Maestro)
 ```
 
@@ -183,9 +183,9 @@ readable), run the in-iframe spec with `E2E_LIVE_VIDEO=1` while the live
 service is up:
 
 ```sh
-# service on :4010 (what make e2e-live starts), then:
+# service on :4106 (what make e2e-live starts), then:
 . scripts/e2e/live-service.sh; live_env   # exports the fixture prefill
-cd examples/react-demo && E2E_LIVE_VIDEO=1 E2E_LIVE_API_ORIGIN=http://localhost:4010 \
+cd examples/react-demo && E2E_LIVE_VIDEO=1 E2E_LIVE_API_ORIGIN=http://localhost:4106 \
   npx playwright test -c playwright.webform-live-demo.config.ts -g "submitted, signed, completed"
 # MP4 / GIF: ffmpeg -i test-results/*/video.webm -c:v libx264 -pix_fmt yuv420p out.mp4
 #            ffmpeg -i test-results/*/video.webm -vf "fps=8,scale=480:-1" out.gif
@@ -251,7 +251,7 @@ enabled and disables its options); dates render as `yyyy/mm/dd`. Step by step:
    | `E2E_LIVE_LOCKED_LABELS` | JSON object of form label → expected value for the read-only fields |
 
    ```sh
-   E2E_LIVE_API_ORIGIN=http://localhost:4000 \
+   E2E_LIVE_API_ORIGIN=http://localhost:4100 \
    E2E_LIVE_PREFILL='{"number_of_units":"1000","settlement_amount_btc":"0.01268231"}' \
    E2E_LIVE_LOCKED_LABELS='{"Number of Units":"1000","Settlement Amount (BTC)":"0.01268231"}' \
    make e2e-web-webform-live
@@ -417,9 +417,9 @@ form still submits, and the date shows why the date is not locked; D
 optional fields are accepted without blocking submit.
 
 ```sh
-# Local live run against the fixture (backend on :4000 with ESIGN_PROVIDER=docusign
+# Local live run against the fixture (backend on :4100 with ESIGN_PROVIDER=docusign
 # and DOCUSIGN_WEBFORM_ID=c640d957-a2d0-4e36-9975-5374afb02b54)
-E2E_LIVE_API_ORIGIN=http://localhost:4000 \
+E2E_LIVE_API_ORIGIN=http://localhost:4100 \
 E2E_LIVE_PREFILL='{"Signer_name":"Test User","Signer_email":"test@example.com","full_name":"Test User","email":"test@example.com","country":"Sweden","newsletter":"yes","reference":"E2E-0001","plan":"seed","number_of_units":"1000","total_subscription_usd":"1000","settlement_amount_btc":"0.01268231","btc_usd_rate":"78850","rate_timestamp":"2026-09-08 10:44","settlement_date":"2026-09-10"}' \
 E2E_LIVE_LOCKED_LABELS='{"Registration Reference":"E2E-0001","Number of Units":"1000","Total Subscription (USD)":"1000","Settlement Amount (BTC)":"0.01268231","BTC/USD Conversion Rate":"78850","Rate Timestamp":"2026-09-08 10:44"}' \
 make e2e-web-webform-live

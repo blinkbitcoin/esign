@@ -5,12 +5,21 @@ import { requireBuiltLibraries, sourceAliases } from './vite/libraries';
 
 const packages = path.resolve(__dirname, '../../packages');
 
+// The demo's port: ESIGN_WEB_PORT, else the repo's ESIGN_PORT_BASE + 1
+// (table: scripts/lib/ports.mjs) - never Vite's 5173, so worktrees and
+// repos never clash; strict so a taken port fails instead of drifting
+const webPort =
+  Number(process.env.ESIGN_WEB_PORT) ||
+  Number(process.env.ESIGN_PORT_BASE || 4100) + 1;
+
 export default defineConfig(({ command }) => {
   if (command === 'build') {
     requireBuiltLibraries(packages);
   }
   return {
     plugins: [react()],
+    server: { port: webPort, strictPort: true },
+    preview: { port: webPort, strictPort: true },
     resolve: {
       alias: command === 'serve' ? sourceAliases(packages) : {},
     },

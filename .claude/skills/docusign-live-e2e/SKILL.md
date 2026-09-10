@@ -13,7 +13,7 @@ Everything lives behind three targets (`scripts/e2e/live.sh`,
 make docusign-check    # JWT grant + GET the form (?state=active) → name, state, field ids
 make docusign-template # proxy-flow template from the fixture PDF (role signer), WRITE=1 → .env
 make test-live         # both live API suites: envelopes (needs that template) + Web Forms
-make e2e-live          # check → Web Forms live API test → E2E Postgres → service on :4010
+make e2e-live          # check → Web Forms live API test → E2E Postgres → service on :4106
                        #   → Playwright: raw form walk + tamper; the form inside the web
                        #   component (webform mode); a REAL SIGNATURE in proxy mode (ceremony
                        #   in the iframe → bridge → success screen)
@@ -36,7 +36,7 @@ Web Forms scopes, the packages built (`npm run build`) for Playwright.
 | 400 `REQUIRED_QUERY_PARAMETER_MISSING 'state'` on GET form | the form GET needs `?state=active` | done in the check script |
 | `REQUIRED_TAB_INCOMPLETE` in `envelope.live.test.ts` | the configured template is not built for the proxy flow (required tabs) | `e2e-live` runs only `webforms.live.test.ts`; `make test-live` runs both |
 | 401 `Unauthorized` minting through the service | `JWT_SECRET` set, so the bearer is verified as a JWT; the spec sends the dev passthrough token | no `JWT_SECRET` in the live `.env` (docusign-env omits it) |
-| service `EADDRINUSE` on :4010, spec hits stale settings | an earlier run's `tsx` child outlived the `npm` wrapper | the runner refuses a taken port and kills the real listener on exit |
+| service `EADDRINUSE` on :4106, spec hits stale settings | an earlier run's `tsx` child outlived the `npm` wrapper | the runner refuses a taken port and kills the real listener on exit |
 | walker stuck on page A, later "prefill X should be displayed" | required editable fields empty (Signer_name, Signer_email, country) - the form refuses Next | prefill every required editable field (runner defaults do) |
 | `toBeVisible` on inputs times out at 80% | the Summary page has no inputs | walker stops on a page without inputs |
 | date prefill "should be displayed" | minted `2026-09-10`, rendered `2026/09/10` | dates compare on digits |

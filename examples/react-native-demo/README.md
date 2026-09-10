@@ -7,7 +7,7 @@ integration reference and the Maestro E2E target. Not a product; a host.
 
 ```sh
 # 1. Backend (from repo root)
-make db-up migrate backend        # Postgres + migrations + server at :4000
+make db-up migrate backend        # Postgres + migrations + server at :4100
 
 # 2. iOS native deps (first time / after native dep changes)
 make pods                         # from this directory; or: make pods (repo root)
@@ -19,10 +19,12 @@ make ios                          # or: make android
 
 The backend URL is resolved per-platform in `src/config.ts` — iOS simulators
 use `localhost`, Android emulators `10.0.2.2`; physical devices need your
-machine's LAN IP. Three `ESIGN_*` variables are inlined into the bundle by
+machine's LAN IP. Four `ESIGN_*` variables are inlined into the bundle by
 Babel when Metro starts: `ESIGN_MODE` (`proxy` | `webform`),
-`ESIGN_BACKEND_PORT` (default 4000) and `ESIGN_PREFILL` (a JSON object
-replacing the demo's mock-form prefill, for a real form).
+`ESIGN_PORT_BASE` (the repo's base port, default 4100; the backend is +0),
+`ESIGN_BACKEND_PORT` (the backend's port outright, for the live run) and
+`ESIGN_PREFILL` (a JSON object replacing the demo's mock-form prefill, for a
+real form).
 
 ## What to Look At
 

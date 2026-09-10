@@ -126,7 +126,7 @@ esign/
 │       │   ├── mint.ts            # hostedFormMint(providerFromEnv(...)): DocuSign or the mock by ESIGN_PROVIDER
 │       │   ├── schema.ts          # The host's schema with investSigningUrl added
 │       │   ├── server.ts          # Apollo Server + the host's session in the context
-│       │   └── index.ts           # Bootstrap (PORT, default 4100)
+│       │   └── index.ts           # Bootstrap (PORT, default ESIGN_PORT_BASE + 4 = 4104)
 │       └── tests/                 # Vitest, 100% enforced
 │
 ├── 🖥️ SERVER EXAMPLE 3 - the Fetch handlers behind a route
@@ -135,7 +135,7 @@ esign/
 │       ├── src/
 │       │   ├── handlers.ts        # createWebFormInstanceHandler + createWebhookHandler over providerFromEnv(defaultRegistry)
 │       │   ├── node.ts            # IncomingMessage ⇄ Request/Response adapter + route table
-│       │   └── index.ts           # Bootstrap (PORT, default 4200)
+│       │   └── index.ts           # Bootstrap (PORT, default ESIGN_PORT_BASE + 5 = 4105)
 │       └── tests/                 # Vitest, 100% enforced
 │
 ├── 🖥️ SERVER EXAMPLE 1 - the whole service (Express + Apollo + Postgres)

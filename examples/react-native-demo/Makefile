@@ -32,7 +32,7 @@ e2e: ## Maestro flows, iOS (needs backend running + app installed on a simulator
 	npm run test:e2e
 
 e2e-android: ## Maestro flows, Android (needs backend + emulator with app installed)
-	adb reverse tcp:8081 tcp:8081 && adb reverse tcp:4000 tcp:4000
+	adb reverse tcp:8081 tcp:8081 && adb reverse tcp:$$(node ../../scripts/e2e/ports.mjs api) tcp:$$(node ../../scripts/e2e/ports.mjs api)
 	npm run test:e2e:android
 
 help: ## List targets

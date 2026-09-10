@@ -1,4 +1,5 @@
 import { ErrorCodes } from '../src/errors';
+import { resolvePort } from '../src/port';
 import {
   addEnvelope,
   clearEnvelopes,
@@ -33,7 +34,7 @@ describe('MockProvider', () => {
       const userId = 'user-123';
       const contractType = 'loan_agreement';
       const recipient = { name: 'John Doe', email: 'john@example.com' };
-      const expectedPort = process.env.PORT || 4000;
+      const expectedPort = resolvePort();
 
       // Act
       const result = await MockProvider.createEnvelope(userId, contractType, recipient);
@@ -107,7 +108,7 @@ describe('MockProvider', () => {
       const contractType = 'loan_agreement';
       const recipient = { name: 'John Doe', email: 'john@example.com' };
       const { envelopeId } = await MockProvider.createEnvelope(userId, contractType, recipient);
-      const expectedPort = process.env.PORT || 4000;
+      const expectedPort = resolvePort();
 
       // Act
       const result = await MockProvider.getSigningUrl(envelopeId, recipient);

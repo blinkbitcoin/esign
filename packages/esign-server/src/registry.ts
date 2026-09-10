@@ -53,7 +53,8 @@ export interface DefaultRegistryOptions {
   // Connect HMAC key from DOCUSIGN_HMAC_KEY, signatures required.
   webhook?: Partial<DocuSignWebhookOptions>;
   // Where the mock's signing pages are served (the esign service does).
-  // Default: MOCK_PAGES_ORIGIN, else http://localhost:4000.
+  // Default: MOCK_PAGES_ORIGIN, else http://localhost:4100 (the
+  // full-service-demo's default port; a dev-only fallback).
   mockBaseUrl?: () => string;
 }
 
@@ -80,7 +81,7 @@ export const defaultRegistry = (
       createMockProvider({
         baseUrl:
           options.mockBaseUrl ??
-          (() => env.MOCK_PAGES_ORIGIN || 'http://localhost:4000'),
+          (() => env.MOCK_PAGES_ORIGIN || 'http://localhost:4100'),
         webhook: docusign(),
       }),
   };

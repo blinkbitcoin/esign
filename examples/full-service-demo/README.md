@@ -19,7 +19,7 @@ direnv allow . && direnv allow examples/full-service-demo   # env + nix dev shel
 # From this directory:
 make db-up          # dev Postgres (docker, port 5432)
 make migrate        # the package's migrations (src/migrate.ts)
-make dev            # server at http://localhost:4000/graphql
+make dev            # server at http://localhost:4100/graphql (PORT, default ESIGN_PORT_BASE + 0)
 ```
 
 `make help` lists all targets. Environment comes from `.env` (see
@@ -68,7 +68,7 @@ root so the workspace lockfile and `packages/esign-server` are inputs):
 make docker-build                     # → esign-api (node 24 alpine, production deps only)
 make docker-smoke                     # boots it with the mock provider, checks /health
 docker run --rm --env-file examples/full-service-demo/.env esign-api node dist/migrate.js   # once per database
-docker run --rm -p 4000:4000 --env-file examples/full-service-demo/.env esign-api      # serve
+docker run --rm -p 4100:4100 --env-file examples/full-service-demo/.env esign-api      # serve
 ```
 
 CI builds and smokes the same image on every branch (E2E / Docker) and
@@ -79,14 +79,14 @@ Deploying is then a pull instead of a build:
 
 ```sh
 docker pull ghcr.io/blinkbitcoin/esign-api:latest
-docker run --rm -p 4000:4000 --env-file .env ghcr.io/blinkbitcoin/esign-api:latest
+docker run --rm -p 4100:4100 --env-file .env ghcr.io/blinkbitcoin/esign-api:latest
 ```
 
 Configuration is the same `.env` as local (`.env.example`; the live DocuSign
 layout with dummy values is `.env.docusign.example`); with
 `ESIGN_PROVIDER=docusign` the JWT credentials and `DOCUSIGN_HMAC_KEY` are
 required at boot (fail-closed). The image runs as the unprivileged `node`
-user, exposes `4000` (`PORT` overrides) and carries a `/health` healthcheck.
+user, exposes `4100` (`PORT` overrides) and carries a `/health` healthcheck.
 Hosts that would rather not run a service import `@blinkbitcoin/esign-server`
 instead (one function call, a Fetch handler, or the Express router).
 

@@ -7,13 +7,13 @@ reference. Not a product; a host.
 
 ```sh
 # 1. Backend (from repo root)
-make db-up migrate backend        # Postgres + migrations + server at :4000
+make db-up migrate backend        # Postgres + migrations + server at :4100
 
 # 2. App (from this directory)
 make dev                          # Vite dev server (URL printed on start)
 ```
 
-The demo points at `http://localhost:4000/graphql` (`src/config.ts`) and
+The demo points at `http://localhost:4100/graphql` (`src/config.ts`) and
 sends a fixed dev bearer token (`src/apollo.ts`) that the backend's dev
 passthrough treats as the userId.
 
@@ -41,8 +41,8 @@ make build         # production build sanity check
 
 The browser E2E is the only place the iframe postMessage path runs against a
 genuinely cross-origin signing page (built app via `vite preview`, the
-backend's mock page on another origin). Ports are per worktree so parallel
-checkouts never clash: `e2e/ports.ts` hashes the worktree path into a block
-(backend 4000+n, Vite 5173+3n for the three modes); `E2E_PORT_OFFSET=0`
-pins the canonical :4000 / :5173 set. In CI a listener already on a port is
-never adopted (`ciPolicy`).
+backend's mock page on another origin). Every service listens on
+`ESIGN_PORT_BASE` (default 4100) + its offset - backend +0, the demo +1/+2/+3
+for the three modes (`e2e/ports.ts`, table in `scripts/lib/ports.mjs`) - so
+parallel checkouts never clash: `ESIGN_PORT_BASE=4300 make e2e-web` moves the
+whole stack. In CI a listener already on a port is never adopted (`ciPolicy`).

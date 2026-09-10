@@ -10,6 +10,8 @@
 SERVICE=examples/full-service-demo
 # shellcheck source=scripts/e2e/wait-lib.sh
 . scripts/e2e/wait-lib.sh
+# shellcheck source=scripts/e2e/ports-env.sh
+. scripts/e2e/ports-env.sh
 
 live_env() {
   # Two ways in: a local .env (make docusign-env), or the DocuSign values in
@@ -35,7 +37,7 @@ live_env() {
   else
     echo "::error::no $SERVICE/.env (make docusign-env) and no DOCUSIGN_* in the environment"; exit 1
   fi
-  LIVE_PORT="${LIVE_PORT:-4010}"
+  # LIVE_PORT: ESIGN_PORT_BASE + 6 (default 4106) unless set (ports-env.sh)
   LOG="${RUNNER_TEMP:-/tmp}/esign-live.log"
 
   # The fixture form's locked terms (group C) plus every required editable

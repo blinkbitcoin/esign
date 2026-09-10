@@ -4,21 +4,22 @@
 # handlers. Default: the mock provider, no database, no DocuSign (make
 # e2e-server-demos; CI: E2E / Server demos). PROVIDER=docusign: the real
 # provider with the DOCUSIGN_* values from the environment - both examples
-# mint real instances (part of make e2e-live). Ports: MINT_PORT (4100) and
-# HANDLER_PORT (4200).
+# mint real instances (part of make e2e-live). Ports: MINT_PORT and
+# HANDLER_PORT (ESIGN_PORT_BASE + 4 / + 5, default 4104 / 4105; the mock
+# pages' origin is ESIGN_API_PORT's - scripts/lib/ports.mjs).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 # shellcheck source=scripts/e2e/wait-lib.sh
 . scripts/e2e/wait-lib.sh
+# shellcheck source=scripts/e2e/ports-env.sh
+. scripts/e2e/ports-env.sh
 LOG_DIR="${RUNNER_TEMP:-/tmp}"
-MINT_PORT="${MINT_PORT:-4100}"
-HANDLER_PORT="${HANDLER_PORT:-4200}"
 PROVIDER="${PROVIDER:-mock}"
 if [ "$PROVIDER" = docusign ]; then
   : "${DOCUSIGN_INTEGRATION_KEY:?}" "${DOCUSIGN_PRIVATE_KEY:?}" "${DOCUSIGN_WEBFORM_ID:?}"
   URL_PATTERN='"url":"https://[^"]*#instanceToken='
 else
-  URL_PATTERN='"url":"http://localhost:4000/signing/mock-webform/'
+  URL_PATTERN="\"url\":\"${MOCK_PAGES_ORIGIN:-http://localhost:$ESIGN_API_PORT}/signing/mock-webform/"
 fi
 PIDS=()
 cleanup() { for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null || true; done; }

@@ -2,7 +2,7 @@
 # lockfile and the server package are inputs):
 #
 #   docker build -f examples/full-service-demo/Dockerfile -t esign-api .        (make docker-build)
-#   docker run --rm -p 4000:4000 --env-file examples/full-service-demo/.env esign-api
+#   docker run --rm -p 4100:4100 --env-file examples/full-service-demo/.env esign-api
 #   docker run --rm --env-file examples/full-service-demo/.env esign-api node dist/migrate.js   # once per database
 #
 # Three stages: install everything → build the two workspaces the service
@@ -52,7 +52,7 @@ COPY --from=build /app/examples/full-service-demo/dist examples/full-service-dem
 
 USER node
 WORKDIR /app/examples/full-service-demo
-EXPOSE 4000
+EXPOSE 4100
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
-  CMD wget -qO- http://127.0.0.1:${PORT:-4000}/health || exit 1
+  CMD wget -qO- http://127.0.0.1:${PORT:-4100}/health || exit 1
 CMD ["node", "dist/index.js"]

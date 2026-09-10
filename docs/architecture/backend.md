@@ -297,7 +297,7 @@ npm run test:e2e
 | `DOCUSIGN_*` | DocuSign credentials (required when provider=docusign) |
 | `DOCUSIGN_HMAC_KEY` | Webhook HMAC key (fail-closed in prod when unset) |
 | `JWT_SECRET` | HS256 JWT verification key (fail-closed in prod when unset) |
-| `PORT` | Server port (default: 4000) |
+| `PORT` | Server port (default: `ESIGN_PORT_BASE` + 0 = 4100) |
 
 Full reference (every variable, incl. optional overrides and OTEL):
 [development-guide.md](../development-guide.md#environment-variables-reference);
