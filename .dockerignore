@@ -1,4 +1,4 @@
-# Build context for examples/full-service-demo/Dockerfile (built from the repo root)
+# Build context for packages/esign-service/Dockerfile (built from the repo root)
 **/node_modules
 **/dist
 **/lib

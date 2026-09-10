@@ -1,4 +1,4 @@
-// The prefill contract is declared twice on purpose - once in the server
+// The prefill contract is declared twice on purpose - once in the Node
 // package (the DocuSign side) and once here (the client side, which must stay
 // free of Node-only dependencies). This pins the two together: the test
 // fails to compile if either drifts.
@@ -7,7 +7,7 @@ import type {
   WebFormPhoneNumber as ServerPhoneNumber,
   WebFormPrefill as ServerPrefill,
   WebFormPrefillValue as ServerValue,
-} from '../../../../../esign-server/src/types';
+} from '../../../../../esign-node/src/types';
 import type {
   WebFormPhoneNumber,
   WebFormPrefill,

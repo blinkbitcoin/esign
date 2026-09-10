@@ -10,7 +10,7 @@ import { CombinedGraphQLErrors } from '@apollo/client/errors';
 import type { ESignLogger } from './types';
 
 // Error codes shared with the backend (extensions.code on GraphQL errors).
-// The wire contract is the ErrorCode enum in examples/full-service-demo/schema.graphql; a parity
+// The wire contract is the ErrorCode enum in packages/esign-service/schema.graphql; a parity
 // test checks this map against the generated enum (src/generated/error-code.ts).
 export const ErrorCodes = {
   ENVELOPE_NOT_FOUND: 'ENVELOPE_NOT_FOUND',

@@ -13,7 +13,7 @@ typecheck: ## tsc --noEmit
 build: ## Build the publishable package (tsup, both entries)
 	npm run build
 
-codegen: ## Regenerate types from ../../examples/full-service-demo/schema.graphql
+codegen: ## Regenerate types from ../../packages/esign-service/schema.graphql
 	npm run codegen
 
 clean: ## Remove build output

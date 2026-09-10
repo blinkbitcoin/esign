@@ -61,7 +61,7 @@ const source = createProxySigningSource({
 ```tsx
 // Mode 2 - DocuSign Web Forms (host mints the instance URL):
 const source = createWebFormsSource({
-  // Your backend mints the instance (one call from @blinkbitcoin/esign-server);
+  // Your backend mints the instance (one call from @blinkbitcoin/esign-node);
   // the app sends its own session token. Read-only fields come back locked
   // with the prefill; numbers stay numbers.
   mint: { url: 'https://api.example.com/webform/instance', getAuthToken },
@@ -174,7 +174,7 @@ generated types.
 
 ```sh
 make test        # 89 Jest (jsdom + Testing Library) tests, 100% coverage (enforced threshold)
-make codegen     # regenerate types from ../../examples/full-service-demo/schema.graphql
+make codegen     # regenerate types from ../../packages/esign-service/schema.graphql
 make build       # tsup (ESM + CJS + types)
 ```
 

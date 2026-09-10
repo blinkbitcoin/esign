@@ -13,9 +13,9 @@ upload only the public half.
 ## 1. Generate the keypair locally (never in the DocuSign UI)
 
 ```sh
-openssl genrsa -out examples/full-service-demo/.docusign.pem 2048
-openssl rsa -in examples/full-service-demo/.docusign.pem -pubout -out examples/full-service-demo/.docusign.pub.pem
-chmod 600 examples/full-service-demo/.docusign.pem      # *.pem is gitignored
+openssl genrsa -out packages/esign-service/.docusign.pem 2048
+openssl rsa -in packages/esign-service/.docusign.pem -pubout -out packages/esign-service/.docusign.pub.pem
+chmod 600 packages/esign-service/.docusign.pem      # *.pem is gitignored
 ```
 
 The public key (`.docusign.pub.pem`) is safe to print and paste.
@@ -49,7 +49,7 @@ form's preview is `https://apps-d.docusign.com/send/forms/view/<form-id>`.
 
 ## 3. Consent, with the right scopes
 
-The JWT grant asks for `DOCUSIGN_SCOPES` (`packages/esign-server/src/docusign/config.ts`):
+The JWT grant asks for `DOCUSIGN_SCOPES` (`packages/esign-node/src/docusign/config.ts`):
 `signature impersonation webforms_read webforms_instance_read webforms_instance_write`.
 A consent granted for `signature impersonation` alone lets the grant succeed
 but every Web Forms call answers 401 `AUTHORIZATION_INSUFFICIENT_SCOPE`.
@@ -75,6 +75,6 @@ own template is not listed under My Templates, any template works for the
 Web Forms path (the proxy envelope live test needs one built for it).
 
 Values used for the `esign` app on 2026-09-09 are recorded in
-`examples/full-service-demo/.env` (local only) and in the developer's notes;
+`packages/esign-service/.env` (local only) and in the developer's notes;
 the capability test form (v2, text amounts) is `c640d957-a2d0-4e36-9975-5374afb02b54`
 (`docs/integration/webforms.md`).

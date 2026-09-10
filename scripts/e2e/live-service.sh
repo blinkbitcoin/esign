@@ -2,12 +2,12 @@
 # Sourced by live.sh (web) and ios-live.sh (React Native): the DocuSign
 # credentials, the fixture form's prefill, and the service on the DocuSign
 # provider. Defines:
-#   live_env            load examples/full-service-demo/.env or the DOCUSIGN_* env
+#   live_env            load packages/esign-service/.env or the DOCUSIGN_* env
 #                       (sets LIVE_TEST, SERVICE, LIVE_PORT, E2E_LIVE_PREFILL, ...)
 #   live_service_up     E2E Postgres + migrations + the service on $LIVE_PORT
 #   live_service_down   stop the service and the database (trap it on EXIT)
 # Local only; the CI variant is docs/operations/live-e2e-ci.md.
-SERVICE=examples/full-service-demo
+SERVICE=packages/esign-service
 # shellcheck source=scripts/e2e/wait-lib.sh
 . scripts/e2e/wait-lib.sh
 # shellcheck source=scripts/e2e/ports-env.sh

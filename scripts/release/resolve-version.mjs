@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Decides what a CI run publishes and stamps it into the four packages.
+// Decides what a CI run publishes and stamps it into the five packages.
 //   release event : the tag IS the version (vX.Y.Z -> X.Y.Z, dist-tag latest;
 //                   vX.Y.Z-<pre> -> dist-tag next). The commit must be on main.
 //   anything else : prerelease <next-patch-after-latest-v*-tag>-pre.<run>.<sha>
@@ -93,7 +93,7 @@ if (!DRY_RUN) {
     });
   }
   // Every workspace that depends on a published package by version follows
-  // it (the examples on esign-server, the platform packages on core), or
+  // it (the examples on esign-node, the platform packages on core), or
   // `npm ci` in the service image asks the registry for the stamped version
   for (const { dir, args } of dependencyStamps(VERSION)) {
     execFileSync('npm', args, { cwd: dir, stdio: 'inherit' });

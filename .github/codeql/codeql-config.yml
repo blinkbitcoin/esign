@@ -6,7 +6,7 @@
 #   // codeql[<rule-id>]
 # comment (alone on its line, covering the next line) suppress one finding
 # at one place. Without that query the marker is ignored - which is why the
-# JWT-grant false positive in packages/esign-server/src/providers/docusign/auth.ts
+# JWT-grant false positive in packages/esign-node/src/providers/docusign/auth.ts
 # came back as alerts 1, 10 and 15 despite the marker from #58.
 #
 # A suppression travels with the code (an API dismissal is keyed on the

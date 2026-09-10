@@ -5,19 +5,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 E-signature integration monorepo (npm workspaces). The deliverables are the
-**four publishable packages** (two client libraries, their core, and the
-server package). The examples are reference hosts: two client demos and
-three server shapes, used for manual testing and every E2E suite.
+**five publishable packages** (two client libraries, their core, the Node
+package, and the service). The examples are reference hosts: two client
+demos and two server shapes, used for manual testing and every E2E suite.
 
 | Workspace | Path | Role |
 |-----------|------|------|
 | `@blinkbitcoin/esign-core` | `packages/esign-core/` | Platform-agnostic core: `SigningSource` abstraction + sources, Apollo factory, GraphQL operations + codegen (no React/DOM) |
-| `@blinkbitcoin/esign-server` | `packages/esign-server/` | Node-only server half: DocuSign client (JWT grant, envelopes, Web Forms) + `createWebFormInstance` (the one call for locked prefill) + the envelope domain (`createEnvelopeService` over the `ESignProvider` and `EnvelopeStore` ports); the backend is built on it, hosts with their own backend import it |
+| `@blinkbitcoin/esign-node` | `packages/esign-node/` | Node-only server half: DocuSign client (JWT grant, envelopes, Web Forms) + `createWebFormInstance` (the one call for locked prefill) + the envelope domain (`createEnvelopeService` over the `ESignProvider` and `EnvelopeStore` ports); the backend is built on it, hosts with their own backend import it |
 | `@blinkbitcoin/esign-react-native` | `packages/esign-react-native/` | Publishable RN library: `ESignature` component (WebView) over core |
 | `@blinkbitcoin/esign-react` | `packages/esign-react/` | Publishable React **web** library: `ESignature` (iframe) + DocuSign.js source over core |
+| `@blinkbitcoin/esign-service` | `packages/esign-service/` | The whole service on the Node package: Express router + Apollo + Knex/PostgreSQL + webhooks; the backend every E2E suite runs against, ships as the `esign-service` image |
 | `esign-react-native-example` | `examples/react-native-demo/` | RN 0.86 demo app hosting the RN library (Maestro E2E target) |
 | `esign-react-example` | `examples/react-demo/` | Vite web demo hosting the web library (`make web`) |
-| `esign-full-service-example` | `examples/full-service-demo/` | The whole service on the server package: Express router + Apollo + Knex/PostgreSQL + webhooks; the backend every E2E suite runs against, ships as the `esign-api` image |
 | `esign-mint-only-example` | `examples/mint-only-demo/` | An existing GraphQL API adds one mutation that mints a locked Web Forms instance (the Blink API shape) |
 | `esign-serverless-handler-example` | `examples/serverless-handler-demo/` | The package's Fetch handlers (mint + webhook) behind a route handler; plain Node adapter |
 | `tooling` | `scripts/` | CI/release scripts; `lib/*.mjs` unit-tested at 100% (Vitest) |
@@ -25,7 +25,7 @@ three server shapes, used for manual testing and every E2E suite.
 - **Language**: TypeScript everywhere (TS 6.0)
 - **Node**: ^22.22.2 || >= 24.15.0 (floor set by jsdom 30)
 - **Env management**: direnv (house convention) - `.envrc` at root (`use
-  flake` + workspace bins on PATH) and in `examples/full-service-demo/` (loads `.env`); the
+  flake` + workspace bins on PATH) and in `packages/esign-service/` (loads `.env`); the
   backend also self-loads `.env` via dotenv as a non-direnv fallback
 - **Toolchain**: pinned by `flake.nix` (node 24, jdk 17, ruby 3.3, watchman);
   entered automatically via direnv, or `nix develop`. CI uses plain
@@ -41,7 +41,7 @@ three server shapes, used for manual testing and every E2E suite.
 Makefiles exist at three levels: the root (repo-wide flows), the group dirs
 (`packages/`, `examples/` - fan common targets out to auto-discovered
 children), and each workspace (thin delegates to its npm scripts). So
-`make -C packages coverage` runs both libraries, `cd examples/full-service-demo && make dev`
+`make -C packages coverage` runs both libraries, `cd packages/esign-service && make dev`
 runs the service. `make help` lists every root target with a description.
 The ones that matter most: `make test` (unit + check-code), `make coverage`,
 `make check-ci` (actionlint + shellcheck of `scripts/**`), `make codeql`
@@ -51,7 +51,7 @@ E2E → teardown), `make e2e-web[-webform|-publicurl]` (Playwright), `make
 e2e-android` / `make e2e-ios` (Maestro, needs a running stack; `make
 e2e-backend-up` starts the mock-provider backend), `make db-up/migrate/backend`,
 `make ios/android/start/web`, `make pods`, `make build`, `make docker-build` /
-`make docker-smoke` (the service image, `examples/full-service-demo/Dockerfile`), `make release`,
+`make docker-smoke` (the service image, `packages/esign-service/Dockerfile`), `make release`,
 `make clean/reset`. The underlying npm scripts:
 
 ```bash
@@ -73,21 +73,21 @@ npm run test:e2e             # Maestro mobile E2E (needs backend + simulator/emu
 ```
 
 Single test file: `npm test -w @blinkbitcoin/esign-react-native -- ESignature` or
-`npm test -w examples/full-service-demo -- tests/webhook.test.ts`.
+`npm test -w packages/esign-service -- tests/webhook.test.ts`.
 
 ## Backend specifics
 
 ```bash
-cd examples/full-service-demo
+cd packages/esign-service
 npm run migrate              # The package's migrations (src/migrate.ts via tsx)
 npm run migrate:test         # Same against the .env.test database
 ```
 
 - The domain (authorization, validation, persistence + audit, restart rule,
   webhook state machine) is `createEnvelopeService` from
-  `@blinkbitcoin/esign-server`, composed in `src/services.ts`; resolvers
+  `@blinkbitcoin/esign-node`, composed in `src/services.ts`; resolvers
   (`src/schema.ts`) and routes (`src/app.ts`) only map inputs/outputs.
-- DB access is the package's Knex `EnvelopeStore` (`@blinkbitcoin/esign-server/knex`),
+- DB access is the package's Knex `EnvelopeStore` (`@blinkbitcoin/esign-node/knex`),
   composed over the shared client in `src/store.ts`; the schema is the
   package's programmatic migration source (`src/migrate.ts` applies it, no
   migration files here). Never query inline in resolvers.
@@ -98,18 +98,18 @@ npm run migrate:test         # Same against the .env.test database
   (`src/providers/index.ts`). **Provider boundary, everywhere:** nothing
   provider-specific outside a `providers/<name>/` directory - in the packages
   (`packages/esign-core/src/providers/docusign/`,
-  `packages/esign-react/src/providers/docusign/`, `packages/esign-server/src/providers/docusign/`)
+  `packages/esign-react/src/providers/docusign/`, `packages/esign-node/src/providers/docusign/`)
   and in the service. The generic layers (`signing/`, the port, the pages, the
   handlers) never import a provider; guard tests enforce it. DocuSign code is
   reached through the `./docusign` subpaths, whose `src/docusign.ts` entry
   files are one-line re-exports of `providers/docusign/` (guard tests);
   `./webform` stays as an alias.
-- The api resolves `@blinkbitcoin/esign-server` from source for typecheck,
+- The api resolves `@blinkbitcoin/esign-node` from source for typecheck,
   tests and `tsx` dev (`tsconfig.json` paths + vitest aliases); `npm run
   build` (`tsconfig.build.json`) needs the package's dist, so build the
   packages first (`npm run build` at the root).
-- The wire contract is the `ErrorCode` enum in `examples/full-service-demo/schema.graphql`
-  (the SDL lives in `packages/esign-server/src/graphql.ts`, re-exported by
+- The wire contract is the `ErrorCode` enum in `packages/esign-service/schema.graphql`
+  (the SDL lives in `packages/esign-node/src/graphql.ts`, re-exported by
   `src/typeDefs.ts`). After schema changes run `make codegen`;
   drift fails backend tests, client parity tests, and a CI step.
 - Security is fail-closed by default: `validateSecurityConfig` (`src/config.ts`)
@@ -178,9 +178,9 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   pre-push, `npm ci` on post-merge/post-checkout when the lockfile changed.
   Escape hatches: `git commit --no-verify`, `LEFTHOOK=0 git push`
 - Commit messages and PR titles follow Conventional Commits with an allowed
-  scope list: `core`, `server`, `rn`, `react`, `demo`, `e2e`, `ci`, `deps`,
-  `deps-dev`, `docs`, `release` (`commitlint.config.mjs` is the source of
-  truth; e.g. `feat(rn): ...`, `fix(server): ...`, `ci(e2e): ...`, `docs: ...`).
+  scope list: `core`, `node`, `service`, `rn`, `react`, `demo`, `e2e`, `ci`,
+  `deps`, `deps-dev`, `docs`, `release` (`commitlint.config.mjs` is the source of
+  truth; e.g. `feat(rn): ...`, `fix(node): ...`, `ci(e2e): ...`, `docs: ...`).
   Squash merges take the PR title, so name the PR like a commit. Details in
   `CONTRIBUTING.md`
 - Change code and the relevant `docs/` page in the same change; the CI Docs
@@ -214,7 +214,7 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   of the libraries: Web bundles the demo against its dist and Publish ships
   its tarballs unchanged. Docker is the one build of the service image
   (smoked with the mock provider); Publish ships it to GHCR as
-  `ghcr.io/blinkbitcoin/esign-api:<version>` + `:latest` / `:next`.
+  `ghcr.io/blinkbitcoin/esign-service:<version>` + `:latest` / `:next`.
   Docs-only PRs stop after Checks; `main` skips docs-only pushes.
 - iOS E2E runs by default (public repo: GitHub-hosted macOS is free). Pause it
   with repo variable `E2E_IOS=false`; PR label `e2e:ios` forces it for one PR
@@ -245,7 +245,7 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
 - Tests are silent: `jest.setup.ts` / `vitest.setup.ts` in every workspace
   fail a test on any console output. Inject a logger instead of letting a
   module fall back to the console (`silentLogger` / `spyLogger()` from
-  `packages/esign-server/src/__tests__/support.ts`; the `logger` option of
+  `packages/esign-node/src/__tests__/support.ts`; the `logger` option of
   `createESignApolloClient`, `useESignature` and the demos' factories); wrap
   every React state update in an act-aware API (`fireEvent`, `waitFor`,
   `findBy*`, `ReactTestRenderer.act`), never a raw DOM `.click()` or a bare
@@ -256,12 +256,12 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
 ## Architecture Patterns
 
 - **Provider pattern**: a new e-sign provider is an adapter directory
-  (`packages/esign-server/src/<name>/` implementing the `ESignProvider` port,
+  (`packages/esign-node/src/<name>/` implementing the `ESignProvider` port,
   client-side interpreters under `packages/esign-core/src/providers/<name>/`)
   plus one entry in the `providerFromEnv` registry; hosts select it with
   `ESIGN_PROVIDER=<name>`
 - **Safe Area**: `react-native-safe-area-context` (demo app concern)
 - **Entry points**: `examples/react-native-demo/index.js` (RN app),
-  `examples/react-demo/src/main.tsx` (web app), `examples/full-service-demo/src/index.ts`
+  `examples/react-demo/src/main.tsx` (web app), `packages/esign-service/src/index.ts`
   (service bootstrap), `packages/esign-{core,react-native,react}/src/index.ts`
   (library APIs)

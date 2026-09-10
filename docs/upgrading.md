@@ -5,6 +5,16 @@ audience. Short version: **the public API is additive; nothing you import
 today stops working.** The release is a minor version (no commit carries a
 breaking-change marker), and the changelog lists the additions.
 
+## Package rename: `esign-server` → `esign-node`
+
+`@blinkbitcoin/esign-server` (`packages/esign-server/`) is renamed
+`@blinkbitcoin/esign-node` (`packages/esign-node/`), matching the platform
+naming of `esign-react` / `esign-react-native`. No aliases - update every
+import from `@blinkbitcoin/esign-server` (and its `/docusign`, `/express`,
+`/knex` subpaths) to `@blinkbitcoin/esign-node`. The registry scope in
+`.npmrc` (`@blinkbitcoin:registry=...`) is unchanged. The commitlint scope
+`server` is renamed `node` in the same change.
+
 ## App developers (React Native, React web)
 
 Nothing to do. Every export keeps its name, path and behaviour. New, optional:
@@ -22,7 +32,7 @@ stay as Apollo-free aliases of the `/docusign` entries.
 
 ## Backend developers
 
-`@blinkbitcoin/esign-server` is new. If you ran the service from the repo:
+`@blinkbitcoin/esign-node` is new. If you ran the service from the repo:
 
 | Before | After |
 |---|---|
@@ -31,6 +41,15 @@ stay as Apollo-free aliases of the `/docusign` entries.
 | Provider chosen by a hand-written factory | `providerFromEnv` from the package, keyed by `ESIGN_PROVIDER` (same values) |
 
 Hosts that only need the mint call: [locked-terms.md](integration/locked-terms.md).
+
+## Package promotion: `examples/full-service-demo` → `packages/esign-service`
+
+`examples/full-service-demo/` is renamed `packages/esign-service/` and joins
+the publishable set as `@blinkbitcoin/esign-service` (no behaviour change;
+same env names, routes, Dockerfile). The image is renamed
+`ghcr.io/blinkbitcoin/esign-service` (was `ghcr.io/blinkbitcoin/esign-api`).
+The demo is now the service package; the two remaining server examples are
+`mint-only-demo` and `serverless-handler-demo`.
 
 ## Deprecated names (kept until the next major)
 
@@ -44,7 +63,7 @@ identical. Plan to move at your convenience.
 | `WebFormInstanceOptions`, `WebFormInstanceResult` (server) | `HostedFormInstanceOptions`, `HostedFormInstanceResult` |
 | core module paths `signing/events`, `signing/mint`,<br>`signing/webFormsSource`, `signing/publicUrlSource` | `@blinkbitcoin/esign-core/docusign` (DocuSign) or the root (neutral) |
 | `packages/esign-react/src/docusignWebForms` module path | `@blinkbitcoin/esign-react/docusign` |
-| `packages/esign-server/src/{pages,prefill,bridgeScript}` DocuSign names | `@blinkbitcoin/esign-server/docusign`; `CLIENT_EVENTS` / `ClientEvent` from<br>the root |
+| `packages/esign-node/src/{pages,prefill,bridgeScript}` DocuSign names | `@blinkbitcoin/esign-node/docusign`; `CLIENT_EVENTS` / `ClientEvent` from<br>the root |
 
 Removal happens in a major release, announced in the changelog, after every
 in-repo consumer has moved.

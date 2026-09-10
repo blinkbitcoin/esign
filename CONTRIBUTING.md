@@ -4,7 +4,7 @@
 
 ```sh
 make install                             # npm ci (also installs git hooks via lefthook)
-direnv allow . && direnv allow examples/full-service-demo  # once per machine: env + nix dev shell (Node 24)
+direnv allow . && direnv allow packages/esign-service  # once per machine: env + nix dev shell (Node 24)
 ```
 
 Working on the libraries needs nothing else. Running the demo apps needs the
@@ -67,7 +67,8 @@ area names (`commitlint.config.mjs` is the source of truth):
 | Scope | Covers |
 |-------|--------|
 | `core` | `packages/esign-core` |
-| `server` | `packages/esign-server` |
+| `node` | `packages/esign-node` |
+| `service` | `packages/esign-service` (the deployable service) |
 | `rn` | `packages/esign-react-native` |
 | `react` | `packages/esign-react` |
 | `demo` | `examples/*` (the client demos and the three server examples) |
@@ -103,7 +104,7 @@ CI stays the authoritative check.
 
 | Hook | What runs |
 |------|-----------|
-| `pre-commit` | Biome format (root) and Biome check (`examples/full-service-demo`) on staged files, auto-fixes re-staged; ESLint on staged TS/TSX; diagram re-render when a `.mmd` source changes. Skipped during merge and rebase replays. |
+| `pre-commit` | Biome format (root) and Biome check (`packages/esign-service`) on staged files, auto-fixes re-staged; ESLint on staged TS/TSX; diagram re-render when a `.mmd` source changes. Skipped during merge and rebase replays. |
 | `commit-msg` | commitlint against `commitlint.config.mjs` |
 | `pre-push` | Workspace-wide typecheck |
 | `post-merge`, `post-checkout` | `npm ci` when `package-lock.json` changed, so hooks never run on a stale install |
@@ -121,7 +122,7 @@ Escape hatches, for the rare cases where they are warranted:
    the relevant doc in the same change** (docs are hand-maintained;
    `docs/index.md` maps them).
 2. Diagrams: edit `docs/diagrams/src/*.mmd`, then `make diagrams` (CI fails
-   on drift). Schema: edit `examples/full-service-demo/src/typeDefs.ts`, then `make codegen`.
+   on drift). Schema: edit `packages/esign-service/src/typeDefs.ts`, then `make codegen`.
 3. Open a PR with a Conventional Commits title — every workflow must be
    green. The title is the line `CHANGELOG.md` will show, and its type
    decides the version bump (`feat` → minor, `fix` → patch, `ci` / `docs` /

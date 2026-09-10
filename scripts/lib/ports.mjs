@@ -14,7 +14,7 @@ export const BASE_DEFAULT = 4100;
 
 /** key → { offset from the base, the override variable, what listens there } */
 export const SERVICES = {
-  api: { offset: 0, env: 'ESIGN_API_PORT', what: 'full-service-demo' },
+  api: { offset: 0, env: 'ESIGN_API_PORT', what: 'the esign-service backend' },
   webProxy: {
     offset: 1,
     env: 'ESIGN_WEB_PORT',
@@ -35,7 +35,7 @@ export const SERVICES = {
   live: {
     offset: 6,
     env: 'LIVE_PORT',
-    what: 'full-service-demo on DocuSign (make e2e-live)',
+    what: 'esign-service on DocuSign (make e2e-live)',
   },
   liveMint: {
     offset: 7,

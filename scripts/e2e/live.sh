@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The full live run against real DocuSign, in one command: start the service
-# on the DocuSign provider (examples/full-service-demo/.env, see make
+# on the DocuSign provider (packages/esign-service/.env, see make
 # docusign-env), run the API live test (JWT grant + real instance mints),
 # then the Playwright checks against the capability test form (locked
 # fields, then the form submitted and signed inside the web component,

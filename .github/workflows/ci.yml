@@ -11,7 +11,7 @@ name: CI
 #         -> Publish -> Verify (main / release / dispatch)
 #
 # Docker (in E2E) builds + smokes the service image the same way; Publish
-# ships it to GHCR (ghcr.io/<owner>/esign-api:<version>, :latest / :next)
+# ships it to GHCR (ghcr.io/<owner>/esign-service:<version>, :latest / :next)
 # and Verify pulls and smokes what was published.
 #
 # A docs-only PR (docs/, *.md, LICENSE, templates - classified by the Changes
@@ -253,8 +253,8 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DISTTAG: ${{ needs.e2e.outputs.disttag }}
 
-      - name: Publish @blinkbitcoin/esign-server
-        run: npm publish "$RUNNER_TEMP"/tarballs/blinkbitcoin-esign-server-[0-9]*.tgz --tag "$DISTTAG"
+      - name: Publish @blinkbitcoin/esign-node
+        run: npm publish "$RUNNER_TEMP"/tarballs/blinkbitcoin-esign-node-[0-9]*.tgz --tag "$DISTTAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DISTTAG: ${{ needs.e2e.outputs.disttag }}
@@ -271,8 +271,14 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DISTTAG: ${{ needs.e2e.outputs.disttag }}
 
+      - name: Publish @blinkbitcoin/esign-service
+        run: npm publish "$RUNNER_TEMP"/tarballs/blinkbitcoin-esign-service-[0-9]*.tgz --tag "$DISTTAG"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISTTAG: ${{ needs.e2e.outputs.disttag }}
+
       # The service image E2E / Docker built and smoked, tagged <version> and
-      # <disttag> like the packages: ghcr.io/<owner>/esign-api
+      # <disttag> like the packages: ghcr.io/<owner>/esign-service
       - name: Fetch the service image built by E2E / Docker
         uses: actions/download-artifact@v8
         with:
@@ -282,10 +288,10 @@ jobs:
       - name: Publish the service image to GHCR
         id: image
         env:
-          IMAGE: ghcr.io/${{ github.repository_owner }}/esign-api
+          IMAGE: ghcr.io/${{ github.repository_owner }}/esign-service
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash scripts/release/publish-image.sh "$RUNNER_TEMP/image/esign-api.tar.gz" "${{ needs.e2e.outputs.version }}" "${{ needs.e2e.outputs.disttag }}"
+        run: bash scripts/release/publish-image.sh "$RUNNER_TEMP/image/esign-service.tar.gz" "${{ needs.e2e.outputs.version }}" "${{ needs.e2e.outputs.disttag }}"
 
   # Consumes what was ACTUALLY published: installs the exact version from
   # GitHub Packages into a clean project and asserts the consumer contract.

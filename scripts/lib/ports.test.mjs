@@ -102,9 +102,9 @@ describe('the consumers', () => {
   const { base, api, mint, handler } = resolvePorts({});
 
   it.each([
-    ['examples/full-service-demo/src/port.ts', `PORT_BASE_DEFAULT = ${base}`],
+    ['packages/esign-service/src/port.ts', `PORT_BASE_DEFAULT = ${base}`],
     [
-      'examples/full-service-demo/src/port.ts',
+      'packages/esign-service/src/port.ts',
       `PORT_OFFSET = ${SERVICES.api.offset}`,
     ],
     [
@@ -123,11 +123,11 @@ describe('the consumers', () => {
     ['examples/react-native-demo/src/config.ts', `PORT_BASE_DEFAULT = ${base}`],
     ['examples/react-demo/src/config.ts', `http://localhost:${api}`],
     ['examples/react-demo/e2e/ports.ts', `BASE_DEFAULT = ${base}`],
-    ['packages/esign-server/src/registry.ts', `http://localhost:${api}`],
-    ['examples/full-service-demo/Dockerfile', `EXPOSE ${api}`],
-    ['examples/full-service-demo/Dockerfile', `\${PORT:-${api}}`],
+    ['packages/esign-node/src/registry.ts', `http://localhost:${api}`],
+    ['packages/esign-service/Dockerfile', `EXPOSE ${api}`],
+    ['packages/esign-service/Dockerfile', `\${PORT:-${api}}`],
     ['scripts/ci/docker-smoke.sh', `"$PORT:${api}"`],
-    ['examples/full-service-demo/.env.example', `PORT=${api}`],
+    ['packages/esign-service/.env.example', `PORT=${api}`],
     ['examples/mint-only-demo/.env.example', `PORT=${mint}`],
     ['examples/serverless-handler-demo/.env.example', `PORT=${handler}`],
   ])('%s carries %s', (file, literal) => {

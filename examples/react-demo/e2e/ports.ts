@@ -100,7 +100,7 @@ export const backendServer = () => ({
   command: [
     `PORT=${PORTS.api}`,
     `CORS_ALLOWED_ORIGINS=${MODES.map(viteOrigin).join(',')}`,
-    'ESIGN_PROVIDER=mock npx dotenv-cli -e examples/full-service-demo/.env.test -- npm run dev -w examples/full-service-demo',
+    'ESIGN_PROVIDER=mock npx dotenv-cli -e packages/esign-service/.env.test -- npm run dev -w packages/esign-service',
   ].join(' '),
   cwd: '../..',
   url: `${API_ORIGIN}/health`,

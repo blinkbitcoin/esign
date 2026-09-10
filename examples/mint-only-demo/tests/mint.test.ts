@@ -5,9 +5,9 @@ import { vi } from 'vitest';
 const { createDocuSignProvider } = vi.hoisted(() => ({
   createDocuSignProvider: vi.fn(),
 }));
-vi.mock('@blinkbitcoin/esign-server', async importOriginal => {
+vi.mock('@blinkbitcoin/esign-node', async importOriginal => {
   const original =
-    await importOriginal<typeof import('@blinkbitcoin/esign-server')>();
+    await importOriginal<typeof import('@blinkbitcoin/esign-node')>();
   createDocuSignProvider.mockImplementation(original.createDocuSignProvider);
   return {
     ...original,

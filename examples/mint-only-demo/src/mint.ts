@@ -1,4 +1,4 @@
-// The one call to @blinkbitcoin/esign-server this host makes: the hosted-form
+// The one call to @blinkbitcoin/esign-node this host makes: the hosted-form
 // mint of the provider ESIGN_PROVIDER selects. With real credentials that is
 // the DocuSign adapter (createWebFormInstance underneath); with
 // ESIGN_PROVIDER=mock the mock provider mints a URL onto the full-service
@@ -15,7 +15,7 @@ import {
   type ProviderRegistry,
   providerFromEnv,
   type WebFormPrefill,
-} from '@blinkbitcoin/esign-server';
+} from '@blinkbitcoin/esign-node';
 
 export type Mint = (
   userId: string,

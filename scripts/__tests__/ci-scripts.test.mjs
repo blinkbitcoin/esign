@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
   mkdirSync,
   mkdtempSync,
@@ -79,20 +79,19 @@ function createFixtureRepo() {
   return { dir, initialSha };
 }
 
+// spawnSync, not execFileSync: stderr is part of what these tests assert
+// (a green run must be quiet), so it is captured on success too.
 function runScript(scriptPath, repoDir, env, extraArgs = []) {
-  try {
-    const stdout = execFileSync('bash', [scriptPath, ...extraArgs], {
-      cwd: repoDir,
-      env: { ...gitEnv(repoDir), ...env },
-    });
-    return { status: 0, stdout: stdout.toString(), stderr: '' };
-  } catch (error) {
-    return {
-      status: error.status,
-      stdout: (error.stdout ?? '').toString(),
-      stderr: (error.stderr ?? '').toString(),
-    };
-  }
+  const result = spawnSync('bash', [scriptPath, ...extraArgs], {
+    cwd: repoDir,
+    env: { ...gitEnv(repoDir), ...env },
+    encoding: 'utf8',
+  });
+  return {
+    status: result.status,
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
+  };
 }
 
 describe('changed-class.sh', () => {
@@ -299,6 +298,22 @@ describe('docs-freshness.sh', () => {
       'Architecture-relevant files changed but docs were not updated:',
     );
     expect(result.summary).toContain('examples/react-demo/package.json');
+  });
+
+  // A workspace renamed since the merge base has no manifest at the base:
+  // that is the "structural" answer, not a failure, and git's own
+  // "fatal: path ... exists on disk, but not in <ref>" must not reach the
+  // terminal from a green run.
+  it('classifies a manifest that did not exist at the base without printing git errors', () => {
+    const { dir } = fixtureWithManifest();
+    git(dir, ['mv', 'examples/react-demo', 'packages/esign-web']);
+    commit(dir, 'refactor: promote the demo to a package');
+
+    const result = runDocsFreshness(dir, { EVENT_NAME: 'push' });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(result.summary).toContain('packages/esign-web/package.json');
   });
 
   it('skips the warning entirely for a Dependabot-authored PR', () => {

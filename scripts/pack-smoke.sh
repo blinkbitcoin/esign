@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# Packs the four packages and installs them into a clean project, then
-# asserts the consumer contract: the /docusign + /webform entries resolve and
-# never load Apollo, and the server package loads on plain Node. Run from the repo root after `npm run build` (CI: E2E / Build Packages).
+# Packs the five packages and installs the four client/server libraries into
+# a clean project, then asserts the consumer contract: the /docusign +
+# /webform entries resolve and never load Apollo, and the Node package loads
+# on plain Node. The service package has no library entry points to assert
+# against (it is an app); packing it here still proves the tarball builds.
+# Run from the repo root after `npm run build` (CI: E2E / Build Packages).
 set -euo pipefail
 SMOKE="$(mktemp -d)"
 trap 'rm -rf "$SMOKE"' EXIT
 
-for p in packages/esign-core packages/esign-server packages/esign-react-native packages/esign-react; do
+for p in packages/esign-core packages/esign-node packages/esign-react-native packages/esign-react packages/esign-service; do
   (cd "$p" && npm pack --pack-destination "$SMOKE" >/dev/null)
 done
 
@@ -15,8 +18,8 @@ npm init -y >/dev/null
 # Install core first so the platform packages resolve it from the local tarball
 npm install --no-save --prefer-offline --no-audit ./blinkbitcoin-esign-core-*.tgz >/dev/null
 # (--no-save installs are pruned by the next install unless still needed, so
-#  the server package rides along with the platform packages here)
-npm install --no-save --prefer-offline --no-audit ./blinkbitcoin-esign-react-native-*.tgz ./blinkbitcoin-esign-react-*.tgz ./blinkbitcoin-esign-server-*.tgz >/dev/null 2>&1 || true
+#  the Node package rides along with the platform packages here)
+npm install --no-save --prefer-offline --no-audit ./blinkbitcoin-esign-react-native-*.tgz ./blinkbitcoin-esign-react-*.tgz ./blinkbitcoin-esign-node-*.tgz >/dev/null 2>&1 || true
 
 node - <<'NODE'
 const assert = require('node:assert');
@@ -49,32 +52,32 @@ console.log('pack smoke: esign-react-native /webform + /docusign resolve');
 // (not loaded: the component needs react)
 assert.match(require.resolve('@blinkbitcoin/esign-react/docusign'), /dist\/docusign\.cjs$/);
 console.log('pack smoke: esign-react /docusign resolves');
-// The server package: CJS entry loads on plain Node with no peers at all
-const server = require('@blinkbitcoin/esign-server');
+// The Node package: CJS entry loads on plain Node with no peers at all
+const server = require('@blinkbitcoin/esign-node');
 assert.equal(typeof server.createWebFormInstance, 'function');
 assert.equal(typeof server.createDocuSignClient, 'function');
 assert.equal(typeof server.parseWebFormPrefill, 'function');
-console.log('pack smoke: esign-server loads on plain Node');
+console.log('pack smoke: esign-node loads on plain Node');
 assert.equal(typeof server.providerFromEnv, 'function');
 assert.equal(typeof server.hostedFormMint, 'function');
 // The /docusign subpath: the adapter on its own, no peers
-const serverDocusign = require('@blinkbitcoin/esign-server/docusign');
+const serverDocusign = require('@blinkbitcoin/esign-node/docusign');
 assert.equal(typeof serverDocusign.createDocuSignClient, 'function');
 assert.equal(typeof serverDocusign.createWebFormInstance, 'function');
 assert.equal(typeof serverDocusign.mintFromDocuSign, 'function');
-console.log('pack smoke: esign-server/docusign loads without peers; providerFromEnv on the root');
+console.log('pack smoke: esign-node/docusign loads without peers; providerFromEnv on the root');
 // The /express subpath needs the optional express peer: without it the
 // require must fail loudly (the boundary that keeps the main entry framework-free)
 let expressLoaded = false;
-try { require('@blinkbitcoin/esign-server/express'); expressLoaded = true; } catch {}
-assert.equal(expressLoaded, false, 'esign-server/express must require the express peer');
-console.log('pack smoke: esign-server/express correctly needs express');
+try { require('@blinkbitcoin/esign-node/express'); expressLoaded = true; } catch {}
+assert.equal(expressLoaded, false, 'esign-node/express must require the express peer');
+console.log('pack smoke: esign-node/express correctly needs express');
 // The /knex subpath only types against knex: the host passes its own Knex
 // instance, so the entry must load with no knex installed at all
-const knexEntry = require('@blinkbitcoin/esign-server/knex');
+const knexEntry = require('@blinkbitcoin/esign-node/knex');
 assert.equal(typeof knexEntry.createKnexEnvelopeStore, 'function');
 assert.equal(typeof knexEntry.runESignMigrations, 'function');
-console.log('pack smoke: esign-server/knex loads without knex (host-provided instance)');
+console.log('pack smoke: esign-node/knex loads without knex (host-provided instance)');
 NODE
 NODE_OPTIONS="" node --input-type=module -e "
 import { createWebFormsSource } from '@blinkbitcoin/esign-core/webform';
@@ -83,13 +86,13 @@ if (typeof createWebFormsSource !== 'function' || typeof fromDocuSign !== 'funct
 console.log('pack smoke: ESM import of /webform + /docusign works');
 "
 NODE_OPTIONS="" node --input-type=module -e "
-import { createWebFormInstance } from '@blinkbitcoin/esign-server';
+import { createWebFormInstance } from '@blinkbitcoin/esign-node';
 if (typeof createWebFormInstance !== 'function') process.exit(1);
-console.log('pack smoke: ESM import of esign-server works');
+console.log('pack smoke: ESM import of esign-node works');
 "
 NODE_OPTIONS="" node --input-type=module -e "
-import { createDocuSignProvider } from '@blinkbitcoin/esign-server/docusign';
+import { createDocuSignProvider } from '@blinkbitcoin/esign-node/docusign';
 if (typeof createDocuSignProvider !== 'function') process.exit(1);
-console.log('pack smoke: ESM import of esign-server/docusign works');
+console.log('pack smoke: ESM import of esign-node/docusign works');
 "
 echo "PACK SMOKE PASSED"

@@ -5,7 +5,7 @@
 # npm; a container tag can be overwritten, so the version tag is pushed
 # first and the moving dist-tag last.
 #   scripts/release/publish-image.sh <archive.tar.gz> <version> <disttag>
-# Env: IMAGE (ghcr.io/<owner>/esign-api; the owner is lowercased here),
+# Env: IMAGE (ghcr.io/<owner>/esign-service; the owner is lowercased here),
 #      GHCR_USER, GHCR_TOKEN (GITHUB_TOKEN with packages:write).
 # CI: Publish. Prints image= to $GITHUB_OUTPUT (stdout when unset).
 set -euo pipefail

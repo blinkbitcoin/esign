@@ -7,7 +7,7 @@
 ## Overview
 
 The backend uses two primary models for envelope management and audit tracking.
-Schema and data access both come from `@blinkbitcoin/esign-server/knex`:
+Schema and data access both come from `@blinkbitcoin/esign-node/knex`:
 `ESIGN_MIGRATIONS` (a programmatic Knex migration source, no migration files
 or knexfile in the service) and `createKnexEnvelopeStore`, the Knex
 implementation of the `EnvelopeStore` port. The service composes the store
@@ -131,8 +131,8 @@ Metadata is sanitized at write time against an allow-list
 ## The Store Port
 
 Data access is not done inline in resolvers. The domain
-(`createEnvelopeService` in `@blinkbitcoin/esign-server`) talks to an
-`EnvelopeStore` port; `examples/full-service-demo/src/store.ts` implements it with Knex, and
+(`createEnvelopeService` in `@blinkbitcoin/esign-node`) talks to an
+`EnvelopeStore` port; `packages/esign-service/src/store.ts` implements it with Knex, and
 the package ships an in-memory implementation for tests and for hosts that
 keep envelope state elsewhere.
 
@@ -182,13 +182,13 @@ const logs = await store.listAuditEntries(envelopeId);
 ## Migration Commands
 
 The migrations live in the package
-(`packages/esign-server/src/knex/migrations.ts`, `ESIGN_MIGRATIONS`, in
+(`packages/esign-node/src/knex/migrations.ts`, `ESIGN_MIGRATIONS`, in
 order; append, never edit a shipped one). Their names are the original file
 names, so a database migrated before the move keeps its `knex_migrations`
 history. Hosts run them through their own Knex instance:
 
 ```ts
-import { runESignMigrations, createESignMigrationSource } from '@blinkbitcoin/esign-server/knex';
+import { runESignMigrations, createESignMigrationSource } from '@blinkbitcoin/esign-node/knex';
 await runESignMigrations(db);                                          // migrate.latest
 await db.migrate.rollback({ migrationSource: createESignMigrationSource() });
 ```
@@ -196,10 +196,10 @@ await db.migrate.rollback({ migrationSource: createESignMigrationSource() });
 In this repo:
 
 ```bash
-cd examples/full-service-demo
+cd packages/esign-service
 npm run migrate          # tsx src/migrate.ts against DATABASE_URL (.env)
 npm run migrate:test     # the same against .env.test
-# in the image: docker run --rm --env-file .env esign-api node dist/migrate.js
+# in the image: docker run --rm --env-file .env esign-service node dist/migrate.js
 ```
 
 ---
@@ -207,7 +207,7 @@ npm run migrate:test     # the same against .env.test
 ## Test Data Factory
 
 ```typescript
-// examples/full-service-demo/tests/e2e/factories.ts (Knex-based, actual signatures)
+// packages/esign-service/tests/e2e/factories.ts (Knex-based, actual signatures)
 
 export const createTestEnvelope = async (overrides = {}): Promise<Envelope> => {
   const [envelope] = await knex<Envelope>('Envelope')

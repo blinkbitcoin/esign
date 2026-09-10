@@ -21,17 +21,17 @@ pre-commit:
     biome:
       glob: '*.{ts,tsx,js,jsx,mjs,cjs,json}'
       exclude:
-        - examples/full-service-demo/**
+        - packages/esign-service/**
       # format (not check) - mirrors check-code; ESLint owns linting here
       run: npx biome format --write --no-errors-on-unmatched {staged_files}
       stage_fixed: true
     biome-api:
-      root: 'examples/full-service-demo/'
+      root: 'packages/esign-service/'
       glob: '*.{ts,tsx,js,jsx,mjs,cjs,json}'
       run: npx biome check --write --no-errors-on-unmatched {staged_files}
       stage_fixed: true
     eslint:
-      # Flat config ignores examples/full-service-demo etc.; --no-warn-ignored keeps staged
+      # Flat config ignores packages/esign-service etc.; --no-warn-ignored keeps staged
       # files from ignored paths silent instead of counting as warnings.
       glob: '*.{ts,tsx}'
       run: npx eslint --no-warn-ignored --max-warnings=0 {staged_files}

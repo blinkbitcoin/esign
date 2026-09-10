@@ -1,0 +1,79 @@
+{
+  "name": "@blinkbitcoin/esign-service",
+  "version": "0.0.0-development",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "dotenv -e .env.test -- vitest run --config vitest.e2e.config.mts",
+    "test:live": "dotenv -e .env -- vitest run --config vitest.live.config.mts",
+    "migrate": "tsx src/migrate.ts",
+    "migrate:test": "dotenv -e .env.test -- npm run migrate",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "schema:emit": "tsx scripts/emit-schema.ts",
+    "docusign:check": "tsx scripts/docusign-check.ts",
+    "test:live:env": "vitest run --config vitest.live.config.mts",
+    "docusign:template": "tsx scripts/docusign-template.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "description": "The whole esign service (Express router, Apollo, Postgres store, webhooks) composed from @blinkbitcoin/esign-node",
+  "files": ["dist"],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blinkbitcoin/esign.git",
+    "directory": "packages/esign-service"
+  },
+  "homepage": "https://github.com/blinkbitcoin/esign#readme",
+  "bugs": { "url": "https://github.com/blinkbitcoin/esign/issues" },
+  "type": "commonjs",
+  "engines": {
+    "node": "^22.22.2 || >= 24.15.0"
+  },
+  "dependencies": {
+    "@apollo/server": "^5.5.1",
+    "@as-integrations/express5": "^1.1.2",
+    "@blinkbitcoin/esign-node": "0.0.0-development",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/instrumentation-express": "^0.70.0",
+    "@opentelemetry/instrumentation-graphql": "^0.70.0",
+    "@opentelemetry/instrumentation-http": "^0.222.0",
+    "@opentelemetry/instrumentation-pg": "^0.74.0",
+    "@opentelemetry/instrumentation-undici": "^0.32.0",
+    "@opentelemetry/sdk-node": "^0.222.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "graphql": "^16.14.2",
+    "helmet": "^8.3.0",
+    "knex": "^3.3.0",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.12",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.4.0",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^4.1.11",
+    "dotenv-cli": "^11.0.0",
+    "knex-mock-client": "^3.0.2",
+    "supertest": "^7.2.2",
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}

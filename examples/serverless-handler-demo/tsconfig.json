@@ -12,11 +12,9 @@
     "noEmit": true,
     "types": ["vitest/globals", "node"],
     "paths": {
-      "@blinkbitcoin/esign-server": [
-        "../../packages/esign-server/src/index.ts"
-      ],
-      "@blinkbitcoin/esign-server/docusign": [
-        "../../packages/esign-server/src/docusign.ts"
+      "@blinkbitcoin/esign-node": ["../../packages/esign-node/src/index.ts"],
+      "@blinkbitcoin/esign-node/docusign": [
+        "../../packages/esign-node/src/docusign.ts"
       ]
     }
   },
