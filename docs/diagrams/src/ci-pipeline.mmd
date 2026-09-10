@@ -16,7 +16,7 @@ flowchart LR
         subgraph E2E["E2E"]
             direction LR
             BP["Build Packages<br/>version stamp · build · pack"] --> WEB["Web"]
-            DOCKER["Docker<br/>service image · smoke"]
+            DOCKER["Docker<br/>service image · smoke mint, then mint+db<br/>mint-only demo image · smoke (not published)"]
             SD["Server demos<br/>mint-only · serverless"]
             LIVE["Live DocuSign<br/>opt-in: E2E_LIVE · e2e:live"]
             BACKEND["Backend"]

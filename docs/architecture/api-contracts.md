@@ -1,17 +1,24 @@
 # API Contracts - Backend
 
 **Part:** backend
-**Updated:** 2026-07-02
+**Updated:** 2026-09-10
 
 ## Overview
 
-The backend exposes two API surfaces:
-1. **GraphQL API** - Primary client interface at `/graphql`
-2. **REST Webhook** - E-sign provider callbacks at `/webhook/esign`
-3. **REST Web Forms** - `POST /webform/instance` (authenticated) mints a
-   prefilled DocuSign Web Forms instance via the configured provider
-4. **HTML signing pages** - `GET /signing/mock/:id`, `GET /signing/mock-webform/:id`
-   (mock ceremonies for E2E), `GET /signing/return` (DocuSign return-URL bridge)
+The backend exposes four API surfaces. Which of them exist is decided by the
+environment (`src/capabilities.ts`): the mint half is always served, and
+`/graphql` + `/webhook/esign` exist only when `DATABASE_URL` turns envelope
+orchestration on. `GET /health` reports which.
+
+1. **REST Web Forms** - `POST /webform/instance` (authenticated) mints a
+   prefilled DocuSign Web Forms instance via the configured provider (always)
+2. **HTML signing pages** - `GET /signing/return` (the DocuSign return-URL
+   bridge, always); `GET /signing/mock/:id`, `GET /signing/mock-webform/:id`
+   (mock ceremonies for E2E, only with the mock provider and `MOCK_PAGES`
+   not `false`)
+3. **GraphQL API** - client interface at `/graphql` (with `DATABASE_URL`)
+4. **REST Webhook** - e-sign provider callbacks at `/webhook/esign`
+   (with `DATABASE_URL`)
 
 ## GraphQL API
 
@@ -247,9 +254,13 @@ GET /health
 ```json
 {
   "status": "ok",
-  "timestamp": "2026-07-02T12:00:00.000Z"
+  "capabilities": ["mint", "envelopes"],
+  "timestamp": "2026-09-10T12:00:00.000Z"
 }
 ```
+
+`capabilities` is `["mint"]` without `DATABASE_URL` and `["mint",
+"envelopes"]` with it - the deployment says what it serves.
 
 ### E-Sign Provider Webhook
 
@@ -305,7 +316,9 @@ a single database transaction.
 
 ## Authentication
 
-### Bearer tokens (`src/auth.ts`)
+### Bearer tokens (`src/session.ts`)
+
+The same verification serves the mint and the GraphQL context:
 
 ```typescript
 interface GraphQLContext {
@@ -315,18 +328,34 @@ interface GraphQLContext {
 
 | Configuration | Behavior |
 |---------------|----------|
-| `JWT_SECRET` set | Token verified as HS256 JWT (signature, expiry); `sub` claim → `userId`; invalid → `userId: null` |
-| `JWT_SECRET` unset, development | Bearer token used as opaque `userId` (dev passthrough, warns once) |
-| `JWT_SECRET` unset, production | Fail closed - `userId: null` for every request |
+| `SESSION_JWKS_URL` set | Token verified against the remote key set (RS/ES only); `SESSION_USER_CLAIM` (default `sub`) → `userId`; anything unverifiable → `userId: null` |
+| `SESSION_HS256_SECRET` set (`JWT_SECRET` alias) | Same, verified as HS256 against the shared secret |
+| `ALLOW_INSECURE_DEV=true`, no source | Bearer token used as opaque `userId` (dev passthrough, warns once) |
+| No source at all | The service **refuses to boot** - it never runs unauthenticated |
 
-Resolvers reject `userId: null` with `UNAUTHORIZED`.
+`exp` is required in every token; `SESSION_ISSUER` / `SESSION_AUDIENCE` are
+enforced when set. The domain rejects `userId: null` with `UNAUTHORIZED`.
+
+### Mint (`POST /webform/instance`)
+
+| Status | Body | When |
+|--------|------|------|
+| `200` | `{ url, instanceId }` | Minted |
+| `400` | `{ "error": "<reason>" }` | The prefill is outside the provider's contract (checked before any provider call), the provider cannot mint hosted forms, or the host's `prefill` hook threw `Errors.validationError(message)` |
+| `401` | `{ "error": "Unauthorized" }` | No verified session (or the hook threw `Errors.unauthorized()`) |
+| `502` | `{ "error": "..." }` | Minting failed - including a failed `TERMS_URL` callback, which answers `Could not compute the signing terms` |
+
+The same table, from the package's side, is
+[`packages/esign-node/README.md`](../../packages/esign-node/README.md).
 
 ### Webhook Security
 
 1. Provider extracts its signature header and secret
 2. Shared HMAC-SHA256 validation over the **raw** request body
    (timing-safe comparison)
-3. Missing key: dev allows with warning; **production rejects (fail-closed)**
+3. Missing key: **rejected (fail-closed)** unless `ALLOW_INSECURE_DEV=true`;
+   with envelopes on and the DocuSign provider, the boot guard refuses to
+   start without `DOCUSIGN_HMAC_KEY` at all
 
 ---
 

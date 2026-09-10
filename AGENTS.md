@@ -4,9 +4,11 @@ Instructions for AI agents working with this codebase.
 
 ## Project Overview
 
-E-signature integration monorepo (npm workspaces): a backend GraphQL service,
-a platform-agnostic core package, publishable React Native and React web
-libraries, and one demo app per platform for manual and E2E testing.
+E-signature integration monorepo (npm workspaces): a deployable backend
+service whose capabilities come from the environment (the mint always,
+GraphQL + webhook + Postgres with `DATABASE_URL`), a platform-agnostic core
+package, publishable React Native and React web libraries, and one demo app
+per platform for manual and E2E testing.
 
 - **Language**: TypeScript 6.0 everywhere
 - **Node**: `^22.22.2 || >= 24.15.0`; toolchain pinned by `flake.nix`, entered
@@ -43,13 +45,12 @@ one-line description. The ones you will reach for:
 |--------|-------------|
 | `make install` | `npm ci` across all workspaces (also installs the git hooks) |
 | `make test` | Unit suites + `check-code` (lint, typecheck, format check) |
-| `make coverage` | Coverage - 100% enforced on the packages, the backend, and `scripts/lib` |
+| `make coverage` | Coverage - 100% enforced everywhere (packages, the service, `scripts/lib`<br>and both demo apps); also fails on a coverage row with nothing to cover<br>(re-export / type-only modules go in the workspace's exclude list) |
 | `make check-ci` | actionlint on the workflows + shellcheck on `scripts/**` |
 | `make codeql` | GitHub's CodeQL analysis locally (same config as `codeql.yml`, markers honoured);<br>never run in CI - GitHub runs it there |
 | `make codegen` | Regenerate `schema.graphql` + client types after editing the SDL in `packages/esign-node/src/graphql.ts` |
 | `make diagrams` | Re-render `docs/diagrams/dist/*.svg` from `src/*.mmd` (CI fails on drift) |
 | `make docs-check` | Warn when architecture-relevant changes ship without a `docs/` update;<br>fail on a README table cell line wider than 72 characters (break with `<br>`) |
-| `make coverage` | 100% enforced everywhere; also fails on a coverage row with nothing to<br>cover (re-export / type-only modules go in the workspace's exclude list) |
 | `make db-up migrate backend` | Dev Postgres, migrations, backend dev server |
 | `make e2e-backend` / `make e2e-web` | Backend E2E against real Postgres / Playwright browser E2E |
 | `make start` / `make ios` / `make android` / `make web` | Demo apps |
@@ -77,8 +78,8 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
 - Every service listens on `ESIGN_PORT_BASE` (default 4100 - 4000 is
   everybody's) plus its offset: the backend +0, the web demo +1/+2/+3 (proxy /
   webform / publicurl), mint-only +4, serverless +5, the live service and its
-  two examples +6/+7/+8, the docker smoke +9. The table is
-  `scripts/lib/ports.mjs`; shell reads it through `scripts/e2e/ports-env.sh`
+  two examples +6/+7/+8, the docker smoke +9, the server-demos service +10
+  and its terms callback +11. The table is `scripts/lib/ports.mjs`; shell reads it through `scripts/e2e/ports-env.sh`
   (`$ESIGN_API_PORT`, `$MINT_PORT`, `$LIVE_PORT`, ...), the Playwright
   configs through `examples/react-demo/e2e/ports.ts`, and each service
   declares its own offset (its test checks the literal against the table).

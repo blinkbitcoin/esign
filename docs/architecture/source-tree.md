@@ -1,7 +1,7 @@
 # Source Tree Analysis
 
 **Project:** @blinkbitcoin/esign-react-native monorepo (npm workspaces)
-**Updated:** 2026-07-02
+**Updated:** 2026-09-10
 
 ## Repository Structure
 
@@ -128,6 +128,8 @@ esign/
 │       │   ├── schema.ts          # The host's schema with investSigningUrl added
 │       │   ├── server.ts          # Apollo Server + the host's session in the context
 │       │   └── index.ts           # Bootstrap (PORT, default ESIGN_PORT_BASE + 4 = 4104)
+│       ├── tsup.config.ts         # Bundles src/ to dist/ for the image
+│       ├── Dockerfile             # The demo image CI builds and smokes (never published)
 │       └── tests/                 # Vitest, 100% enforced
 │
 ├── 🖥️ SERVER EXAMPLE 2 - the Fetch handlers behind a route
@@ -152,23 +154,35 @@ esign/
 │       ├── .env.test              # Test database connection (tracked)
 │       │
 │       ├── src/
-│       │   ├── index.ts           # Bootstrap (dotenv + startServer)
-│       │   ├── server.ts          # startServer(port) - testable ⭐
+│       │   ├── index.ts           # The library entry (.): createESignApp + the pure pieces
+│       │   ├── node.ts            # The process entry point: dotenv → telemetry → serve | migrate ⭐
+│       │   ├── server.ts          # ./node: startServer(env, deps) over @hono/node-server ⭐
+│       │   ├── vercel.ts          # ./vercel: GET/POST/OPTIONS route handlers
+│       │   ├── cloudflare.ts      # ./cloudflare: the Worker default export (mint only)
 │       │   ├── app.ts             # The Fetch core (createESignApp): capabilities → routes ⭐
-│       │   ├── schema.ts          # createESignGraphQL over the envelope service ⭐
+│       │   ├── capabilities.ts    # What the environment turns on (pure) ⭐
+│       │   ├── session.ts         # Session verification: JWKS or HS256, via jose
+│       │   ├── terms.ts           # The TERMS_URL callback and its merge rule
+│       │   ├── envelopes.ts       # The envelope capability: Fetch webhook + Apollo (Node-only)
+│       │   ├── loadEnvelopes.ts   # The one place that names ./envelopes (Node targets only)
+│       │   ├── schema.ts          # createGraphQL over the envelope service ⭐
 │       │   ├── typeDefs.ts        # Re-exports the package SDL (schema.graphql source)
 │       │   ├── services.ts        # Composition: createEnvelopeService(provider, store) ⭐
 │       │   ├── store.ts           # The package's Knex EnvelopeStore over db.ts
-│       │   ├── migrate.ts         # Applies the package's migrations (dist/migrate.js in the image)
+│       │   ├── migrate.ts         # Applies the package's migrations (node dist/node.js migrate)
 │       │   ├── db.ts              # Knex instance (fail-fast)
-│       │   ├── auth.ts            # JWT verification (HS256)
-│       │   ├── config.ts          # Boot-time security validation (fail-closed)
+│       │   ├── env.ts             # The Env type + ALLOW_INSECURE_DEV
+│       │   ├── proxy.ts           # TRUST_PROXY: whether x-forwarded-for names the client
+│       │   ├── port.ts            # PORT / ESIGN_PORT_BASE resolution
+│       │   ├── config.ts          # The boot guard: validateConfig(env, { runtime }), pure ⭐
+│       │   ├── instrumentation.ts # OpenTelemetry init (before the app loads)
 │       │   ├── tracing.ts         # OTel spans for the service + providers
 │       │   │
 │       │   ├── providers/         # The package's adapters wired to this service ⭐
 │       │   │   ├── port.ts        #   Re-exports ESignProvider + supportsHostedForms
 │       │   │   ├── index.ts       #   selectProvider(env): registry + providerFromEnv, tracing-wrapped, per app
-│       │   │   ├── mock.ts        #   mock adapter handle (pages served by the router)
+│       │   │   ├── mock.ts        #   mock adapter handle
+│       │   │   ├── pages.ts       #   The mock provider's signing pages as Fetch responses
 │       │   │   └── docusign/      #   DocuSign adapter handle + env config
 │       │   │
 │       │   ├── errors.ts          # Re-exports the package's coded errors
@@ -176,6 +190,9 @@ esign/
 │       │   │
 │       │   └── __mocks__/
 │       │       └── db.ts          # knex-mock-client for unit tests
+│       │
+│       ├── Dockerfile             # The esign-service image (defaults ESIGN_ENV=production)
+│       ├── deploy/                # Deploy templates: compose, k8s, nix, vercel, cloudflare
 │       │
 │       └── tests/
 │           ├── setup.ts           # Unit test setup (auto-mocks db)
@@ -213,8 +230,13 @@ esign/
 │   │
 │   └── .github/
 │       └── workflows/
-│           ├── e2e-backend.yml    # Backend E2E CI
-│           └── e2e-mobile.yml     # Mobile E2E CI
+│           ├── ci.yml             # The one pipeline per branch (calls the reusable ones)
+│           ├── checks.yml         # Changes, Code, Commits, Docs (static)
+│           ├── test.yml           # Unit suites + coverage
+│           ├── e2e.yml            # Build Packages → Web, Docker, Backend, Android, iOS
+│           ├── release.yml        # release-please + the publish retry
+│           ├── pull-request.yml   # PR title lint
+│           └── codeql.yml         # CodeQL analysis (informational)
 │
 ├── 📚 DOCUMENTATION
 │   │
@@ -233,7 +255,7 @@ esign/
 |------|---------|
 | `packages/esign-react-native/src/index.ts` | Public API |
 | `packages/esign-react-native/src/ESignature.tsx` | Core signing component |
-| `packages/esign-react-native/src/client.ts` | Apollo factory + error-code contract |
+| `packages/esign-core/src/client.ts` | Apollo factory + error-code contract |
 
 ### Demo Critical Paths
 
@@ -247,10 +269,12 @@ esign/
 
 | Path | Purpose |
 |------|---------|
-| `packages/esign-service/src/app.ts` | Server factory |
+| `packages/esign-service/src/app.ts` | The Fetch core (`createESignApp`) |
+| `packages/esign-service/src/capabilities.ts` | What the environment turns on |
+| `packages/esign-service/src/config.ts` | The boot guard (`validateConfig`) |
 | `packages/esign-service/src/schema.ts` | GraphQL API |
-| `packages/esign-service/src/webhook.ts` | Generic webhook processing |
-| `packages/esign-service/src/types.ts` | ESignProvider interface |
+| `packages/esign-service/src/envelopes.ts` | The envelope capability: webhook + GraphQL |
+| `packages/esign-service/src/providers/port.ts` | `ESignProvider` interface (the provider boundary) |
 | `packages/esign-service/src/providers/index.ts` | Provider selection per app (`selectProvider`, `providerFromEnv`) |
 | `packages/esign-node/src/knex/migrations.ts` | Database schema (programmatic Knex migration source) |
 | `packages/esign-service/tests/e2e/` | E2E tests |

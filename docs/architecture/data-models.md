@@ -2,7 +2,7 @@
 
 **Part:** backend
 **Database:** PostgreSQL via Knex.js 3.3.x
-**Updated:** 2026-07-02
+**Updated:** 2026-09-10
 
 ## Overview
 
@@ -199,7 +199,8 @@ In this repo:
 cd packages/esign-service
 npm run migrate          # tsx src/migrate.ts against DATABASE_URL (.env)
 npm run migrate:test     # the same against .env.test
-# in the image: docker run --rm --env-file .env esign-service node dist/migrate.js
+# in the image: docker run --rm --env-file .env esign-service node dist/node.js migrate
+# from the package:  npx esign-service migrate
 ```
 
 ---

@@ -13,7 +13,7 @@
 | Sessions | jose (JWKS / HS256) | 6.2.x |
 | Language | TypeScript | 6.0.x |
 | Query Builder | Knex.js | 3.3.x |
-| Database Driver | pg | 8.22.x |
+| Database Driver | pg | 8.23.x |
 | Database | PostgreSQL | 15+ |
 | Testing | Vitest (Fetch `Request`/`Response`, no HTTP server) | 4.1.x |
 | Lint/Format | Biome | 2.5.x |
@@ -178,14 +178,19 @@ type EnvelopeResult {
 
 ### Authentication
 
-`Authorization: Bearer <token>` handled by `src/auth.ts`:
+`Authorization: Bearer <token>` handled by `src/session.ts` (via `jose`) -
+the same verification the mint uses, applied to the GraphQL context:
 
-- **`JWT_SECRET` set**: token verified as an HS256 JWT (signature + expiry,
-  timing-safe comparison); `sub` claim becomes the resolver context `userId`
-- **`JWT_SECRET` unset, development**: token treated as an opaque userId
-  (placeholder until an identity provider issues tokens)
-- **`JWT_SECRET` unset**: fail closed - the server refuses to boot unless
-  `ALLOW_INSECURE_DEV=true` is set (then requests use the dev passthrough).
+- **`SESSION_JWKS_URL` set**: RS/ES token verified against a remote, cached
+  key set (asymmetric algorithms only, so an HS256 token can never be
+  accepted); `SESSION_ISSUER` / `SESSION_AUDIENCE` enforced when set
+- **`SESSION_HS256_SECRET` set** (`JWT_SECRET` is an accepted alias): HS256
+  against the shared secret
+- Either way `exp` is required and the claim named by `SESSION_USER_CLAIM`
+  (default `sub`) becomes the context `userId`; anything unverifiable is
+  simply unauthenticated
+- **Neither set**: fail closed at boot - the service refuses to start unless
+  `ALLOW_INSECURE_DEV=true` (then the bearer token is taken as the user id).
   This is not gated on `NODE_ENV`. See [security.md](security.md).
 
 ## Webhook Processing
@@ -197,8 +202,9 @@ type EnvelopeResult {
 - Signature verification delegated to `provider.verifyWebhook()` before any
   processing (DocuSign: HMAC-SHA256 of the raw body, `X-DocuSign-Signature-1`
   header, keyed by `DOCUSIGN_HMAC_KEY`)
-- Missing HMAC key: dev mode allows with a warning; **production rejects all
-  webhooks (fail-closed)**
+- Missing HMAC key: **rejected (fail-closed)** unless `ALLOW_INSECURE_DEV=true`
+  says unsigned webhooks are acceptable; with envelopes on and the DocuSign
+  provider selected, the boot guard refuses to start without the key at all
 - Raw body is used for verification (`await request.text()`) - re-serializing
   JSON would invalidate the signature
 
@@ -299,34 +305,48 @@ npm run test:e2e
 | Feature | Implementation |
 |---------|----------------|
 | Webhook signature validation | Provider-delegated; HMAC-SHA256, timing-safe compare, fail-closed in prod |
-| JWT verification | HS256 via `JWT_SECRET`; fail-closed in prod when unset |
+| Session verification | JWKS or HS256 via `jose` (`src/session.ts`); boot refuses when no source is configured |
 | ID protection | Internal UUIDs only; provider envelope IDs never exposed |
 | User scoping | All envelope queries filtered by userId (no info leak on miss) |
 | Audit logging | All actions tracked; metadata sanitized against a PII allow-list |
-| Fail-fast config | Missing provider config or DATABASE_URL aborts startup |
+| Fail-fast config | `configErrors` (`src/config.ts`) aborts startup on any problem: no session source, bad provider config, demo settings under `ESIGN_ENV=production`, a bad/plaintext `TERMS_URL`, a missing `DOCUSIGN_HMAC_KEY` with envelopes + docusign, `DATABASE_URL` on edge |
 
 ## Environment Variables
 
 | Variable | Purpose |
 |----------|---------|
-| `DATABASE_URL` | PostgreSQL connection string (required) |
+| `DATABASE_URL` | PostgreSQL connection string. **Optional**: its presence turns envelope orchestration on |
+| `SESSION_JWKS_URL` | Remote key set (RS/ES) for session verification |
+| `SESSION_HS256_SECRET` | Shared secret instead of a key set (`JWT_SECRET` is an accepted alias) |
+| `SESSION_ISSUER` / `SESSION_AUDIENCE` / `SESSION_USER_CLAIM` | Enforced when set; claim default `sub` |
+| `TERMS_URL`, `TERMS_SHARED_SECRET`, `TERMS_TIMEOUT_MS`, `TERMS_ALLOW_INSECURE` | The host callback that computes the locked prefill |
+| `ESIGN_ENV` / `ESIGN_ALLOW_DEMO` | `production` refuses demo settings and disables introspection; `true` is the one bypass |
+| `ESIGN_ALLOW_CLIENT_PREFILL` | Mint the client's own prefill in production |
 | `ESIGN_PROVIDER` | Provider selection: `mock` (default) / `docusign` |
+| `MOCK_PAGES` | `false` turns the mock provider's signing pages off |
 | `DOCUSIGN_*` | DocuSign credentials (required when provider=docusign) |
-| `DOCUSIGN_HMAC_KEY` | Webhook HMAC key (fail-closed in prod when unset) |
-| `JWT_SECRET` | HS256 JWT verification key (fail-closed in prod when unset) |
-| `PORT` | Server port (default: `ESIGN_PORT_BASE` + 0 = 4100) |
+| `DOCUSIGN_HMAC_KEY` | Webhook HMAC key (required when envelopes are on and the provider signs) |
+| `CORS_ALLOWED_ORIGINS` | Browser origins allowed to call the API |
+| `ALLOW_INSECURE_DEV` | The explicit opt-in to no verification (never in production) |
+| `PORT`, `TRUST_PROXY`, `RATE_LIMIT_*_PER_MIN` | Container only (port default `ESIGN_PORT_BASE` + 0 = 4100) |
 
-Full reference (every variable, incl. optional overrides and OTEL):
-[development-guide.md](../development-guide.md#environment-variables-reference);
+Full reference (every variable, incl. optional overrides and OTEL): the
+service README's
+[Environment](../../packages/esign-service/README.md#environment) table;
 runnable template: `packages/esign-service/.env.example`.
 
 ## Entry Points
 
-| File | Purpose |
+| File / route | Purpose |
 |------|---------|
-| `src/index.ts` | Bootstrap (env loading + startServer) |
-| `src/server.ts` | `startServer(port)` - testable listen/log logic |
-| `src/app.ts` | `createApp()` factory for testability |
-| `POST /graphql` | GraphQL endpoint |
-| `POST /webhook/esign` | Provider webhook endpoint |
-| `GET /health` | Health check |
+| `src/index.ts` | The library entry (`.`): `createESignApp` + the pure pieces |
+| `src/app.ts` | `createESignApp(env, deps) → { fetch, capabilities, stop }` |
+| `src/node.ts` | The process entry point: dotenv → telemetry → `serve` \| `migrate` (what the image and `npx esign-service` run) |
+| `src/server.ts` | `./node`: `startServer(env, deps) → { url, stop }` over `@hono/node-server`, with the rate limits and the SIGTERM drain |
+| `src/vercel.ts` | `./vercel`: `export { GET, POST, OPTIONS }` |
+| `src/cloudflare.ts` | `./cloudflare`: `export default { fetch(request, env) }` (mint only) |
+| `POST /webform/instance` | Mint a hosted-form instance (always on) |
+| `GET /signing/return` | The return-URL bridge (always on) |
+| `POST /graphql` | GraphQL endpoint (with `DATABASE_URL`) |
+| `POST /webhook/esign` | Provider webhook endpoint (with `DATABASE_URL`) |
+| `GET /health` | Health check: `{ status, capabilities, timestamp }` |

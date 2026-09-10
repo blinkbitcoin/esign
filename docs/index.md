@@ -12,7 +12,7 @@
 | **Type** | Monorepo (npm workspaces): five packages (incl. the service) + two demo apps + tooling |
 | **Domain** | Fintech / E-Signature |
 | **Primary Language** | TypeScript |
-| **Architecture** | React Native / React (web) + Express/Apollo, hexagonal server library |
+| **Architecture** | React Native / React (web) + a Fetch-native service (Apollo only for the GraphQL half), hexagonal server library |
 
 ### Quick Reference
 
@@ -66,7 +66,7 @@ Organized by namespace - pick by what you're doing:
 | Doc | Covers |
 |-----|--------|
 | [mobile.md](architecture/mobile.md) | React Native component: state machine, sources, render states, test doubles |
-| [backend.md](architecture/backend.md) | Express/Apollo service: provider pattern, webhook processing, observability |
+| [backend.md](architecture/backend.md) | Fetch-native service, capability by environment: provider pattern, webhook processing, observability |
 | [integration.md](architecture/integration.md) | How the parts communicate: GraphQL, webhooks, WebView events, shared error codes |
 | [api-contracts.md](architecture/api-contracts.md) | GraphQL schema and REST endpoints |
 | [data-models.md](architecture/data-models.md) | Knex schema and database design |
@@ -86,7 +86,7 @@ Organized by namespace - pick by what you're doing:
 |-----|--------|
 | [development-guide.md](./development-guide.md) | Working on this repo: setup, commands, quality gates, CI |
 | [releasing.md](./releasing.md) | How a merged PR becomes a version: release-please, the release PR, the changelog, what merging it does |
-| [upgrading.md](./upgrading.md) | What changes for app, backend and form owners in the 2026-09 stack:<br>additive API, deprecated names and their canonical homes, the `apps/api` move |
+| [upgrading.md](./upgrading.md) | What changes for app, backend and form owners in the 2026-09 stack:<br>additive API, deprecated names and their canonical homes, the package renames and the service's capability-by-env rewrite |
 | [diagrams/](./diagrams/README.md) | All nine diagrams (render directly on GitHub) |
 
 ---

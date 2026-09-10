@@ -196,5 +196,6 @@ What the app can expect:
 - No new service, no database, no webhooks for this flow: the envelope
   status lives in DocuSign; `onComplete` is the app's signal. (Webhooks and
   envelope persistence are mode 3, [docusign-proxy.md](docusign-proxy.md).)
-- No `JWT_SECRET`: that belongs to this repo's full service. Your backend
-  verifies its own session however it already does.
+- No `SESSION_JWKS_URL` / `SESSION_HS256_SECRET`: session verification
+  belongs to this repo's full service. Your backend verifies its own session
+  however it already does.

@@ -225,7 +225,7 @@ Ordered by how likely you are to need each part:
 | [`packages/esign-node/`](packages/esign-node/README.md) | The Node-only server half for your own backend: mint Web Forms<br>instances with locked prefill in one call, or run the whole<br>envelope domain (mode 3) over your own store, as a Fetch<br>handler or an Express router. The service below is built on it. |
 | [`examples/mint-only-demo/`](examples/mint-only-demo/README.md) | Server shape for most hosts: your existing API adds one<br>mutation that mints a locked Web Forms instance. |
 | [`examples/serverless-handler-demo/`](examples/serverless-handler-demo/README.md) | Server shape for route handlers and edge functions: the<br>package's mint and webhook handlers, `Request → Response`. |
-| [`packages/esign-service/`](packages/esign-service/README.md) | Server shape for mode 3, the whole service: a GraphQL API that creates<br>envelopes through provider adapters (DocuSign and a mock),<br>persists status in PostgreSQL, and receives provider<br>webhooks. Not needed for modes 1 and 2. |
+| [`packages/esign-service/`](packages/esign-service/README.md) | The whole service as one deployable: it always mints, and<br>adds the GraphQL API, the provider webhook and the<br>PostgreSQL store when `DATABASE_URL` is set. Needed only<br>when you deploy a backend rather than mint from your own. |
 | [`examples/react-native-demo/`](examples/react-native-demo/README.md) | A complete React Native app hosting the component. Used for<br>manual testing, and the mobile end-to-end suites drive it. |
 | [`examples/react-demo/`](examples/react-demo/README.md) | The same for the browser: a small React app hosting the web<br>component, driven by the browser end-to-end suites. |
 | `docs/` | Documentation of how everything currently works -<br>start at [docs/index.md](docs/index.md); upgrading notes in<br>[docs/upgrading.md](docs/upgrading.md). |
@@ -277,7 +277,7 @@ credentials are set).
 | `make unit`<br>`make coverage` | Test suites (100% coverage on packages + backend + `scripts/lib`) |
 | `make coverage-badge` | Coverage badge + HTML report from the last `make coverage` run |
 | `make check-code` | Lint + typecheck + format check only |
-| `make build` | Build the library (react-native-builder-bob) |
+| `make build` | Build the packages (bob for RN, tsup for core/node/web,<br>tsc for the service) |
 | `make e2e-backend`<br>`make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown (`e2e-web`<br>builds the libraries first and bundles the demo against their dist) |
 | `make e2e-ios`<br>`make e2e-android` | Maestro E2E against a running stack |
 | `make check-ci` | Lint the CI itself: actionlint on the workflows, shellcheck on `scripts/**` |
