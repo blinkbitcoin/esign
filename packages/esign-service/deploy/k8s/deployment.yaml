@@ -65,9 +65,11 @@ spec:
             capabilities:
               drop: ["ALL"]
       volumes:
+        # Mounted, never injected: the PEM has its own Secret so that the one
+        # above (read with envFrom) holds only valid variable names
         - name: docusign-pem
           secret:
-            secretName: esign-service
+            secretName: esign-service-docusign-pem
             items:
               - key: docusign.pem
                 path: docusign.pem

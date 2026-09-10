@@ -144,3 +144,67 @@ describe('the Vercel entry', () => {
     expect(await response.json()).toMatchObject({ status: 'ok', capabilities: ['mint'] });
   });
 });
+
+describe('the Kubernetes templates', () => {
+  const k8s = (file: string) =>
+    readFileSync(path.join(import.meta.dirname, '..', 'deploy/k8s', file), 'utf8');
+
+  // A very small YAML reader for these templates: `key: value` and block
+  // scalars under one `stringData:` mapping. Enough to name the keys, and it
+  // keeps a YAML parser out of the service's dependencies.
+  const stringDataKeys = (yaml: string): string[] => {
+    const lines = yaml.split('\n');
+    const start = lines.findIndex((line) => line.trimEnd() === 'stringData:');
+    expect(start).toBeGreaterThan(-1);
+    const keys: string[] = [];
+    for (const line of lines.slice(start + 1)) {
+      if (line.trim() === '' || line.trimStart().startsWith('#')) {
+        continue;
+      }
+      const key = /^ {2}([^\s:]+):/.exec(line);
+      if (key) {
+        keys.push(key[1]);
+      } else if (!line.startsWith('    ')) {
+        break; // dedented out of the mapping
+      }
+    }
+    return keys;
+  };
+
+  // kubelet refuses a key that is not a valid variable name and reports it
+  // as an InvalidVariableNames event on every pod start
+  const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+  it('keeps every key of the envFrom Secret a valid environment variable name', () => {
+    const keys = stringDataKeys(k8s('secret.yaml'));
+
+    expect(keys.length).toBeGreaterThan(5);
+    expect(keys.filter((key) => !ENV_NAME.test(key))).toEqual([]);
+  });
+
+  it('is the Secret both workloads read with envFrom', () => {
+    for (const file of ['deployment.yaml', 'migrate-job.yaml']) {
+      expect(k8s(file)).toContain(
+        'envFrom:\n            - secretRef:\n                name: esign-service\n'
+      );
+    }
+  });
+
+  it('keeps the PEM in its own Secret, mounted and never injected', () => {
+    const pem = k8s('secret-docusign-pem.yaml');
+    expect(stringDataKeys(pem)).toEqual(['docusign.pem']);
+    expect(pem).toContain('name: esign-service-docusign-pem');
+
+    const deployment = k8s('deployment.yaml');
+    expect(deployment).toContain('secretName: esign-service-docusign-pem');
+    expect(deployment).toContain('value: /run/secrets/docusign.pem');
+    // ...and nothing reads that Secret as environment
+    expect(deployment).not.toContain('name: esign-service-docusign-pem\n                key');
+  });
+
+  it('applies both Secrets', () => {
+    const kustomization = k8s('kustomization.yaml');
+    expect(kustomization).toContain('- secret.yaml');
+    expect(kustomization).toContain('- secret-docusign-pem.yaml');
+  });
+});
