@@ -5,6 +5,13 @@ from Conventional Commit PR titles; see [docs/releasing.md](docs/releasing.md).
 The two entries below were written by hand from the v0.1.0 and v0.2.0 GitHub
 Releases in the same format release-please prepends to.
 
+## [0.4.0](https://github.com/blinkbitcoin/esign/compare/v0.3.0...v0.4.0) (2026-09-10)
+
+
+### Features
+
+* **demo:** the mint-only demo builds, ships a Dockerfile and uses the hosted-form router ([#85](https://github.com/blinkbitcoin/esign/issues/85)) ([aad60ca](https://github.com/blinkbitcoin/esign/commit/aad60cabe7e60a0ac602253ce4d3f6d9b68dfede))
+
 ## [0.3.0](https://github.com/blinkbitcoin/esign/compare/v0.2.0...v0.3.0) (2026-09-09)
 
 
