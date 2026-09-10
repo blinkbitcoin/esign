@@ -1,0 +1,21 @@
+# CodeQL configuration for .github/workflows/codeql.yml.
+#
+# Queries: the default security suite plus the maintainability/reliability
+# queries (what GitHub's separate "Code quality" product runs), and the
+# pack's alert-suppression query, which is what makes an inline
+#   // codeql[<rule-id>]
+# comment (alone on its line, covering the next line) suppress one finding
+# at one place. Without that query the marker is ignored - which is why the
+# JWT-grant false positive in packages/esign-server/src/providers/docusign/auth.ts
+# came back as alerts 1, 10 and 15 despite the marker from #58.
+#
+# A suppression travels with the code (an API dismissal is keyed on the
+# alert's fingerprint and re-opens after every file move) and silences one
+# site, not the query: a real weak password hash elsewhere still fails.
+name: esign
+
+queries:
+  - uses: security-and-quality
+
+packs:
+  - codeql/javascript-queries:AlertSuppression.ql
