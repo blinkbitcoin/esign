@@ -7,6 +7,7 @@
 export type {
   RecipientData,
   ESignatureTheme,
+  ESignLogger,
   UseESignatureOptions,
 } from './types';
 
@@ -84,6 +85,7 @@ export type {
 export {
   createESignApolloClient,
   createAuthContextSetter,
+  createApolloErrorHandler,
   handleApolloErrors,
   ErrorCodes,
 } from './client';

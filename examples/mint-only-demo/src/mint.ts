@@ -8,6 +8,7 @@
 import {
   assertDocuSignConfig,
   createDocuSignProvider,
+  type DefaultRegistryOptions,
   defaultRegistry,
   docuSignConfigFromEnv,
   hostedFormMint,
@@ -23,20 +24,25 @@ export type Mint = (
 
 // The mock provider: mints onto the full-service demo's mock Web Forms page.
 // This host never receives webhooks; the mock mirrors DocuSign's anyway.
-export const mockProvider = (env: NodeJS.ProcessEnv) =>
-  defaultRegistry(env).mock();
+export const mockProvider = (
+  env: NodeJS.ProcessEnv,
+  options: DefaultRegistryOptions = {},
+) => defaultRegistry(env, options).mock();
 
 // The package's registry, with this host's DocuSign entry: the credentials
 // are checked when the provider is selected (fail at startup, not on the
 // first mutation), and one config object → one cached token.
-export const registry = (env: NodeJS.ProcessEnv): ProviderRegistry => ({
-  ...defaultRegistry(env),
+export const registry = (
+  env: NodeJS.ProcessEnv,
+  options: DefaultRegistryOptions = {},
+): ProviderRegistry => ({
+  ...defaultRegistry(env, options),
   docusign: () => {
     const config = docuSignConfigFromEnv(env);
     assertDocuSignConfig(config);
     return createDocuSignProvider({
       config,
-      webhook: { hmacKey: () => env.DOCUSIGN_HMAC_KEY },
+      webhook: { hmacKey: () => env.DOCUSIGN_HMAC_KEY, ...options.webhook },
     });
   },
 });

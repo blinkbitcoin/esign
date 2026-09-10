@@ -13,9 +13,9 @@ import {
 import type { ESignProvider } from '../provider';
 import { createDocuSignClient } from '../providers/docusign/client';
 import { createMemoryEnvelopeStore } from '../store';
-import { fakeFetch, ok, testConfig, token } from './support';
+import { fakeFetch, ok, spyLogger, testConfig, token } from './support';
 
-const silent = { log: jest.fn(), warn: jest.fn(), error: jest.fn() };
+const silent = spyLogger();
 
 const post = (
   url: string,

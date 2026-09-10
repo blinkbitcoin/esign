@@ -1,4 +1,6 @@
 module.exports = {
+  // Tests are silent: fails a test on any console output (jest.setup.ts)
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   testEnvironment: 'node',
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   coveragePathIgnorePatterns: [

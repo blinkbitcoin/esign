@@ -1,13 +1,30 @@
-// Test support: a throwaway RSA key, a config with it, and fetch fakes.
+// Test support: the loggers tests inject (tests are silent - jest.setup.ts
+// fails a test that reaches the console), a throwaway RSA key, a config
+// with it, and fetch fakes.
 
 import {
   createPublicKey,
   createVerify,
   generateKeyPairSync,
 } from 'node:crypto';
+import type { Logger } from '../log';
 import type { DocuSignConfig } from '../providers/docusign/config';
 import { DOCUSIGN_DEMO_URLS } from '../providers/docusign/config';
 import type { FetchLike } from '../types';
+
+// A logger that drops everything: for tests that do not care what is logged
+export const silentLogger: Logger = {
+  log: () => {},
+  warn: () => {},
+  error: () => {},
+};
+
+// A logger that records everything: for tests that assert on the log lines
+export const spyLogger = () => ({
+  log: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+});
 
 export const { privateKey: testPrivateKey } = generateKeyPairSync('rsa', {
   modulusLength: 2048,

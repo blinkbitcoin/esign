@@ -2,6 +2,7 @@
 // provider and the in-memory domain. The host's auth, CORS and rate limits
 // arrive as options; the router owns status codes and bodies.
 
+import { spyLogger } from './support';
 import express, { type RequestHandler } from 'express';
 import request from 'supertest';
 import { createEnvelopeService } from '../envelopes';
@@ -11,7 +12,7 @@ import type { ESignProvider } from '../provider';
 import { createMemoryEnvelopeStore } from '../store';
 import type { WebhookEvent } from '../types';
 
-const silentLogger = { log: jest.fn(), warn: jest.fn(), error: jest.fn() };
+const silentLogger = spyLogger();
 
 const fakeProvider = (
   overrides: Partial<ESignProvider> = {},

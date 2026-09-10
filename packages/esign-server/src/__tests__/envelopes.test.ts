@@ -1,3 +1,4 @@
+import { spyLogger } from './support';
 import { createEnvelopeService, type EnvelopeServiceDeps } from '../envelopes';
 import { Errors } from '../errors';
 import type { Logger } from '../log';
@@ -11,11 +12,7 @@ const UUID =
 
 const recipient = { name: 'Jane Signer', email: 'jane@example.com' };
 
-const fakeLogger = () => ({
-  log: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-});
+const fakeLogger = spyLogger;
 
 const fakeProvider = () => ({
   createEnvelope: jest.fn(async () => ({

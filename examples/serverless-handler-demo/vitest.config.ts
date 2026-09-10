@@ -9,14 +9,14 @@ export default defineConfig({
       {
         find: '@blinkbitcoin/esign-server/docusign',
         replacement: path.resolve(
-          __dirname,
+          import.meta.dirname,
           '../../packages/esign-server/src/docusign.ts',
         ),
       },
       {
         find: '@blinkbitcoin/esign-server',
         replacement: path.resolve(
-          __dirname,
+          import.meta.dirname,
           '../../packages/esign-server/src/index.ts',
         ),
       },
@@ -26,6 +26,8 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     include: ['tests/**/*.test.ts'],
+    // Tests are silent: fails a test on any console output
+    setupFiles: ['./vitest.setup.ts'],
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',

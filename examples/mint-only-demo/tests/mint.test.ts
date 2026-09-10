@@ -18,6 +18,10 @@ vi.mock('@blinkbitcoin/esign-server', async importOriginal => {
 
 import { createMint, mockProvider, registry } from '../src/mint';
 
+// Tests are silent (vitest.setup.ts): the webhook mirror logs its security
+// events through the injected logger
+const silent = { log() {}, warn() {}, error() {} };
+
 describe('createMint', () => {
   afterEach(() => {
     createDocuSignProvider.mockClear();
@@ -41,7 +45,10 @@ describe('createMint', () => {
   });
 
   it('mock provider: mirrors the DocuSign webhook verification (unsigned → rejected)', () => {
-    const provider = mockProvider({ DOCUSIGN_HMAC_KEY: 'k' });
+    const provider = mockProvider(
+      { DOCUSIGN_HMAC_KEY: 'k' },
+      { webhook: { logger: silent } },
+    );
     expect(provider.verifyWebhook({}, '{}')).toBe(false);
   });
 

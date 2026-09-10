@@ -1,5 +1,11 @@
 import { createHmac } from 'node:crypto';
-import { fakeFetch, ok, testConfig, token } from '../../../__tests__/support';
+import {
+  fakeFetch,
+  ok,
+  spyLogger,
+  testConfig,
+  token,
+} from '../../../__tests__/support';
 import { HttpError } from '../../../http';
 import { type ESignProvider, supportsWebForms } from '../../../provider';
 import type { DocuSignClient } from '../client';
@@ -51,11 +57,7 @@ const fakeClient = (config: DocuSignConfig) => ({
 });
 type FakeClient = ReturnType<typeof fakeClient>;
 
-const fakeLogger = () => ({
-  log: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-});
+const fakeLogger = spyLogger;
 
 const setup = (
   overrides: Partial<DocuSignProviderOptions> = {},
@@ -360,7 +362,9 @@ describe('createDocuSignProvider', () => {
 
     it('reads the key per call (rotation)', () => {
       let key = 'old';
-      const { provider } = setup({ webhook: { hmacKey: () => key } });
+      const { provider } = setup({
+        webhook: { hmacKey: () => key, logger: fakeLogger() },
+      });
       const headers = { [DOCUSIGN_SIGNATURE_HEADER]: sign('new') };
       expect(provider.verifyWebhook(headers, body)).toBe(false);
       key = 'new';

@@ -16,6 +16,7 @@ import {
   createWebhookHandler,
   defaultRegistry,
   type ESignProvider,
+  type Logger,
   providerFromEnv as selectProvider,
 } from '@blinkbitcoin/esign-server';
 
@@ -26,6 +27,11 @@ export interface Handlers {
   webhook: Handler;
 }
 
+// What a host injects: where the package reports (default: the console)
+export interface HandlerOptions {
+  logger?: Logger;
+}
+
 // This example accepts `Authorization: Bearer <userId>` as-is; a real host
 // verifies its own session token here. The package never sees the token.
 export const authenticate = (request: Request): string | null =>
@@ -33,28 +39,38 @@ export const authenticate = (request: Request): string | null =>
 
 // The provider ESIGN_PROVIDER selects out of the package's registry: DocuSign
 // unless `mock` is set. Only the mock is allowed to run unsigned webhooks.
-export const providerFromEnv = (env: NodeJS.ProcessEnv): ESignProvider =>
+export const providerFromEnv = (
+  env: NodeJS.ProcessEnv,
+  { logger }: HandlerOptions = {},
+): ESignProvider =>
   selectProvider(
     env,
     defaultRegistry(env, {
-      webhook: { allowMissingKey: () => env.ESIGN_PROVIDER === 'mock' },
+      webhook: {
+        allowMissingKey: () => env.ESIGN_PROVIDER === 'mock',
+        logger,
+      },
     }),
     { default: 'docusign' },
   );
 
 export const createHandlers = (
   env: NodeJS.ProcessEnv = process.env,
+  options: HandlerOptions = {},
 ): Handlers => {
-  const provider = providerFromEnv(env);
+  const { logger } = options;
+  const provider = providerFromEnv(env, options);
   const envelopes = createEnvelopeService({
     provider,
     store: createMemoryEnvelopeStore(),
+    logger,
   });
   return {
-    mint: createWebFormInstanceHandler({ provider, authenticate }),
+    mint: createWebFormInstanceHandler({ provider, authenticate, logger }),
     webhook: createWebhookHandler({
       provider,
       envelopes,
+      logger,
       clientIp: request =>
         request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
         undefined,

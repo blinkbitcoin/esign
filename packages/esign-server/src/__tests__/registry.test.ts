@@ -1,6 +1,7 @@
 // Provider selection: ESIGN_PROVIDER → a registry entry, lazily; the
 // default registry wires the two shipped adapters from the environment.
 
+import { silentLogger } from './support';
 import type { ESignProvider } from '../provider';
 import {
   defaultRegistry,
@@ -104,7 +105,7 @@ describe('providerFromEnv', () => {
 });
 
 describe('defaultRegistry', () => {
-  const silent = { log: jest.fn(), warn: jest.fn(), error: jest.fn() };
+  const silent = silentLogger;
   const webhook = { logger: silent };
   const credentials = {
     DOCUSIGN_ACCOUNT_ID: 'acc',

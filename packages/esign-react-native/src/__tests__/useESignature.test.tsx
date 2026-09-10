@@ -398,21 +398,39 @@ describe('WebView events (via source.interpret)', () => {
     });
   });
 
-  it('unrecognized events are ignored (interpret returns null)', () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const { result } = renderHook(signingOptions());
+  it('unrecognized events are ignored and reported to the logger', () => {
+    const logger = { warn: jest.fn(), error: jest.fn() };
+    const { result } = renderHook(signingOptions({ logger }));
     deliver(result, { event: 'noise' });
     expect(result.current.status).toBe('signing');
     expect(callbacks.onError).not.toHaveBeenCalled();
-    warn.mockRestore();
+    expect(logger.warn).toHaveBeenCalledWith('Unknown signing WebView event:', {
+      event: 'noise',
+    });
+    expect(logger.error).not.toHaveBeenCalled();
   });
 
-  it('invalid JSON is ignored', () => {
-    const err = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const { result } = renderHook(signingOptions());
+  it('invalid JSON is ignored and reported to the logger', () => {
+    const logger = { warn: jest.fn(), error: jest.fn() };
+    const { result } = renderHook(signingOptions({ logger }));
     deliver(result, 'not json');
     expect(result.current.status).toBe('signing');
     expect(callbacks.onError).not.toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalledWith(
+      'WebView message parse error:',
+      expect.any(SyntaxError),
+    );
+  });
+
+  it('reports through the console when the host injects no logger', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const err = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const { result } = renderHook(signingOptions());
+    deliver(result, { event: 'noise' });
+    deliver(result, 'not json');
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(err).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
     err.mockRestore();
   });
 });

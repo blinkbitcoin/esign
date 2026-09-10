@@ -60,17 +60,22 @@ describe('Webhook Endpoint Integration', () => {
 
   beforeAll(async () => {
     app = await createApp();
-    // No DOCUSIGN_HMAC_KEY is configured in this suite, so every request
-    // hits the expected dev-mode "not configured" warning. Some tests also
-    // intentionally exercise malformed-JSON and DB-failure error paths, and
-    // successful requests log via the service's console.log.
-    // Silence all three - they're expected, not unexpected failures.
+  });
+
+  // No DOCUSIGN_HMAC_KEY is configured in this suite, so every request hits
+  // the expected dev-mode "not configured" warning. Some tests also
+  // intentionally exercise malformed-JSON and DB-failure error paths, and
+  // successful requests log via the service's console.log. All expected: the
+  // service composes the package on its console logger (no seam of its own),
+  // so each test opts out of the silent-tests gate by spying on the console
+  // itself (vitest.setup.ts) - per test, so the spy sits on top of the gate's.
+  beforeEach(() => {
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
-  afterAll(() => {
+  afterEach(() => {
     consoleWarnSpy.mockRestore();
     consoleErrorSpy.mockRestore();
     consoleLogSpy.mockRestore();

@@ -85,6 +85,7 @@ interface UseESignatureOptions {
   onError: (error: { code: string; message: string }) => void;
   onCancel: () => void;
   successDelayMs?: number; // success screen duration before onComplete
+  logger?: ESignLogger;    // where dropped WebView messages are reported (default: console)
 }
 
 interface ESignatureProps extends UseESignatureOptions {

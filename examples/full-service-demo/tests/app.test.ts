@@ -26,16 +26,22 @@ describe('Express App Endpoints', () => {
 
   beforeAll(async () => {
     app = await createApp();
-    // Silence expected console output: console.warn from the "unknown
-    // envelope" and "HMAC key not configured" paths, console.error from the
-    // security-event logging on invalid/missing HMAC signatures, console.log
-    // from a processed webhook.
+  });
+
+  // Expected console output: console.warn from the "unknown envelope" and
+  // "HMAC key not configured" paths, console.error from the security-event
+  // logging on invalid/missing HMAC signatures, console.log from a processed
+  // webhook. The service composes the package on its console logger (no seam
+  // of its own), so every test opts out of the silent-tests gate by spying
+  // on the console itself (vitest.setup.ts) - per test, so the spy sits on
+  // top of the gate's.
+  beforeEach(() => {
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
-  afterAll(() => {
+  afterEach(() => {
     consoleWarnSpy.mockRestore();
     consoleErrorSpy.mockRestore();
     consoleLogSpy.mockRestore();

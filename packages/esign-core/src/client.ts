@@ -7,6 +7,7 @@ import { HttpLink } from '@apollo/client/link/http';
 import { ErrorLink } from '@apollo/client/link/error';
 import { SetContextLink } from '@apollo/client/link/context';
 import { CombinedGraphQLErrors } from '@apollo/client/errors';
+import type { ESignLogger } from './types';
 
 // Error codes shared with the backend (extensions.code on GraphQL errors).
 // The wire contract is the ErrorCode enum in examples/full-service-demo/schema.graphql; a parity
@@ -23,18 +24,30 @@ export const ErrorCodes = {
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
 
+// The logger the client reports errors through unless the host injects one
+// (late-bound console, so a spy installed by a test is honoured)
+const consoleLogger: Pick<ESignLogger, 'error'> = {
+  error: (...args) => console.error(...args),
+};
+
 // Error handling link callback - logs GraphQL/network errors with codes.
 // Apollo Client 4 wraps server-side GraphQL errors in `CombinedGraphQLErrors`
 // (an `errors` array) rather than the old `{graphQLErrors, networkError}` shape.
-export const handleApolloErrors: ErrorLink.ErrorHandler = ({ error }) => {
-  if (CombinedGraphQLErrors.is(error)) {
-    error.errors.forEach(({ message, extensions }) => {
-      console.error(`[GraphQL error]: ${extensions?.code} - ${message}`);
-    });
-  } else {
-    console.error(`[Network error]: ${error}`);
-  }
-};
+export const createApolloErrorHandler =
+  (logger: Pick<ESignLogger, 'error'>): ErrorLink.ErrorHandler =>
+  ({ error }) => {
+    if (CombinedGraphQLErrors.is(error)) {
+      error.errors.forEach(({ message, extensions }) => {
+        logger.error(`[GraphQL error]: ${extensions?.code} - ${message}`);
+      });
+    } else {
+      logger.error(`[Network error]: ${error}`);
+    }
+  };
+
+// The console-backed handler (what the client uses without a logger option)
+export const handleApolloErrors: ErrorLink.ErrorHandler =
+  createApolloErrorHandler(consoleLogger);
 
 // Returns the bearer token to attach to requests, or null/undefined for
 // unauthenticated requests. May be async (e.g. secure-storage reads).
@@ -63,6 +76,8 @@ export interface ESignApolloClientOptions {
   uri: string;
   // Token provider; omit for unauthenticated (dev) usage
   getAuthToken?: GetAuthToken;
+  // Where GraphQL / network errors are reported (default: console)
+  logger?: Pick<ESignLogger, 'error'>;
 }
 
 // Creates an ApolloClient wired for the e-signature backend:
@@ -70,10 +85,11 @@ export interface ESignApolloClientOptions {
 export const createESignApolloClient = ({
   uri,
   getAuthToken,
+  logger = consoleLogger,
 }: ESignApolloClientOptions): ApolloClient => {
   return new ApolloClient({
     link: from([
-      new ErrorLink(handleApolloErrors),
+      new ErrorLink(createApolloErrorHandler(logger)),
       new SetContextLink(createAuthContextSetter(getAuthToken)),
       new HttpLink({ uri }),
     ]),

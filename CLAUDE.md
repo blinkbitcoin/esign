@@ -233,6 +233,19 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   `package.json` version. A release ships only once the commit's main run is
   green (`release.yml`'s retry job re-runs a blocked Publish). `docs/releasing.md`.
 
+## Testing rules
+
+- Tests are silent: `jest.setup.ts` / `vitest.setup.ts` in every workspace
+  fail a test on any console output. Inject a logger instead of letting a
+  module fall back to the console (`silentLogger` / `spyLogger()` from
+  `packages/esign-server/src/__tests__/support.ts`; the `logger` option of
+  `createESignApolloClient`, `useESignature` and the demos' factories); wrap
+  every React state update in an act-aware API (`fireEvent`, `waitFor`,
+  `findBy*`, `ReactTestRenderer.act`), never a raw DOM `.click()` or a bare
+  awaited promise; a test that expects a log line spies on the console
+  method in the test or a `beforeEach` (never `beforeAll`). Check a run under
+  a pty, not through a filter.
+
 ## Architecture Patterns
 
 - **Provider pattern**: a new e-sign provider is an adapter directory

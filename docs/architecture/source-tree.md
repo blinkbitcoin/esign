@@ -100,7 +100,7 @@ esign/
 │   └── examples/react-demo/
 │       ├── index.html / src/main.tsx
 │       ├── src/App.tsx            # Host wiring around the web component
-│       ├── src/apollo.ts          # createESignApolloClient({uri, getAuthToken})
+│       ├── src/apollo.ts          # createESignApolloClient({uri, getAuthToken, logger})
 │       ├── vite.config.ts         # Vite + vitest; lib from source when serving, dist when building
 │       └── vite/libraries.ts      # requireBuiltLibraries + sourceAliases, unit-tested ⭐
 │
@@ -110,7 +110,7 @@ esign/
 │       ├── App.tsx                # Demo wiring: ApolloProvider + handlers
 │       ├── index.js / app.json    # App registration
 │       ├── src/
-│       │   ├── apollo.ts          # createESignApolloClient({uri, getAuthToken})
+│       │   ├── apollo.ts          # createESignApolloClient({uri, getAuthToken, logger})
 │       │   └── config.ts          # Platform-aware backend URL
 │       ├── __tests__/ __mocks__/  # App tests + safe-area mock
 │       ├── ios/  android/         # Native projects (node-resolved RN paths)
@@ -144,8 +144,8 @@ esign/
 │       ├── package.json           # Backend dependencies
 │       ├── tsconfig.json          # TypeScript configuration
 │       ├── biome.json             # Biome lint + format configuration
-│       ├── vitest.config.ts       # Unit test config (with coverage)
-│       ├── vitest.e2e.config.ts   # E2E test config (sequential)
+│       ├── vitest.config.mts      # Unit test config (with coverage)
+│       ├── vitest.e2e.config.mts  # E2E test config (sequential)
 │       ├── .env.example           # Documented environment variables
 │       ├── .env.docusign.example  # The live DocuSign layout, dummy values (make docusign-env writes the real one)
 │       ├── .env.test              # Test database connection (tracked)
