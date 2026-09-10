@@ -110,8 +110,11 @@ changes the bump class).
    Publish job waits for the commit's push-to-`main` run to be green (fails
    on a red one) and publishes under `latest`: the five packages to GitHub
    Packages and the image to GHCR as `ghcr.io/blinkbitcoin/esign-service:X.Y.Z`
-   (+ `:latest`). Verify installs the published packages, pulls the
-   published image and asserts the consumer contract on both.
+   (+ `:latest`). Verify installs the published packages from the registry -
+   `esign-core` (default and `--omit=peer`) plus `esign-node` and
+   `esign-service` together, which also proves both server packages carry the
+   same stamp and the service resolves the Node package at it - pulls the
+   published image and asserts the consumer contract on all of them.
 4. If the main run was red (a flaky E2E job), re-run its failed job
    (`gh run rerun <id> --failed`); `release.yml`'s retry job re-runs the blocked
    Publish as soon as main is green. Nothing to re-tag.
