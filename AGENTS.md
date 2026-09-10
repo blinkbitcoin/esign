@@ -45,6 +45,7 @@ one-line description. The ones you will reach for:
 | `make test` | Unit suites + `check-code` (lint, typecheck, format check) |
 | `make coverage` | Coverage - 100% enforced on the packages, the backend, and `scripts/lib` |
 | `make check-ci` | actionlint on the workflows + shellcheck on `scripts/**` |
+| `make codeql` | GitHub's CodeQL analysis locally (same config as `codeql.yml`, markers honoured);<br>never run in CI - GitHub runs it there |
 | `make codegen` | Regenerate `schema.graphql` + client types after editing the SDL in `packages/esign-server/src/graphql.ts` |
 | `make diagrams` | Re-render `docs/diagrams/dist/*.svg` from `src/*.mmd` (CI fails on drift) |
 | `make docs-check` | Warn when architecture-relevant changes ship without a `docs/` update;<br>fail on a README table cell line wider than 72 characters (break with `<br>`) |
@@ -108,7 +109,9 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
   (`.github/codeql/codeql-config.yml` runs the pack's AlertSuppression
   query, without which the marker is ignored). Never dismiss it in the
   UI/API (fingerprint-keyed: the same finding re-opened three times across
-  file moves) and never exclude the query (it stays on for real findings)
+  file moves) and never exclude the query (it stays on for real findings).
+  `make codeql` runs the same analysis locally and shows the marker as
+  suppressed before the push
 - The git hooks (lefthook) run format, lint, commitlint and typecheck; CI is
   the authoritative gate and every workflow must be green before merge
 

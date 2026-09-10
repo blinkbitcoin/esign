@@ -44,7 +44,8 @@ children), and each workspace (thin delegates to its npm scripts). So
 `make -C packages coverage` runs both libraries, `cd examples/full-service-demo && make dev`
 runs the service. `make help` lists every root target with a description.
 The ones that matter most: `make test` (unit + check-code), `make coverage`,
-`make check-ci` (actionlint + shellcheck of `scripts/**`), `make codegen`,
+`make check-ci` (actionlint + shellcheck of `scripts/**`), `make codeql`
+(GitHub's CodeQL analysis locally, never in CI), `make codegen`,
 `make diagrams` / `make docs-check`, `make e2e-backend` (DB up → migrate →
 E2E → teardown), `make e2e-web[-webform|-publicurl]` (Playwright), `make
 e2e-android-local` / `make e2e-ios-local` (the whole Maestro stack on a
@@ -228,6 +229,7 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   positive is suppressed in place with `// codeql[<rule-id>]` alone on the
   line above the flagged line - never by dismissing the alert (fingerprint-
   keyed, re-opens on every file move) and never by excluding the query.
+  `make codeql` runs the same analysis locally, markers included.
 - Native E2E builds are cached on the inputs `scripts/native-deps-hash.sh`
   sees plus `android/**` / `ios/**`; bump the cache key's `v` suffix when an
   input the script cannot see changes.
