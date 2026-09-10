@@ -81,6 +81,20 @@ export type ReadFile = (path: string) => string;
 
 const readFileUtf8: ReadFile = path => readFileSync(path, 'utf8');
 
+// A mounted secret that is missing or unreadable is a configuration
+// problem, so say which variable and which path - never the key material
+const readPrivateKeyFile = (file: string, readFile: ReadFile): string => {
+  try {
+    return readFile(file);
+  } catch (error) {
+    throw new Error(
+      `${DOCUSIGN_PRIVATE_KEY_SOURCES.file}=${file}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+};
+
 // A PEM pasted into a one-line environment variable arrives with literal
 // backslash-n; node:crypto needs real newlines.
 const normalizePem = (key: string): string => key.replace(/\\n/g, '\n');
@@ -100,7 +114,7 @@ export const privateKeyFromEnv = (
     return normalizePem(Buffer.from(base64, 'base64').toString('utf8'));
   }
   const file = env[DOCUSIGN_PRIVATE_KEY_SOURCES.file];
-  return file ? normalizePem(readFile(file)) : undefined;
+  return file ? normalizePem(readPrivateKeyFile(file, readFile)) : undefined;
 };
 
 export interface DocuSignConfigFromEnvOptions {
@@ -152,7 +166,14 @@ export const missingDocuSignConfig = (
 // A setting the requested operation cannot do without
 export class DocuSignConfigError extends Error {
   constructor(public readonly missing: string[]) {
-    super(`DocuSign: missing configuration: ${missing.join(', ')}`);
+    // The key has three accepted sources, so naming only the first one
+    // sends an operator who set _BASE64 or _FILE hunting the wrong variable
+    const keySources = missing.includes(DOCUSIGN_ENV.privateKey)
+      ? `. The private key comes from ${DOCUSIGN_PRIVATE_KEY_SOURCES.privateKey}, ${DOCUSIGN_PRIVATE_KEY_SOURCES.base64} or ${DOCUSIGN_PRIVATE_KEY_SOURCES.file}.`
+      : '';
+    super(
+      `DocuSign: missing configuration: ${missing.join(', ')}${keySources}`,
+    );
     this.name = 'DocuSignConfigError';
   }
 }

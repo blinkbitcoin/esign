@@ -538,6 +538,10 @@ describe('createHostedFormApp', () => {
     );
     expect(other.status).toBe(204);
     expect(other.headers.get('access-control-allow-origin')).toBeNull();
+    // A shared cache must not serve the header-less answer to an allowed
+    // origin, so the response varies on Origin either way
+    expect(other.headers.get('vary')).toBe('origin');
+    expect(preflight.headers.get('vary')).toBe('origin');
 
     const noOrigin = await fetch(
       new Request('https://x/webform/instance', { method: 'OPTIONS' }),
@@ -554,5 +558,6 @@ describe('createHostedFormApp', () => {
       }),
     );
     expect(preflight.headers.get('access-control-allow-origin')).toBe('*');
+    expect(preflight.headers.get('vary')).toBe('origin');
   });
 });

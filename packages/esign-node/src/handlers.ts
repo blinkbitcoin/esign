@@ -316,21 +316,27 @@ const RETURN_PATH = '/signing/return';
 const HEALTH_PATH = '/health';
 
 // The CORS response headers for this request: the allowed origin echoed
-// back (or '*'), nothing at all for an origin the host did not allow
+// back (or '*'), nothing but the Vary for an origin the host did not allow.
+// Every answer a configured CORS policy produces varies on Origin, so a
+// shared cache cannot serve the header-less one to an allowed origin.
 const corsHeaders = (
   cors: HostedFormAppCors | undefined,
   request: Request,
 ): Record<string, string> => {
-  const origin = request.headers.get('origin');
-  if (!cors || !origin) {
+  if (!cors) {
     return {};
   }
+  const vary = { vary: 'origin' };
+  const origin = request.headers.get('origin');
+  if (!origin) {
+    return vary;
+  }
   if (cors.origins.includes('*')) {
-    return { 'access-control-allow-origin': '*' };
+    return { ...vary, 'access-control-allow-origin': '*' };
   }
   return cors.origins.includes(origin)
-    ? { 'access-control-allow-origin': origin, vary: 'origin' }
-    : {};
+    ? { ...vary, 'access-control-allow-origin': origin }
+    : vary;
 };
 
 const withHeaders = (response: Response, headers: Record<string, string>) => {

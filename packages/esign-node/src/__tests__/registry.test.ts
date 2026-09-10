@@ -275,6 +275,30 @@ describe('defaultRegistry boot checks', () => {
   });
 });
 
+describe('defaultRegistry private-key reader', () => {
+  const fileEnv = {
+    ...credentials,
+    DOCUSIGN_PRIVATE_KEY: undefined,
+    DOCUSIGN_PRIVATE_KEY_FILE: '/run/secrets/ds.pem',
+    DOCUSIGN_RETURN_URL: 'https://api.example.com/signing/return',
+  };
+
+  it('reads the key through the injected reader, once per selection', async () => {
+    const readFile = jest.fn().mockReturnValue('pem');
+    const provider = defaultRegistry(fileEnv, {
+      webhook,
+      docusign: { required: HOSTED_FORM_SETTINGS, readFile },
+    }).docusign();
+    expect(readFile).toHaveBeenCalledWith('/run/secrets/ds.pem');
+    expect(readFile).toHaveBeenCalledTimes(1);
+    // Using the adapter reuses that configuration instead of re-reading it
+    await expect(
+      provider.createHostedFormInstance!('u', {}),
+    ).rejects.toMatchObject({ extensions: { code: 'PROVIDER_UNAVAILABLE' } });
+    expect(readFile).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('hostedFormProviderFromEnv', () => {
   const hostedFormEnv = {
     ...credentials,
@@ -318,6 +342,26 @@ describe('hostedFormProviderFromEnv', () => {
     expect(provider.verifyWebhook({}, '{}')).toBe(true);
     const { url } = await hostedFormMint(provider)!('u', {});
     expect(url).toMatch(/^http:\/\/svc:9\//);
+  });
+
+  it('threads the private-key reader through, keeping the hosted-form required set', () => {
+    const readFile = jest.fn().mockReturnValue('pem');
+    expect(() =>
+      hostedFormProviderFromEnv(
+        {
+          ...credentials,
+          DOCUSIGN_PRIVATE_KEY: undefined,
+          DOCUSIGN_PRIVATE_KEY_FILE: '/run/secrets/ds.pem',
+          DOCUSIGN_RETURN_URL: 'https://api.example.com/signing/return',
+        },
+        { docusign: { readFile } },
+      ),
+    ).not.toThrow();
+    expect(readFile).toHaveBeenCalledWith('/run/secrets/ds.pem');
+    // An explicit undefined does not defeat the default required set
+    expect(() =>
+      hostedFormProviderFromEnv({}, { docusign: { required: undefined } }),
+    ).toThrow(DocuSignConfigError);
   });
 
   it('throws when the selected provider cannot mint hosted forms', () => {

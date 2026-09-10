@@ -101,6 +101,15 @@ describe('missingDocuSignConfig / assertDocuSignConfig', () => {
     expect(() => assertDocuSignConfig(config, ['accountId'])).not.toThrow();
   });
 
+  it('names the three private-key sources when the key is what is missing', () => {
+    expect(() => assertDocuSignConfig(docuSignConfigFromEnv({}))).toThrow(
+      'DocuSign: missing configuration: DOCUSIGN_ACCOUNT_ID, ' +
+        'DOCUSIGN_INTEGRATION_KEY, DOCUSIGN_PRIVATE_KEY, DOCUSIGN_USER_ID. ' +
+        'The private key comes from DOCUSIGN_PRIVATE_KEY, ' +
+        'DOCUSIGN_PRIVATE_KEY_BASE64 or DOCUSIGN_PRIVATE_KEY_FILE.',
+    );
+  });
+
   it('throws a DocuSignConfigError naming what is missing', () => {
     const config = docuSignConfigFromEnv({ DOCUSIGN_ACCOUNT_ID: 'acct' });
     expect(() => assertDocuSignConfig(config)).toThrow(DocuSignConfigError);
@@ -215,6 +224,33 @@ describe('privateKeyFromEnv', () => {
         readFile,
       ),
     ).toBeUndefined();
+  });
+
+  it('names the variable and the path when the key file cannot be read', () => {
+    const enoent = () => {
+      throw new Error(
+        "ENOENT: no such file or directory, open '/run/secrets/ds.pem'",
+      );
+    };
+    expect(() =>
+      privateKeyFromEnv(
+        { DOCUSIGN_PRIVATE_KEY_FILE: '/run/secrets/ds.pem' },
+        enoent,
+      ),
+    ).toThrow(
+      "DOCUSIGN_PRIVATE_KEY_FILE=/run/secrets/ds.pem: ENOENT: no such file or directory, open '/run/secrets/ds.pem'",
+    );
+    // Through the config, and for a reader that throws something else
+    expect(() =>
+      docuSignConfigFromEnv(
+        { DOCUSIGN_PRIVATE_KEY_FILE: '/k.pem' },
+        {
+          readFile: () => {
+            throw 'boom';
+          },
+        },
+      ),
+    ).toThrow('DOCUSIGN_PRIVATE_KEY_FILE=/k.pem: boom');
   });
 
   it('names the environment variable behind each source', () => {

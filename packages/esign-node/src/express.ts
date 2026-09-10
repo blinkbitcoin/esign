@@ -23,11 +23,13 @@ import {
 import type { Logger } from './log';
 import { renderMockSigningPage } from './pages';
 import { type ESignProvider, hostedFormMint } from './provider';
-import { mountDocuSignPages } from './providers/docusign/express';
 import type { WebFormPrefill } from './providers/docusign/types';
 import { sendSigningPage } from './signingPageExpress';
 
-import type { DocuSignPagesOptions } from './providers/docusign/express';
+import {
+  type DocuSignPagesOptions,
+  mountDocuSignPages,
+} from './providers/docusign/express';
 
 export type { DocuSignPagesOptions } from './providers/docusign/express';
 export { mountDocuSignPages } from './providers/docusign/express';
