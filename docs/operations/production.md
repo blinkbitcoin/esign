@@ -319,7 +319,7 @@ The PEM has three sources, tried in this order:
 | Platform | Use | How |
 |---|---|---|
 | Docker / Compose | `DOCUSIGN_PRIVATE_KEY_FILE` | a Compose secret mounted read-only, e.g.<br>`/run/secrets/docusign_pem` |
-| Kubernetes | `DOCUSIGN_PRIVATE_KEY_FILE` | the `docusign.pem` key of the Secret,<br>mounted at `/run/secrets/docusign.pem` |
+| Kubernetes | `DOCUSIGN_PRIVATE_KEY_FILE` | its own Secret,<br>`deploy/k8s/secret-docusign-pem.yaml`,<br>mounted at `/run/secrets/docusign.pem` |
 | Vercel, Cloudflare,<br>other PaaS | `DOCUSIGN_PRIVATE_KEY_BASE64` | one-line env value; there is no file to<br>mount, and `_FILE` is refused on edge |
 | Anything with<br>multi-line secrets | `DOCUSIGN_PRIVATE_KEY` | the PEM verbatim |
 
