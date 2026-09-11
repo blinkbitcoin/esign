@@ -11,6 +11,7 @@
 //   ESIGN_WEB_PORT            the demo, proxy mode     base + 1
 //   ESIGN_WEB_WEBFORM_PORT    the demo, webform mode   base + 2
 //   ESIGN_WEB_PUBLICURL_PORT  the demo, publicurl mode base + 3
+//   ESIGN_TEST_DB_PORT        the E2E Postgres        base + 12
 //
 // Runs under Node (Playwright config) but is typechecked with the demo's
 // browser tsconfig, so no node imports.
@@ -34,10 +35,13 @@ export const WEB_OFFSETS: Record<Mode, number> = {
   webform: 2,
   publicurl: 3,
 };
+export const TEST_DB_VAR = 'ESIGN_TEST_DB_PORT';
+export const TEST_DB_OFFSET = 12;
 
 export interface E2EPorts {
   api: number;
   vite: Record<Mode, number>;
+  testDb: number;
 }
 
 // A port from one variable: unset or empty means the fallback; anything
@@ -71,7 +75,11 @@ export const portsFrom = (
       base + WEB_OFFSETS[mode],
     );
   }
-  return { api: portFrom(API_VAR, env[API_VAR], base + API_OFFSET), vite };
+  return {
+    api: portFrom(API_VAR, env[API_VAR], base + API_OFFSET),
+    vite,
+    testDb: portFrom(TEST_DB_VAR, env[TEST_DB_VAR], base + TEST_DB_OFFSET),
+  };
 };
 
 export const DEFAULT_PORTS = portsFrom({});
@@ -94,11 +102,13 @@ export const ciPolicy = (env: Record<string, string | undefined>) => ({
 const { reuseExistingServer, retries } = ciPolicy(process.env);
 export { retries };
 
-// Playwright webServer entries. The backend gets its port and the demo
+// Playwright webServer entries. The backend gets its port, its database (the
+// E2E Postgres on this worktree's port, over .env.test's default) and the demo
 // origins it must allow (CORS); the demo gets the backend origin.
 export const backendServer = () => ({
   command: [
     `PORT=${PORTS.api}`,
+    `DATABASE_URL=postgresql://test:test@localhost:${PORTS.testDb}/esign_test`,
     `CORS_ALLOWED_ORIGINS=${MODES.map(viteOrigin).join(',')}`,
     'ESIGN_PROVIDER=mock npx dotenv-cli -e packages/esign-service/.env.test -- npm run dev -w packages/esign-service',
   ].join(' '),

@@ -1,6 +1,8 @@
 # Docker Compose configuration for E2E tests
 # Uses tmpfs for RAM-backed ephemeral storage (faster writes, auto-cleanup)
-# Port 5433 to avoid conflicts with dev database on 5432
+# Host port: ESIGN_TEST_DB_PORT (ESIGN_PORT_BASE + 12, default 4112 -
+# scripts/lib/ports.mjs), so a second worktree's test database never
+# fights this one; make test-db-up / scripts/e2e/test-db.sh export it
 
 services:
   postgres-test:
@@ -10,7 +12,7 @@ services:
       POSTGRES_PASSWORD: test
       POSTGRES_DB: esign_test
     ports:
-      - "5433:5432"
+      - "${ESIGN_TEST_DB_PORT:-4112}:5432"
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:

@@ -23,7 +23,7 @@ trap down EXIT
 
 echo "== test database"
 make test-db-up > /dev/null
-npm run --silent migrate:test -w packages/esign-service > /dev/null
+bash scripts/e2e/test-db.sh run npm run --silent migrate:test -w packages/esign-service > /dev/null
 echo "== backend (mock provider) on :$ESIGN_API_PORT"
 bash scripts/e2e/backend-up.sh
 echo "== debug APK"

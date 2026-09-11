@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # E2E Postgres on a macOS runner (no Docker there): Homebrew postgresql@16 on
-# port 5433 with test/test + esign_test, matching docker-compose.test.yml.
+# ESIGN_TEST_DB_PORT (the table's port, default 4112) with test/test +
+# esign_test, matching docker-compose.test.yml.
 # Ephemeral data dir under $RUNNER_TEMP - the runner is disposable anyway.
 #
 # No auto-update: the first `brew install` on a fresh runner otherwise spends
@@ -15,6 +16,9 @@
 # PID and log for `wait`) so the install overlaps npm ci, Maestro, the
 # simulator pick and Metro, then calls `wait` right before migrations.
 set -euo pipefail
+# shellcheck source=scripts/e2e/ports-env.sh
+. "$(dirname "$0")/../e2e/ports-env.sh"
+DB_PORT="$ESIGN_TEST_DB_PORT"
 export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_ENV_HINTS=1
 TMP="${RUNNER_TEMP:-/tmp}"
 MODE="${1:-start}"
@@ -29,7 +33,7 @@ wait_for_db() {
   candidate="${HOMEBREW_PREFIX:-$(brew --prefix)}/opt/postgresql@16/bin"
   for i in {1..150}; do
     if [ -z "$pgbin" ] && [ -x "$candidate/pg_isready" ]; then pgbin="$candidate"; fi
-    if [ -n "$pgbin" ] && "$pgbin/pg_isready" -q -h localhost -p 5433 -U test -d esign_test; then
+    if [ -n "$pgbin" ] && "$pgbin/pg_isready" -q -h localhost -p "$DB_PORT" -U test -d esign_test; then
       echo "Database ready after $((i * 2))s"; return 0
     fi
     if [ -f "$TMP/pg-setup.pid" ] && ! kill -0 "$(cat "$TMP/pg-setup.pid")" 2>/dev/null \
@@ -57,11 +61,11 @@ brew install --quiet postgresql@16
 PGBIN="$(brew --prefix postgresql@16)/bin"
 echo "test" > "$TMP/pgpass"
 "$PGBIN/initdb" -D "$TMP/pgdata" -U test --pwfile="$TMP/pgpass"
-"$PGBIN/pg_ctl" -D "$TMP/pgdata" -o "-p 5433" -l "$TMP/pg.log" start
+"$PGBIN/pg_ctl" -D "$TMP/pgdata" -o "-p $DB_PORT" -l "$TMP/pg.log" start
 for i in {1..15}; do
-  if "$PGBIN/pg_isready" -h localhost -p 5433 -U test; then break; fi
+  if "$PGBIN/pg_isready" -h localhost -p "$DB_PORT" -U test; then break; fi
   echo "Waiting for database... ($i/15)"; sleep 2
 done
-"$PGBIN/createdb" -h localhost -p 5433 -U test esign_test
-"$PGBIN/pg_isready" -h localhost -p 5433 -U test -d esign_test
+"$PGBIN/createdb" -h localhost -p "$DB_PORT" -U test esign_test
+"$PGBIN/pg_isready" -h localhost -p "$DB_PORT" -U test -d esign_test
 echo SETUP_OK
