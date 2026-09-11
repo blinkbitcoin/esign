@@ -1,8 +1,8 @@
 import {
   HttpError,
-  RETRY_CONFIG,
   isClientError,
   isNotFoundError,
+  RETRY_CONFIG,
   shouldRetry,
   sleep,
   withRetry,

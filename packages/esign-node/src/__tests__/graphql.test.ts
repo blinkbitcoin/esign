@@ -1,11 +1,11 @@
 // The GraphQL layer: resolvers map onto the envelope service and never leak
 // the provider's id; the SDL is the client contract.
 
-import { silentLogger } from './support';
 import { createEnvelopeService } from '../envelopes';
 import { createESignGraphQL, typeDefs } from '../graphql';
 import type { ESignProvider } from '../provider';
 import { createMemoryEnvelopeStore } from '../store';
+import { silentLogger } from './support';
 
 const provider: ESignProvider = {
   createEnvelope: jest

@@ -263,16 +263,39 @@ describe('createDocuSignProvider', () => {
     });
 
     // DocuSign does not refuse a value outside the tab shape: a number arrives
-    // as an empty tab the signer can edit. So it is refused before any request.
-    it.each<[string, unknown]>([
-      ['a number', { total_btc: 0.0001 }],
-      ['a null', { total_btc: null }],
-      ['a non-text value', { total_btc: { value: 1, locked: true } }],
-      ['a non-boolean lock', { total_btc: { value: '1', locked: 'true' } }],
-      ['a list', ['1']],
+    // as an empty tab the signer can edit. So it is refused before any request,
+    // with the reason the parser gives (the field's name, for a bad value).
+    it.each<[string, unknown, string]>([
+      [
+        'a number',
+        { total_btc: 0.0001 },
+        'unsupported value for field "total_btc"',
+      ],
+      [
+        'a null',
+        { total_btc: null },
+        'unsupported value for field "total_btc"',
+      ],
+      [
+        'a non-text value',
+        { total_btc: { value: 1, locked: true } },
+        'unsupported value for field "total_btc"',
+      ],
+      [
+        'a non-boolean lock',
+        { total_btc: { value: '1', locked: 'true' } },
+        'unsupported value for field "total_btc"',
+      ],
+      [
+        'a locked empty value',
+        { total_usd: { value: '', locked: true } },
+        'unsupported value for field "total_usd"',
+      ],
+      ['a bad field name', { '': '1' }, 'invalid field name ""'],
+      ['a list', ['1'], 'prefill must be an object'],
     ])(
       'refuses %s in the prefill without calling DocuSign',
-      async (_, prefill) => {
+      async (_, prefill, reason) => {
         const { provider, createClient } = setup();
         await expect(
           provider.createEnvelope(
@@ -281,7 +304,10 @@ describe('createDocuSignProvider', () => {
             recipient,
             prefill as Record<string, unknown>,
           ),
-        ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+        ).rejects.toMatchObject({
+          code: 'VALIDATION_ERROR',
+          message: `Invalid prefill: ${reason}`,
+        });
         expect(createClient).not.toHaveBeenCalled();
       },
     );

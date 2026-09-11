@@ -27,7 +27,7 @@ export interface CreateWebFormInstanceParams extends WebFormInstanceOptions {
   config?: DocuSignConfig;
   // The authenticated user minting the instance (becomes clientUserId, <=100 chars)
   userId: string;
-  // Field API reference name → value; validated (WebFormPrefillError otherwise)
+  // Field API reference name → value; validated (PrefillError otherwise)
   prefill?: unknown;
   retry?: RetryConfig;
 }
@@ -57,7 +57,7 @@ const resolveClient = (params: CreateWebFormInstanceParams): WebFormsClient => {
 // DocuSign's clientUserId limit
 const CLIENT_USER_ID_MAX = 100;
 
-// Mint a prefilled Web Forms instance. Throws WebFormPrefillError for a bad
+// Mint a prefilled Web Forms instance. Throws PrefillError for a bad
 // prefill, DocuSignConfigError for missing settings, HttpError after retries.
 export const createWebFormInstance = async (
   params: CreateWebFormInstanceParams,

@@ -19,7 +19,7 @@ import type {
 } from '../../types';
 import { createDocuSignClient, type DocuSignClient } from './client';
 import type { DocuSignConfig } from './config';
-import { isEnvelopeTabPrefill, WebFormPrefillError } from './prefill';
+import { assertEnvelopePrefill, PrefillError } from './prefill';
 import { createWebFormInstance } from './webforms';
 
 // --- Status + webhook mapping -----------------------------------------------
@@ -118,6 +118,20 @@ export interface DocuSignProviderHandle extends ESignProvider {
   reset(): void;
 }
 
+// What creating an envelope or minting a form instance reports when it fails:
+// a prefill outside the contract is the caller's error, not the provider's;
+// 4xx (excluding rate limits) are validation/client errors; anything else
+// (after retries) means the service is unavailable.
+const creationError = (error: unknown): Error => {
+  if (error instanceof PrefillError) {
+    return Errors.validationError(error.message);
+  }
+  if (isClientError(error)) {
+    return Errors.envelopeCreationFailed();
+  }
+  return Errors.providerUnavailable();
+};
+
 export const createDocuSignProvider = (
   options: DocuSignProviderOptions,
 ): DocuSignProviderHandle => {
@@ -152,14 +166,7 @@ export const createDocuSignProvider = (
         prefill,
       });
     } catch (error) {
-      // A prefill outside the contract is the caller's error, not the provider's
-      if (error instanceof WebFormPrefillError) {
-        throw Errors.validationError(error.message);
-      }
-      if (isClientError(error)) {
-        throw Errors.envelopeCreationFailed();
-      }
-      throw Errors.providerUnavailable();
+      throw creationError(error);
     }
   };
 
@@ -174,29 +181,21 @@ export const createDocuSignProvider = (
       recipient: RecipientData,
       prefill?: EnvelopePrefill,
     ): Promise<EnvelopeResult> {
-      // Refused before any request, like a bad Web Forms prefill: the caller's
-      // error, not the provider's, and not worth a retry
-      const isInvalidPrefill =
-        prefill !== undefined && !isEnvelopeTabPrefill(prefill);
-      if (isInvalidPrefill) {
-        throw Errors.validationError('Invalid prefill: unsupported tab value');
-      }
       try {
+        // Refused before any request, like a bad Web Forms prefill: the
+        // caller's error, not the provider's, and not worth a retry
+        const tabs =
+          prefill === undefined ? undefined : assertEnvelopePrefill(prefill);
         const docusign = getClient();
         const envelope = await withRetry(() =>
-          docusign.createEnvelopeFromTemplate(recipient, prefill),
+          docusign.createEnvelopeFromTemplate(recipient, tabs),
         );
         const signingUrl = await withRetry(() =>
           docusign.getEmbeddedSigningUrl(envelope.envelopeId, recipient),
         );
         return { envelopeId: envelope.envelopeId, signingUrl };
       } catch (error) {
-        // 4xx (excluding rate limits) are validation/client errors; anything
-        // else (after retries) means the service is unavailable
-        if (isClientError(error)) {
-          throw Errors.envelopeCreationFailed();
-        }
-        throw Errors.providerUnavailable();
+        throw creationError(error);
       }
     },
 

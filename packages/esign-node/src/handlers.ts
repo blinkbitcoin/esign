@@ -12,11 +12,11 @@ import {
   type HostedFormMint,
   hostedFormMint,
 } from './provider';
+import { renderSigningReturnBridge } from './providers/docusign/bridge';
 import {
   type DocuSignMintTarget,
   mintFromDocuSign,
 } from './providers/docusign/handlers';
-import { renderSigningReturnBridge } from './providers/docusign/bridge';
 import { parseWebFormPrefill } from './providers/docusign/prefill';
 import { signingPageResponse } from './signingPage';
 import type { HostedFormPrefill, WebhookHeaders } from './types';

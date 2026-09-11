@@ -40,11 +40,17 @@ export {
   POST_SESSION_END_SCRIPT,
   renderMockWebFormPage,
 } from './mockWebFormPage';
-export type { ParsedWebFormPrefill } from './prefill';
+export type {
+  ParsedEnvelopePrefill,
+  ParsedWebFormPrefill,
+} from './prefill';
 export {
+  assertEnvelopePrefill,
   assertWebFormPrefill,
   formatPrefillValue,
   MAX_PREFILL_FIELDS,
+  PrefillError,
+  parseEnvelopePrefill,
   parseWebFormPrefill,
   WebFormPrefillError,
 } from './prefill';

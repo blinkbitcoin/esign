@@ -1,4 +1,3 @@
-import { spyLogger } from './support';
 import { createEnvelopeService, type EnvelopeServiceDeps } from '../envelopes';
 import { Errors } from '../errors';
 import type { Logger } from '../log';
@@ -6,6 +5,7 @@ import type { ESignProvider } from '../provider';
 import { createMemoryEnvelopeStore, type EnvelopeStore } from '../store';
 import type { SpanAttributes, Tracing } from '../tracing';
 import type { EnvelopeStatus, WebhookEvent } from '../types';
+import { spyLogger } from './support';
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
