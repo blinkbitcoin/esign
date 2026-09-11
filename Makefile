@@ -3,6 +3,8 @@
 # Run `make` or `make help` to list targets.
 
 .DEFAULT_GOAL := help
+# The platform e2e-metro-up prewarms the bundle for (metro-wait.sh)
+METRO_PLATFORM ?= ios
 
 # ---------- Setup ----------
 
@@ -162,6 +164,13 @@ e2e-backend-up: ## Start the backend (mock provider) in the background for mobil
 e2e-backend-down: ## Stop the backend started by e2e-backend-up
 	bash scripts/e2e/backend-down.sh
 
+e2e-metro-up: ## Start Metro for the RN demo in the background (proxy mode) and prewarm the bundle (METRO_PLATFORM=ios|android, default ios)
+	bash scripts/e2e/metro-start.sh
+	bash scripts/e2e/metro-wait.sh $(METRO_PLATFORM)
+
+e2e-metro-down: ## Stop the Metro started by e2e-metro-up
+	bash scripts/e2e/metro-down.sh
+
 ios-build: ## Debug build of the RN demo for the simulator (what CI's Build iOS job runs; needs `make pods`)
 	bash scripts/e2e/ios-build.sh
 
@@ -230,4 +239,4 @@ help: ## List available targets
 .PHONY: install hooks pods release release-rc version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
 	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check codeql start ios android backend web db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-web-webform-live \
-	e2e-server-demos e2e-backend-up e2e-backend-down ios-build android-build e2e-ios e2e-android test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live docker-build docker-smoke docker-build-mint-only docker-smoke-mint-only deploy-check clean reset help
+	e2e-server-demos e2e-backend-up e2e-backend-down e2e-metro-up e2e-metro-down ios-build android-build e2e-ios e2e-android test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live docker-build docker-smoke docker-build-mint-only docker-smoke-mint-only deploy-check clean reset help
