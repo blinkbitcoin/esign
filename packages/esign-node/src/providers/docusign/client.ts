@@ -94,9 +94,12 @@ interface TemplateRole {
 }
 
 /**
- * Each document of a multi-template envelope carries its own copy of the signer,
- * and DocuSign folds the copies that share a recipient id into one recipient:
- * one signing session across every document instead of one per document.
+ * Each document of a multi-template envelope carries its own copy of the
+ * signer. DocuSign discards inline recipient ids in composite templates and
+ * folds the copies by email + name + routing order, matching each to the
+ * server template's role by name; a stable id is sent because the API asks
+ * for one, and one signing session across every document follows from the
+ * configured role sitting at the same routing order in every template.
  */
 const SIGNER_RECIPIENT_ID = '1';
 
