@@ -17,8 +17,8 @@ vi.mock('../src/store', async () => {
 
 import { createESignApp } from '../src/app';
 import { createStore } from '../src/store';
-import { memoryStore as store } from './support/store';
 import { asJson, get, options, post, silently, testApp, testFullApp } from './support/app';
+import { memoryStore as store } from './support/store';
 
 const mintHeaders = { authorization: 'Bearer user-1' };
 

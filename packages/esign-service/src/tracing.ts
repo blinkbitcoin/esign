@@ -11,7 +11,7 @@
 import type { Attributes, Span } from '@opentelemetry/api';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import type { ESignProvider } from './providers/port';
-import type { RecipientData, WebFormPrefill } from './types';
+import type { EnvelopePrefill, RecipientData, WebFormPrefill } from './types';
 
 const tracer = trace.getTracer('esign-service');
 
@@ -84,7 +84,13 @@ export const instrumentProvider = (provider: ESignProvider, name: string): ESign
       ),
   }),
 
-  createEnvelope: (userId: string, contractType: string, recipient: RecipientData) =>
+  // The prefill is forwarded, never recorded: it carries the agreement's terms
+  createEnvelope: (
+    userId: string,
+    contractType: string,
+    recipient: RecipientData,
+    prefill?: EnvelopePrefill
+  ) =>
     withSpan(
       'esign.provider.create_envelope',
       {
@@ -93,7 +99,7 @@ export const instrumentProvider = (provider: ESignProvider, name: string): ESign
         'enduser.id': userId,
       },
       async (span) => {
-        const result = await provider.createEnvelope(userId, contractType, recipient);
+        const result = await provider.createEnvelope(userId, contractType, recipient, prefill);
         span.setAttribute('esign.provider_envelope_id', result.envelopeId);
         return result;
       }

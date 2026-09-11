@@ -30,6 +30,7 @@ export {
   JWT_CREDENTIALS,
   missingDocuSignConfig,
   privateKeyFromEnv,
+  templateIds,
 } from './config';
 export type { DocuSignMintTarget } from './handlers';
 export { mintFromDocuSign } from './handlers';
@@ -40,11 +41,17 @@ export {
   POST_SESSION_END_SCRIPT,
   renderMockWebFormPage,
 } from './mockWebFormPage';
-export type { ParsedWebFormPrefill } from './prefill';
+export type {
+  ParsedEnvelopePrefill,
+  ParsedWebFormPrefill,
+} from './prefill';
 export {
+  assertEnvelopePrefill,
   assertWebFormPrefill,
   formatPrefillValue,
   MAX_PREFILL_FIELDS,
+  PrefillError,
+  parseEnvelopePrefill,
   parseWebFormPrefill,
   WebFormPrefillError,
 } from './prefill';
@@ -62,6 +69,8 @@ export {
   parseDocuSignWebhook,
 } from './provider';
 export type {
+  EnvelopeTabPrefill,
+  EnvelopeTabValue,
   WebFormPhoneNumber,
   WebFormPrefill,
   WebFormPrefillValue,

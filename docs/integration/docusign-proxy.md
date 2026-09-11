@@ -1,6 +1,6 @@
 # Testing with Real DocuSign
 
-**Updated:** 2026-07-03
+**Updated:** 2026-09-11
 
 How to run against a real DocuSign (demo/sandbox) account instead of the mock
 provider. Sections 1-4 cover the **proxy envelope mode** (JWT auth, templates,
@@ -43,13 +43,24 @@ adapter works internally.
    assertion.
 4. From the Apps and Keys page, note the **API Account ID** and your
    **User ID** (both GUIDs).
-5. **Create a template** with a recipient **role named exactly `signer`**
-   (what `createEnvelopeFromTemplate` fills). `make docusign-template`
-   creates one through the API from the capability test form PDF - role
-   `signer`, Sign Here and Date Signed tabs anchored on the PDF text - and
-   prints its id (`WRITE=1` sets `DOCUSIGN_TEMPLATE_ID` in `.env`); rerunning
-   reuses it. By hand: upload any PDF, add the `signer` role, place a Sign
-   Here tab, save, copy the template id.
+5. **Create a template** with one recipient role: the role
+   `createEnvelopeFromTemplate` fills is `DOCUSIGN_SIGNER_ROLE` (default
+   `signer`). `make docusign-template` creates one through the API from the
+   capability test form PDF - role `signer`, Sign Here and Date Signed tabs
+   anchored on the PDF text, and the Text tabs `reference` and `notes` an
+   envelope prefill can write to - and prints its id (`WRITE=1` sets
+   `DOCUSIGN_TEMPLATE_ID` in `.env`, unless the line already lists several
+   ids). Rerunning reuses the template by name **as it is**: a definition
+   change (such as the Text tabs, added 2026-09) reaches an account that
+   already has the fixture only after deleting it there. By hand: upload
+   any PDF, add the role, place a Sign Here tab and a Text tab per value the
+   host will prefill, save, copy the template id.
+   Several templates: list their ids comma-separated in
+   `DOCUSIGN_TEMPLATE_ID`; they go out as one envelope, documents in that
+   order, and the signer role must carry the same name and routing order in
+   each (that is what DocuSign merges the signer by).
+   The host-side recipe for prefilled, locked values on the document is
+   [locked-terms-envelopes.md](locked-terms-envelopes.md).
 
 ## 2. Backend Configuration (`packages/esign-service/.env`)
 
@@ -71,7 +82,8 @@ ESIGN_PROVIDER=docusign
 DOCUSIGN_ACCOUNT_ID=<api-account-guid>
 DOCUSIGN_INTEGRATION_KEY=<integration-key-guid>
 DOCUSIGN_USER_ID=<user-guid>
-DOCUSIGN_TEMPLATE_ID=<template-guid>
+DOCUSIGN_TEMPLATE_ID=<template-guid>          # or <guid>,<guid> for one envelope of several documents
+# DOCUSIGN_SIGNER_ROLE=investor               # only when the template's role is not `signer`
 DOCUSIGN_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----
 ...paste the PEM lines verbatim...
 -----END RSA PRIVATE KEY-----"
@@ -156,7 +168,7 @@ demo on the attached phone. Ctrl-C tears them down; the service log
 
 | # | Assumption to confirm | How to capture | Where to fix if wrong |
 |---|----------------------|----------------|----------------------|
-| 1 | Envelope creation + recipient view succeed (template role `signer`, `clientUserId` = email, status `sent`) | **Automated**: `make test-live` in `packages/esign-service` (skips unless `DOCUSIGN_*` + `DOCUSIGN_TEMPLATE_ID` are set; logs the signing ceremony URL to hand off to item 2) | `providers/docusign/client.ts` |
+| 1 | Envelope creation + recipient view succeed (template role `DOCUSIGN_SIGNER_ROLE`, default `signer`; `clientUserId` = email; status `sent`; a prefilled `reference` shown locked on the document) | **Automated**: `make test-live` in `packages/esign-service` (skips unless `DOCUSIGN_*` + `DOCUSIGN_TEMPLATE_ID` are set; logs the signing ceremony URL to hand off to item 2) | `providers/docusign/client.ts` |
 | 2 | Return-URL redirect carries `?event=` with values `signing_complete` / `cancel` / `decline` / `session_timeout` / `ttl_expired` | `make live-web`, then the service log (`/tmp/esign-live.log`) — the GET hitting the bridge route after each outcome (finish, cancel, decline, let the session expire) | `mapDocuSignReturnEvent` in `packages/esign-node/src/providers/docusign/bridge.ts` (unknown values already fail safe to `exception`) |
 | 3 | Connect webhook: HMAC header is `x-docusign-signature-1`, body has `event: "envelope-completed"` etc. and `data.envelopeId` | `make live-web` with the Funnel URL registered in Connect (section 4), then the service log shows the POST to `/webhook/esign` — headers + body, no code changes needed | `parseWebhookEvent` in `packages/esign-node/src/providers/docusign/provider.ts` + the payload type in `providers/docusign/types.ts`; mirror any change in `tests/webhook*.test.ts` fixtures |
 | 4 | Web Forms `createInstance` request/response (`clientUserId` + `formValues` in, `formUrl` + `instanceToken` out) + JWT auth | **Automated**: `make test-live` in `packages/esign-service` (skips unless `DOCUSIGN_*` env is set; on contract mismatch it fails with DocuSign's raw HTTP body, and it logs a minted instance URL to hand off to items 5-6) | `createWebFormInstanceRequest` in `providers/docusign/client.ts` |
@@ -172,7 +184,10 @@ may require Web Forms entitlement on the demo account.
 | Symptom | Cause |
 |---------|-------|
 | `consent_required` on first request | Step 1.3 consent grant not done |
-| Envelope creation 400 | Template role name isn't exactly `signer`, or template has no Sign Here tab |
+| Envelope creation 400 | Template role name doesn't match `DOCUSIGN_SIGNER_ROLE` (default `signer`), or template has no Sign Here tab |
+| Envelope created, a prefilled field opens empty and editable | The label names a Number, Date or List tab: only **Text** tabs take a prefill value (DocuSign answers 200 either way) |
+| Two signing sessions for a multi-template envelope | The signer role's name or routing order differs between the listed templates |
+| `VALIDATION_ERROR` "missing configuration: DOCUSIGN_TEMPLATE_ID" at the first envelope | The setting names no template (unset, or a list of blanks); the service refuses to boot on the same condition |
 | Blank iframe on web | Frame blocking - check the browser console; the RN WebView is unaffected. Set `allowedOrigin` to the signing domain |
 | Component stuck in `signing` after a real signature | `DOCUSIGN_RETURN_URL` overridden to a URL that isn't the bridge route (section 3) |
 | "DEMONSTRATION" watermark on documents | Expected on demo accounts |

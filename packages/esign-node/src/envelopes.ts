@@ -150,6 +150,7 @@ export const createEnvelopeService = (
           owner,
           contractType,
           recipient,
+          input.prefill,
         );
       } catch (providerError) {
         // Logged as an object (util.inspect quotes fields), no PII

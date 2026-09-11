@@ -1,10 +1,10 @@
 // Provider selection: ESIGN_PROVIDER → a registry entry, lazily; the
 // default registry wires the two shipped adapters from the environment.
 
-import { silentLogger } from './support';
+import { ProductionConfigError } from '../production';
 import {
-  hostedFormMint,
   type ESignProvider,
+  hostedFormMint,
   supportsHostedForms,
 } from '../provider';
 import {
@@ -13,7 +13,6 @@ import {
   HOSTED_FORM_SETTINGS,
   JWT_CREDENTIALS,
 } from '../providers/docusign/config';
-import { ProductionConfigError } from '../production';
 import {
   defaultRegistry,
   ESIGN_PROVIDER_ENV,
@@ -21,6 +20,7 @@ import {
   type ProviderRegistry,
   providerFromEnv,
 } from '../registry';
+import { silentLogger } from './support';
 
 // The silent logger and the DocuSign settings the boot checks look at
 const silent = silentLogger;

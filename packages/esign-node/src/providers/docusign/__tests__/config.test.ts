@@ -16,6 +16,7 @@ import {
   JWT_CREDENTIALS,
   missingDocuSignConfig,
   privateKeyFromEnv,
+  templateIds,
 } from '../config';
 
 const PEM =
@@ -47,6 +48,7 @@ describe('docuSignConfigFromEnv', () => {
       DOCUSIGN_USER_ID: 'user',
       DOCUSIGN_TEMPLATE_ID: '',
       DOCUSIGN_WEBFORM_ID: 'form',
+      DOCUSIGN_SIGNER_ROLE: 'investor',
     };
     expect(docuSignConfigFromEnv(env)).toEqual({
       apiBaseUrl: 'https://na1.docusign.net/restapi',
@@ -59,6 +61,7 @@ describe('docuSignConfigFromEnv', () => {
       userId: 'user',
       templateId: undefined,
       webFormId: 'form',
+      signerRoleName: 'investor',
     });
   });
 
@@ -355,5 +358,41 @@ describe('isDocuSignDemoHost / docuSignDemoHostsInUse', () => {
         oauthBaseUrl: DOCUSIGN_DEMO_URLS.oauthBaseUrl,
       }),
     ).toEqual([`DOCUSIGN_OAUTH_URL=${DOCUSIGN_DEMO_URLS.oauthBaseUrl}`]);
+  });
+});
+
+describe('templateIds', () => {
+  it('reads the comma-separated list in order, trimmed, blanks dropped', () => {
+    expect(templateIds({ templateId: undefined })).toEqual([]);
+    expect(templateIds({ templateId: 'tpl-1' })).toEqual(['tpl-1']);
+    expect(templateIds({ templateId: ' tpl-a , ,tpl-b, ' })).toEqual([
+      'tpl-a',
+      'tpl-b',
+    ]);
+    expect(templateIds({ templateId: ' , ' })).toEqual([]);
+  });
+
+  // The same list from the environment is stored normalised, so a value that
+  // names no template is unset to everything that reads the config
+  it('is normalised once by docuSignConfigFromEnv', () => {
+    expect(
+      docuSignConfigFromEnv({ DOCUSIGN_TEMPLATE_ID: ' tpl-a , ,tpl-b, ' })
+        .templateId,
+    ).toBe('tpl-a,tpl-b');
+    expect(
+      docuSignConfigFromEnv({ DOCUSIGN_TEMPLATE_ID: ' , ' }).templateId,
+    ).toBeUndefined();
+  });
+
+  it('counts as missing configuration when it names no template', () => {
+    const noTemplate = { ...docuSignConfigFromEnv({}), templateId: ' , ' };
+    expect(missingDocuSignConfig(noTemplate, ['templateId'])).toEqual([
+      'DOCUSIGN_TEMPLATE_ID',
+    ]);
+    expect(
+      missingDocuSignConfig({ ...noTemplate, templateId: 'tpl-1,tpl-2' }, [
+        'templateId',
+      ]),
+    ).toEqual([]);
   });
 });

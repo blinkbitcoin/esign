@@ -3,9 +3,9 @@
 // selected and which demo settings that provider still uses.
 
 import {
+  assertProductionConfig,
   ESIGN_ALLOW_DEMO,
   ESIGN_ENV,
-  assertProductionConfig,
   ProductionConfigError,
   productionErrors,
 } from '../production';

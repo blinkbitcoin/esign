@@ -1,4 +1,3 @@
-import { spyLogger } from './support';
 import { createEnvelopeService, type EnvelopeServiceDeps } from '../envelopes';
 import { Errors } from '../errors';
 import type { Logger } from '../log';
@@ -6,6 +5,7 @@ import type { ESignProvider } from '../provider';
 import { createMemoryEnvelopeStore, type EnvelopeStore } from '../store';
 import type { SpanAttributes, Tracing } from '../tracing';
 import type { EnvelopeStatus, WebhookEvent } from '../types';
+import { spyLogger } from './support';
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -132,6 +132,26 @@ describe('createEnvelopeService', () => {
       expect(provider.createEnvelope).not.toHaveBeenCalled();
     });
 
+    // The host's values for the document's fields reach the provider as given;
+    // what they may hold is the provider's contract, not the service's
+    it('forwards the prefill to the provider untouched', async () => {
+      const { service, provider } = setup();
+      const prefill = { total_usd: { value: '10.00', locked: true } };
+
+      await service.createEnvelope('user-1', {
+        contractType: 'nda',
+        recipient,
+        prefill,
+      });
+
+      expect(provider.createEnvelope).toHaveBeenCalledWith(
+        'user-1',
+        'nda',
+        recipient,
+        prefill,
+      );
+    });
+
     it('returns the INTERNAL id, never the provider id, and records the audit trail atomically', async () => {
       const { service, provider, store } = setup();
 
@@ -144,6 +164,7 @@ describe('createEnvelopeService', () => {
         'user-1',
         'nda',
         recipient,
+        undefined,
       );
       expect(result).toEqual({
         envelopeId: 'id-1',

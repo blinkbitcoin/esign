@@ -97,6 +97,11 @@ type AuditLog {
 Creates a new signing envelope and returns the signing URL. The envelope and
 its `initiated` audit log are persisted in a single transaction.
 
+The input carries no prefill: values the signer must not change are the
+host's to compute, never the client's to send. A host that embeds the
+package passes them in-process
+([locked-terms-envelopes.md](../integration/locked-terms-envelopes.md)).
+
 [![GraphQL Request Flow](../diagrams/dist/graphql-request-flow.svg)](../diagrams/src/graphql-request-flow.mmd)
 
 **Request:**

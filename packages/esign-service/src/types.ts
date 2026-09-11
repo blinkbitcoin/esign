@@ -4,6 +4,7 @@
 
 export type {
   CreateEnvelopeInput,
+  EnvelopePrefill,
   EnvelopeResult,
   EnvelopeStatus,
   ESignProvider,

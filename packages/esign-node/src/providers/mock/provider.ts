@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { Errors } from '../../errors';
 import type { ESignProvider } from '../../provider';
 import type {
+  EnvelopePrefill,
   EnvelopeResult,
   EnvelopeStatus,
   HostedFormInstanceResult,
@@ -37,6 +38,9 @@ export interface MockProviderHandle extends ESignProvider {
     },
   ): void;
   clearEnvelopes(): void;
+  // The prefill a mock envelope was created with (undefined for an unknown
+  // envelope, or one created without a prefill)
+  getEnvelopePrefill(envelopeId: string): EnvelopePrefill | undefined;
   // The prefill a mock Web Forms instance was minted with (undefined for an
   // unknown instance, e.g. a public-form URL that never called createInstance)
   getWebFormPrefill(instanceId: string): WebFormPrefill | undefined;
@@ -47,7 +51,12 @@ export const createMockProvider = (
 ): MockProviderHandle => {
   const envelopes = new Map<
     string,
-    { status: EnvelopeStatus; userId: string; contractType: string }
+    {
+      status: EnvelopeStatus;
+      userId: string;
+      contractType: string;
+      prefill?: EnvelopePrefill;
+    }
   >();
   // Like a real instance, whose formValues DocuSign stores server-side
   const webFormInstances = new Map<string, WebFormPrefill>();
@@ -72,17 +81,28 @@ export const createMockProvider = (
   };
 
   return {
+    // Like a real envelope, whose tab values the provider stores server-side
     async createEnvelope(
       userId: string,
       contractType: string,
       _recipient: RecipientData,
+      prefill?: EnvelopePrefill,
     ): Promise<EnvelopeResult> {
       const envelopeId = randomUUID();
-      envelopes.set(envelopeId, { status: 'sent', userId, contractType });
+      envelopes.set(envelopeId, {
+        status: 'sent',
+        userId,
+        contractType,
+        prefill,
+      });
       return {
         envelopeId,
         signingUrl: `${options.baseUrl()}/signing/mock/${envelopeId}`,
       };
+    },
+
+    getEnvelopePrefill(envelopeId: string): EnvelopePrefill | undefined {
+      return envelopes.get(envelopeId)?.prefill;
     },
 
     async getEnvelopeStatus(envelopeId: string): Promise<EnvelopeStatus> {

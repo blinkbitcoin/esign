@@ -10,7 +10,9 @@ Every step below is what `examples/mint-only-demo` (the API side) and
 `make e2e-live` / `make e2e-ios-live` verify against real DocuSign.
 
 Read first, once: [docusign-lessons.md](docusign-lessons.md) (the rules
-that are not obvious, one page).
+that are not obvious, one page). The same outcome on a template envelope
+(mode 3), with the values written onto the document itself:
+[locked-terms-envelopes.md](locked-terms-envelopes.md).
 
 ## The shape
 

@@ -7,6 +7,7 @@ import { isClientError, isNotFoundError, withRetry } from '../../http';
 import type { Logger } from '../../log';
 import type { ESignProvider } from '../../provider';
 import type {
+  EnvelopePrefill,
   EnvelopeResult,
   EnvelopeStatus,
   HostedFormInstanceResult,
@@ -17,8 +18,12 @@ import type {
   WebhookHeaders,
 } from '../../types';
 import { createDocuSignClient, type DocuSignClient } from './client';
-import type { DocuSignConfig } from './config';
-import { WebFormPrefillError } from './prefill';
+import {
+  assertDocuSignConfig,
+  type DocuSignConfig,
+  DocuSignConfigError,
+} from './config';
+import { assertEnvelopePrefill, PrefillError } from './prefill';
 import { createWebFormInstance } from './webforms';
 
 // --- Status + webhook mapping -----------------------------------------------
@@ -117,6 +122,21 @@ export interface DocuSignProviderHandle extends ESignProvider {
   reset(): void;
 }
 
+// What creating an envelope or minting a form instance reports when it fails:
+// a prefill outside the contract, or a setting the operation needs, is the
+// caller's error, not the provider's; 4xx (excluding rate limits) are
+// validation/client errors; anything else (after retries) means the service
+// is unavailable.
+const creationError = (error: unknown): Error => {
+  if (error instanceof PrefillError || error instanceof DocuSignConfigError) {
+    return Errors.validationError(error.message);
+  }
+  if (isClientError(error)) {
+    return Errors.envelopeCreationFailed();
+  }
+  return Errors.providerUnavailable();
+};
+
 export const createDocuSignProvider = (
   options: DocuSignProviderOptions,
 ): DocuSignProviderHandle => {
@@ -151,14 +171,7 @@ export const createDocuSignProvider = (
         prefill,
       });
     } catch (error) {
-      // A prefill outside the contract is the caller's error, not the provider's
-      if (error instanceof WebFormPrefillError) {
-        throw Errors.validationError(error.message);
-      }
-      if (isClientError(error)) {
-        throw Errors.envelopeCreationFailed();
-      }
-      throw Errors.providerUnavailable();
+      throw creationError(error);
     }
   };
 
@@ -171,23 +184,25 @@ export const createDocuSignProvider = (
       _userId: string,
       _contractType: string,
       recipient: RecipientData,
+      prefill?: EnvelopePrefill,
     ): Promise<EnvelopeResult> {
       try {
+        // Refused before any request, like a bad Web Forms prefill: the
+        // caller's error, not the provider's, and not worth a retry. The same
+        // for a missing template: reported once, not after three attempts.
+        const tabs =
+          prefill === undefined ? undefined : assertEnvelopePrefill(prefill);
         const docusign = getClient();
+        assertDocuSignConfig(docusign.config, ['accountId', 'templateId']);
         const envelope = await withRetry(() =>
-          docusign.createEnvelopeFromTemplate(recipient),
+          docusign.createEnvelopeFromTemplate(recipient, tabs),
         );
         const signingUrl = await withRetry(() =>
           docusign.getEmbeddedSigningUrl(envelope.envelopeId, recipient),
         );
         return { envelopeId: envelope.envelopeId, signingUrl };
       } catch (error) {
-        // 4xx (excluding rate limits) are validation/client errors; anything
-        // else (after retries) means the service is unavailable
-        if (isClientError(error)) {
-          throw Errors.envelopeCreationFailed();
-        }
-        throw Errors.providerUnavailable();
+        throw creationError(error);
       }
     },
 

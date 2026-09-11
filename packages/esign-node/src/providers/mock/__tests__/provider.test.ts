@@ -45,6 +45,25 @@ describe('createMockProvider', () => {
       expect(await provider.getEnvelopeStatus(result.envelopeId)).toBe('sent');
     });
 
+    // The prefill is kept with the envelope, as a real provider keeps the tab
+    // values it was sent, so a host's test can read back what reached it
+    it('keeps the prefill the envelope was created with', async () => {
+      const { provider } = setup();
+      const prefill = { total_usd: { value: '10.00', locked: true } };
+      const withPrefill = await provider.createEnvelope(
+        'user-1',
+        'nda',
+        recipient,
+        prefill,
+      );
+      const without = await provider.createEnvelope('user-1', 'nda', recipient);
+      expect(provider.getEnvelopePrefill(withPrefill.envelopeId)).toEqual(
+        prefill,
+      );
+      expect(provider.getEnvelopePrefill(without.envelopeId)).toBeUndefined();
+      expect(provider.getEnvelopePrefill('unknown')).toBeUndefined();
+    });
+
     it('creates unique ids per call', async () => {
       const { provider } = setup();
       const a = await provider.createEnvelope('user-1', 'nda', recipient);

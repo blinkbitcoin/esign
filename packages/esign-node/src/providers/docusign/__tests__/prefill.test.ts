@@ -1,26 +1,118 @@
-// The prefill contract: what reaches DocuSign, and how a value displays.
+// The prefill contracts: what reaches DocuSign, and how a value displays.
 
 import {
+  assertEnvelopePrefill,
   assertWebFormPrefill,
   formatPrefillValue,
   MAX_PREFILL_FIELDS,
+  PrefillError,
+  parseEnvelopePrefill,
   parseWebFormPrefill,
   WebFormPrefillError,
 } from '../prefill';
 
 describe('assertWebFormPrefill', () => {
-  it('returns the prefill or throws a WebFormPrefillError with the reason', () => {
+  it('returns the prefill or throws a PrefillError with the reason', () => {
     expect(assertWebFormPrefill({ a: 'b' })).toEqual({ a: 'b' });
     expect(assertWebFormPrefill(undefined)).toEqual({});
-    expect(() => assertWebFormPrefill([])).toThrow(WebFormPrefillError);
+    expect(() => assertWebFormPrefill([])).toThrow(PrefillError);
     expect(() => assertWebFormPrefill([])).toThrow(
       'Invalid prefill: prefill must be an object',
     );
     try {
       assertWebFormPrefill({ 'bad name': 1 });
     } catch (error) {
-      expect((error as Error).name).toBe('WebFormPrefillError');
+      expect((error as Error).name).toBe('PrefillError');
     }
+  });
+
+  // The old name still resolves, and still catches the same error
+  it('keeps WebFormPrefillError as the same class', () => {
+    expect(WebFormPrefillError).toBe(PrefillError);
+    expect(() => assertWebFormPrefill(null)).toThrow(WebFormPrefillError);
+  });
+});
+
+describe('parseEnvelopePrefill', () => {
+  it('treats a missing prefill as empty', () => {
+    expect(parseEnvelopePrefill(undefined)).toEqual({ ok: true, prefill: {} });
+  });
+
+  it('accepts text, bare or with a boolean lock', () => {
+    const prefill = {
+      total_usd: { value: '10.00', locked: true },
+      country: 'Honduras',
+      note: { value: 'free to change' },
+      memo: { value: 'unlocked on purpose', locked: false },
+      blank: '',
+    };
+    expect(parseEnvelopePrefill(prefill)).toEqual({ ok: true, prefill });
+  });
+
+  it.each([
+    ['null', null],
+    ['an array', [{ total_usd: '1' }]],
+    ['a string', 'total_usd=1'],
+  ])('rejects a prefill that is %s', (_label, input) => {
+    expect(parseEnvelopePrefill(input)).toEqual({
+      ok: false,
+      error: 'prefill must be an object',
+    });
+  });
+
+  // DocuSign renders any of these as an empty editable tab, with a 200
+  it.each([
+    ['number', 0.0001],
+    ['null', null],
+    ['boolean', true],
+    ['list', ['1']],
+    ['non-text value', { value: 1, locked: true }],
+    ['non-boolean lock', { value: '1', locked: 'true' }],
+    ['missing value', { locked: true }],
+    ['extra key (a misspelt lock)', { value: '1', lock: true }],
+    ['locked empty text', { value: '', locked: true }],
+    ['locked blank text', { value: '   ', locked: true }],
+  ])('rejects a %s value, naming the field', (_label, value) => {
+    expect(parseEnvelopePrefill({ total_btc: value })).toEqual({
+      ok: false,
+      error: 'unsupported value for field "total_btc"',
+    });
+  });
+
+  it('applies the same name and size rules as a Web Forms prefill', () => {
+    expect(parseEnvelopePrefill({ '': 'x' })).toEqual({
+      ok: false,
+      error: 'invalid field name ""',
+    });
+    expect(parseEnvelopePrefill({ 'has space': 'x' }).ok).toBe(false);
+    const tooMany = Object.fromEntries(
+      Array.from({ length: MAX_PREFILL_FIELDS + 1 }, (_, i) => [`t${i}`, 'v']),
+    );
+    expect(parseEnvelopePrefill(tooMany)).toEqual({
+      ok: false,
+      error: `prefill has more than ${MAX_PREFILL_FIELDS} fields`,
+    });
+  });
+
+  it('never lets a __proto__ key touch Object.prototype', () => {
+    const accepted = parseEnvelopePrefill(JSON.parse('{"__proto__": "x"}'));
+    expect(accepted.ok).toBe(true);
+    if (accepted.ok) {
+      expect(Object.getPrototypeOf(accepted.prefill)).toBe(Object.prototype);
+      expect(Object.hasOwn(accepted.prefill, '__proto__')).toBe(true);
+    }
+    expect(({} as { polluted?: string }).polluted).toBeUndefined();
+  });
+});
+
+describe('assertEnvelopePrefill', () => {
+  it('returns the prefill or throws a PrefillError with the reason', () => {
+    expect(assertEnvelopePrefill({ a: 'b' })).toEqual({ a: 'b' });
+    expect(assertEnvelopePrefill(undefined)).toEqual({});
+    expect(() => assertEnvelopePrefill({ a: 1 })).toThrow(PrefillError);
+    expect(() => assertEnvelopePrefill({ a: 1 })).toThrow(
+      'Invalid prefill: unsupported value for field "a"',
+    );
   });
 });
 

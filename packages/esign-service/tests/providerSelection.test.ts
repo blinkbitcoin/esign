@@ -43,6 +43,19 @@ describe('Provider Selection (getProvider)', () => {
       );
     });
 
+    // A template setting that names no template (a templated secret joining
+    // an empty list) must fail at boot like an unset one, not on the first
+    // envelope
+    it('treats a template list naming no template as missing when envelopes are on', () => {
+      const envelopes = { ...CREDENTIALS, DATABASE_URL: 'postgres://u@h/db' };
+      expect(() =>
+        getProvider({ ESIGN_PROVIDER: 'docusign', ...envelopes, DOCUSIGN_TEMPLATE_ID: ' , ' })
+      ).toThrow(/Missing required environment variables: DOCUSIGN_TEMPLATE_ID/);
+      expect(() =>
+        getProvider({ ESIGN_PROVIDER: 'docusign', ...envelopes, DOCUSIGN_TEMPLATE_ID: 'a, b' })
+      ).not.toThrow();
+    });
+
     it('names every missing variable in the error', () => {
       expect(() =>
         getProvider({ ESIGN_PROVIDER: 'docusign', DOCUSIGN_ACCOUNT_ID: 'test-account-id' })

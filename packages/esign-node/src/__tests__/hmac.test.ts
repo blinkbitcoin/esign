@@ -1,7 +1,8 @@
 // Default import = the real module object, so spies reach hmac.ts's binding
-import { spyLogger } from './support';
+
 import crypto from 'node:crypto';
 import { validateHmac } from '../hmac';
+import { spyLogger } from './support';
 
 const key = 'test-hmac-key-0123456789';
 const body = '{"data":{"envelopeId":"secret-123","email":"pii@example.com"}}';

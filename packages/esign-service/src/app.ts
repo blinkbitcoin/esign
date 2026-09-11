@@ -23,8 +23,8 @@ import { bearerToken, createHostedFormApp } from '@blinkbitcoin/esign-node';
 
 import { type Capability, ENVELOPES, mockPagesEnabled } from './capabilities';
 import { ESIGN_ENV, getAllowedOrigins, type Runtime, validateConfig } from './config';
-import type { LoadEnvelopes } from './envelopes';
 import type { Env } from './env';
+import type { LoadEnvelopes } from './envelopes';
 import { type MockPrefillLookup, selectProvider } from './providers';
 import { mockPageResponse } from './providers/pages';
 import type { ESignProvider } from './providers/port';

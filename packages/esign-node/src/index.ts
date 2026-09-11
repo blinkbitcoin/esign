@@ -70,6 +70,15 @@ export type { Logger } from './log';
 export { consoleLogger, sanitizeForLog } from './log';
 export type { MockFormButton, MockFormField, MockFormPage } from './pages';
 export { renderMockFormPage, renderMockSigningPage } from './pages';
+// --- Production boot guard ---------------------------------------------------
+export type { ProductionConfig } from './production';
+export {
+  assertProductionConfig,
+  ESIGN_ALLOW_DEMO,
+  ESIGN_ENV,
+  ProductionConfigError,
+  productionErrors,
+} from './production';
 export type {
   ESignProvider,
   HostedFormMint,
@@ -117,6 +126,7 @@ export {
   JWT_CREDENTIALS,
   missingDocuSignConfig,
   privateKeyFromEnv,
+  templateIds,
 } from './providers/docusign/config';
 export type { DocuSignMintTarget } from './providers/docusign/handlers';
 export { mintFromDocuSign } from './providers/docusign/handlers';
@@ -127,11 +137,17 @@ export {
   POST_SESSION_END_SCRIPT,
   renderMockWebFormPage,
 } from './providers/docusign/mockWebFormPage';
-export type { ParsedWebFormPrefill } from './providers/docusign/prefill';
+export type {
+  ParsedEnvelopePrefill,
+  ParsedWebFormPrefill,
+} from './providers/docusign/prefill';
 export {
+  assertEnvelopePrefill,
   assertWebFormPrefill,
   formatPrefillValue,
   MAX_PREFILL_FIELDS,
+  PrefillError,
+  parseEnvelopePrefill,
   parseWebFormPrefill,
   WebFormPrefillError,
 } from './providers/docusign/prefill';
@@ -162,15 +178,6 @@ export type {
   MockProviderOptions,
 } from './providers/mock/provider';
 export { createMockProvider } from './providers/mock/provider';
-// --- Production boot guard ---------------------------------------------------
-export type { ProductionConfig } from './production';
-export {
-  assertProductionConfig,
-  ESIGN_ALLOW_DEMO,
-  ESIGN_ENV,
-  ProductionConfigError,
-  productionErrors,
-} from './production';
 export type {
   DefaultRegistryOptions,
   HostedFormProviderOptions,
@@ -199,8 +206,11 @@ export type { SpanAttributes, SpanLike, Tracing } from './tracing';
 export { noopTracing } from './tracing';
 export type {
   CreateEnvelopeInput,
+  EnvelopePrefill,
   EnvelopeResult,
   EnvelopeStatus,
+  EnvelopeTabPrefill,
+  EnvelopeTabValue,
   FetchLike,
   GetSigningUrlInput,
   HostedFormInstanceOptions,

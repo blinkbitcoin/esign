@@ -4,6 +4,7 @@
 // past it.
 
 import type {
+  EnvelopePrefill,
   EnvelopeResult,
   EnvelopeStatus,
   HostedFormInstanceResult,
@@ -15,10 +16,14 @@ import type {
 } from './types';
 
 export interface ESignProvider {
+  // `prefill` writes the host's own values onto the document's fields, locked
+  // where the signer must not change them. Omit it and the envelope opens with
+  // whatever the template itself carries.
   createEnvelope(
     userId: string,
     contractType: string,
     recipient: RecipientData,
+    prefill?: EnvelopePrefill,
   ): Promise<EnvelopeResult>;
 
   getEnvelopeStatus(envelopeId: string): Promise<EnvelopeStatus>;

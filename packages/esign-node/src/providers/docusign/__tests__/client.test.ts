@@ -44,6 +44,103 @@ describe('createDocuSignClient', () => {
     });
   });
 
+  // The prefill is what makes the envelope carry the host's own figures, and
+  // `locked` is what stops the signer rewriting them. Both travel as text tabs
+  // and DocuSign takes the boolean as a string (a real boolean is accepted and
+  // then ignored, which would leave the value editable with nothing to say
+  // so). A request property overlays the template's, so `locked` goes out
+  // only when the host set it: a bare value must not unlock a tab the
+  // template designer locked, and an explicit false is a deliberate unlock.
+  it('writes the prefill onto the role’s text tabs, the lock only when set', async () => {
+    const { fetchImpl, body } = fakeFetch([token(), ok({ envelopeId: 'e' })]);
+    const client = createDocuSignClient(testConfig(), { fetch: fetchImpl });
+
+    await client.createEnvelopeFromTemplate(recipient, {
+      total_usd: { value: '10.00', locked: true },
+      country: 'Honduras',
+      note: { value: 'free to change' },
+      memo: { value: 'unlocked on purpose', locked: false },
+    });
+
+    expect(body(1).templateRoles[0].tabs).toEqual({
+      textTabs: [
+        { tabLabel: 'total_usd', value: '10.00', locked: 'true' },
+        { tabLabel: 'country', value: 'Honduras' },
+        { tabLabel: 'note', value: 'free to change' },
+        { tabLabel: 'memo', value: 'unlocked on purpose', locked: 'false' },
+      ],
+    });
+    expect(body(1).templateRoles[0].tabs.textTabs[1]).not.toHaveProperty(
+      'locked',
+    );
+  });
+
+  // A template names its own signing role; 'signer' is only what the repo's
+  // own fixture calls it.
+  it('signs under the configured role', async () => {
+    const { fetchImpl, body } = fakeFetch([token(), ok({ envelopeId: 'e' })]);
+    const client = createDocuSignClient(
+      { ...testConfig(), signerRoleName: 'investor' },
+      { fetch: fetchImpl },
+    );
+
+    await client.createEnvelopeFromTemplate(recipient);
+
+    expect(body(1).templateRoles[0].roleName).toBe('investor');
+  });
+
+  // An agreement made of several documents is signed in one session: one
+  // envelope whose documents follow the order configured, each carrying the
+  // same signer under the same recipient id so DocuSign folds them into one.
+  it('sends several templates as one envelope of composite templates', async () => {
+    const { fetchImpl, body } = fakeFetch([token(), ok({ envelopeId: 'e' })]);
+    const client = createDocuSignClient(
+      { ...testConfig(), templateId: 'tpl-a,tpl-b,tpl-c' },
+      { fetch: fetchImpl },
+    );
+
+    await client.createEnvelopeFromTemplate(recipient, { country: 'Honduras' });
+
+    const signer = {
+      email: 'jane@example.com',
+      name: 'Jane Signer',
+      roleName: 'signer',
+      clientUserId: 'jane@example.com',
+      recipientId: '1',
+      tabs: {
+        textTabs: [{ tabLabel: 'country', value: 'Honduras' }],
+      },
+    };
+    const composite = (id: string, templateId: string) => ({
+      compositeTemplateId: id,
+      serverTemplates: [{ sequence: '1', templateId }],
+      inlineTemplates: [{ sequence: '2', recipients: { signers: [signer] } }],
+    });
+    expect(body(1)).toEqual({
+      compositeTemplates: [
+        composite('1', 'tpl-a'),
+        composite('2', 'tpl-b'),
+        composite('3', 'tpl-c'),
+      ],
+      status: 'sent',
+    });
+  });
+
+  // A trailing comma or stray spaces must not add a template, nor turn a
+  // single one into a composite envelope
+  it('ignores blank entries in the template list', async () => {
+    const { fetchImpl, body } = fakeFetch([token(), ok({ envelopeId: 'e' })]);
+    const client = createDocuSignClient(
+      { ...testConfig(), templateId: ' tpl-1 , ' },
+      { fetch: fetchImpl },
+    );
+
+    await client.createEnvelopeFromTemplate(recipient);
+
+    expect(body(1).templateId).toBe('tpl-1');
+    expect(body(1)).not.toHaveProperty('compositeTemplates');
+  });
+
   it('requests the embedded signing view with the same clientUserId', async () => {
     const { fetchImpl, calls, body } = fakeFetch([
       token(),
@@ -186,6 +283,12 @@ describe('createDocuSignClient', () => {
     );
     await expect(
       noTemplate.createEnvelopeFromTemplate(recipient),
+    ).rejects.toThrow('DOCUSIGN_TEMPLATE_ID');
+    const onlyCommas = createDocuSignClient(testConfig({ templateId: ' , ' }), {
+      fetch: fetchImpl,
+    });
+    await expect(
+      onlyCommas.createEnvelopeFromTemplate(recipient),
     ).rejects.toThrow('DOCUSIGN_TEMPLATE_ID');
     const noReturn = createDocuSignClient(
       testConfig({ returnUrl: undefined }),

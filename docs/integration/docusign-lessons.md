@@ -29,6 +29,8 @@ designing a form or a flow that must lock values the signer cannot change.
 | Text fields keep the exact string | What the backend formats is what the signer sees and what the document carries: format money and dates server-side (`"0.01268231"`, `"2026-09-10"`). | `examples/mint-only-demo/src/quote.ts` |
 | Hidden fields never reach the document | Hiding a locked field with a rule drops it from the submission. | [webforms.md](webforms.md), "How we got here" |
 | Locked display is not locked completion | Every API-minted instance showed the locked values and refused edits long before the submission was fixed. A green "values are shown and locked" run says nothing about completing the form; only a submitted, signed envelope does. | `examples/react-demo/e2e/webform-live-demo.spec.ts` |
+| On an envelope, the lock travels with the value | A template envelope takes the host's values as the role's Text tabs, each with `locked` sent as the string `'true'` (a real boolean is accepted and ignored). Sent only when the host set it: a bare value must not unlock a tab the template locked. | [locked-terms-envelopes.md](locked-terms-envelopes.md), `providers/docusign/client.ts` |
+| Envelope prefill = Text tabs only | DocuSign matches a template-role tab value by type + label; a label naming a Number, Date or List tab is ignored with a 200 and an empty, editable field. The envelope's answer to the read-only Number/Date rule above. | `providers/docusign/types.ts` |
 
 ## Why a backend, and how small
 
