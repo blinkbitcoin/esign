@@ -5,6 +5,13 @@ from Conventional Commit PR titles; see [docs/releasing.md](docs/releasing.md).
 The two entries below were written by hand from the v0.1.0 and v0.2.0 GitHub
 Releases in the same format release-please prepends to.
 
+## [0.5.0](https://github.com/blinkbitcoin/esign/compare/v0.4.0...v0.5.0) (2026-09-11)
+
+
+### Features
+
+* **node:** locked prefill and multi-document signing for template envelopes ([#91](https://github.com/blinkbitcoin/esign/issues/91)) ([82de337](https://github.com/blinkbitcoin/esign/commit/82de337c154fc6bef3522c64bc5d7bdf1f613f0f))
+
 ## [0.4.0](https://github.com/blinkbitcoin/esign/compare/v0.3.0...v0.4.0) (2026-09-10)
 
 The production release of the backend: one library for hosts that mint in-process, one
