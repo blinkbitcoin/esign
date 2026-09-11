@@ -9,11 +9,15 @@ import {
   BLOCK_STEP,
   SERVICES,
   baseFrom,
+  claimedBase,
   devDatabaseUrl,
   envLines,
+  nextFreeBase,
+  parseWorktrees,
   portFrom,
   resolvePorts,
   testDatabaseUrl,
+  withClaimedBase,
 } from './ports.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -208,5 +212,72 @@ describe('the consumers', () => {
     expect(source).toContain(`webform: ${SERVICES.webWebform.offset}`);
     expect(source).toContain(`publicurl: ${SERVICES.webPublicurl.offset}`);
     expect(source).toContain(`API_OFFSET = ${SERVICES.api.offset}`);
+  });
+});
+
+describe("a worktree's block", () => {
+  it('reads the worktrees of the porcelain listing, the main clone first', () => {
+    const porcelain = [
+      'worktree /Users/x/Dev/esign',
+      'HEAD 0000000000000000000000000000000000000000',
+      'branch refs/heads/main',
+      '',
+      'worktree /Users/x/Dev/esign-topic',
+      'HEAD 1111111111111111111111111111111111111111',
+      'detached',
+      '',
+    ].join('\n');
+    expect(parseWorktrees(porcelain)).toEqual([
+      { path: '/Users/x/Dev/esign', isMain: true },
+      { path: '/Users/x/Dev/esign-topic', isMain: false },
+    ]);
+    expect(parseWorktrees('')).toEqual([]);
+  });
+
+  it.each([
+    ['ESIGN_PORT_BASE=4120\n', 4120],
+    ['export ESIGN_PORT_BASE="4140" # mine\n', 4140],
+    ["  ESIGN_PORT_BASE='4160'\n", 4160],
+    ['# ESIGN_PORT_BASE=4120\nOTHER=1\n', undefined],
+    ['ESIGN_PORT_BASE=4120\nESIGN_PORT_BASE=4180\n', 4180],
+    ['ESIGN_PORT_BASE=\n', undefined],
+    ['', undefined],
+  ])('reads the claim in %j as %s', (text, base) => {
+    expect(claimedBase(text)).toBe(base);
+  });
+
+  it('refuses a claim that is not a port', () => {
+    expect(() => claimedBase('ESIGN_PORT_BASE=99999\n')).toThrow(
+      /ESIGN_PORT_BASE must be a port number/,
+    );
+  });
+
+  it('hands out the lowest free block above the default', () => {
+    expect(nextFreeBase([])).toBe(4120);
+    expect(nextFreeBase([4120, 4160])).toBe(4140);
+    expect(nextFreeBase([4100, 4120, 4140])).toBe(4160);
+    expect(nextFreeBase([4120], { base: 5100, step: 20, slots: 2 })).toBe(5120);
+  });
+
+  it('fails loudly when every block is claimed', () => {
+    const all = Array.from(
+      { length: BLOCK_SLOTS },
+      (_, i) => BASE_DEFAULT + (i + 1) * BLOCK_STEP,
+    );
+    expect(() => nextFreeBase(all)).toThrow(/no free port block/);
+  });
+
+  it('appends the claim to .env.local, once', () => {
+    const claimed = withClaimedBase('', 4120);
+    expect(claimed).toBe(
+      "# This worktree's port block (scripts/lib/ports.mjs; make ports shows it)\nESIGN_PORT_BASE=4120\n",
+    );
+    expect(withClaimedBase(claimed, 4120)).toBe(claimed);
+    expect(withClaimedBase('OTHER=1', 4140)).toBe(
+      "OTHER=1\n# This worktree's port block (scripts/lib/ports.mjs; make ports shows it)\nESIGN_PORT_BASE=4140\n",
+    );
+    expect(claimedBase(withClaimedBase('ESIGN_PORT_BASE=4120\n', 4160))).toBe(
+      4160,
+    );
   });
 });

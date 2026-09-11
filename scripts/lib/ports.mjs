@@ -136,3 +136,65 @@ export const envLines = env => {
     `export ESIGN_DEV_DATABASE_URL=${devDatabaseUrl(ports.devDb)}`,
   ];
 };
+
+// ---------- A worktree's own block ----------
+// A linked worktree claims a block once: the lowest free slot above the
+// default one, written as ESIGN_PORT_BASE=<base> into its .env.local (direnv
+// loads it on every later cd; the Makefile asks `ports.mjs claim` when the
+// variable is unset). The main clone and CI keep the default. The registry
+// of claims is the worktrees themselves: every sibling's .env.local.
+
+/** The worktrees of `git worktree list --porcelain`; the first one is the main clone */
+export const parseWorktrees = porcelain =>
+  porcelain
+    .split('\n')
+    .filter(line => line.startsWith('worktree '))
+    .map((line, index) => ({
+      path: line.slice('worktree '.length),
+      isMain: index === 0,
+    }));
+
+/**
+ * The base a .env.local claims (`ESIGN_PORT_BASE=4120`, `export` and quotes
+ * tolerated, comments ignored, the last assignment wins), undefined without one.
+ */
+export const claimedBase = (text, name = BASE_VAR) => {
+  let value;
+  for (const line of text.split('\n')) {
+    const match = line.match(
+      new RegExp(
+        `^\\s*(?:export\\s+)?${name}=\\s*["']?(\\d*)["']?\\s*(?:#.*)?$`,
+      ),
+    );
+    if (match) {
+      value = match[1];
+    }
+  }
+  return value ? portFrom(name, value, undefined) : undefined;
+};
+
+/** The lowest block above the default that no sibling has claimed */
+export const nextFreeBase = (
+  claimed,
+  { base = BASE_DEFAULT, step = BLOCK_STEP, slots = BLOCK_SLOTS } = {},
+) => {
+  const taken = new Set(claimed);
+  for (let slot = 1; slot <= slots; slot += 1) {
+    const candidate = base + slot * step;
+    if (!taken.has(candidate)) {
+      return candidate;
+    }
+  }
+  throw new Error(
+    `no free port block: all ${slots} blocks above ${base} are claimed (free one by removing a worktree, or set ${BASE_VAR} yourself)`,
+  );
+};
+
+/** The .env.local text with the claim appended (unchanged when it already claims that base) */
+export const withClaimedBase = (text, base, name = BASE_VAR) => {
+  if (claimedBase(text, name) === base) {
+    return text;
+  }
+  const body = text.length > 0 && !text.endsWith('\n') ? `${text}\n` : text;
+  return `${body}# This worktree's port block (scripts/lib/ports.mjs; make ports shows it)\n${name}=${base}\n`;
+};

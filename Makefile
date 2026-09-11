@@ -3,6 +3,10 @@
 # Run `make` or `make help` to list targets.
 
 .DEFAULT_GOAL := help
+# This worktree's port block (scripts/lib/ports.mjs): a linked worktree's
+# claim from .env.local (made on first use), the default for the main clone
+# and CI; exported so compose, the scripts and $(MAKE) children see it
+export ESIGN_PORT_BASE ?= $(shell node scripts/e2e/ports.mjs claim)
 # The platform e2e-metro-up prewarms the bundle for (metro-wait.sh)
 METRO_PLATFORM ?= ios
 
