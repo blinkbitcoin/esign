@@ -40,7 +40,7 @@ live_env() {
     : "${DOCUSIGN_USER_ID:?}" "${DOCUSIGN_ACCOUNT_ID:?}" "${DOCUSIGN_PRIVATE_KEY:?}" \
       "${DOCUSIGN_TEMPLATE_ID:?}" "${DOCUSIGN_WEBFORM_ID:?}"
     export ESIGN_PROVIDER=docusign ALLOW_INSECURE_DEV=true
-    export DATABASE_URL="${DATABASE_URL:-postgresql://live:live@localhost:5432/live}"
+    export DATABASE_URL="${DATABASE_URL:-$ESIGN_DEV_DATABASE_URL}"
     export DOCUSIGN_HMAC_KEY="${DOCUSIGN_HMAC_KEY:-live-e2e-hmac}"
     export DOCUSIGN_WEBFORMS_BASE_URL="${DOCUSIGN_WEBFORMS_BASE_URL:-https://apps-d.docusign.com/api/webforms/v1.1}"
     unset JWT_SECRET # the bearer token is the user id (what the specs send)
@@ -65,10 +65,10 @@ live_env() {
 
 # shellcheck disable=SC2120  # the extra env is optional (ios-live.sh passes none)
 live_service_up() { # [extra env for the service, e.g. CORS_ALLOWED_ORIGINS=... DOCUSIGN_RETURN_URL=...]
-  # The journeys persist envelopes: the E2E Postgres (tmpfs, :5433)
+  # The journeys persist envelopes: the E2E Postgres (tmpfs, ESIGN_TEST_DB_PORT)
   echo "== test database"
   make test-db-up > /dev/null
-  export DATABASE_URL="postgresql://test:test@localhost:5433/esign_test"
+  export DATABASE_URL="$ESIGN_TEST_DATABASE_URL"
   npm run --silent migrate -w "$SERVICE" > /dev/null
 
   echo "== service on :$LIVE_PORT (DocuSign provider)"

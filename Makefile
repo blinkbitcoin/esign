@@ -3,6 +3,10 @@
 # Run `make` or `make help` to list targets.
 
 .DEFAULT_GOAL := help
+# This worktree's port block (scripts/lib/ports.mjs): a linked worktree's
+# claim from .env.local (made on first use), the default for the main clone
+# and CI; exported so compose, the scripts and $(MAKE) children see it
+export ESIGN_PORT_BASE ?= $(shell node scripts/e2e/ports.mjs claim)
 # The platform e2e-metro-up prewarms the bundle for (metro-wait.sh)
 METRO_PLATFORM ?= ios
 
@@ -106,49 +110,56 @@ ios: ## Run the example app on the iOS simulator
 android: ## Run the example app on an Android emulator
 	npm run android
 
-backend: ## Backend dev server (tsx watch; env via direnv/.env)
-	npm run backend
+backend: ## Backend dev server (tsx watch; env via direnv/.env, DATABASE_URL defaults to this worktree's dev Postgres)
+	bash scripts/e2e/dev-db.sh run npm run backend
 
 web: ## Vite dev server for the web example app
 	npm run web
 
+# ---------- Ports ----------
+
+ports: ## This worktree's port block (ESIGN_PORT_BASE + offsets, the two databases, Metro) and who holds each port
+	node scripts/e2e/ports.mjs table
+
+ports-free: ## Stop what this worktree left on its ports (its processes, its compose projects, its Metro); FORCE=1 also stops a sibling worktree's leftovers, never a foreign process
+	node scripts/e2e/ports.mjs free $(if $(FORCE),--force)
+
 # ---------- Database ----------
 
-db-up: ## Start the dev Postgres (packages/esign-service/docker-compose.yml, port 5432)
-	cd packages/esign-service && docker compose up -d --wait
+db-up: ## Start this worktree's dev Postgres (packages/esign-service/docker-compose.yml on ESIGN_DEV_DB_PORT = ESIGN_PORT_BASE + 13, default 4113; its own compose project and volume)
+	bash scripts/e2e/dev-db.sh up
 
-db-down: ## Stop the dev Postgres
-	cd packages/esign-service && docker compose down
+db-down: ## Stop this worktree's dev Postgres
+	bash scripts/e2e/dev-db.sh down
 
-migrate: ## Apply Knex migrations to the dev database
-	npm run migrate -w packages/esign-service
+migrate: ## Apply Knex migrations to the dev database (DATABASE_URL from .env, else this worktree's dev Postgres)
+	bash scripts/e2e/dev-db.sh run npm run migrate -w packages/esign-service
 
 # ---------- E2E ----------
 
-test-db-up: ## Start the E2E Postgres (tmpfs, port 5433) and wait for it
-	docker compose -f docker-compose.test.yml up -d --wait
-	bash scripts/e2e/db-wait.sh
+test-db-up: ## Start the E2E Postgres (tmpfs, ESIGN_TEST_DB_PORT = ESIGN_PORT_BASE + 12, default 4112) and wait for it
+	bash scripts/e2e/test-db.sh up
 
 test-db-down: ## Stop the E2E Postgres
-	docker compose -f docker-compose.test.yml down
+	bash scripts/e2e/test-db.sh down
 
 e2e-backend: test-db-up ## Backend E2E suite against real Postgres (then tears DB down)
-	npm run migrate:test -w packages/esign-service
-	npm run test:e2e -w packages/esign-service
+	bash scripts/e2e/test-db.sh run npm run migrate:test -w packages/esign-service
+	bash scripts/e2e/test-db.sh run npm run test:e2e -w packages/esign-service
 	$(MAKE) test-db-down
 
 e2e-web: test-db-up build ## Playwright browser E2E for the web demo (proxy mode; then tears DB down) - builds the libraries first (the demo bundles their dist)
-	npm run migrate:test -w packages/esign-service
+	bash scripts/e2e/test-db.sh run npm run migrate:test -w packages/esign-service
 	npm run test:e2e -w examples/react-demo
 	$(MAKE) test-db-down
 
 e2e-web-webform: test-db-up build ## Playwright browser E2E for the web demo in DocuSign Web Forms mode - builds the libraries first (the demo bundles their dist)
-	npm run migrate:test -w packages/esign-service
+	bash scripts/e2e/test-db.sh run npm run migrate:test -w packages/esign-service
 	npm run test:e2e:webform -w examples/react-demo
 	$(MAKE) test-db-down
 
 e2e-web-publicurl: test-db-up build ## Playwright browser E2E for the web demo in public-URL mode - builds the libraries first (the demo bundles their dist)
-	npm run migrate:test -w packages/esign-service
+	bash scripts/e2e/test-db.sh run npm run migrate:test -w packages/esign-service
 	npm run test:e2e:publicurl -w examples/react-demo
 	$(MAKE) test-db-down
 
@@ -224,8 +235,7 @@ docker-build: ## Build the service image (packages/esign-service/Dockerfile, fro
 docker-smoke: docker-build ## Boot the image in both modes (mint only, then with Postgres) and assert its capabilities
 	bash scripts/ci/docker-smoke.sh esign-service
 	$(MAKE) test-db-up
-	DATABASE_URL=postgresql://test:test@host.docker.internal:5433/esign_test \
-		bash scripts/ci/docker-smoke.sh esign-service
+	bash scripts/e2e/test-db.sh run-docker bash scripts/ci/docker-smoke.sh esign-service
 	$(MAKE) test-db-down
 
 deploy-check: ## Validate the deploy templates (compose + the Worker bundle; k8s when kubeconform is installed)
@@ -235,7 +245,7 @@ docker-build-mint-only: ## Build the mint-only demo image (examples/mint-only-de
 	DOCKERFILE=examples/mint-only-demo/Dockerfile bash scripts/ci/docker-build.sh esign-mint-only-demo
 
 docker-smoke-mint-only: docker-build-mint-only ## Boot the mint-only demo image with the mock provider and hit /health
-	bash scripts/ci/docker-smoke.sh esign-mint-only-demo 4104
+	bash scripts/ci/docker-smoke.sh esign-mint-only-demo $(shell node scripts/e2e/ports.mjs mint)
 
 # ---------- Housekeeping ----------
 
@@ -252,6 +262,6 @@ help: ## List available targets
 		awk 'BEGIN {FS = ":.*##"} {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: install hooks pods release release-rc version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
-	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check codeql start ios android backend web db-up db-down migrate \
+	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check codeql start ios android backend web ports ports-free db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-web-webform-live \
 	e2e-server-demos e2e-backend-up e2e-backend-down e2e-metro-up e2e-metro-down ios-build android-build e2e-ios e2e-android e2e-ios-local e2e-android-local test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live live-web live-ios live-android docker-build docker-smoke docker-build-mint-only docker-smoke-mint-only deploy-check clean reset help
