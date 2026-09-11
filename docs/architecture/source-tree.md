@@ -219,7 +219,7 @@ esign/
 │   ├── package.json               # Workspace root: orchestration scripts
 │   ├── .envrc                     # direnv: .env loading + use flake + workspace bins
 │   ├── flake.nix / flake.lock     # Nix dev shell: node 24, jdk 17, ruby 3.3, watchman
-│   ├── docker-compose.test.yml    # E2E test database (tmpfs, port 5433)
+│   ├── docker-compose.test.yml    # E2E test database (tmpfs, ESIGN_TEST_DB_PORT, default 4112)
 │   ├── babel.config.js            # Root Babel (for ESLint's parser only)
 │   ├── eslint.config.js           # ESLint 9 flat config (@react-native via FlatCompat)
 │   ├── lefthook.yml               # Git hooks: biome+eslint pre-commit, typecheck pre-push

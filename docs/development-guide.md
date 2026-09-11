@@ -74,7 +74,7 @@ dotenv never overrides direnv-exported values, so precedence is consistent.
 
 **Backend (`packages/esign-service/.env`):**
 ```env
-DATABASE_URL=postgresql://dev:dev@localhost:5432/esign
+DATABASE_URL=postgresql://dev:dev@localhost:4113/esign   # make db-up's Postgres: ESIGN_PORT_BASE + 13
 ESIGN_PROVIDER=mock            # 'docusign' for the real integration
 PORT=4100                      # ESIGN_PORT_BASE + 0 (docs/architecture/backend.md)
 
@@ -425,7 +425,8 @@ npm run migrate
 | `PORT` | No | Server port (default: `ESIGN_PORT_BASE` + 0 = 4100). **Container only** |
 | `TRUST_PROXY` | No | `true` to take the client from `x-forwarded-for` (rate limits, webhook security log). **Container only** |
 | `RATE_LIMIT_WEBFORM_PER_MIN`, `RATE_LIMIT_WEBHOOK_PER_MIN`, `RATE_LIMIT_GRAPHQL_PER_MIN` | No | Per-route limits (60 / 120 / 100); `0` switches a route's limit off. **Container only** |
-| `ESIGN_PORT_BASE` | No | The repo's base port (default 4100); every service is base + offset (`scripts/lib/ports.mjs`), so one variable moves a worktree |
+| `ESIGN_PORT_BASE` | No | The block's base port (default 4100); every service is base + offset (`scripts/lib/ports.mjs`). A linked worktree claims its own block into `.env.local` on first use (`.envrc` / `make`); set it only to pick a block by hand. `make ports` shows the block and its holders, `make ports-free` clears this worktree's leftovers |
+| `ESIGN_TEST_DB_PORT` / `ESIGN_DEV_DB_PORT` | No | The E2E Postgres (base + 12, default 4112) and the dev Postgres (base + 13, default 4113); the compose files read them, `scripts/e2e/test-db.sh` / `dev-db.sh` export the matching `DATABASE_URL` |
 
 The `docusign` column means required when `ESIGN_PROVIDER=docusign` — the
 server refuses to start without them (fail-fast). For the full walkthrough
