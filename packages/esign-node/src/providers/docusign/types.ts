@@ -41,8 +41,14 @@ export interface EnvelopeTabValue {
   locked?: boolean;
 }
 
-// Tab label to value; a bare string is a value the signer may still edit.
-// Every value is text: tab types are the template's business, and text is the
-// only one that takes an arbitrary string (a BTC amount has no place in a
-// DocuSign Number, which holds two decimals).
+// Tab label to value. A bare string (or a value without `locked`) keeps the
+// lock the template designer set on that tab; `locked: true` locks it,
+// `locked: false` unlocks it on purpose.
+//
+// Every key must name a **Text** tab on the signer's role: DocuSign matches
+// a template-role value by tab type + label, so a label naming a Number,
+// Date or List tab is ignored with a 200 and an empty, editable field. Text
+// is also the only type that takes an arbitrary string (a BTC amount has no
+// place in a DocuSign Number, which holds two decimals): format money and
+// dates as the strings the signer must see.
 export type EnvelopeTabPrefill = Record<string, string | EnvelopeTabValue>;

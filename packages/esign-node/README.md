@@ -94,8 +94,14 @@ const provider = createDocuSignProvider({
 const store: EnvelopeStore = createMemoryEnvelopeStore(); // or your own, over your database
 const envelopes = createEnvelopeService({ provider, store });
 
-// In your API, with the authenticated user:
-const { envelopeId, signingUrl } = await envelopes.createEnvelope(userId, { contractType, recipient });
+// In your API, with the authenticated user (prefill: the host's values for the
+// template's Text tabs, locked where the signer must not change them - optional,
+// and never something a client sends; see docs/integration/locked-terms-envelopes.md):
+const { envelopeId, signingUrl } = await envelopes.createEnvelope(userId, {
+  contractType,
+  recipient,
+  prefill: { reference: { value: quote.reference, locked: true } },
+});
 const { signingUrl: again } = await envelopes.getSigningUrl(userId, { envelopeId, recipient }); // restart
 const view = await envelopes.getEnvelope(userId, envelopeId);          // never the provider's id
 const trail = await envelopes.getAuditLogs(userId, envelopeId);       // newest first, no PII
@@ -294,8 +300,10 @@ because both go through `mintWebFormInstanceHttp`; anything else is a
 
 Everything DocuSign-specific is also on its own entry, peer-free: the
 client, `docuSignConfigFromEnv` and the `DOCUSIGN_*` mapping,
-`createDocuSignProvider`, `createWebFormInstance`, the prefill contract
-(`parseWebFormPrefill`, `WebFormPrefill`), the return-URL bridge
+`createDocuSignProvider`, `createWebFormInstance`, the prefill contracts
+(`parseWebFormPrefill` / `WebFormPrefill` for a form instance,
+`parseEnvelopePrefill` / `EnvelopeTabPrefill` for an envelope's Text tabs),
+the return-URL bridge
 (`renderSigningReturnBridge`, `mapDocuSignReturnEvent`), the mock Web Forms
 page and `mintFromDocuSign`. The root entry keeps re-exporting all of it;
 the subpath is the canonical import for DocuSign names going forward

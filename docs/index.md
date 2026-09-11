@@ -56,6 +56,7 @@ Organized by namespace - pick by what you're doing:
 |-----|--------|
 | [consuming.md](integration/consuming.md) | Registry setup (GitHub Packages) + the minimal Web Forms-only install |
 | [locked-terms.md](integration/locked-terms.md) | **The recipe for locked terms (mode 2), backend + app:** the form rules, the one mutation, the bridge route, the app source, what to verify |
+| [locked-terms-envelopes.md](integration/locked-terms-envelopes.md) | The same on a template envelope (mode 3): Text tabs, the `prefill` on `createEnvelope`, locked values, several documents as one envelope |
 | [docusign-lessons.md](integration/docusign-lessons.md) | **The rules behind it:** every lesson from the live DocuSign runs on one page - the Text-only rule for read-only fields, why the mint is server-side, completion without DocuSign.js, account gotchas |
 | [webforms.md](integration/webforms.md) | Modes 1-2 (public URL + Web Forms instances): mock and live runs, event model, embedding options |
 | [docusign-proxy.md](integration/docusign-proxy.md) | Mode 3 (proxy envelopes): real-DocuSign setup, return-URL bridge, webhooks, live smoke-test checklist |

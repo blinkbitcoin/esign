@@ -99,10 +99,14 @@ without the HTTP layer knowing about either.
 
 ```typescript
 interface ESignProvider {
+  // `prefill`: the host's values for the document's fields, locked where the
+  // signer must not change them (DocuSign: the template's Text tabs). It is
+  // the host's to supply, in-process; the GraphQL mutation has no such input.
   createEnvelope(
     userId: string,
     contractType: string,
-    recipient: RecipientData
+    recipient: RecipientData,
+    prefill?: EnvelopePrefill
   ): Promise<EnvelopeResult>;
 
   getEnvelopeStatus(envelopeId: string): Promise<EnvelopeStatus>;

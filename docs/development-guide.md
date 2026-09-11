@@ -402,7 +402,8 @@ npm run migrate
 | `DOCUSIGN_INTEGRATION_KEY` | docusign | DocuSign integration key |
 | `DOCUSIGN_USER_ID` | docusign | DocuSign user ID (GUID) |
 | `DOCUSIGN_PRIVATE_KEY` | docusign | RSA private key in PEM format |
-| `DOCUSIGN_TEMPLATE_ID` | docusign | DocuSign template ID; several, comma-separated, are sent as one envelope in that order |
+| `DOCUSIGN_TEMPLATE_ID` | docusign | DocuSign template ID; several, comma-separated, are sent as one envelope in that order (the signer role at the same routing order in each) |
+| `DOCUSIGN_SIGNER_ROLE` | no | The template role the signer fills (default `signer`, what `make docusign-template` names it) |
 | `DOCUSIGN_WEBFORM_ID` | webform mode | Web Forms form id (from the builder) |
 | `DOCUSIGN_WEBFORMS_BASE_URL` | no | Web Forms API base (defaults to demo) |
 | `DOCUSIGN_BASE_URL` | no | eSignature REST base (defaults to the demo environment) |

@@ -296,7 +296,8 @@ comments. In production the ones that matter:
 | `DOCUSIGN_WEBFORM_ID`,<br>`DOCUSIGN_RETURN_URL` | the production form; the deployed bridge URL |
 | `DOCUSIGN_BASE_URL`,<br>`DOCUSIGN_OAUTH_URL`,<br>`DOCUSIGN_WEBFORMS_BASE_URL` | the production hosts (section 2) |
 | `DOCUSIGN_HMAC_KEY` | required when envelopes are on |
-| `DOCUSIGN_TEMPLATE_ID` | envelope (proxy) mode only |
+| `DOCUSIGN_TEMPLATE_ID` | envelope (proxy) mode only; several ids, comma-separated,<br>go out as one envelope in that order |
+| `DOCUSIGN_SIGNER_ROLE` | the template role the signer fills, when it is not<br>named `signer` |
 | `CORS_ALLOWED_ORIGINS` | the app origins; empty = same-origin only |
 | `ALLOW_INSECURE_DEV` | never set in production |
 | `OTEL_*` | standard OpenTelemetry; tracing off unless set |
