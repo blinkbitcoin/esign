@@ -312,6 +312,27 @@ describe('createDocuSignProvider', () => {
       },
     );
 
+    // A setting the envelope cannot do without is reported once, as the
+    // caller's error, before any request: not retried three times and not
+    // dressed up as the provider being down
+    it.each([
+      ['unset', undefined],
+      ['a list naming no template', ' , '],
+    ])(
+      'refuses a template id that is %s without a request or a retry',
+      async (_, templateId) => {
+        const { provider, client } = setup({}, testConfig({ templateId }));
+        await expect(
+          provider.createEnvelope('user-1', 'nda', recipient),
+        ).rejects.toMatchObject({
+          code: 'VALIDATION_ERROR',
+          message: 'DocuSign: missing configuration: DOCUSIGN_TEMPLATE_ID',
+        });
+        expect(client().createEnvelopeFromTemplate).not.toHaveBeenCalled();
+        expect(setTimeoutSpy).not.toHaveBeenCalled();
+      },
+    );
+
     it('maps a client error to ENVELOPE_CREATION_FAILED without retrying', async () => {
       const { provider, client } = setup();
       await provider.getEnvelopeStatus('ds-1');

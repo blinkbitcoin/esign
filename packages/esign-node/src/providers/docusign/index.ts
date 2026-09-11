@@ -30,6 +30,7 @@ export {
   JWT_CREDENTIALS,
   missingDocuSignConfig,
   privateKeyFromEnv,
+  templateIds,
 } from './config';
 export type { DocuSignMintTarget } from './handlers';
 export { mintFromDocuSign } from './handlers';

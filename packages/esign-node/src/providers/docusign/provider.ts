@@ -18,7 +18,11 @@ import type {
   WebhookHeaders,
 } from '../../types';
 import { createDocuSignClient, type DocuSignClient } from './client';
-import type { DocuSignConfig } from './config';
+import {
+  assertDocuSignConfig,
+  type DocuSignConfig,
+  DocuSignConfigError,
+} from './config';
 import { assertEnvelopePrefill, PrefillError } from './prefill';
 import { createWebFormInstance } from './webforms';
 
@@ -119,11 +123,12 @@ export interface DocuSignProviderHandle extends ESignProvider {
 }
 
 // What creating an envelope or minting a form instance reports when it fails:
-// a prefill outside the contract is the caller's error, not the provider's;
-// 4xx (excluding rate limits) are validation/client errors; anything else
-// (after retries) means the service is unavailable.
+// a prefill outside the contract, or a setting the operation needs, is the
+// caller's error, not the provider's; 4xx (excluding rate limits) are
+// validation/client errors; anything else (after retries) means the service
+// is unavailable.
 const creationError = (error: unknown): Error => {
-  if (error instanceof PrefillError) {
+  if (error instanceof PrefillError || error instanceof DocuSignConfigError) {
     return Errors.validationError(error.message);
   }
   if (isClientError(error)) {
@@ -183,10 +188,12 @@ export const createDocuSignProvider = (
     ): Promise<EnvelopeResult> {
       try {
         // Refused before any request, like a bad Web Forms prefill: the
-        // caller's error, not the provider's, and not worth a retry
+        // caller's error, not the provider's, and not worth a retry. The same
+        // for a missing template: reported once, not after three attempts.
         const tabs =
           prefill === undefined ? undefined : assertEnvelopePrefill(prefill);
         const docusign = getClient();
+        assertDocuSignConfig(docusign.config, ['accountId', 'templateId']);
         const envelope = await withRetry(() =>
           docusign.createEnvelopeFromTemplate(recipient, tabs),
         );

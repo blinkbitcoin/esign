@@ -12,7 +12,11 @@ import type {
   WebFormPrefill,
 } from '../../types';
 import { createTokenProvider, defaultFetch, type TokenProvider } from './auth';
-import { assertDocuSignConfig, type DocuSignConfig } from './config';
+import {
+  assertDocuSignConfig,
+  type DocuSignConfig,
+  templateIds,
+} from './config';
 
 export interface DocuSignClientOptions {
   // Replace fetch (tests, custom agents)
@@ -90,18 +94,6 @@ interface TemplateRole {
 }
 
 /**
- * The templates `templateId` names, in the order the signer reads them.
- *
- * Blank entries are dropped, so a trailing comma or the spaces after one cannot
- * add a template nobody asked for.
- */
-const templateIdsOf = (templateId: string | undefined): string[] =>
-  (templateId ?? '')
-    .split(',')
-    .map(id => id.trim())
-    .filter(id => id.length > 0);
-
-/**
  * Each document of a multi-template envelope carries its own copy of the signer,
  * and DocuSign folds the copies that share a recipient id into one recipient:
  * one signing session across every document instead of one per document.
@@ -176,13 +168,8 @@ export const createDocuSignClient = (
     clearTokenCache: () => tokens.clearTokenCache(),
 
     async createEnvelopeFromTemplate(recipient, prefill) {
-      // Checked against the ids the setting actually names, so one that names
-      // nothing (a lone comma) is reported as missing just like an unset one
-      const templateIds = templateIdsOf(config.templateId);
-      assertDocuSignConfig({ ...config, templateId: templateIds.join(',') }, [
-        'accountId',
-        'templateId',
-      ]);
+      // A template list that names nothing counts as missing (config.ts)
+      assertDocuSignConfig(config, ['accountId', 'templateId']);
 
       const signer: TemplateRole = {
         email: recipient.email,
@@ -195,7 +182,7 @@ export const createDocuSignClient = (
       };
       const data = await call<{ envelopeId: string }>(envelopesUrl(), {
         method: 'POST',
-        body: { ...templatesFor(templateIds, signer), status: 'sent' },
+        body: { ...templatesFor(templateIds(config), signer), status: 'sent' },
       });
       return { envelopeId: data.envelopeId };
     },

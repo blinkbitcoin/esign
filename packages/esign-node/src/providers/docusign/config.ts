@@ -21,7 +21,9 @@ export interface DocuSignConfig {
   userId?: string;
   // Envelope mode: the template to send, or several separated by commas. Several
   // go out as ONE envelope, their documents in the order listed, so an agreement
-  // made of more than one document is signed in a single session.
+  // made of more than one document is signed in a single session (the signer
+  // role must sit at the same routing order in each). `templateIds(config)`
+  // reads the list; docuSignConfigFromEnv stores it trimmed, blanks dropped.
   templateId?: string;
   // Envelope mode: the template role the signer fills. Templates name their roles
   // for the agreement they carry ("investor", "tenant", "employee"), so the one
@@ -159,17 +161,37 @@ export const docuSignConfigFromEnv = (
   integrationKey: env[DOCUSIGN_ENV.integrationKey] || undefined,
   privateKey: privateKeyFromEnv(env, options.readFile),
   userId: env[DOCUSIGN_ENV.userId] || undefined,
-  templateId: env[DOCUSIGN_ENV.templateId] || undefined,
+  // Normalised once here, so a value that names no template (a lone comma)
+  // is unset to the boot guard, the assertions and the client alike
+  templateId:
+    templateIds({ templateId: env[DOCUSIGN_ENV.templateId] }).join(',') ||
+    undefined,
   signerRoleName: env[DOCUSIGN_ENV.signerRoleName] || undefined,
   webFormId: env[DOCUSIGN_ENV.webFormId] || undefined,
 });
+
+// The templates `templateId` names, in the order the signer reads them. Blank
+// entries are dropped, so a trailing comma or the spaces after one cannot add
+// a template nobody asked for.
+export const templateIds = (
+  config: Pick<DocuSignConfig, 'templateId'>,
+): string[] =>
+  (config.templateId ?? '')
+    .split(',')
+    .map(id => id.trim())
+    .filter(id => id.length > 0);
+
+// Whether a required setting is present; the template list counts as set only
+// when it names at least one template
+const isSet = (config: DocuSignConfig, key: DocuSignConfigKey): boolean =>
+  key === 'templateId' ? templateIds(config).length > 0 : Boolean(config[key]);
 
 // The environment variable names of the required settings that are unset
 export const missingDocuSignConfig = (
   config: DocuSignConfig,
   required: readonly DocuSignConfigKey[] = JWT_CREDENTIALS,
 ): string[] =>
-  required.filter(key => !config[key]).map(key => DOCUSIGN_ENV[key]);
+  required.filter(key => !isSet(config, key)).map(key => DOCUSIGN_ENV[key]);
 
 // A setting the requested operation cannot do without
 export class DocuSignConfigError extends Error {
