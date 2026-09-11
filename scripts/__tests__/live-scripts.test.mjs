@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -126,7 +126,7 @@ describe('scripts/e2e/live-service.sh', () => {
     );
     expect(status).toBe(0);
     expect(stdout).toContain('url=https://mac.tail.ts.net');
-    expect(spawnSync('cat', [calls], { encoding: 'utf8' }).stdout).toContain(
+    expect(readFileSync(calls, { encoding: 'utf8' })).toContain(
       'funnel --bg 4306',
     );
   });
