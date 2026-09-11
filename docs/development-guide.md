@@ -199,7 +199,10 @@ Three tiers, by what they touch:
    [integration/docusign-lessons.md](integration/docusign-lessons.md).
    The manual smoke-test checklist in
    [integration/docusign-proxy.md](integration/docusign-proxy.md) (section
-   5) remains for anything the flows do not cover.
+   5) remains for anything the flows do not cover; `make live-web`,
+   `make live-ios` and `make live-android` bring up the stack for it (the
+   service on DocuSign, a Tailscale Funnel public URL for Connect webhooks,
+   the demo on the attached phone) and tear it down on Ctrl-C.
 
 ### Mobile Unit Tests
 
@@ -270,14 +273,18 @@ docker-compose -f docker-compose.test.yml down
 # Install Maestro CLI
 curl -Ls "https://get.maestro.mobile.dev" | bash
 
-# Start backend with mock provider against the test database
-cd packages/esign-service && ESIGN_PROVIDER=mock npx dotenv-cli -e .env.test -- npm run dev &
+# The whole stack in one command, torn down on the way out: E2E Postgres,
+# the mock-provider backend, the debug build, Metro, the Maestro suite
+make e2e-ios-local        # boots a simulator when none is booted
+make e2e-android-local    # needs a running emulator (emulator -avd <name> &)
 
-# Build and run app on simulator
-npm run ios
-
-# Run Maestro tests
-maestro test examples/react-native-demo/.maestro/
+# Or step by step (what CI runs as separate jobs)
+make test-db-up && npm run migrate:test -w packages/esign-service
+make e2e-backend-up       # mock provider on ESIGN_API_PORT
+make ios-build            # or: make android-build (the emulator's ABI)
+make e2e-metro-up         # Metro in the background, bundle prewarmed (METRO_PLATFORM=android for Android)
+make e2e-ios              # or: make e2e-android
+make e2e-metro-down && make e2e-backend-down && make test-db-down
 ```
 
 The flows launch the app once (`app-launch` runs first) and reset between
@@ -512,6 +519,7 @@ make e2e-backend        # Backend
 make e2e-web            # Web (Playwright; builds the libraries, then bundles + previews the demo)
 make e2e-android        # Android: emulator running, APK built, Metro + backend up (see `make help`)
 make e2e-ios            # iOS: simulator booted with the app installed, Metro + backend up
+make e2e-ios-local      # the whole iOS stack in one command (or e2e-android-local with an emulator running)
 
 # Release plumbing
 make version            # what a push to main would publish; make version TAG=vX.Y.Z for a release

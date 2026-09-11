@@ -49,7 +49,10 @@ The ones that matter most: `make test` (unit + check-code), `make coverage`,
 `make diagrams` / `make docs-check`, `make e2e-backend` (DB up → migrate →
 E2E → teardown), `make e2e-web[-webform|-publicurl]` (Playwright), `make
 e2e-android` / `make e2e-ios` (Maestro, needs a running stack; `make
-e2e-backend-up` starts the mock-provider backend), `make db-up/migrate/backend`,
+e2e-ios-local` / `make e2e-android-local` bring the whole stack up and
+tear it down in one command, `make e2e-backend-up` / `make e2e-metro-up`
+are the steps), `make live-web/live-ios/live-android` (the demos on real
+DocuSign with a Funnel public URL, interactive), `make db-up/migrate/backend`,
 `make ios/android/start/web`, `make pods`, `make build`, `make docker-build` /
 `make docker-smoke` (the service image, `packages/esign-service/Dockerfile`), `make release`,
 `make clean/reset`. The underlying npm scripts:

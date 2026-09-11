@@ -44,7 +44,9 @@ object replacing the demo's mock-form prefill, for a real form).
 make test          # Jest unit tests (29); 100% coverage enforced - E2E drives the real WebView
 make e2e           # Maestro, iOS (needs backend running + app installed on a simulator)
 make e2e-android   # Maestro, Android (adb reverse handles Metro + backend ports)
+# repo root: make e2e-ios-local / make e2e-android-local - the whole stack in one command (DB, backend, build, Metro, Maestro, teardown)
 # repo root: make e2e-ios-live - the real DocuSign Web Form in the WebView, signed (needs the DocuSign .env)
+# repo root: make live-ios / make live-android - this app on the attached phone against real DocuSign, interactive
 ```
 
 The demo sends a fixed dev bearer token; the backend's dev passthrough

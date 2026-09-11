@@ -53,6 +53,8 @@ one-line description. The ones you will reach for:
 | `make docs-check` | Warn when architecture-relevant changes ship without a `docs/` update;<br>fail on a README table cell line wider than 72 characters (break with `<br>`) |
 | `make db-up migrate backend` | Dev Postgres, migrations, backend dev server |
 | `make e2e-backend` / `make e2e-web` | Backend E2E against real Postgres / Playwright browser E2E |
+| `make e2e-ios-local` / `make e2e-android-local` | The whole mobile stack on a laptop (DB, backend, .app or APK, Metro,<br>Maestro, teardown); iOS boots a simulator, Android needs a running<br>emulator. `e2e-backend-up` / `ios-build` or `android-build` /<br>`e2e-metro-up` / `e2e-ios` or `e2e-android` are the steps |
+| `make live-web` / `make live-ios` / `make live-android` | The web demo / the RN demo on the attached phone against real<br>DocuSign (`.env` + Tailscale Funnel + the service), waiting for the<br>manual rows of `docs/integration/docusign-proxy.md` §5; Ctrl-C tears down |
 | `make start` / `make ios` / `make android` / `make web` | Demo apps |
 | `make release` | Merge the open release PR that release-please maintains (tags, publishes; `docs/releasing.md`) |
 
