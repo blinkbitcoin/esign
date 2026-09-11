@@ -116,6 +116,14 @@ backend: ## Backend dev server (tsx watch; env via direnv/.env, DATABASE_URL def
 web: ## Vite dev server for the web example app
 	npm run web
 
+# ---------- Ports ----------
+
+ports: ## This worktree's port block (ESIGN_PORT_BASE + offsets, the two databases, Metro) and who holds each port
+	node scripts/e2e/ports.mjs table
+
+ports-free: ## Stop what this worktree left on its ports (its processes, its compose projects, its Metro); FORCE=1 also stops a sibling worktree's leftovers, never a foreign process
+	node scripts/e2e/ports.mjs free $(if $(FORCE),--force)
+
 # ---------- Database ----------
 
 db-up: ## Start this worktree's dev Postgres (packages/esign-service/docker-compose.yml on ESIGN_DEV_DB_PORT = ESIGN_PORT_BASE + 13, default 4113; its own compose project and volume)
@@ -254,6 +262,6 @@ help: ## List available targets
 		awk 'BEGIN {FS = ":.*##"} {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: install hooks pods release release-rc version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
-	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check codeql start ios android backend web db-up db-down migrate \
+	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check codeql start ios android backend web ports ports-free db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-web-webform-live \
 	e2e-server-demos e2e-backend-up e2e-backend-down e2e-metro-up e2e-metro-down ios-build android-build e2e-ios e2e-android e2e-ios-local e2e-android-local test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live live-web live-ios live-android docker-build docker-smoke docker-build-mint-only docker-smoke-mint-only deploy-check clean reset help
