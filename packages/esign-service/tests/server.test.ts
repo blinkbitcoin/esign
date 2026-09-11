@@ -6,13 +6,13 @@ import { vi } from 'vitest';
 import {
   createRateLimiter,
   DEFAULT_RATE_LIMITS,
-  rateLimitsFromEnv,
   RATE_LIMIT_MAX_WINDOWS,
   type RateWindow,
   type RunningServer,
+  rateLimitsFromEnv,
   shutdown,
-  sweepWindows,
   startServer,
+  sweepWindows,
 } from '../src/server';
 import { DEV_ENV } from './support/app';
 

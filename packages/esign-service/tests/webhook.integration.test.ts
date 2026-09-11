@@ -13,8 +13,8 @@ vi.mock('../src/store', async () => {
 import type { EnvelopeStatus } from '@blinkbitcoin/esign-node';
 import type { MockInstance } from 'vitest';
 import type { DocuSignWebhookPayload } from '../src/providers/docusign';
-import { memoryStore as store } from './support/store';
 import { asJson, get, post, testFullApp } from './support/app';
+import { memoryStore as store } from './support/store';
 
 // Helper to create a mock DocuSign webhook payload
 const createWebhookPayload = (envelopeId: string, status: string): DocuSignWebhookPayload => ({

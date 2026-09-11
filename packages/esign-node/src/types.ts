@@ -61,8 +61,9 @@ export type EnvelopeStatus = 'sent' | 'completed' | 'voided' | 'declined';
 
 // The values a host computed for the document's own fields, keyed by whatever
 // the provider calls them (DocuSign: the template's tab labels). Neutral like
-// HostedFormPrefill; a provider narrows the value shapes it accepts
-// (EnvelopeTabPrefill for DocuSign).
+// HostedFormPrefill; a provider narrows the value shapes it accepts and
+// refuses the rest before any request (DocuSign: EnvelopeTabPrefill, checked
+// by parseEnvelopePrefill).
 export type EnvelopePrefill = Record<string, unknown>;
 
 // Result from creating an envelope at the provider
@@ -94,6 +95,11 @@ export interface WebhookEvent {
 export interface CreateEnvelopeInput {
   contractType: string;
   recipient: RecipientData;
+  // The host's own values for the document's fields, locked where the signer
+  // must not change them. Supplied by the host process that calls the
+  // service; deliberately absent from the GraphQL mutation, since terms the
+  // signer cannot change must not be the client's to send.
+  prefill?: EnvelopePrefill;
 }
 export interface GetSigningUrlInput {
   envelopeId: string;

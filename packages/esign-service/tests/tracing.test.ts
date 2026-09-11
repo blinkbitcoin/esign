@@ -151,7 +151,12 @@ describe('instrumentProvider', () => {
     const result = await wrapped.createEnvelope('user-1', 'loan_agreement', recipient);
 
     expect(result.envelopeId).toBe('prov-env-1');
-    expect(inner.createEnvelope).toHaveBeenCalledWith('user-1', 'loan_agreement', recipient);
+    expect(inner.createEnvelope).toHaveBeenCalledWith(
+      'user-1',
+      'loan_agreement',
+      recipient,
+      undefined
+    );
     expect(spans[0].name).toBe('esign.provider.create_envelope');
     expect(spans[0].attributes).toEqual({
       'esign.provider': 'mock',
@@ -162,6 +167,22 @@ describe('instrumentProvider', () => {
       'esign.provider_envelope_id',
       'prov-env-1'
     );
+  });
+
+  // The prefill carries the agreement's terms: it reaches the provider whole
+  // and never a span
+  it('createEnvelope: forwards the prefill without recording it', async () => {
+    const prefill = { total_usd: { value: '10.00', locked: true } };
+    await wrapped.createEnvelope('user-1', 'loan_agreement', recipient, prefill);
+
+    expect(inner.createEnvelope).toHaveBeenCalledWith(
+      'user-1',
+      'loan_agreement',
+      recipient,
+      prefill
+    );
+    expect(JSON.stringify(spans.map((s) => s.attributes))).not.toContain('10.00');
+    expect(JSON.stringify(spans.map((s) => s.span.setAttribute.mock.calls))).not.toContain('10.00');
   });
 
   it('never attaches recipient PII to spans', async () => {

@@ -17,7 +17,7 @@
 // claim selection, the same required `exp`, the same null-on-anything-wrong
 // contract (an unverifiable token is simply unauthenticated).
 
-import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey, type JWTPayload } from 'jose';
+import { createRemoteJWKSet, type JWTPayload, type JWTVerifyGetKey, jwtVerify } from 'jose';
 
 import { type Env, isInsecureDevAllowed } from './env';
 
