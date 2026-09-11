@@ -183,6 +183,12 @@ e2e-ios: ## Maestro E2E, iOS (needs: booted simulator with the app installed, Me
 e2e-android: ## Maestro E2E, Android (needs: emulator, debug APK built, Metro + backend running)
 	bash scripts/e2e/android-maestro.sh
 
+e2e-ios-local: ## The whole iOS stack in one command on a Mac: DB, backend, pods if missing, .app, simulator, Metro, Maestro, teardown
+	bash scripts/e2e/ios-local.sh
+
+e2e-android-local: ## The whole Android stack in one command on a laptop: DB, backend, APK, Metro, Maestro, teardown (needs a running emulator)
+	bash scripts/e2e/android-local.sh
+
 test-live: ## Live verification against real DocuSign (skips unless DOCUSIGN_* set in packages/esign-service/.env)
 	npm run test:live -w packages/esign-service
 
@@ -239,4 +245,4 @@ help: ## List available targets
 .PHONY: install hooks pods release release-rc version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
 	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check codeql start ios android backend web db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-web-webform-live \
-	e2e-server-demos e2e-backend-up e2e-backend-down e2e-metro-up e2e-metro-down ios-build android-build e2e-ios e2e-android test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live docker-build docker-smoke docker-build-mint-only docker-smoke-mint-only deploy-check clean reset help
+	e2e-server-demos e2e-backend-up e2e-backend-down e2e-metro-up e2e-metro-down ios-build android-build e2e-ios e2e-android e2e-ios-local e2e-android-local test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live docker-build docker-smoke docker-build-mint-only docker-smoke-mint-only deploy-check clean reset help
