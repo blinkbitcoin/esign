@@ -4,8 +4,8 @@ name: Tests / E2E
 # releases). Concurrency is the caller's.
 #
 # The iOS job runs by default. It needs a macOS runner; GitHub-hosted macOS is
-# free on a public repo but bills at 10x Linux on a private one (one 7-12 min
-# iOS run is 70-120 Linux minutes), so the caller can switch it off (repo
+# free on a public repo but bills at 10x Linux on a private one (one 12-14 min
+# iOS run is 120-140 Linux minutes), so the caller can switch it off (repo
 # variable / PR label, see ci.yml). A skipped job costs nothing and still
 # counts as success for the caller's `needs.e2e.result`.
 #

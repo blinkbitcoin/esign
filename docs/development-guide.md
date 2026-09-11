@@ -476,8 +476,8 @@ and nothing else. The README shows `main`.
 ### iOS E2E and the macOS runner
 
 The iOS job runs on every run. It needs a macOS runner, which GitHub hosts for
-free on a public repo; on a private repo macOS bills at 10x Linux (one 7-12 min
-run is 70-120 Linux minutes), which is why the job was opt-in before the repo
+free on a public repo; on a private repo macOS bills at 10x Linux (one 12-14 min
+run is 120-140 Linux minutes), which is why the job was opt-in before the repo
 went public. `ci.yml` passes `ios: true` to `e2e.yml` unless one of these says
 otherwise; a skipped job costs nothing and the `E2E` badge describes what
 actually ran.
@@ -488,14 +488,16 @@ actually ran.
 | PR label `e2e:ios` | Forces iOS for that PR while paused (labeling triggers a run). |
 | Repo variable `E2E_IOS_RUNNER` | `runs-on` for the iOS job, default `macos-latest`. Set to self-hosted label(s), e.g. `["self-hosted","macOS","arm64"]`, and GitHub-hosted macOS is never used. |
 
-What keeps the job at 7-12 min on a 3-vCPU hosted runner (it was ~15, and
-Maestro's XCUITest driver install is most of the spread): the simulator boots
-first and only downloads overlap it, Metro starts after the boot, Metro's
-transform cache is restored from the last green run (`METRO_CACHE_ROOT`,
+What keeps the setup before Maestro at its floor on a 3-vCPU hosted runner
+(measured in blinkbitcoin/kyc#16, the same job): the simulator boots first
+and only downloads overlap it, Metro starts after the boot, Metro's transform
+cache is restored from the last green run (`METRO_CACHE_ROOT`,
 `scripts/e2e/metro-start.sh`), and the prewarm requests the exact bundle
 options the dev client asks for, so the app-launch flow is served from the
-warm graph instead of building its own. Change the order or the prewarm URL
-only with the step timings of a run in hand.
+warm graph instead of building its own. What is left, 12-14 min here, is
+Maestro: the XCUITest driver install and the flows themselves, which swing
+run to run. Change the order or the prewarm URL only with the step timings
+of a run in hand.
 
 All workflows run with `permissions: contents: read` (the publish job adds
 `packages: write`; the Badges and closed-PR cleanup jobs get
