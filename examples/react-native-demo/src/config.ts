@@ -1,12 +1,13 @@
 import { Platform } from 'react-native';
 
-// ESIGN_MODE, ESIGN_PORT_BASE, ESIGN_BACKEND_PORT and ESIGN_PREFILL are inlined at bundle time
-// by babel (see babel.config.js); declare the shape we read without pulling
-// in full @types/node.
+// ESIGN_MODE, ESIGN_PORT_BASE, ESIGN_BACKEND_HOST, ESIGN_BACKEND_PORT and
+// ESIGN_PREFILL are inlined at bundle time by babel (see babel.config.js);
+// declare the shape we read without pulling in full @types/node.
 declare const process: {
   env: {
     ESIGN_MODE?: string;
     ESIGN_PORT_BASE?: string;
+    ESIGN_BACKEND_HOST?: string;
     ESIGN_BACKEND_PORT?: string;
     ESIGN_PREFILL?: string;
   };
@@ -30,10 +31,16 @@ const BACKEND_PORT = resolveBackendPort(
   process.env.ESIGN_PORT_BASE,
 );
 
-export const getDevBackendHost = (platformOs: string): string =>
-  platformOs === 'android' ? '10.0.2.2' : 'localhost';
+// The backend host: ESIGN_BACKEND_HOST when set (a physical device: the
+// Mac's tailnet address on iOS, localhost through `adb reverse` on Android -
+// scripts/e2e/live-ios.sh, live-android.sh), else the simulator's localhost
+// or the Android emulator's alias for the host machine
+export const getDevBackendHost = (
+  platformOs: string,
+  override?: string,
+): string => override || (platformOs === 'android' ? '10.0.2.2' : 'localhost');
 
-const backendOrigin = `http://${getDevBackendHost(Platform.OS)}:${BACKEND_PORT}`;
+const backendOrigin = `http://${getDevBackendHost(Platform.OS, process.env.ESIGN_BACKEND_HOST)}:${BACKEND_PORT}`;
 
 export const GRAPHQL_URL = `${backendOrigin}/graphql`;
 export const WEBFORM_INSTANCE_URL = `${backendOrigin}/webform/instance`;

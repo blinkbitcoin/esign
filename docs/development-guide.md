@@ -430,13 +430,16 @@ the known return-URL gap) see [integration/docusign-proxy.md](integration/docusi
 The library takes the backend URL from the host app via
 `createESignApolloClient({ uri })`. The demo app resolves it per-platform in
 `examples/react-native-demo/src/config.ts` (Android emulators reach the host machine via
-`10.0.2.2`, iOS simulators via `localhost`).
+`10.0.2.2`, iOS simulators via `localhost`; `ESIGN_BACKEND_HOST` overrides
+both for a physical device).
 
 ### Demo apps (bundle-time)
 
 | Variable | App | Description |
 |----------|-----|-------------|
 | `ESIGN_MODE` | React Native demo (Metro) | `proxy` (default) / `webform` / `publicurl` - inlined at bundle time |
+| `ESIGN_BACKEND_HOST` | React Native demo (Metro) | The backend's host for a physical device (tailnet address, or `localhost` through `adb reverse`); default `localhost` / `10.0.2.2` |
+| `ESIGN_BACKEND_PORT` | React Native demo (Metro) | The backend's port outright (the live runs put the service on `LIVE_PORT`); default `ESIGN_PORT_BASE` + 0 |
 | `VITE_ESIGN_MODE` | Web demo (Vite) | Same three modes for the browser demo |
 
 ## CI/CD
