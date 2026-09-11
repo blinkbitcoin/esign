@@ -165,6 +165,9 @@ e2e-backend-down: ## Stop the backend started by e2e-backend-up
 ios-build: ## Debug build of the RN demo for the simulator (what CI's Build iOS job runs; needs `make pods`)
 	bash scripts/e2e/ios-build.sh
 
+android-build: ## Debug APK of the RN demo for the attached emulator's ABI (what CI's Build Android job runs; ANDROID_ABI overrides)
+	bash scripts/e2e/android-build.sh
+
 e2e-ios: ## Maestro E2E, iOS (needs: booted simulator with the app installed, Metro + backend running)
 	bash scripts/e2e/ios-maestro.sh
 
@@ -227,4 +230,4 @@ help: ## List available targets
 .PHONY: install hooks pods release release-rc version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
 	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check codeql start ios android backend web db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-web-webform-live \
-	e2e-server-demos e2e-backend-up e2e-backend-down ios-build e2e-ios e2e-android test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live docker-build docker-smoke docker-build-mint-only docker-smoke-mint-only deploy-check clean reset help
+	e2e-server-demos e2e-backend-up e2e-backend-down ios-build android-build e2e-ios e2e-android test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live docker-build docker-smoke docker-build-mint-only docker-smoke-mint-only deploy-check clean reset help

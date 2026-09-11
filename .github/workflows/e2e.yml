@@ -650,8 +650,9 @@ jobs:
       # a separate CMake configure+build of the app's native glue (~1 min).
       - name: Build Android app (debug)
         if: steps.android-apk.outputs.cache-hit != 'true'
-        working-directory: examples/react-native-demo/android
-        run: ./gradlew assembleDebug --no-daemon --build-cache -PreactNativeArchitectures=x86_64
+        env:
+          ANDROID_ABI: x86_64
+        run: bash scripts/e2e/android-build.sh
 
       # retention-days: 1 - only the emulator job of this run needs it.
       - name: Publish APK for the emulator job
