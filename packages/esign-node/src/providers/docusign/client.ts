@@ -50,21 +50,34 @@ const embeddedClientUserId = (recipient: RecipientData): string =>
 /** What `make docusign-template` names its role, kept as the fallback. */
 const DEFAULT_SIGNER_ROLE = 'signer';
 
+/** One text tab as the envelopes API takes it: a value laid over the template's
+ * tab of the same label, and optionally that tab's lock. */
+interface TextTab {
+  tabLabel: string;
+  value: string;
+  locked?: 'true' | 'false';
+}
+
 /**
  * The prefill as DocuSign's own text tabs.
  *
- * `locked` travels as the string 'true': the envelopes API takes its booleans as
- * strings, and sending a real boolean is accepted and then ignored, which would
- * render the value editable with nothing to say it went wrong.
+ * A property sent here overlays the template's, so `locked` is sent only when
+ * the host said so: a bare value (or one without `locked`) keeps whatever lock
+ * the template designer set, and an explicit `false` unlocks on purpose. It
+ * travels as the string 'true' / 'false': the envelopes API takes its booleans
+ * as strings, and a real boolean is accepted and then ignored, which would
+ * leave the value editable with nothing to say it went wrong.
  */
-const textTabsFrom = (
-  prefill: EnvelopeTabPrefill,
-): Array<{ tabLabel: string; value: string; locked: string }> =>
+const textTabsFrom = (prefill: EnvelopeTabPrefill): TextTab[] =>
   Object.entries(prefill).map(([tabLabel, entry]) => {
     const { value, locked } =
-      typeof entry === 'string' ? { value: entry, locked: false } : entry;
+      typeof entry === 'string' ? { value: entry, locked: undefined } : entry;
 
-    return { tabLabel, value, locked: locked ? 'true' : 'false' };
+    return {
+      tabLabel,
+      value,
+      ...(locked === undefined ? {} : { locked: locked ? 'true' : 'false' }),
+    };
   });
 
 /** The signer as the envelopes API names a template role. */
@@ -73,7 +86,7 @@ interface TemplateRole {
   name: string;
   roleName: string;
   clientUserId: string;
-  tabs?: { textTabs: ReturnType<typeof textTabsFrom> };
+  tabs?: { textTabs: TextTab[] };
 }
 
 /**

@@ -45,11 +45,13 @@ describe('createDocuSignClient', () => {
   });
 
   // The prefill is what makes the envelope carry the host's own figures, and
-  // `locked` is what stops the signer rewriting them. Both travel as text tabs:
-  // the tab types are the template's business, and DocuSign takes the boolean
-  // as a string (a real boolean is accepted and then ignored, which would leave
-  // the value editable with nothing to say so).
-  it('writes the prefill onto the role’s text tabs, locked as a string', async () => {
+  // `locked` is what stops the signer rewriting them. Both travel as text tabs
+  // and DocuSign takes the boolean as a string (a real boolean is accepted and
+  // then ignored, which would leave the value editable with nothing to say
+  // so). A request property overlays the template's, so `locked` goes out
+  // only when the host set it: a bare value must not unlock a tab the
+  // template designer locked, and an explicit false is a deliberate unlock.
+  it('writes the prefill onto the role’s text tabs, the lock only when set', async () => {
     const { fetchImpl, body } = fakeFetch([token(), ok({ envelopeId: 'e' })]);
     const client = createDocuSignClient(testConfig(), { fetch: fetchImpl });
 
@@ -57,15 +59,20 @@ describe('createDocuSignClient', () => {
       total_usd: { value: '10.00', locked: true },
       country: 'Honduras',
       note: { value: 'free to change' },
+      memo: { value: 'unlocked on purpose', locked: false },
     });
 
     expect(body(1).templateRoles[0].tabs).toEqual({
       textTabs: [
         { tabLabel: 'total_usd', value: '10.00', locked: 'true' },
-        { tabLabel: 'country', value: 'Honduras', locked: 'false' },
-        { tabLabel: 'note', value: 'free to change', locked: 'false' },
+        { tabLabel: 'country', value: 'Honduras' },
+        { tabLabel: 'note', value: 'free to change' },
+        { tabLabel: 'memo', value: 'unlocked on purpose', locked: 'false' },
       ],
     });
+    expect(body(1).templateRoles[0].tabs.textTabs[1]).not.toHaveProperty(
+      'locked',
+    );
   });
 
   // A template names its own signing role; 'signer' is only what the repo's
@@ -101,7 +108,7 @@ describe('createDocuSignClient', () => {
       clientUserId: 'jane@example.com',
       recipientId: '1',
       tabs: {
-        textTabs: [{ tabLabel: 'country', value: 'Honduras', locked: 'false' }],
+        textTabs: [{ tabLabel: 'country', value: 'Honduras' }],
       },
     };
     const composite = (id: string, templateId: string) => ({
