@@ -290,7 +290,7 @@ Defined by the package's programmatic migration source
 - `npm test`
 
 ### E2E Tests (`packages/esign-service/tests/e2e/`)
-- Real PostgreSQL via Docker Compose (tmpfs-backed, port 5433)
+- Real PostgreSQL via Docker Compose (tmpfs-backed, `ESIGN_TEST_DB_PORT` = the block's base + 12, default 4112)
 - Separate config (`vitest.e2e.config.mts`, sequential execution)
 - Factory pattern for test data; env from `.env.test` via dotenv-cli
 

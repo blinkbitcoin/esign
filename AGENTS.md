@@ -53,6 +53,9 @@ one-line description. The ones you will reach for:
 | `make docs-check` | Warn when architecture-relevant changes ship without a `docs/` update;<br>fail on a README table cell line wider than 72 characters (break with `<br>`) |
 | `make db-up migrate backend` | Dev Postgres, migrations, backend dev server |
 | `make e2e-backend` / `make e2e-web` | Backend E2E against real Postgres / Playwright browser E2E |
+| `make ports` / `make ports-free` | This worktree's port block and who holds each port / stop what this<br>worktree left on them (its processes, its compose projects, its Metro;<br>`FORCE=1` also a sibling worktree's, never a foreign process) |
+| `make e2e-ios-local` / `make e2e-android-local` | The whole mobile stack on a laptop (DB, backend, .app or APK, Metro,<br>Maestro, teardown); iOS boots a simulator, Android needs a running<br>emulator. `e2e-backend-up` / `ios-build` or `android-build` /<br>`e2e-metro-up` / `e2e-ios` or `e2e-android` are the steps |
+| `make live-web` / `make live-ios` / `make live-android` | The web demo / the RN demo on the attached phone against real<br>DocuSign (`.env` + Tailscale Funnel + the service), waiting for the<br>manual rows of `docs/integration/docusign-proxy.md` §5; Ctrl-C tears down |
 | `make start` / `make ios` / `make android` / `make web` | Demo apps |
 | `make release` | Merge the open release PR that release-please maintains (tags, publishes; `docs/releasing.md`) |
 
@@ -79,13 +82,21 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
   everybody's) plus its offset: the backend +0, the web demo +1/+2/+3 (proxy /
   webform / publicurl), mint-only +4, serverless +5, the live service and its
   two examples +6/+7/+8, the docker smoke +9, the server-demos service +10
-  and its terms callback +11. The table is `scripts/lib/ports.mjs`; shell reads it through `scripts/e2e/ports-env.sh`
-  (`$ESIGN_API_PORT`, `$MINT_PORT`, `$LIVE_PORT`, ...), the Playwright
-  configs through `examples/react-demo/e2e/ports.ts`, and each service
+  and its terms callback +11, the E2E Postgres +12, the dev Postgres +13.
+  The table is `scripts/lib/ports.mjs`; shell reads it through `scripts/e2e/ports-env.sh`
+  (`$ESIGN_API_PORT`, `$MINT_PORT`, `$LIVE_PORT`, `$ESIGN_TEST_DATABASE_URL`, ...),
+  the compose files read the two database variables, the Playwright
+  configs read `examples/react-demo/e2e/ports.ts`, and each service
   declares its own offset (its test checks the literal against the table).
-  A second worktree sets one variable (`ESIGN_PORT_BASE=4300 make e2e-web`);
-  a service's own variable (`PORT`, `LIVE_PORT`, ...) overrides just that
-  service. Nothing hard-codes a port outside those defaults
+  A linked worktree claims its own block automatically (`ports.mjs claim`,
+  run by `.envrc` and the Makefile: the lowest block no sibling holds,
+  written once to its `.env.local`); the main clone and CI keep the default;
+  an explicit `ESIGN_PORT_BASE` still wins, and a service's own variable
+  (`PORT`, `LIVE_PORT`, ...) overrides just that service. `make ports` shows
+  the block and who holds each port, `make ports-free` clears this
+  worktree's leftovers (never a foreign process). Each worktree's dev
+  Postgres is its own compose project (`<worktree>-dev`) and volume.
+  Nothing hard-codes a port outside those defaults
 - The `ESignProvider` port is the provider boundary - nothing provider-specific
   outside a `providers/<name>/` directory: `packages/esign-node/src/providers/docusign/`,
   `packages/esign-core/src/providers/docusign/`, `packages/esign-react/src/providers/docusign/`

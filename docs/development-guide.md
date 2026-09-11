@@ -74,7 +74,7 @@ dotenv never overrides direnv-exported values, so precedence is consistent.
 
 **Backend (`packages/esign-service/.env`):**
 ```env
-DATABASE_URL=postgresql://dev:dev@localhost:5432/esign
+DATABASE_URL=postgresql://dev:dev@localhost:4113/esign   # make db-up's Postgres: ESIGN_PORT_BASE + 13
 ESIGN_PROVIDER=mock            # 'docusign' for the real integration
 PORT=4100                      # ESIGN_PORT_BASE + 0 (docs/architecture/backend.md)
 
@@ -199,7 +199,10 @@ Three tiers, by what they touch:
    [integration/docusign-lessons.md](integration/docusign-lessons.md).
    The manual smoke-test checklist in
    [integration/docusign-proxy.md](integration/docusign-proxy.md) (section
-   5) remains for anything the flows do not cover.
+   5) remains for anything the flows do not cover; `make live-web`,
+   `make live-ios` and `make live-android` bring up the stack for it (the
+   service on DocuSign, a Tailscale Funnel public URL for Connect webhooks,
+   the demo on the attached phone) and tear it down on Ctrl-C.
 
 ### Mobile Unit Tests
 
@@ -270,14 +273,18 @@ docker-compose -f docker-compose.test.yml down
 # Install Maestro CLI
 curl -Ls "https://get.maestro.mobile.dev" | bash
 
-# Start backend with mock provider against the test database
-cd packages/esign-service && ESIGN_PROVIDER=mock npx dotenv-cli -e .env.test -- npm run dev &
+# The whole stack in one command, torn down on the way out: E2E Postgres,
+# the mock-provider backend, the debug build, Metro, the Maestro suite
+make e2e-ios-local        # boots a simulator when none is booted
+make e2e-android-local    # needs a running emulator (emulator -avd <name> &)
 
-# Build and run app on simulator
-npm run ios
-
-# Run Maestro tests
-maestro test examples/react-native-demo/.maestro/
+# Or step by step (what CI runs as separate jobs)
+make test-db-up && npm run migrate:test -w packages/esign-service
+make e2e-backend-up       # mock provider on ESIGN_API_PORT
+make ios-build            # or: make android-build (the emulator's ABI)
+make e2e-metro-up         # Metro in the background, bundle prewarmed (METRO_PLATFORM=android for Android)
+make e2e-ios              # or: make e2e-android
+make e2e-metro-down && make e2e-backend-down && make test-db-down
 ```
 
 The flows launch the app once (`app-launch` runs first) and reset between
@@ -418,7 +425,8 @@ npm run migrate
 | `PORT` | No | Server port (default: `ESIGN_PORT_BASE` + 0 = 4100). **Container only** |
 | `TRUST_PROXY` | No | `true` to take the client from `x-forwarded-for` (rate limits, webhook security log). **Container only** |
 | `RATE_LIMIT_WEBFORM_PER_MIN`, `RATE_LIMIT_WEBHOOK_PER_MIN`, `RATE_LIMIT_GRAPHQL_PER_MIN` | No | Per-route limits (60 / 120 / 100); `0` switches a route's limit off. **Container only** |
-| `ESIGN_PORT_BASE` | No | The repo's base port (default 4100); every service is base + offset (`scripts/lib/ports.mjs`), so one variable moves a worktree |
+| `ESIGN_PORT_BASE` | No | The block's base port (default 4100); every service is base + offset (`scripts/lib/ports.mjs`). A linked worktree claims its own block into `.env.local` on first use (`.envrc` / `make`); set it only to pick a block by hand. `make ports` shows the block and its holders, `make ports-free` clears this worktree's leftovers |
+| `ESIGN_TEST_DB_PORT` / `ESIGN_DEV_DB_PORT` | No | The E2E Postgres (base + 12, default 4112) and the dev Postgres (base + 13, default 4113); the compose files read them, `scripts/e2e/test-db.sh` / `dev-db.sh` export the matching `DATABASE_URL` |
 
 The `docusign` column means required when `ESIGN_PROVIDER=docusign` — the
 server refuses to start without them (fail-fast). For the full walkthrough
@@ -430,13 +438,16 @@ the known return-URL gap) see [integration/docusign-proxy.md](integration/docusi
 The library takes the backend URL from the host app via
 `createESignApolloClient({ uri })`. The demo app resolves it per-platform in
 `examples/react-native-demo/src/config.ts` (Android emulators reach the host machine via
-`10.0.2.2`, iOS simulators via `localhost`).
+`10.0.2.2`, iOS simulators via `localhost`; `ESIGN_BACKEND_HOST` overrides
+both for a physical device).
 
 ### Demo apps (bundle-time)
 
 | Variable | App | Description |
 |----------|-----|-------------|
 | `ESIGN_MODE` | React Native demo (Metro) | `proxy` (default) / `webform` / `publicurl` - inlined at bundle time |
+| `ESIGN_BACKEND_HOST` | React Native demo (Metro) | The backend's host for a physical device (tailnet address, or `localhost` through `adb reverse`); default `localhost` / `10.0.2.2` |
+| `ESIGN_BACKEND_PORT` | React Native demo (Metro) | The backend's port outright (the live runs put the service on `LIVE_PORT`); default `ESIGN_PORT_BASE` + 0 |
 | `VITE_ESIGN_MODE` | Web demo (Vite) | Same three modes for the browser demo |
 
 ## CI/CD
@@ -509,6 +520,7 @@ make e2e-backend        # Backend
 make e2e-web            # Web (Playwright; builds the libraries, then bundles + previews the demo)
 make e2e-android        # Android: emulator running, APK built, Metro + backend up (see `make help`)
 make e2e-ios            # iOS: simulator booted with the app installed, Metro + backend up
+make e2e-ios-local      # the whole iOS stack in one command (or e2e-android-local with an emulator running)
 
 # Release plumbing
 make version            # what a push to main would publish; make version TAG=vX.Y.Z for a release

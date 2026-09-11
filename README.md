@@ -256,7 +256,8 @@ against a locally running service and its Postgres. By default it uses the
 **mock provider**, so no DocuSign account or credentials are needed:
 
 ```sh
-make db-up migrate backend              # dev Postgres + migrations + server (:4100)
+make db-up migrate backend              # dev Postgres + migrations + server (:4100 in the main clone;
+                                        # a worktree gets its own port block - `make ports` shows it)
 
 # in a new terminal:
 make start                              # Metro
@@ -280,17 +281,18 @@ credentials are set).
 | `make build` | Build the packages (bob for RN, tsup for core/node/web,<br>tsc for the service) |
 | `make e2e-backend`<br>`make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown (`e2e-web`<br>builds the libraries first and bundles the demo against their dist) |
 | `make e2e-ios`<br>`make e2e-android` | Maestro E2E against a running stack |
+| `make e2e-ios-local`<br>`make e2e-android-local` | The whole mobile stack in one command (DB, backend, .app or APK,<br>Metro, Maestro, teardown); iOS boots a simulator, Android needs a<br>running emulator. The steps: `e2e-backend-up`, `ios-build` /<br>`android-build`, `e2e-metro-up`, `e2e-ios` / `e2e-android` |
 | `make check-ci` | Lint the CI itself: actionlint on the workflows, shellcheck on `scripts/**` |
+| `make ports`<br>`make ports-free` | This worktree's port block (every service, both databases, Metro)<br>and who holds each port; stop what this worktree left on them |
 | `make test-live` | Opt-in live DocuSign API verification (skips without credentials) |
 | `make e2e-live`<br>`make e2e-ios-live` | Live journeys against real DocuSign (needs `make docusign-env`): the<br>locked Web Form submitted and signed inside the web component + a<br>proxy-mode signature; the same Web Form journey in the React Native<br>demo's WebView (booted simulator) |
+| `make live-web`<br>`make live-ios`<br>`make live-android` | The web demo / the RN demo on the attached phone against real<br>DocuSign, interactive: `.env`, a Tailscale Funnel public URL for<br>Connect webhooks, the service, the demo; waits for the manual rows<br>of `docs/integration/docusign-proxy.md` section 5, Ctrl-C tears down |
 | `make pods` | iOS CocoaPods install |
 
 Coverage is 100% everywhere, the demo apps included. The HTML report
 lands in `coverage/report/index.html`; CI publishes
 the badge per branch to `gh-pages/badges/<branch>/` and uploads the report as
-the `coverage-report` artifact of every run. For the Maestro suites,
-`make e2e-backend-up` starts the backend and `make ios-build` builds the
-simulator app.
+the `coverage-report` artifact of every run.
 
 See [docs/development-guide.md](docs/development-guide.md) for full setup,
 environment variables, and troubleshooting.

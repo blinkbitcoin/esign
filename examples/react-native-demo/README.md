@@ -18,13 +18,15 @@ make ios                          # or: make android
 ```
 
 The backend URL is resolved per-platform in `src/config.ts` — iOS simulators
-use `localhost`, Android emulators `10.0.2.2`; physical devices need your
-machine's LAN IP. Four `ESIGN_*` variables are inlined into the bundle by
+use `localhost`, Android emulators `10.0.2.2`; a physical device passes the
+host it can reach. Five `ESIGN_*` variables are inlined into the bundle by
 Babel when Metro starts: `ESIGN_MODE` (`proxy` | `webform`),
 `ESIGN_PORT_BASE` (the repo's base port, default 4100; the backend is +0),
-`ESIGN_BACKEND_PORT` (the backend's port outright, for the live run) and
-`ESIGN_PREFILL` (a JSON object replacing the demo's mock-form prefill, for a
-real form).
+`ESIGN_BACKEND_HOST` (the backend's host outright: the Mac's tailnet address
+for an iPhone, `localhost` through `adb reverse` for an Android phone -
+`make live-ios` / `make live-android` set it), `ESIGN_BACKEND_PORT` (the
+backend's port outright, for the live run) and `ESIGN_PREFILL` (a JSON
+object replacing the demo's mock-form prefill, for a real form).
 
 ## What to Look At
 
@@ -42,7 +44,9 @@ real form).
 make test          # Jest unit tests (29); 100% coverage enforced - E2E drives the real WebView
 make e2e           # Maestro, iOS (needs backend running + app installed on a simulator)
 make e2e-android   # Maestro, Android (adb reverse handles Metro + backend ports)
+# repo root: make e2e-ios-local / make e2e-android-local - the whole stack in one command (DB, backend, build, Metro, Maestro, teardown)
 # repo root: make e2e-ios-live - the real DocuSign Web Form in the WebView, signed (needs the DocuSign .env)
+# repo root: make live-ios / make live-android - this app on the attached phone against real DocuSign, interactive
 ```
 
 The demo sends a fixed dev bearer token; the backend's dev passthrough

@@ -17,6 +17,8 @@ import {
   DEFAULT_PORTS,
   MODES,
   PORTS,
+  TEST_DB_OFFSET,
+  TEST_DB_VAR,
   WEB_OFFSETS,
   WEB_VARS,
   backendServer,
@@ -44,6 +46,8 @@ describe('the port table', () => {
       webform: SERVICES.webWebform.env,
       publicurl: SERVICES.webPublicurl.env,
     });
+    expect(TEST_DB_OFFSET).toBe(SERVICES.testDb.offset);
+    expect(TEST_DB_VAR).toBe(SERVICES.testDb.env);
     for (const env of [
       {},
       { [BASE_VAR]: '4300' },
@@ -57,6 +61,7 @@ describe('the port table', () => {
           webform: table.webWebform,
           publicurl: table.webPublicurl,
         },
+        testDb: table.testDb,
       });
     }
   });
@@ -65,6 +70,7 @@ describe('the port table', () => {
     expect(DEFAULT_PORTS).toEqual({
       api: 4100,
       vite: { proxy: 4101, webform: 4102, publicurl: 4103 },
+      testDb: 4112,
     });
   });
 
@@ -72,16 +78,22 @@ describe('the port table', () => {
     expect(portsFrom({ [BASE_VAR]: '4300' })).toEqual({
       api: 4300,
       vite: { proxy: 4301, webform: 4302, publicurl: 4303 },
+      testDb: 4312,
     });
     expect(portsFrom({ ESIGN_API_PORT: '4010', ESIGN_WEB_PORT: '' })).toEqual({
       api: 4010,
       vite: { proxy: 4101, webform: 4102, publicurl: 4103 },
+      testDb: 4112,
     });
   });
 
   it('never hands out a port twice', () => {
     const ports = portsFrom({});
-    const all = [ports.api, ...MODES.map(mode => ports.vite[mode])];
+    const all = [
+      ports.api,
+      ports.testDb,
+      ...MODES.map(mode => ports.vite[mode]),
+    ];
     expect(new Set(all).size).toBe(all.length);
   });
 });
@@ -139,6 +151,9 @@ describe('this process', () => {
   it('wires the backend port, CORS origins and the demo origin into the servers', () => {
     const backend = backendServer();
     expect(backend.command).toContain(`PORT=${PORTS.api} `);
+    expect(backend.command).toContain(
+      `DATABASE_URL=postgresql://test:test@localhost:${PORTS.testDb}/esign_test `,
+    );
     expect(backend.command).toContain(
       `CORS_ALLOWED_ORIGINS=http://localhost:${PORTS.vite.proxy},http://localhost:${PORTS.vite.webform},http://localhost:${PORTS.vite.publicurl} `,
     );

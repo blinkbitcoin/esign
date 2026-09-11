@@ -1,3 +1,6 @@
+# The dev Postgres. Host port: ESIGN_DEV_DB_PORT (ESIGN_PORT_BASE + 13,
+# default 4113 - scripts/lib/ports.mjs); make db-up (scripts/e2e/dev-db.sh)
+# exports it and gives each worktree its own compose project and volume.
 services:
   postgres:
     image: postgres:15
@@ -6,7 +9,7 @@ services:
       POSTGRES_PASSWORD: dev
       POSTGRES_DB: esign
     ports:
-      - "5432:5432"
+      - "${ESIGN_DEV_DB_PORT:-4113}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

@@ -10,6 +10,8 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 # shellcheck source=scripts/e2e/live-service.sh
 . scripts/e2e/live-service.sh
+# shellcheck source=scripts/e2e/xcode-env.sh
+. scripts/e2e/xcode-env.sh
 live_env
 export PATH="$HOME/.maestro/bin:$PATH"
 RN=examples/react-native-demo

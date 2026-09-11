@@ -5,6 +5,8 @@
 # returns only placeholders on fresh runners. Needs pods installed (make pods).
 # Output: examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator/ReactNativeSandbox.app
 set -euo pipefail
+# shellcheck source=scripts/e2e/xcode-env.sh
+. "$(dirname "$0")/xcode-env.sh"
 cd "$(dirname "$0")/../../examples/react-native-demo/ios"
 # The generic simulator destination builds every simulator slice (arm64 and
 # x86_64) unless told otherwise; the simulator that runs the app has the

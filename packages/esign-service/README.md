@@ -106,7 +106,7 @@ list with comments.
 direnv allow . && direnv allow packages/esign-service   # env + nix dev shell
 
 # From this directory:
-make db-up          # dev Postgres (docker, port 5432)
+make db-up          # this worktree's dev Postgres (docker, ESIGN_DEV_DB_PORT = base + 13, default 4113)
 make migrate        # the package's migrations (src/migrate.ts)
 make dev            # service at http://localhost:4100 (PORT, default ESIGN_PORT_BASE + 0)
 ```

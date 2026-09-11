@@ -49,7 +49,10 @@ The ones that matter most: `make test` (unit + check-code), `make coverage`,
 `make diagrams` / `make docs-check`, `make e2e-backend` (DB up → migrate →
 E2E → teardown), `make e2e-web[-webform|-publicurl]` (Playwright), `make
 e2e-android` / `make e2e-ios` (Maestro, needs a running stack; `make
-e2e-backend-up` starts the mock-provider backend), `make db-up/migrate/backend`,
+e2e-ios-local` / `make e2e-android-local` bring the whole stack up and
+tear it down in one command, `make e2e-backend-up` / `make e2e-metro-up`
+are the steps), `make live-web/live-ios/live-android` (the demos on real
+DocuSign with a Funnel public URL, interactive), `make db-up/migrate/backend`,
 `make ios/android/start/web`, `make pods`, `make build`, `make docker-build` /
 `make docker-smoke` (the service image, `packages/esign-service/Dockerfile`), `make release`,
 `make clean/reset`. The underlying npm scripts:
@@ -205,11 +208,16 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
 - Shell that CI or the Makefile runs lives in `scripts/{ci,e2e,release}/`,
   never inline in a workflow; `make check-ci` runs actionlint + shellcheck
 - **Ports**: every service listens on `ESIGN_PORT_BASE` (default 4100) +
-  its offset - table `scripts/lib/ports.mjs`, shell via
-  `scripts/e2e/ports-env.sh`, Playwright via `examples/react-demo/e2e/ports.ts`;
-  `ESIGN_PORT_BASE=4300 make e2e-web` moves a whole worktree. Never write a
-  port literal outside those defaults; `scripts/lib/ports.test.mjs` checks
-  each service's declared offset against the table.
+  its offset, the two Postgres containers included (+12 test, +13 dev) -
+  table `scripts/lib/ports.mjs`, shell via `scripts/e2e/ports-env.sh`,
+  compose via the `ESIGN_*_DB_PORT` variables, Playwright via
+  `examples/react-demo/e2e/ports.ts`. A linked worktree claims its own
+  block into `.env.local` on first use (`.envrc` / the Makefile run
+  `ports.mjs claim`); the main clone and CI stay on 4100; an explicit
+  `ESIGN_PORT_BASE` wins. `make ports` shows the block and its holders,
+  `make ports-free` stops this worktree's leftovers. Never write a port
+  literal outside those defaults; `scripts/lib/ports.test.mjs` checks each
+  service's declared offset against the table.
 - `graphql` is pinned to 16.x repo-wide (Apollo Server 5's peer range) - do
   not bump it to 17 until Apollo Server supports it
 

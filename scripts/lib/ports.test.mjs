@@ -5,11 +5,19 @@ import { describe, expect, it } from 'vitest';
 import {
   BASE_DEFAULT,
   BASE_VAR,
+  BLOCK_SLOTS,
+  BLOCK_STEP,
   SERVICES,
   baseFrom,
+  claimedBase,
+  devDatabaseUrl,
   envLines,
+  nextFreeBase,
+  parseWorktrees,
   portFrom,
   resolvePorts,
+  testDatabaseUrl,
+  withClaimedBase,
 } from './ports.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -22,6 +30,21 @@ describe('the port table', () => {
     expect(offsets).toEqual([...offsets.keys()]);
     const names = Object.values(SERVICES).map(s => s.env);
     expect(new Set(names).size).toBe(names.length);
+  });
+
+  it('fits a worktree block, and the blocks stay below 5000', () => {
+    expect(Object.keys(SERVICES).length).toBeLessThanOrEqual(BLOCK_STEP);
+    expect(
+      BASE_DEFAULT + BLOCK_SLOTS * BLOCK_STEP + BLOCK_STEP,
+    ).toBeLessThanOrEqual(5000);
+  });
+
+  it('lists every key in the type declaration', () => {
+    const union = read('scripts/lib/ports.d.mts').match(
+      /export type ServiceKey =([^;]*);/,
+    )[1];
+    const declared = [...union.matchAll(/'([A-Za-z]+)'/g)].map(m => m[1]);
+    expect(declared).toEqual(Object.keys(SERVICES));
   });
 
   it('resolves the documented defaults', () => {
@@ -39,7 +62,18 @@ describe('the port table', () => {
       smoke: 4109,
       service: 4110,
       terms: 4111,
+      testDb: 4112,
+      devDb: 4113,
     });
+  });
+
+  it('spells the database URLs for their ports', () => {
+    expect(testDatabaseUrl(4112)).toBe(
+      'postgresql://test:test@localhost:4112/esign_test',
+    );
+    expect(devDatabaseUrl(4313)).toBe(
+      'postgresql://dev:dev@localhost:4313/esign',
+    );
   });
 
   it('moves every service with the base', () => {
@@ -95,6 +129,10 @@ describe('envLines', () => {
       'export SMOKE_PORT=4109',
       'export SERVICE_PORT=4110',
       'export TERMS_PORT=4111',
+      'export ESIGN_TEST_DB_PORT=4112',
+      'export ESIGN_DEV_DB_PORT=4113',
+      'export ESIGN_TEST_DATABASE_URL=postgresql://test:test@localhost:4112/esign_test',
+      'export ESIGN_DEV_DATABASE_URL=postgresql://dev:dev@localhost:4113/esign',
     ]);
   });
 });
@@ -103,7 +141,7 @@ describe('envLines', () => {
 // image, a React Native bundle), so each declares its own offset as a
 // literal. These checks keep those literals on the table.
 describe('the consumers', () => {
-  const { base, api, mint, handler } = resolvePorts({});
+  const { base, api, mint, handler, testDb, devDb } = resolvePorts({});
 
   it.each([
     ['packages/esign-service/src/port.ts', `PORT_BASE_DEFAULT = ${base}`],
@@ -133,7 +171,10 @@ describe('the consumers', () => {
     ['scripts/ci/docker-smoke.sh', `CONTAINER_PORT="\${2:-${api}}"`],
     ['examples/mint-only-demo/Dockerfile', `EXPOSE ${mint}`],
     ['examples/mint-only-demo/Dockerfile', `\${PORT:-${mint}}`],
-    ['Makefile', `docker-smoke.sh esign-mint-only-demo ${mint}`],
+    [
+      'Makefile',
+      'docker-smoke.sh esign-mint-only-demo $(shell node scripts/e2e/ports.mjs mint)',
+    ],
     [
       '.github/workflows/e2e.yml',
       `docker-smoke.sh esign-mint-only-demo ${mint}`,
@@ -146,6 +187,21 @@ describe('the consumers', () => {
     ],
     ['examples/mint-only-demo/.env.example', `PORT=${mint}`],
     ['examples/serverless-handler-demo/.env.example', `PORT=${handler}`],
+    ['docker-compose.test.yml', `"\${ESIGN_TEST_DB_PORT:-${testDb}}:5432"`],
+    [
+      'packages/esign-service/docker-compose.yml',
+      `"\${ESIGN_DEV_DB_PORT:-${devDb}}:5432"`,
+    ],
+    [
+      'packages/esign-service/.env.test',
+      `DATABASE_URL=${testDatabaseUrl(testDb)}`,
+    ],
+    ['packages/esign-service/.env.example', devDatabaseUrl(devDb)],
+    ['scripts/ci/postgres-brew.sh', 'DB_PORT="$ESIGN_TEST_DB_PORT"'],
+    [
+      'examples/react-demo/e2e/ports.ts',
+      `TEST_DB_OFFSET = ${SERVICES.testDb.offset}`,
+    ],
   ])('%s carries %s', (file, literal) => {
     expect(read(file)).toContain(literal);
   });
@@ -156,5 +212,72 @@ describe('the consumers', () => {
     expect(source).toContain(`webform: ${SERVICES.webWebform.offset}`);
     expect(source).toContain(`publicurl: ${SERVICES.webPublicurl.offset}`);
     expect(source).toContain(`API_OFFSET = ${SERVICES.api.offset}`);
+  });
+});
+
+describe("a worktree's block", () => {
+  it('reads the worktrees of the porcelain listing, the main clone first', () => {
+    const porcelain = [
+      'worktree /Users/x/Dev/esign',
+      'HEAD 0000000000000000000000000000000000000000',
+      'branch refs/heads/main',
+      '',
+      'worktree /Users/x/Dev/esign-topic',
+      'HEAD 1111111111111111111111111111111111111111',
+      'detached',
+      '',
+    ].join('\n');
+    expect(parseWorktrees(porcelain)).toEqual([
+      { path: '/Users/x/Dev/esign', isMain: true },
+      { path: '/Users/x/Dev/esign-topic', isMain: false },
+    ]);
+    expect(parseWorktrees('')).toEqual([]);
+  });
+
+  it.each([
+    ['ESIGN_PORT_BASE=4120\n', 4120],
+    ['export ESIGN_PORT_BASE="4140" # mine\n', 4140],
+    ["  ESIGN_PORT_BASE='4160'\n", 4160],
+    ['# ESIGN_PORT_BASE=4120\nOTHER=1\n', undefined],
+    ['ESIGN_PORT_BASE=4120\nESIGN_PORT_BASE=4180\n', 4180],
+    ['ESIGN_PORT_BASE=\n', undefined],
+    ['', undefined],
+  ])('reads the claim in %j as %s', (text, base) => {
+    expect(claimedBase(text)).toBe(base);
+  });
+
+  it('refuses a claim that is not a port', () => {
+    expect(() => claimedBase('ESIGN_PORT_BASE=99999\n')).toThrow(
+      /ESIGN_PORT_BASE must be a port number/,
+    );
+  });
+
+  it('hands out the lowest free block above the default', () => {
+    expect(nextFreeBase([])).toBe(4120);
+    expect(nextFreeBase([4120, 4160])).toBe(4140);
+    expect(nextFreeBase([4100, 4120, 4140])).toBe(4160);
+    expect(nextFreeBase([4120], { base: 5100, step: 20, slots: 2 })).toBe(5120);
+  });
+
+  it('fails loudly when every block is claimed', () => {
+    const all = Array.from(
+      { length: BLOCK_SLOTS },
+      (_, i) => BASE_DEFAULT + (i + 1) * BLOCK_STEP,
+    );
+    expect(() => nextFreeBase(all)).toThrow(/no free port block/);
+  });
+
+  it('appends the claim to .env.local, once', () => {
+    const claimed = withClaimedBase('', 4120);
+    expect(claimed).toBe(
+      "# This worktree's port block (scripts/lib/ports.mjs; make ports shows it)\nESIGN_PORT_BASE=4120\n",
+    );
+    expect(withClaimedBase(claimed, 4120)).toBe(claimed);
+    expect(withClaimedBase('OTHER=1', 4140)).toBe(
+      "OTHER=1\n# This worktree's port block (scripts/lib/ports.mjs; make ports shows it)\nESIGN_PORT_BASE=4140\n",
+    );
+    expect(claimedBase(withClaimedBase('ESIGN_PORT_BASE=4120\n', 4160))).toBe(
+      4160,
+    );
   });
 });

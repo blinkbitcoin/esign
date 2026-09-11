@@ -113,9 +113,14 @@ deployment of this same route.
 The UI flow completes without webhooks, but the envelope row stays `sent`
 unless DocuSign Connect can reach the backend:
 
-1. Tunnel: `ngrok http 4100` (or `cloudflared tunnel --url http://localhost:4100`)
-2. DocuSign **Admin → Connect → Add Configuration**:
-   - URL: `https://<tunnel-host>/webhook/esign`
+1. A public URL: `make live-web` (section 5) starts a Tailscale Funnel on
+   the live service's port and prints it; without Tailscale, run
+   `ngrok http 4106` (or `cloudflared tunnel --url http://localhost:4106`)
+   and pass it as `LIVE_PUBLIC_URL=https://<tunnel-host> make live-web`.
+   The same URL is the return URL DocuSign redirects the signer to, so a
+   phone (`make live-ios` / `make live-android`) reaches it too.
+2. DocuSign **Admin → Connect → Add Configuration** (once per URL):
+   - URL: `https://<public-host>/webhook/esign`
    - **HMAC key**: must match `DOCUSIGN_HMAC_KEY` in `packages/esign-service/.env`
      (unset = dev mode accepts unsigned webhooks with a warning)
    - Events: envelope completed / declined / voided
@@ -142,20 +147,25 @@ date in the "Verified against DocuSign docs" section of
 
 Prereq: sections 1–2 done, and the mock E2E suites green first (`make
 check-code`, `make e2e`) so any failure here is a shape mismatch, not a
-regression.
+regression. `make live-web` brings the stack up for the browser rows (the
+service on DocuSign with the public URL from section 4, the web demo in
+proxy mode - `VITE_ESIGN_MODE=webform` for the Web Forms rows) and waits;
+`make live-ios` / `make live-android` do the same with the React Native
+demo on the attached phone. Ctrl-C tears them down; the service log
+(`/tmp/esign-live.log`) shows every return-URL event and webhook outcome.
 
 | # | Assumption to confirm | How to capture | Where to fix if wrong |
 |---|----------------------|----------------|----------------------|
 | 1 | Envelope creation + recipient view succeed (template role `signer`, `clientUserId` = email, status `sent`) | **Automated**: `make test-live` in `packages/esign-service` (skips unless `DOCUSIGN_*` + `DOCUSIGN_TEMPLATE_ID` are set; logs the signing ceremony URL to hand off to item 2) | `providers/docusign/client.ts` |
-| 2 | Return-URL redirect carries `?event=` with values `signing_complete` / `cancel` / `decline` / `session_timeout` / `ttl_expired` | ngrok inspector (`http://127.0.0.1:4040`) or backend request log — the GET hitting the bridge route after each outcome (finish, cancel, decline, let the session expire) | `mapDocuSignReturnEvent` in `packages/esign-node/src/providers/docusign/bridge.ts` (unknown values already fail safe to `exception`) |
-| 3 | Connect webhook: HMAC header is `x-docusign-signature-1`, body has `event: "envelope-completed"` etc. and `data.envelopeId` | ngrok inspector shows the raw POST to `/webhook/esign` — headers + body, no code changes needed | `parseWebhookEvent` in `packages/esign-node/src/providers/docusign/provider.ts` + the payload type in `providers/docusign/types.ts`; mirror any change in `tests/webhook*.test.ts` fixtures |
+| 2 | Return-URL redirect carries `?event=` with values `signing_complete` / `cancel` / `decline` / `session_timeout` / `ttl_expired` | `make live-web`, then the service log (`/tmp/esign-live.log`) — the GET hitting the bridge route after each outcome (finish, cancel, decline, let the session expire) | `mapDocuSignReturnEvent` in `packages/esign-node/src/providers/docusign/bridge.ts` (unknown values already fail safe to `exception`) |
+| 3 | Connect webhook: HMAC header is `x-docusign-signature-1`, body has `event: "envelope-completed"` etc. and `data.envelopeId` | `make live-web` with the Funnel URL registered in Connect (section 4), then the service log shows the POST to `/webhook/esign` — headers + body, no code changes needed | `parseWebhookEvent` in `packages/esign-node/src/providers/docusign/provider.ts` + the payload type in `providers/docusign/types.ts`; mirror any change in `tests/webhook*.test.ts` fixtures |
 | 4 | Web Forms `createInstance` request/response (`clientUserId` + `formValues` in, `formUrl` + `instanceToken` out) + JWT auth | **Automated**: `make test-live` in `packages/esign-service` (skips unless `DOCUSIGN_*` env is set; on contract mismatch it fails with DocuSign's raw HTTP body, and it logs a minted instance URL to hand off to items 5-6) | `createWebFormInstanceRequest` in `providers/docusign/client.ts` |
 | 5 | DocuSign.js `sessionEnd` event: discriminator field (`type` / `sessionEndType` / `returnValue`) and values (`signingResult`, `formConfirmation`, `sessionTimeout`) | Web demo + browser devtools: log the raw event in the `sessionEnd` handler (temp `console.log` in `packages/esign-react/src/providers/docusign/webFormsSource.ts`), exercise finish + timeout | `interpretDocuSignEvent` in `packages/esign-core/src/providers/docusign/events.ts` + the mock page vocabulary in `packages/esign-node/src/providers/docusign/mockWebFormPage.ts` |
-| 6 | RN WebView + real Web Forms: does a plain WebView receive any events at all? (Assumed **no** — DocuSign.js is web-only) | RN demo in webform mode against the real backend; watch Metro logs for `onMessage` traffic while completing a form | If events do arrive: update the caveat in [consuming.md](consuming.md). If not (expected): the return-URL bridge stays the documented RN path |
+| 6 | RN WebView + real Web Forms: does a plain WebView receive any events at all? (Assumed **no** — DocuSign.js is web-only) | `ESIGN_MODE=webform make live-ios` (or `live-android`) — the RN demo on the phone against the real backend; watch `/tmp/metro-live.log` for `onMessage` traffic while completing a form | If events do arrive: update the caveat in [consuming.md](consuming.md). If not (expected): the return-URL bridge stays the documented RN path |
 
-Items 2 and 3 need the tunnel from section 4. Items 4–6 need a published Web
-Form ([webforms.md](webforms.md)) and may require Web Forms
-entitlement on the demo account.
+Items 2 and 3 need the public URL from section 4 (`make live-web` starts
+it). Items 4–6 need a published Web Form ([webforms.md](webforms.md)) and
+may require Web Forms entitlement on the demo account.
 
 ## Gotchas
 
