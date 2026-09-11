@@ -7,6 +7,8 @@
 #   install  install the .app (tar from build-ios, or an existing .app dir)
 # Usage: ios-simulator.sh pick | wait | install <app.tar|App.app>
 set -euo pipefail
+# shellcheck source=scripts/e2e/xcode-env.sh
+. "$(dirname "$0")/xcode-env.sh"
 APP_DIR=examples/react-native-demo/ios/build/Build/Products/Debug-iphonesimulator
 case "${1:-}" in
   pick)
