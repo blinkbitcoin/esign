@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
-# Sourced by live.sh (web) and ios-live.sh (React Native): the DocuSign
+# Sourced by live.sh (web) and ios-live.sh (React Native), and by the
+# interactive live-web.sh / live-ios.sh / live-android.sh: the DocuSign
 # credentials, the fixture form's prefill, and the service on the DocuSign
 # provider. Defines:
-#   live_env            load packages/esign-service/.env or the DOCUSIGN_* env
+#   live_env            load packages/esign-service/.env (LIVE_ENV_FILE overrides
+#                       the path) or the DOCUSIGN_* env
 #                       (sets LIVE_TEST, SERVICE, LIVE_PORT, E2E_LIVE_PREFILL, ...)
-#   live_service_up     E2E Postgres + migrations + the service on $LIVE_PORT
+#   live_service_up     E2E Postgres + migrations + the service on $LIVE_PORT;
+#                       extra VAR=value arguments reach the service (and win)
 #   live_service_down   stop the service and the database (trap it on EXIT)
+#   live_public_url     PUBLIC_BASE_URL for real Connect webhooks and a device-
+#                       reachable return URL: LIVE_PUBLIC_URL if set, else a
+#                       Tailscale Funnel on $LIVE_PORT (started here, left
+#                       running: `tailscale funnel --https=443 off` stops it),
+#                       else unset with a warning
+#   live_stack_down     live_service_down plus the web demo and Metro (the
+#                       interactive runs trap it on EXIT)
 # Local only; the CI variant is docs/operations/live-e2e-ci.md.
 SERVICE=packages/esign-service
 # shellcheck source=scripts/e2e/wait-lib.sh
@@ -17,13 +27,14 @@ live_env() {
   # Two ways in: a local .env (make docusign-env), or the DocuSign values in
   # the environment (CI: docs/operations/live-e2e-ci.md). In the second case
   # the non-secret service settings get local-dev defaults here.
+  local env_file="${LIVE_ENV_FILE:-$SERVICE/.env}"
   # shellcheck disable=SC2034  # LIVE_TEST is the caller's (live.sh)
-  if [ -f "$SERVICE/.env" ]; then
+  if [ -f "$env_file" ]; then
     LIVE_TEST="test:live"
     # The small examples read the environment, not the service's .env
     set -a
-    # shellcheck disable=SC1091
-    . "$SERVICE/.env"
+    # shellcheck disable=SC1090
+    . "$env_file"
     set +a
   elif [ -n "${DOCUSIGN_INTEGRATION_KEY:-}" ]; then
     : "${DOCUSIGN_USER_ID:?}" "${DOCUSIGN_ACCOUNT_ID:?}" "${DOCUSIGN_PRIVATE_KEY:?}" \
@@ -35,7 +46,7 @@ live_env() {
     unset JWT_SECRET # the bearer token is the user id (what the specs send)
     LIVE_TEST="test:live:env"
   else
-    echo "::error::no $SERVICE/.env (make docusign-env) and no DOCUSIGN_* in the environment"; exit 1
+    echo "::error::no $env_file (make docusign-env) and no DOCUSIGN_* in the environment"; exit 1
   fi
   # LIVE_PORT: ESIGN_PORT_BASE + 6 (default 4106) unless set (ports-env.sh)
   LOG="${RUNNER_TEMP:-/tmp}/esign-live.log"
@@ -53,7 +64,7 @@ live_env() {
 }
 
 # shellcheck disable=SC2120  # the extra env is optional (ios-live.sh passes none)
-live_service_up() { # [extra env for the service, e.g. CORS_ALLOWED_ORIGINS=...]
+live_service_up() { # [extra env for the service, e.g. CORS_ALLOWED_ORIGINS=... DOCUSIGN_RETURN_URL=...]
   # The journeys persist envelopes: the E2E Postgres (tmpfs, :5433)
   echo "== test database"
   make test-db-up > /dev/null
@@ -65,7 +76,8 @@ live_service_up() { # [extra env for the service, e.g. CORS_ALLOWED_ORIGINS=...]
   if lsof -t -iTCP:"$LIVE_PORT" -sTCP:LISTEN > /dev/null 2>&1; then
     echo "::error::port $LIVE_PORT is taken - stop that process or set LIVE_PORT"; exit 1
   fi
-  ( cd "$SERVICE" && env "$@" PORT="$LIVE_PORT" DOCUSIGN_RETURN_URL="http://localhost:$LIVE_PORT/signing/return" npm run dev > "$LOG" 2>&1 ) &
+  # The caller's variables come last so they win over these defaults
+  ( cd "$SERVICE" && env PORT="$LIVE_PORT" DOCUSIGN_RETURN_URL="http://localhost:$LIVE_PORT/signing/return" "$@" npm run dev > "$LOG" 2>&1 ) &
   SERVICE_PID=$!
   wait_for "service" 30 1 "$LOG" http_ok "http://127.0.0.1:$LIVE_PORT/health"
 }
@@ -75,4 +87,39 @@ live_service_down() {
   lsof -t -iTCP:"$LIVE_PORT" -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true
   kill "${SERVICE_PID:-}" 2>/dev/null || true
   make test-db-down > /dev/null 2>&1 || true
+}
+
+# The funnel hostname from `tailscale status --json` (trailing dot stripped),
+# empty when Tailscale is absent or logged out
+funnel_host() {
+  command -v tailscale > /dev/null 2>&1 || return 0
+  tailscale status --json 2> /dev/null | jq -r '.Self.DNSName // empty' | sed 's/\.$//'
+}
+
+# The service has no public-URL setting of its own: the webhook target is
+# registered in DocuSign (Admin -> Connect, docs/integration/docusign-proxy.md
+# section 4) and the return URL is passed per run (live_service_up
+# DOCUSIGN_RETURN_URL=...), so this only resolves and exports PUBLIC_BASE_URL.
+live_public_url() {
+  if [ -n "${LIVE_PUBLIC_URL:-}" ]; then
+    PUBLIC_BASE_URL="$LIVE_PUBLIC_URL"
+  else
+    local host
+    host=$(funnel_host)
+    if [ -n "$host" ] && tailscale funnel --bg "$LIVE_PORT" > "${RUNNER_TEMP:-/tmp}/esign-funnel.log" 2>&1; then
+      PUBLIC_BASE_URL="https://$host"
+    else
+      echo "::warning::no Tailscale Funnel (no tailscale, logged out, or Funnel not enabled on the tailnet) and no LIVE_PUBLIC_URL - Connect webhooks will not arrive; the return URL stays local"
+      PUBLIC_BASE_URL=""
+    fi
+  fi
+  export PUBLIC_BASE_URL
+  [ -z "$PUBLIC_BASE_URL" ] || echo "== public URL $PUBLIC_BASE_URL (register $PUBLIC_BASE_URL/webhook/esign in DocuSign Admin -> Connect once, HMAC key = DOCUSIGN_HMAC_KEY)"
+}
+
+live_stack_down() {
+  echo "== teardown"
+  lsof -t -iTCP:"$ESIGN_WEB_PORT" -sTCP:LISTEN 2> /dev/null | xargs kill 2> /dev/null || true
+  bash scripts/e2e/metro-down.sh
+  live_service_down
 }

@@ -207,6 +207,15 @@ e2e-live: ## Full live run: start the service on DocuSign, API live test, Playwr
 e2e-ios-live: ## React Native live run: service on DocuSign + Metro (webform mode) + Maestro drives the real form in the WebView to a signed envelope
 	bash scripts/e2e/ios-live.sh
 
+live-web: ## The web demo against real DocuSign, one command: .env, public URL (Tailscale Funnel), service, demo; waits for the manual rows of docs/integration/docusign-proxy.md section 5, Ctrl-C tears down
+	bash scripts/e2e/live-web.sh
+
+live-ios: ## The RN demo on the attached iPhone against real DocuSign, one command: .env, public URL, service, Metro (ESIGN_MODE=proxy|webform, ESIGN_BACKEND_HOST auto), device build (LIVE_DEVICE=<name>); waits, Ctrl-C tears down
+	bash scripts/e2e/live-ios.sh
+
+live-android: ## The RN demo on the attached Android device against real DocuSign, one command: .env, public URL, service, adb reverse, Metro (ESIGN_MODE=proxy|webform), APK for the device's ABI (LIVE_DEVICE=<serial>); waits, Ctrl-C tears down
+	bash scripts/e2e/live-android.sh
+
 # ---------- Container ----------
 
 docker-build: ## Build the service image (packages/esign-service/Dockerfile, from the repo root)
@@ -245,4 +254,4 @@ help: ## List available targets
 .PHONY: install hooks pods release release-rc version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
 	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check codeql start ios android backend web db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-web-webform-live \
-	e2e-server-demos e2e-backend-up e2e-backend-down e2e-metro-up e2e-metro-down ios-build android-build e2e-ios e2e-android e2e-ios-local e2e-android-local test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live docker-build docker-smoke docker-build-mint-only docker-smoke-mint-only deploy-check clean reset help
+	e2e-server-demos e2e-backend-up e2e-backend-down e2e-metro-up e2e-metro-down ios-build android-build e2e-ios e2e-android e2e-ios-local e2e-android-local test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live live-web live-ios live-android docker-build docker-smoke docker-build-mint-only docker-smoke-mint-only deploy-check clean reset help
