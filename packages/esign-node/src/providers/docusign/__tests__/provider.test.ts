@@ -238,12 +238,53 @@ describe('createDocuSignProvider', () => {
       });
       expect(client().createEnvelopeFromTemplate).toHaveBeenCalledWith(
         recipient,
+        undefined,
       );
       expect(client().getEmbeddedSigningUrl).toHaveBeenCalledWith(
         'ds-1',
         recipient,
       );
     });
+
+    // The host's own values, written onto the template's tabs: this is what
+    // makes an envelope carry terms the signer cannot change.
+    it('passes the prefill through to the template roles', async () => {
+      const { provider, client } = setup();
+      const prefill = {
+        total_usd: { value: '10.00', locked: true },
+        country: 'Honduras',
+        note: { value: 'free to change' },
+      };
+      await provider.createEnvelope('user-1', 'nda', recipient, prefill);
+      expect(client().createEnvelopeFromTemplate).toHaveBeenCalledWith(
+        recipient,
+        prefill,
+      );
+    });
+
+    // DocuSign does not refuse a value outside the tab shape: a number arrives
+    // as an empty tab the signer can edit. So it is refused before any request.
+    it.each<[string, unknown]>([
+      ['a number', { total_btc: 0.0001 }],
+      ['a null', { total_btc: null }],
+      ['a non-text value', { total_btc: { value: 1, locked: true } }],
+      ['a non-boolean lock', { total_btc: { value: '1', locked: 'true' } }],
+      ['a list', ['1']],
+    ])(
+      'refuses %s in the prefill without calling DocuSign',
+      async (_, prefill) => {
+        const { provider, createClient } = setup();
+        await expect(
+          provider.createEnvelope(
+            'user-1',
+            'nda',
+            recipient,
+            prefill as Record<string, unknown>,
+          ),
+        ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+        expect(createClient).not.toHaveBeenCalled();
+      },
+    );
 
     it('maps a client error to ENVELOPE_CREATION_FAILED without retrying', async () => {
       const { provider, client } = setup();

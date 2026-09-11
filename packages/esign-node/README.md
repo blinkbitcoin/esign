@@ -322,7 +322,8 @@ import { createDocuSignProvider, docuSignConfigFromEnv } from '@blinkbitcoin/esi
 | `DOCUSIGN_INTEGRATION_KEY`, `DOCUSIGN_USER_ID`, `DOCUSIGN_ACCOUNT_ID`,<br>`DOCUSIGN_PRIVATE_KEY` | JWT grant | consent granted once per integration key |
 | `DOCUSIGN_PRIVATE_KEY_BASE64`, `DOCUSIGN_PRIVATE_KEY_FILE` | JWT grant | the same PEM base64-encoded, or a file (a mounted secret); used in<br>that order after `DOCUSIGN_PRIVATE_KEY`, literal `\n` normalised |
 | `DOCUSIGN_WEBFORM_ID` | Web Forms | the form to mint instances of |
-| `DOCUSIGN_TEMPLATE_ID` | envelopes | only for template envelopes |
+| `DOCUSIGN_TEMPLATE_ID` | envelopes | only for template envelopes; several ids, comma-separated,<br>go out as one envelope in that order |
+| `DOCUSIGN_SIGNER_ROLE` | envelopes | the template role the signer fills (default `signer`) |
 | `DOCUSIGN_RETURN_URL` | both | default `returnUrl` for instances / signing views |
 | `DOCUSIGN_BASE_URL`, `DOCUSIGN_OAUTH_URL`, `DOCUSIGN_WEBFORMS_BASE_URL` | hosts | default to the developer (demo) environment |
 | `DOCUSIGN_HMAC_KEY` | webhooks | the Connect HMAC key; without it signed webhooks cannot be verified |

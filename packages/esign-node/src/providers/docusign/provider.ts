@@ -7,6 +7,7 @@ import { isClientError, isNotFoundError, withRetry } from '../../http';
 import type { Logger } from '../../log';
 import type { ESignProvider } from '../../provider';
 import type {
+  EnvelopePrefill,
   EnvelopeResult,
   EnvelopeStatus,
   HostedFormInstanceResult,
@@ -18,7 +19,7 @@ import type {
 } from '../../types';
 import { createDocuSignClient, type DocuSignClient } from './client';
 import type { DocuSignConfig } from './config';
-import { WebFormPrefillError } from './prefill';
+import { isEnvelopeTabPrefill, WebFormPrefillError } from './prefill';
 import { createWebFormInstance } from './webforms';
 
 // --- Status + webhook mapping -----------------------------------------------
@@ -171,11 +172,19 @@ export const createDocuSignProvider = (
       _userId: string,
       _contractType: string,
       recipient: RecipientData,
+      prefill?: EnvelopePrefill,
     ): Promise<EnvelopeResult> {
+      // Refused before any request, like a bad Web Forms prefill: the caller's
+      // error, not the provider's, and not worth a retry
+      const isInvalidPrefill =
+        prefill !== undefined && !isEnvelopeTabPrefill(prefill);
+      if (isInvalidPrefill) {
+        throw Errors.validationError('Invalid prefill: unsupported tab value');
+      }
       try {
         const docusign = getClient();
         const envelope = await withRetry(() =>
-          docusign.createEnvelopeFromTemplate(recipient),
+          docusign.createEnvelopeFromTemplate(recipient, prefill),
         );
         const signingUrl = await withRetry(() =>
           docusign.getEmbeddedSigningUrl(envelope.envelopeId, recipient),

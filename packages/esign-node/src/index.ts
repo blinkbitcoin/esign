@@ -199,8 +199,11 @@ export type { SpanAttributes, SpanLike, Tracing } from './tracing';
 export { noopTracing } from './tracing';
 export type {
   CreateEnvelopeInput,
+  EnvelopePrefill,
   EnvelopeResult,
   EnvelopeStatus,
+  EnvelopeTabPrefill,
+  EnvelopeTabValue,
   FetchLike,
   GetSigningUrlInput,
   HostedFormInstanceOptions,

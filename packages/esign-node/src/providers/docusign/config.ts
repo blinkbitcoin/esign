@@ -19,8 +19,14 @@ export interface DocuSignConfig {
   privateKey?: string;
   // API user GUID the JWT impersonates
   userId?: string;
-  // Envelope mode: the template to send
+  // Envelope mode: the template to send, or several separated by commas. Several
+  // go out as ONE envelope, their documents in the order listed, so an agreement
+  // made of more than one document is signed in a single session.
   templateId?: string;
+  // Envelope mode: the template role the signer fills. Templates name their roles
+  // for the agreement they carry ("investor", "tenant", "employee"), so the one
+  // this host sends to is configuration, not a constant.
+  signerRoleName?: string;
   // Web Forms mode: the form to mint instances of
   webFormId?: string;
 }
@@ -38,6 +44,7 @@ export const DOCUSIGN_ENV: Record<DocuSignConfigKey, string> = {
   privateKey: 'DOCUSIGN_PRIVATE_KEY',
   userId: 'DOCUSIGN_USER_ID',
   templateId: 'DOCUSIGN_TEMPLATE_ID',
+  signerRoleName: 'DOCUSIGN_SIGNER_ROLE',
   webFormId: 'DOCUSIGN_WEBFORM_ID',
 };
 
@@ -153,6 +160,7 @@ export const docuSignConfigFromEnv = (
   privateKey: privateKeyFromEnv(env, options.readFile),
   userId: env[DOCUSIGN_ENV.userId] || undefined,
   templateId: env[DOCUSIGN_ENV.templateId] || undefined,
+  signerRoleName: env[DOCUSIGN_ENV.signerRoleName] || undefined,
   webFormId: env[DOCUSIGN_ENV.webFormId] || undefined,
 });
 

@@ -6,9 +6,11 @@ export interface RecipientData {
   email: string;
 }
 
-// DocuSign's prefill contract (docusign/types.ts); re-exported here so the
+// DocuSign's prefill contracts (docusign/types.ts); re-exported here so the
 // names keep resolving from this module
 export type {
+  EnvelopeTabPrefill,
+  EnvelopeTabValue,
   WebFormPhoneNumber,
   WebFormPrefill,
   WebFormPrefillValue,
@@ -56,6 +58,12 @@ export type FetchLike = (
 
 // Possible envelope statuses (the normalized vocabulary every provider maps to)
 export type EnvelopeStatus = 'sent' | 'completed' | 'voided' | 'declined';
+
+// The values a host computed for the document's own fields, keyed by whatever
+// the provider calls them (DocuSign: the template's tab labels). Neutral like
+// HostedFormPrefill; a provider narrows the value shapes it accepts
+// (EnvelopeTabPrefill for DocuSign).
+export type EnvelopePrefill = Record<string, unknown>;
 
 // Result from creating an envelope at the provider
 export interface EnvelopeResult {

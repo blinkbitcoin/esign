@@ -47,6 +47,7 @@ describe('docuSignConfigFromEnv', () => {
       DOCUSIGN_USER_ID: 'user',
       DOCUSIGN_TEMPLATE_ID: '',
       DOCUSIGN_WEBFORM_ID: 'form',
+      DOCUSIGN_SIGNER_ROLE: 'investor',
     };
     expect(docuSignConfigFromEnv(env)).toEqual({
       apiBaseUrl: 'https://na1.docusign.net/restapi',
@@ -59,6 +60,7 @@ describe('docuSignConfigFromEnv', () => {
       userId: 'user',
       templateId: undefined,
       webFormId: 'form',
+      signerRoleName: 'investor',
     });
   });
 

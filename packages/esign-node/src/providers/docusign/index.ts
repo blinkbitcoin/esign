@@ -62,6 +62,8 @@ export {
   parseDocuSignWebhook,
 } from './provider';
 export type {
+  EnvelopeTabPrefill,
+  EnvelopeTabValue,
   WebFormPhoneNumber,
   WebFormPrefill,
   WebFormPrefillValue,

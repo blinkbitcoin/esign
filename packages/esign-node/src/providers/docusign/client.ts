@@ -4,6 +4,7 @@
 
 import { HttpError } from '../../http';
 import type {
+  EnvelopeTabPrefill,
   FetchLike,
   RecipientData,
   WebFormInstanceOptions,
@@ -20,9 +21,11 @@ export interface DocuSignClientOptions {
 
 export interface DocuSignClient extends TokenProvider {
   readonly config: DocuSignConfig;
-  // Envelope from the configured template, embedded signing for `recipient`
+  // Envelope from the configured template, embedded signing for `recipient`,
+  // carrying the values the host computed
   createEnvelopeFromTemplate(
     recipient: RecipientData,
+    prefill?: EnvelopeTabPrefill,
   ): Promise<{ envelopeId: string }>;
   // Embedded signing view URL for an envelope's recipient
   getEmbeddedSigningUrl(
@@ -43,6 +46,84 @@ export interface DocuSignClient extends TokenProvider {
 // the view request; the recipient email is that stable value
 const embeddedClientUserId = (recipient: RecipientData): string =>
   recipient.email;
+
+/** What `make docusign-template` names its role, kept as the fallback. */
+const DEFAULT_SIGNER_ROLE = 'signer';
+
+/**
+ * The prefill as DocuSign's own text tabs.
+ *
+ * `locked` travels as the string 'true': the envelopes API takes its booleans as
+ * strings, and sending a real boolean is accepted and then ignored, which would
+ * render the value editable with nothing to say it went wrong.
+ */
+const textTabsFrom = (
+  prefill: EnvelopeTabPrefill,
+): Array<{ tabLabel: string; value: string; locked: string }> =>
+  Object.entries(prefill).map(([tabLabel, entry]) => {
+    const { value, locked } =
+      typeof entry === 'string' ? { value: entry, locked: false } : entry;
+
+    return { tabLabel, value, locked: locked ? 'true' : 'false' };
+  });
+
+/** The signer as the envelopes API names a template role. */
+interface TemplateRole {
+  email: string;
+  name: string;
+  roleName: string;
+  clientUserId: string;
+  tabs?: { textTabs: ReturnType<typeof textTabsFrom> };
+}
+
+/**
+ * The templates `templateId` names, in the order the signer reads them.
+ *
+ * Blank entries are dropped, so a trailing comma or the spaces after one cannot
+ * add a template nobody asked for.
+ */
+const templateIdsOf = (templateId: string | undefined): string[] =>
+  (templateId ?? '')
+    .split(',')
+    .map(id => id.trim())
+    .filter(id => id.length > 0);
+
+/**
+ * Each document of a multi-template envelope carries its own copy of the signer,
+ * and DocuSign folds the copies that share a recipient id into one recipient:
+ * one signing session across every document instead of one per document.
+ */
+const SIGNER_RECIPIENT_ID = '1';
+
+/**
+ * The part of the envelope that names its documents and who signs them.
+ *
+ * One template keeps the plain `templateId` + `templateRoles` shape. Several
+ * become composite templates, each pairing a server template with an inline one
+ * that carries the signer: the inline template has the higher sequence, so its
+ * role and values are laid over the server template's. The same values go to
+ * every document, and a document simply ignores a label it has no tab for.
+ */
+const templatesFor = (templateIds: string[], signer: TemplateRole) => {
+  if (templateIds.length === 1) {
+    return { templateId: templateIds[0], templateRoles: [signer] };
+  }
+
+  return {
+    compositeTemplates: templateIds.map((templateId, index) => ({
+      compositeTemplateId: String(index + 1),
+      serverTemplates: [{ sequence: '1', templateId }],
+      inlineTemplates: [
+        {
+          sequence: '2',
+          recipients: {
+            signers: [{ ...signer, recipientId: SIGNER_RECIPIENT_ID }],
+          },
+        },
+      ],
+    })),
+  };
+};
 
 export const createDocuSignClient = (
   config: DocuSignConfig,
@@ -81,22 +162,27 @@ export const createDocuSignClient = (
     getAccessToken: () => tokens.getAccessToken(),
     clearTokenCache: () => tokens.clearTokenCache(),
 
-    async createEnvelopeFromTemplate(recipient) {
-      assertDocuSignConfig(config, ['accountId', 'templateId']);
+    async createEnvelopeFromTemplate(recipient, prefill) {
+      // Checked against the ids the setting actually names, so one that names
+      // nothing (a lone comma) is reported as missing just like an unset one
+      const templateIds = templateIdsOf(config.templateId);
+      assertDocuSignConfig({ ...config, templateId: templateIds.join(',') }, [
+        'accountId',
+        'templateId',
+      ]);
+
+      const signer: TemplateRole = {
+        email: recipient.email,
+        name: recipient.name,
+        // The template names its own role; 'signer' is only the default the
+        // repo's own fixture uses.
+        roleName: config.signerRoleName || DEFAULT_SIGNER_ROLE,
+        clientUserId: embeddedClientUserId(recipient), // embedded signing
+        ...(prefill ? { tabs: { textTabs: textTabsFrom(prefill) } } : {}),
+      };
       const data = await call<{ envelopeId: string }>(envelopesUrl(), {
         method: 'POST',
-        body: {
-          templateId: config.templateId,
-          templateRoles: [
-            {
-              email: recipient.email,
-              name: recipient.name,
-              roleName: 'signer',
-              clientUserId: embeddedClientUserId(recipient), // embedded signing
-            },
-          ],
-          status: 'sent',
-        },
+        body: { ...templatesFor(templateIds, signer), status: 'sent' },
       });
       return { envelopeId: data.envelopeId };
     },

@@ -5,7 +5,12 @@
 // opaque 400 is rejected here with a reason, and nothing but the documented
 // value shapes ever reaches the API.
 
-import type { WebFormPrefill, WebFormPrefillValue } from './types';
+import type {
+  EnvelopeTabPrefill,
+  EnvelopeTabValue,
+  WebFormPrefill,
+  WebFormPrefillValue,
+} from './types';
 
 // Field API reference names as the Web Forms builder shows them (componentName)
 const FIELD_NAME = /^[A-Za-z0-9_-]{1,100}$/;
@@ -86,6 +91,24 @@ export const assertWebFormPrefill = (input: unknown): WebFormPrefill => {
   }
   return parsed.prefill;
 };
+
+const isEnvelopeTabValue = (value: unknown): value is EnvelopeTabValue =>
+  isPlainObject(value) &&
+  typeof value.value === 'string' &&
+  (value.locked === undefined || typeof value.locked === 'boolean');
+
+/**
+ * Whether an envelope prefill has the tab shape: text, bare or with a boolean
+ * `locked`. DocuSign does not refuse a value outside it (a number arrives as an
+ * empty tab the signer can edit), so it has to be checked before the request.
+ */
+export const isEnvelopeTabPrefill = (
+  input: unknown,
+): input is EnvelopeTabPrefill =>
+  isPlainObject(input) &&
+  Object.values(input).every(
+    entry => typeof entry === 'string' || isEnvelopeTabValue(entry),
+  );
 
 // Human-readable rendering of a prefill value (what a form would display)
 export const formatPrefillValue = (value: WebFormPrefillValue): string => {
