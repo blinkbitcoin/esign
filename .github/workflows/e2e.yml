@@ -4,8 +4,8 @@ name: Tests / E2E
 # releases). Concurrency is the caller's.
 #
 # The iOS job runs by default. It needs a macOS runner; GitHub-hosted macOS is
-# free on a public repo but bills at 10x Linux on a private one (one ~15 min
-# iOS run is ~150 Linux minutes), so the caller can switch it off (repo
+# free on a public repo but bills at 10x Linux on a private one (one 12-14 min
+# iOS run is 120-140 Linux minutes), so the caller can switch it off (repo
 # variable / PR label, see ci.yml). A skipped job costs nothing and still
 # counts as success for the caller's `needs.e2e.result`.
 #
@@ -466,6 +466,9 @@ jobs:
         with:
           name: ios-app
           path: ${{ runner.temp }}/ReactNativeSandbox.app.tar
+          # 77 MB of Mach-O: zipping it costs more CPU on both jobs than
+          # the bytes it saves in transfer (the APK upload does the same).
+          compression-level: 0
           retention-days: 1
           overwrite: true # a full re-run re-uploads the same name
           if-no-files-found: error
@@ -481,8 +484,33 @@ jobs:
     needs: [build-ios]
 
     steps:
+      # Step order is about CPU, not dependencies: the runner has 3 vCPUs
+      # and the simulator boot is the one job that saturates them for ~3-4
+      # min. Everything measured while it overlapped other CPU work ran 5-50x
+      # slower than on the Android runner (backend start 116 s vs 2 s,
+      # migrations 12 s vs 1 s, bundle prewarm 125 s vs 14 s; measured in
+      # blinkbitcoin/kyc#16, same job). So: the boot starts first and
+      # overlaps only the downloads (Postgres bottle, npm ci, Maestro CLI,
+      # the .app artifact); Metro, the other CPU-bound piece, starts once
+      # the boot is done.
       - name: Checkout code
         uses: actions/checkout@v7
+
+      # Runner images rotate simulator generations (iPhone 15 -> 16 -> 17...);
+      # pick whatever iPhone the image actually ships instead of hardcoding.
+      # Booting starts here, before anything else, so the whole setup below
+      # overlaps it; "Wait for iOS Simulator" joins it.
+      - name: Pick a simulator device
+        run: bash scripts/e2e/ios-simulator.sh pick
+
+      # macOS runners have no Docker - run the test database via Homebrew
+      # Postgres instead, matching docker-compose.test.yml (test/test on
+      # ESIGN_TEST_DB_PORT,
+      # tmpfs-equivalent: the runner is ephemeral anyway). The ~1 min install
+      # runs in the background from here so it overlaps the simulator boot,
+      # npm ci and Maestro; "Wait for test database" below joins it.
+      - name: Start test database (Homebrew Postgres on ESIGN_TEST_DB_PORT, background)
+        run: bash scripts/ci/postgres-brew.sh background
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -490,39 +518,22 @@ jobs:
           node-version: '24'
           cache: 'npm'
 
-      # macOS runners have no Docker - run the test database via Homebrew
-      # Postgres instead, matching docker-compose.test.yml (test/test on
-      # ESIGN_TEST_DB_PORT,
-      # tmpfs-equivalent: the runner is ephemeral anyway). The ~1 min install
-      # runs in the background from here so it overlaps npm ci, Maestro, the
-      # simulator pick and Metro; "Wait for test database" below joins it.
-      - name: Start test database (Homebrew Postgres on ESIGN_TEST_DB_PORT, background)
-        run: bash scripts/ci/postgres-brew.sh background
-
       - name: Install dependencies (workspace root)
         run: npm ci --prefer-offline --no-audit
 
       - name: Cache Maestro CLI
         uses: actions/cache@v6
         with:
-          path: ~/.maestro
-          key: maestro-${{ runner.os }}-2.6.1 # keep in sync with scripts/ci/maestro-install.sh
+          # The CLI only: tests/ is the per-run flow output (screenshots,
+          # driver logs) that the results artifact uploads - cached, it grows
+          # run over run and stale runs land in every artifact.
+          path: |
+            ~/.maestro
+            !~/.maestro/tests
+          key: maestro-${{ runner.os }}-2.6.1-v2 # keep in sync with scripts/ci/maestro-install.sh
 
       - name: Install Maestro CLI (version pinned in scripts/ci/maestro-install.sh)
         run: bash scripts/ci/maestro-install.sh
-
-      # Runner images rotate simulator generations (iPhone 15 -> 16 -> 17...);
-      # pick whatever iPhone the image actually ships instead of hardcoding.
-      # Booting starts here so it overlaps everything below (build or cache
-      # restore, Postgres, backend, Metro).
-      - name: Pick a simulator device
-        run: bash scripts/e2e/ios-simulator.sh pick
-
-      # Metro starts in the background here so its boot overlaps the Postgres
-      # install and the backend; it is awaited (and the bundle prewarmed) right before
-      # Maestro runs.
-      - name: Start Metro bundler (background)
-        run: bash scripts/e2e/metro-start.sh
 
       - name: Wait for test database (installing since checkout)
         run: bash scripts/ci/postgres-brew.sh wait
@@ -535,6 +546,25 @@ jobs:
 
       - name: Wait for iOS Simulator (booting since device pick)
         run: bash scripts/e2e/ios-simulator.sh wait
+
+      # Metro's transform cache from the last green run on this lockfile:
+      # the sha in the key makes every green run save the newest cache, the
+      # restore key picks the newest one up. Metro keys entries by content
+      # hash, so a stale restore is only a partial miss, never a wrong bundle.
+      - name: Restore Metro cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/metro-tmp/metro-cache
+          key: metro-ios-v1-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: metro-ios-v1-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+
+      # Metro starts only now, after the boot: its workspace crawl overlaps
+      # the .app download and install (I/O), and the bundle is prewarmed
+      # right before Maestro runs.
+      - name: Start Metro bundler (background)
+        env:
+          METRO_CACHE_ROOT: ${{ runner.temp }}/metro-tmp # see scripts/e2e/metro-start.sh
+        run: bash scripts/e2e/metro-start.sh
 
       # The .app comes from build-ios as a tar (upload-artifact zips and drops
       # executable bits + symlinks, which breaks simctl install).
@@ -567,9 +597,11 @@ jobs:
         if: always()
         run: make e2e-backend-down
 
+      # Kept on success too: Metro's request log and Maestro's per-flow
+      # timings are what a slow-but-green app-launch is diagnosed from.
       - name: Upload Maestro test results + crash reports
         uses: actions/upload-artifact@v7
-        if: failure()
+        if: always()
         with:
           name: maestro-results
           path: |
@@ -690,8 +722,13 @@ jobs:
       - name: Cache Maestro CLI
         uses: actions/cache@v6
         with:
-          path: ~/.maestro
-          key: maestro-${{ runner.os }}-2.6.1 # keep in sync with scripts/ci/maestro-install.sh
+          # The CLI only: tests/ is the per-run flow output (screenshots,
+          # driver logs) that the results artifact uploads - cached, it grows
+          # run over run and stale runs land in every artifact.
+          path: |
+            ~/.maestro
+            !~/.maestro/tests
+          key: maestro-${{ runner.os }}-2.6.1-v2 # keep in sync with scripts/ci/maestro-install.sh
 
       - name: Install Maestro CLI (version pinned in scripts/ci/maestro-install.sh)
         run: bash scripts/ci/maestro-install.sh

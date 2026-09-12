@@ -16,13 +16,22 @@
 # PID and log for `wait`) so the install overlaps npm ci, Maestro, the
 # simulator pick and Metro, then calls `wait` right before migrations.
 set -euo pipefail
+TMP="${RUNNER_TEMP:-/tmp}"
+MODE="${1:-start}"
+SETUP_LOG="$TMP/pg-setup.log"
+# `background` only forks `start` and must return at once: it runs while
+# the simulator boot saturates the runner, where even the node start behind
+# ports-env.sh cost it 30-40 s. The port is resolved by the forked `start`.
+if [ "$MODE" = background ]; then
+  nohup bash "$0" start > "$SETUP_LOG" 2>&1 &
+  echo $! > "$TMP/pg-setup.pid"
+  echo "Postgres setup started in the background (pid $(cat "$TMP/pg-setup.pid"), log $SETUP_LOG)"
+  exit 0
+fi
 # shellcheck source=scripts/e2e/ports-env.sh
 . "$(dirname "$0")/../e2e/ports-env.sh"
 DB_PORT="$ESIGN_TEST_DB_PORT"
 export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_ENV_HINTS=1
-TMP="${RUNNER_TEMP:-/tmp}"
-MODE="${1:-start}"
-SETUP_LOG="$TMP/pg-setup.log"
 
 wait_for_db() {
   # The background install has no PGBIN until brew is done; poll pg_isready
@@ -48,11 +57,6 @@ wait_for_db() {
 
 case "$MODE" in
   wait) wait_for_db; exit $? ;;
-  background)
-    nohup bash "$0" start > "$SETUP_LOG" 2>&1 &
-    echo $! > "$TMP/pg-setup.pid"
-    echo "Postgres setup started in the background (pid $(cat "$TMP/pg-setup.pid"), log $SETUP_LOG)"
-    exit 0 ;;
   start) ;;
   *) echo "usage: $0 [start|background|wait]" >&2; exit 2 ;;
 esac
