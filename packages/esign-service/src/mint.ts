@@ -22,7 +22,6 @@ import {
   envelopeProviderFromEnv,
   type HostedFormApp,
   hostedFormProviderFromEnv,
-  type ESignProvider as SelectedProvider,
 } from '@blinkbitcoin/esign-node';
 
 import type { Env } from './env';

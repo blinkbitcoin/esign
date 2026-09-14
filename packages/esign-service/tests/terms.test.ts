@@ -225,32 +225,41 @@ describe('createEnvelopeTerms', () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it('posts the caller, the client prefill and signer, and lays the reply over them', async () => {
-    const fetchStub = replyWith({ prefill: { total_usd: { value: '1000.00', locked: true } } });
+  // Unlike the Web Forms merge: on an envelope the lock travels with each
+  // value, so a client entry the host did not name could lock a term the host
+  // never computed. The client's values reach the host as input, and nothing
+  // the host does not answer reaches the document.
+  it('posts the caller, the client prefill and signer, and mints exactly the reply', async () => {
+    const fetchStub = replyWith({
+      recipient: verified,
+      prefill: { total_usd: { value: '1000.00', locked: true } },
+    });
     const terms = createEnvelopeTerms({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
 
     const minted = await terms({
       userId: 'user-1',
       recipient: signer,
-      prefill: { total_usd: '1', notes: 'hi' },
+      prefill: { total_usd: '1', notes: 'hi', fee_usd: { value: '0.00', locked: true } },
       request: envelopeRequest('Bearer token-abc'),
     });
 
     expect(minted).toEqual({
-      recipient: signer,
-      prefill: { total_usd: { value: '1000.00', locked: true }, notes: 'hi' },
+      recipient: verified,
+      prefill: { total_usd: { value: '1000.00', locked: true } },
     });
     const [url, init] = fetchStub.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(URL_);
     expect(JSON.parse(init.body as string)).toEqual({
       userId: 'user-1',
-      input: { total_usd: '1', notes: 'hi' },
+      input: { total_usd: '1', notes: 'hi', fee_usd: { value: '0.00', locked: true } },
       recipient: signer,
     });
     expect(new Headers(init.headers).get('authorization')).toBe('Bearer token-abc');
   });
 
-  it('lets the signer the host names replace the one the client sent', async () => {
+  // A reply naming no term leaves the template its own values: the same
+  // envelope the no-callback path asks for, not one with an empty tab list
+  it('mints the signer the host names and no prefill when it names no term', async () => {
     const terms = createEnvelopeTerms(
       { url: URL_, timeoutMs: 1000 },
       { fetch: replyWith({ prefill: {}, recipient: verified }) }
@@ -258,11 +267,11 @@ describe('createEnvelopeTerms', () => {
 
     await expect(
       terms({ userId: 'u', recipient: signer, request: envelopeRequest() })
-    ).resolves.toEqual({ recipient: verified, prefill: {} });
+    ).resolves.toEqual({ recipient: verified, prefill: undefined });
   });
 
   it('asks with an empty input and no signer when the client sent neither', async () => {
-    const fetchStub = replyWith({ prefill: {} });
+    const fetchStub = replyWith({ prefill: {}, recipient: verified });
     const terms = createEnvelopeTerms({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
 
     await terms({ userId: 'u', request: envelopeRequest() });
@@ -270,6 +279,19 @@ describe('createEnvelopeTerms', () => {
     expect(
       JSON.parse((fetchStub.mock.calls[0] as [string, RequestInit])[1].body as string)
     ).toEqual({ userId: 'u', input: {} });
+  });
+
+  // Who signs is the host's to decide: a reply that names nobody must not
+  // leave the caller's signer in force with the host's locked terms attached
+  it('fails when the host names no signer', async () => {
+    const terms = createEnvelopeTerms(
+      { url: URL_, timeoutMs: 1000 },
+      { fetch: replyWith({ prefill: {} }) }
+    );
+
+    await expect(
+      terms({ userId: 'u', recipient: signer, request: envelopeRequest() })
+    ).rejects.toThrow(TermsError);
   });
 
   // A reply the envelope could not carry is a failure, never minted as sent
@@ -285,7 +307,7 @@ describe('createEnvelopeTerms', () => {
   });
 
   it('fails on a signer without a name and an email', async () => {
-    for (const recipient of [{ name: 'Only A Name' }, 'verified@example.com', null]) {
+    for (const recipient of [{ name: 'Only A Name' }, 'verified@example.com', null, undefined]) {
       const terms = createEnvelopeTerms(
         { url: URL_, timeoutMs: 1000 },
         { fetch: replyWith({ prefill: {}, recipient }) }
@@ -322,12 +344,12 @@ describe('createEnvelopeTerms', () => {
   it('uses the platform fetch when none is injected', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(JSON.stringify({ prefill: {} })))
+      vi.fn(async () => new Response(JSON.stringify({ prefill: {}, recipient: verified })))
     );
     const terms = createEnvelopeTerms({ url: URL_, timeoutMs: 1000 });
 
     await expect(
       terms({ userId: 'u', recipient: signer, request: envelopeRequest() })
-    ).resolves.toEqual({ recipient: signer, prefill: {} });
+    ).resolves.toEqual({ recipient: verified, prefill: undefined });
   });
 });

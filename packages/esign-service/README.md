@@ -73,8 +73,10 @@ and the verification checklist - is the runbook,
    caller's bearer token forwarded, and your `{ prefill }` wins over the
    client's values key by key. Client input is intent, never a locked value.
    An envelope mint (`ESIGN_MINT_MODE=envelope`) also sends the client's
-   `recipient`, and a `recipient` in your answer is who signs. Without
-   `TERMS_URL` any authenticated caller names the signer.
+   `recipient`, and mints exactly your `{ prefill, recipient }`: nothing of
+   the client's reaches the document, since on an envelope the lock travels
+   with each value, and your `recipient` is who signs. Without `TERMS_URL`
+   any authenticated caller names the signer.
 
 ## Environment
 

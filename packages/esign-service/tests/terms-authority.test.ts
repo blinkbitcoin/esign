@@ -123,7 +123,11 @@ describe('TERMS_URL is the authority on what the signer cannot change', () => {
 
     const response = await mint({ recipient: caller, prefill: {} });
 
-    expect(response.status).toBe(200);
+    // The host is required to name the signer, so a reply without one is an
+    // invalid answer: the terms could not be computed, and nothing is minted
+    expect(response.status).toBe(502);
+    expect(await asJson(response)).toEqual({ error: 'Could not compute the signing terms' });
+    expect(createEnvelope).not.toHaveBeenCalled();
     expect(signerOf(createEnvelope)).not.toEqual(caller);
   });
 

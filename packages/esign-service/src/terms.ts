@@ -8,9 +8,12 @@
 // the host's `{ prefill }` wins over the client's values, key by key.
 //
 // An envelope (ESIGN_MINT_MODE=envelope) asks the same way with the signer the
-// client named beside its prefill - POST { userId, input, recipient } - and
-// the host may answer `{ prefill, recipient }`: who signs is the host's to
-// decide, like every value it locks.
+// client named beside its prefill - POST { userId, input, recipient } - but
+// the host's answer `{ prefill, recipient }` is the whole of what is minted:
+// on an envelope the lock travels with each value, so a client entry the host
+// did not name could lock a term the host never computed or unlock one the
+// template locked. The client's values reach the host as input and nothing
+// more, and the host names who signs.
 //
 // Fail closed: a non-2xx, a timeout, a non-JSON body or a reply without a
 // prefill is an error, never "mint what the client sent". createESignApp
@@ -172,8 +175,9 @@ const recipientFrom = (value: unknown): RecipientData => {
 };
 
 // The terms hook createESignApp hands to the envelope app: ask the host with
-// the client's signer and prefill, lay its prefill over the client's, and let
-// its signer, when it names one, be the one who signs.
+// the client's signer and prefill as input, and mint exactly what it answers -
+// its signer, and its prefill alone. A reply that names no term leaves the
+// template its own values, the same envelope the no-callback path asks for.
 export const createEnvelopeTerms = (
   config: TermsConfig,
   deps: EnvelopeTermsDeps = {}
@@ -187,9 +191,10 @@ export const createEnvelopeTerms = (
     if (!locked.ok) {
       throw new TermsError(`the terms callback answered an invalid prefill: ${locked.error}`);
     }
+    const isEmpty = Object.keys(locked.prefill).length === 0;
     return {
-      recipient: reply.recipient === undefined ? recipient : recipientFrom(reply.recipient),
-      prefill: { ...input, ...locked.prefill },
+      recipient: recipientFrom(reply.recipient),
+      prefill: isEmpty ? undefined : locked.prefill,
     };
   };
 };
