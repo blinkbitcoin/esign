@@ -192,7 +192,8 @@ own) takes `{ recipient: { name, email }, prefill }`, creates one
 envelope from the provider's template (or templates) and answers
 `{ url, envelopeId }` where a Web Forms mint answers `{ url, instanceId }`.
 Its decisions are `mintEnvelopeInstanceHttp`: `401`; `400` for a body that
-is not JSON, for `Invalid recipient: …` and for `Invalid prefill: …` (the
+is not JSON or is JSON but not an object (`Invalid body: expected a JSON
+object`, both mints), for `Invalid recipient: …` and for `Invalid prefill: …` (the
 contract is `parseEnvelopePrefill`: Text tab labels to a string or
 `{ value, locked? }`), all before any provider call; `400 recipient is
 required: a name and an email` when no signer is named; `502 Could not

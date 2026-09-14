@@ -110,6 +110,11 @@ export interface MintInstanceHttpInput<TInput, TResult, TParser> {
   logger?: Logger;
 }
 
+// A body that parsed as JSON but is not the object every kind reads its request
+// from: refused before any kind looks at it, so no host hook can be reached
+// with a request that skipped the kind's checks
+const NOT_AN_OBJECT = 'Invalid body: expected a JSON object';
+
 // A mint call that threw: the coded validation / authorization errors a hook
 // or the provider raises keep their meaning (400 / 401, with the message);
 // anything else is a failed signing session, logged by its code only.
@@ -133,10 +138,11 @@ const mintFailure = (
 };
 
 // POST {kind.path} semantics: 401 unauthenticated, 400 when the provider
-// cannot mint this kind or the request is outside the contract (with the
-// reason, before any provider call), 502 when minting fails, else 200 + what
-// the mint answered. A hook (mintWithHook) runs inside the same `mint` call
-// this awaits, so a host rejecting the caller's own input throws
+// cannot mint this kind, when the body is not an object or when the request
+// is outside the contract (with the reason, before any provider call), 502
+// when minting fails, else 200 + what the mint answered. A hook
+// (mintWithHook) runs inside the same `mint` call this awaits, so a host
+// rejecting the caller's own input throws
 // `Errors.validationError(message)` / `Errors.unauthorized()` here too - those
 // two coded errors map to 400 / 401 with the thrown message, same as the
 // provider's own contract; any other error (a provider/network failure)
@@ -156,6 +162,9 @@ export const mintInstanceHttp = async <
   }
   if (!input.mint) {
     return { status: 400, body: { error: kind.unsupported } };
+  }
+  if (input.body !== undefined && !isPlainObject(input.body)) {
+    return { status: 400, body: { error: NOT_AN_OBJECT } };
   }
   const parsed = kind.parseRequest(
     input.body,

@@ -214,6 +214,21 @@ describe.each(kinds)('$name serves the mint contract', kind => {
     expect(await response.json()).toEqual({ error: 'Invalid JSON body' });
   });
 
+  // A body that parses but is not an object would skip every check a kind
+  // makes; with a host hook naming the rest it would mint a real envelope
+  it('answers 400 for a body that is JSON but not an object, before the provider', async () => {
+    const p = provider();
+    const response = await kind
+      .app({ provider: p })
+      .fetch(mintAs(['not', 'an', 'object']));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: 'Invalid body: expected a JSON object',
+    });
+    expect(p.createEnvelope).not.toHaveBeenCalled();
+    expect(p.createWebFormInstance).not.toHaveBeenCalled();
+  });
+
   it("answers 400 with the prefill contract's reason, before the provider", async () => {
     const p = provider();
     const response = await kind
@@ -419,12 +434,13 @@ describe('ENVELOPE_MINT, the kind', () => {
       input: { recipient: signer, prefill: locked },
     });
     // A prefill the caller did not send stays absent (the template keeps
-    // its own values); a body that is not an object names nothing
+    // its own values); no body names nothing (the decision function refuses
+    // a body that is not an object before the kind sees it)
     expect(parse({ recipient: signer })).toEqual({
       ok: true,
       input: { recipient: signer, prefill: undefined },
     });
-    expect(parse('nope')).toEqual({
+    expect(parse(undefined)).toEqual({
       ok: true,
       input: { recipient: undefined, prefill: undefined },
     });
