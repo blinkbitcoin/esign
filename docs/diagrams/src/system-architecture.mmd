@@ -59,6 +59,7 @@ flowchart TB
     EVI -->|verify the bearer token| IDP
     EVI -->|POST userId + input + recipient| TERMS
     EVI --> PROV
+    EVI -->|DATABASE_URL set: stored| KNEX
     GQL --> PROV
     PROV -->|REST| DOCU
     DOCU -->|Connect webhook| WH

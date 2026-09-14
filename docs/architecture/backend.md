@@ -354,7 +354,7 @@ runnable template: `packages/esign-service/.env.example`.
 | `src/vercel.ts` | `./vercel`: `export { GET, POST, OPTIONS }` |
 | `src/cloudflare.ts` | `./cloudflare`: `export default { fetch(request, env) }` (mint only) |
 | `POST /webform/instance` | Mint a hosted-form instance (always on, unless `ESIGN_MINT_MODE=envelope`) |
-| `POST /envelope/instance` | Create one envelope from `DOCUSIGN_TEMPLATE_ID` and answer `{ url, envelopeId }` (instead of `/webform/instance`, under `ESIGN_MINT_MODE=envelope`) |
+| `POST /envelope/instance` | Create one envelope from `DOCUSIGN_TEMPLATE_ID` and answer `{ url, envelopeId }` (instead of `/webform/instance`, under `ESIGN_MINT_MODE=envelope`; stored and audited with `DATABASE_URL`) |
 | `GET /signing/return` | The return-URL bridge (always on) |
 | `POST /graphql` | GraphQL endpoint (with `DATABASE_URL`) |
 | `POST /webhook/esign` | Provider webhook endpoint (with `DATABASE_URL`) |

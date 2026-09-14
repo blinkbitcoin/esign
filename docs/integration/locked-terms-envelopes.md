@@ -84,7 +84,7 @@ the mock provider keeps what it was sent (`getEnvelopePrefill(envelopeId)`)
 for the host's tests.
 
 **esign-service deployments**: `ESIGN_MINT_MODE=envelope` turns the mint
-into this recipe, with no database. `POST /envelope/instance` takes
+into this recipe, with no database needed. `POST /envelope/instance` takes
 `{ recipient: { name, email }, prefill }` from the authenticated caller,
 checks the prefill with `parseEnvelopePrefill`, creates one envelope from
 `DOCUSIGN_TEMPLATE_ID` (several ids, one envelope, in that order) and
@@ -97,8 +97,10 @@ the host's `{ prefill }` wins key by key and must satisfy the envelope
 contract, and a `recipient` in the answer replaces the caller's - who signs
 is the host's to decide, like every value it locks. Without `TERMS_URL` the
 caller's signer and prefill are minted as sent, and production needs
-`ESIGN_ALLOW_CLIENT_PREFILL=true`. The GraphQL `createEnvelope` (envelope
-orchestration, with a database) still takes no prefill.
+`ESIGN_ALLOW_CLIENT_PREFILL=true`. With `DATABASE_URL` set the mint
+creates through the envelope service, so the envelope is stored and audited
+like one the GraphQL `createEnvelope` made (which still takes no prefill),
+and `envelopeId` is the stored id.
 
 ## 3. Verify
 

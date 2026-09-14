@@ -360,8 +360,13 @@ The same table, from the package's side, is
 ### Envelope mint (`POST /envelope/instance`)
 
 Served instead of `POST /webform/instance` under `ESIGN_MINT_MODE=envelope`
-(no database). The signer opens the documents themselves, with the prefill
-already on them.
+(no database needed). The signer opens the documents themselves, with the
+prefill already on them. With `DATABASE_URL` set the envelope is also stored
+and audited, as one `createEnvelope` created: its status follows the
+webhook, `getSigningUrl` reopens it, and `envelopeId` is the stored id the
+GraphQL API takes. The envelope is created at the provider before it is
+stored, as with `createEnvelope`: when storing fails the answer is `502` and
+the envelope stays at the provider unrecorded.
 
 ```json
 {
@@ -380,7 +385,7 @@ so the template keeps its own values. The prefill contract is
 
 | Status | Body | When |
 |--------|------|------|
-| `200` | `{ url, envelopeId }` | Created; `url` is the embedded signing URL (a Web Forms mint answers `{ url, instanceId }`) |
+| `200` | `{ url, envelopeId }` | Created; `url` is the embedded signing URL (a Web Forms mint answers `{ url, instanceId }`); `envelopeId` is the provider's id, or the stored one with `DATABASE_URL` |
 | `400` | `{ "error": "Invalid JSON body" }` | The body is not JSON |
 | `400` | `{ "error": "Invalid recipient: ..." }` | `recipient` is present but not `{ name, email }` strings |
 | `400` | `{ "error": "Invalid prefill: <reason>" }` | The prefill is outside the envelope contract (checked before any provider call) |

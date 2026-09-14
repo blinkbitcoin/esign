@@ -397,7 +397,7 @@ npm run migrate
 |----------|----------|-------------|
 | `DATABASE_URL` | No | PostgreSQL connection string. Its presence turns **envelope orchestration** on (GraphQL, the webhook, the Knex store); without it the deployment serves the mint alone |
 | `ESIGN_PROVIDER` | No | Provider selection: `mock` (default) or `docusign` |
-| `ESIGN_MINT_MODE` | No | What the mint answers with: `webform` (default; `POST /webform/instance`) or `envelope` (`POST /envelope/instance` takes `{ recipient, prefill }`, creates one envelope from `DOCUSIGN_TEMPLATE_ID` and answers `{ url, envelopeId }`; no database either way). Any other value refuses to start |
+| `ESIGN_MINT_MODE` | No | What the mint answers with: `webform` (default; `POST /webform/instance`) or `envelope` (`POST /envelope/instance` takes `{ recipient, prefill }`, creates one envelope from `DOCUSIGN_TEMPLATE_ID` and answers `{ url, envelopeId }`; neither needs a database, and with `DATABASE_URL` an envelope is also stored and audited, as the GraphQL API's are). Any other value refuses to start |
 | `MOCK_PAGES` | No | `false` turns the mock provider's signing pages off |
 | `DOCUSIGN_ACCOUNT_ID` | docusign | DocuSign account ID |
 | `DOCUSIGN_INTEGRATION_KEY` | docusign | DocuSign integration key |
