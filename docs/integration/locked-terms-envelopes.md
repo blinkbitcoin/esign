@@ -83,11 +83,22 @@ contractType, recipient, prefill)`) is the same contract one layer down;
 the mock provider keeps what it was sent (`getEnvelopePrefill(envelopeId)`)
 for the host's tests.
 
-**esign-service deployments**: the packaged service forwards a prefill
-through its tracing wrapper and envelope service, but nothing supplies one
-yet - resolving it server-side from `TERMS_URL`, as the mint does, is a
-follow-up. Until then, envelope prefill is for hosts that embed
-`@blinkbitcoin/esign-node`.
+**esign-service deployments**: `ESIGN_MINT_MODE=envelope` turns the mint
+into this recipe, with no database. `POST /envelope/instance` takes
+`{ recipient: { name, email }, prefill }` from the authenticated caller,
+checks the prefill with `parseEnvelopePrefill`, creates one envelope from
+`DOCUSIGN_TEMPLATE_ID` (several ids, one envelope, in that order) and
+answers `{ url, envelopeId }` (the Web Forms mint answers
+`{ url, instanceId }`). So the app needs its own minting call, one that
+sends the recipient unless the host names it; opening the URL is the same
+as for a Web Forms instance. With `TERMS_URL` set the service asks the host
+first, as the Web Forms mint does: it POSTs `{ userId, input, recipient }`,
+the host's `{ prefill }` wins key by key and must satisfy the envelope
+contract, and a `recipient` in the answer replaces the caller's - who signs
+is the host's to decide, like every value it locks. Without `TERMS_URL` the
+caller's signer and prefill are minted as sent, and production needs
+`ESIGN_ALLOW_CLIENT_PREFILL=true`. The GraphQL `createEnvelope` (envelope
+orchestration, with a database) still takes no prefill.
 
 ## 3. Verify
 

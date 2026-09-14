@@ -234,7 +234,10 @@ The host does not mint. It exposes, instead:
 - a **terms endpoint** (`TERMS_URL`): the service POSTs
   `{ userId, input }` with the caller's bearer token forwarded (plus
   `x-esign-terms-secret` when `TERMS_SHARED_SECRET` is set) and the reply's
-  `{ prefill }` wins over the client's values key by key. A non-2xx, a
+  `{ prefill }` wins over the client's values key by key. Under
+  `ESIGN_MINT_MODE=envelope` the POST also carries the client's
+  `recipient`, and a `recipient` in the reply is who signs; without
+  `TERMS_URL` the caller names the signer. A non-2xx, a
   timeout or a reply without a prefill object is a `502` to the app - it
   never falls back to minting what the client sent. Because that request
   carries the session token and the shared secret, production requires
@@ -282,29 +285,32 @@ comments. In production the ones that matter:
 | Variable | Production setting |
 |---|---|
 | `ESIGN_PROVIDER` | `docusign` |
+| `ESIGN_MINT_MODE` | `webform` (default) or `envelope`: which mint the<br>deployment serves (`/webform/instance` or<br>`/envelope/instance`) |
 | `ESIGN_ENV` | `production` (the image already sets it) |
 | `ESIGN_ALLOW_DEMO` | unset; `true` only for staging on the sandbox |
 | `ESIGN_ALLOW_CLIENT_PREFILL` | unset when `TERMS_URL` is set |
 | `SESSION_JWKS_URL` | the host's key set; or `SESSION_HS256_SECRET` |
 | `SESSION_ISSUER`,<br>`SESSION_AUDIENCE` | enforced when set - set them |
 | `SESSION_USER_CLAIM` | the claim carrying the user id (default `sub`) |
-| `TERMS_URL` | the host endpoint computing the locked prefill -<br>**https**, or a private host (see below) |
+| `TERMS_URL` | the host endpoint computing the locked prefill (and<br>an envelope's signer) - **https**, or a private host<br>(see below) |
 | `TERMS_SHARED_SECRET`,<br>`TERMS_TIMEOUT_MS` | sent as `x-esign-terms-secret`; default 5000 ms |
 | `TERMS_ALLOW_INSECURE` | unset; `true` only for a plaintext `TERMS_URL` on a<br>private host this guard does not recognise |
 | `DATABASE_URL` | only when envelopes are wanted |
 | `DOCUSIGN_INTEGRATION_KEY`,<br>`DOCUSIGN_ACCOUNT_ID`,<br>`DOCUSIGN_USER_ID` | the production GUIDs from section 2 |
-| `DOCUSIGN_WEBFORM_ID`,<br>`DOCUSIGN_RETURN_URL` | the production form; the deployed bridge URL |
+| `DOCUSIGN_WEBFORM_ID`,<br>`DOCUSIGN_RETURN_URL` | the production form (not read under<br>`ESIGN_MINT_MODE=envelope`); the deployed bridge URL |
 | `DOCUSIGN_BASE_URL`,<br>`DOCUSIGN_OAUTH_URL`,<br>`DOCUSIGN_WEBFORMS_BASE_URL` | the production hosts (section 2) |
 | `DOCUSIGN_HMAC_KEY` | required when envelopes are on |
-| `DOCUSIGN_TEMPLATE_ID` | envelope (proxy) mode only; several ids, comma-separated,<br>go out as one envelope in that order |
+| `DOCUSIGN_TEMPLATE_ID` | envelope (proxy) mode and `ESIGN_MINT_MODE=envelope`;<br>several ids, comma-separated, go out as one envelope<br>in that order |
 | `DOCUSIGN_SIGNER_ROLE` | the template role the signer fills, when it is not<br>named `signer` |
 | `CORS_ALLOWED_ORIGINS` | the app origins; empty = same-origin only |
 | `ALLOW_INSECURE_DEV` | never set in production |
 | `OTEL_*` | standard OpenTelemetry; tracing off unless set |
-| `PORT`, `TRUST_PROXY`,<br>`RATE_LIMIT_*_PER_MIN` | container only (defaults 4100; 60/120/100 per min) |
+| `PORT`, `TRUST_PROXY`,<br>`RATE_LIMIT_*_PER_MIN` | container only (defaults 4100; per min 60 on either<br>mint, 120 webhook, 100 GraphQL) |
 
 **Tier A** takes the same table **minus everything only the service
 reads**: `SESSION_*`, `TERMS_*`, `ESIGN_ALLOW_CLIENT_PREFILL`,
+`ESIGN_MINT_MODE` (the host picks `createHostedFormRouter` or
+`createEnvelopeRouter` itself),
 `DATABASE_URL`, `DOCUSIGN_HMAC_KEY`, `CORS_ALLOWED_ORIGINS`,
 `ALLOW_INSECURE_DEV`, `OTEL_*` and the container-only row. The host API
 already has a session, computes its own terms in the `prefill` hook, and
@@ -335,14 +341,20 @@ refuses:
 
 - no session source (`SESSION_JWKS_URL` / `SESSION_HS256_SECRET`) unless
   `ALLOW_INSECURE_DEV=true`;
-- an unknown `ESIGN_PROVIDER`, or a provider missing what a mint needs;
+- an unknown `ESIGN_PROVIDER`, or a provider missing what a mint needs
+  (`DOCUSIGN_WEBFORM_ID` and `DOCUSIGN_RETURN_URL`; under
+  `ESIGN_MINT_MODE=envelope`, `DOCUSIGN_TEMPLATE_ID` - with at least one
+  id - and `DOCUSIGN_RETURN_URL` instead);
+- an `ESIGN_MINT_MODE` other than `webform` or `envelope` (unset or blank
+  is `webform`);
 - under `ESIGN_ENV=production`: the mock provider, and any DocuSign host
   still pointing at the sandbox (`demo.docusign.net`, the `-d` hosts) -
   `ESIGN_ALLOW_DEMO=true` is the one bypass, for a production-shaped
   staging deployment;
 - under `ESIGN_ENV=production`: no `TERMS_URL`, unless
   `ESIGN_ALLOW_CLIENT_PREFILL=true` says the client's own prefill may be
-  minted as sent;
+  minted as sent (under `ESIGN_MINT_MODE=envelope`, the client's own signer
+  and prefill);
 - a `TERMS_URL` that is not an absolute http(s) URL;
 - under `ESIGN_ENV=production`: a plaintext (`http:`) `TERMS_URL`. That
   callback carries the caller's own session token and
@@ -363,8 +375,9 @@ nothing about the e-signature configuration.
 
 ### Health and shutdown
 
-- `GET /health` answers `{ status, capabilities, timestamp }`, so a
-  deployment says which capabilities it is serving. It is the readiness
+- `GET /health` answers `{ status, capabilities, mint, timestamp }`, so a
+  deployment says which capabilities it is serving and which mint
+  (`webform` or `envelope`) answers. It is the readiness
   and liveness probe in the Kubernetes template and the image's
   `HEALTHCHECK`.
 - **SIGTERM** stops the listener and drains in-flight requests before
@@ -415,6 +428,12 @@ arrives through the return-URL bridge - it is the bridge page's origin,
 the backend's, not DocuSign's. (`createPublicUrlSource`, the published
 form link, is the case where DocuSign's own origin is the right value.)
 
+A deployment under `ESIGN_MINT_MODE=envelope` has no `/webform/instance`:
+`POST /envelope/instance` takes `{ recipient: { name, email }, prefill }`
+and answers `{ url, envelopeId }`, so the app mints with its own call - one
+that sends the signer, unless the host's `TERMS_URL` names it - and opens
+the `url` as it opens a minted instance.
+
 Web is the same code from `@blinkbitcoin/esign-react/docusign` - the web
 package exports `.` and `./docusign`, there is no `./webform` subpath
 there. Error codes: [error-codes.md](../integration/error-codes.md).
@@ -452,7 +471,7 @@ account, form and hosts.
       demo host or `ESIGN_PROVIDER=mock` and confirm it refuses to start,
       naming the offending setting.
 - [ ] `GET /health` reports the capabilities the deployment is meant to
-      serve (and only those).
+      serve (and only those), and the `mint` it is meant to answer with.
 - [ ] With envelopes on: the migrate step ran, and a signed envelope
       reaches the webhook and is persisted.
 
@@ -470,7 +489,7 @@ it is the record of what remains unverified.
 | `AUTHORIZATION_INSUFFICIENT_SCOPE` | consent granted without the<br>`webforms_*` scopes | re-grant with the full scope<br>string from section 2 |
 | The mint fails on the form | the production form is not active,<br>or its id is a demo id | activate it; set the production<br>`DOCUSIGN_WEBFORM_ID` |
 | `401` from the mint | the host rejected the token: wrong<br>issuer, audience, claim or expiry | check `SESSION_*` against the<br>token the app actually sends |
-| `502 Could not compute the signing<br>terms` | `TERMS_URL` timed out, answered<br>non-2xx, or without a prefill | fix the host endpoint; raise<br>`TERMS_TIMEOUT_MS` if it is slow |
+| `502 Could not compute the signing<br>terms` | `TERMS_URL` timed out, answered<br>non-2xx, or without a prefill<br>(envelope mint: an out-of-contract<br>prefill or a malformed recipient) | fix the host endpoint; raise<br>`TERMS_TIMEOUT_MS` if it is slow |
 | `502 Could not create signing session` | DocuSign refused the mint (config,<br>consent, form) | the service log names the error<br>code; check the rows above |
 | The bridge never fires | `DOCUSIGN_RETURN_URL` is not the<br>deployed bridge route, or is<br>unreachable from the signer | point it at the deployment's<br>`/signing/return` |
 | Refuses to boot naming a demo host | `ESIGN_ENV=production` with a<br>sandbox host or the mock provider | set the production hosts<br>(section 2) |
