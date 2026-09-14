@@ -8,7 +8,7 @@
 <sub>E2E covers backend, web, Android and the iOS simulator suite, see [CI/CD](docs/development-guide.md#ios-e2e-and-the-macos-runner).</sub>
 
 <p align="center">
-  <img src="docs/assets/readme-hero.svg" alt="Your React Native or React web app renders one ESignature component. A SigningSource picks one of three modes: public URL (no backend), Web Forms instance (one backend endpoint), or proxy envelope (a GraphQL backend). The backend-backed modes talk to DocuSign either from your own Node API with @blinkbitcoin/esign-node or from the deployable @blinkbitcoin/esign-service, which mints without a database." width="960">
+  <img src="docs/assets/readme-hero.svg" alt="Your React Native or React web app renders one ESignature component. A SigningSource picks one of three modes: public URL (no backend), Web Forms instance (one backend endpoint), or envelope (one backend endpoint, or a GraphQL backend for orchestration). The backend-backed modes talk to DocuSign either from your own Node API with @blinkbitcoin/esign-node or from the deployable @blinkbitcoin/esign-service, which mints without a database." width="960">
 </p>
 
 Embedded e-signing for React Native and React web apps. One `ESignature`
@@ -19,21 +19,26 @@ mode**, and for two of the three that is a single small package:
 |------|-----------|------------------------|------------------|
 | **1. Public URL** | A published public form<br>URL embedded directly | One package via the<br>Apollo-free `/webform`<br>entry - **no Apollo,<br>no GraphQL** | **None** |
 | **2. Web Forms<br>instances** | Prefilled per-signer forms<br>(read-only fields locked);<br>your backend mints an<br>instance URL with one<br>API call | Same minimal `/webform`<br>entry | One mint endpoint,<br>either tier: in-process<br>with `@blinkbitcoin/esign-node`,<br>or deploy<br>`@blinkbitcoin/esign-service`<br>(**no database**) |
-| **3. Proxy envelope** | Full envelope orchestration:<br>templates, per-recipient<br>sessions, restart on expiry,<br>webhook status sync | The package +<br>`@apollo/client` +<br>`graphql` | `@blinkbitcoin/esign-service`<br>with `DATABASE_URL`, or the<br>envelope domain of<br>`@blinkbitcoin/esign-node`<br>in your own Node API |
+| **3. Envelope** | The signer opens the agreement<br>itself, minted from your<br>template(s) with your values<br>locked on the document; with a<br>database, full orchestration:<br>per-recipient sessions, restart<br>on expiry, webhook status sync | The mint: the same<br>minimal entry (your app<br>calls one endpoint).<br>Orchestration: the<br>package + `@apollo/client`<br>+ `graphql` | The mint: `@blinkbitcoin/esign-service`<br>under `ESIGN_MINT_MODE=envelope`<br>(**no database**), or the envelope<br>preset of `@blinkbitcoin/esign-node`<br>in your own Node API.<br>Orchestration: the service with<br>`DATABASE_URL`, or the envelope<br>domain of `esign-node` |
 
-The GraphQL API and the Apollo wiring exist for **mode 3 only**. If you need
-modes 1 or 2, none of that ships with you: the mint that mode 2 needs runs
-either inside your own Node API or in this repo's service, with **no database
-at all** ([Backend options](#backend-options)). The [Integration](#integration)
+The GraphQL API and the Apollo wiring exist for **mode 3's orchestration
+only**. If you need modes 1 or 2, or mode 3's envelope mint, none of that
+ships with you: the mint runs either inside your own Node API or in this
+repo's service, with **no database at all**
+([Backend options](#backend-options)). The [Integration](#integration)
 section walks each mode from simplest up.
 
 **Which mode?** Nothing to lock and no per-signer data: mode 1. Values the
-signer must not change (amounts, rates, dates set by you): mode 2 - the
-only mode that locks fields, and it needs one call on your backend. A
-document workflow with per-recipient sessions, restarts and status
-tracking: mode 3. **Reading path for mode 2 (locked terms):**
+signer must not change (amounts, rates, dates set by you): mode 2 when a
+form should ask the signer the rest first, mode 3's envelope mint when the
+signer should land on the agreement itself - both lock fields, both need
+one call on your backend and no database. A document workflow with
+per-recipient sessions, restarts and status tracking: mode 3 with a
+database. **Reading path for locked terms:**
 [docs/integration/locked-terms.md](docs/integration/locked-terms.md) (the
-recipe, backend + app) → [docs/integration/docusign-lessons.md](docs/integration/docusign-lessons.md)
+Web Forms recipe, backend + app) or
+[docs/integration/locked-terms-envelopes.md](docs/integration/locked-terms-envelopes.md)
+(the envelope recipe) → [docs/integration/docusign-lessons.md](docs/integration/docusign-lessons.md)
 (the rules, one page) → [docs/integration/webforms.md](docs/integration/webforms.md)
 (the details) → [`examples/mint-only-demo`](examples/mint-only-demo/README.md)
 (the API side, runnable).

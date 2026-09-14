@@ -57,10 +57,12 @@ packages/esign-service/src/
 ├── vercel.ts         # ./vercel: GET/POST/OPTIONS route handlers
 ├── cloudflare.ts     # ./cloudflare: the Worker default export (mint only)
 ├── app.ts            # The Fetch core (createESignApp): capabilities → routes, with
-│                     #   session verification, locked terms, CORS and the security
-│                     #   headers around the package's createHostedFormApp (or
-│                     #   createEnvelopeApp under ESIGN_MINT_MODE=envelope)
-├── capabilities.ts   # What the environment turns on, and the mint mode (pure)
+│                     #   session verification, CORS and the security headers
+│                     #   around the mint mode's preset
+├── capabilities.ts   # What the environment turns on (pure)
+├── mint.ts           # The mint mode (ESIGN_MINT_MODE): one entry per way to mint -
+│                     #   its provider selection, its terms hook, its preset
+│                     #   (createHostedFormApp or createEnvelopeApp)
 ├── session.ts        # Session verification: JWKS or HS256, via jose (pure factory)
 ├── terms.ts          # The TERMS_URL callback: the host's prefill wins key by key
 │                     #   (and, for an envelope, the host's recipient signs)

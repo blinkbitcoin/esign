@@ -1,10 +1,11 @@
 # Locked terms on a template envelope: the recipe, API side
 
 The envelope counterpart of [locked-terms.md](locked-terms.md): the signer
-opens the agreement itself (mode 3, proxy envelopes), with the host's values
-already on the document and locked where the signer must not change them,
-instead of a Web Form that asks for them first. Nothing is configured at
-DocuSign for the lock: it travels with the value.
+opens the agreement itself (mode 3's envelope mint - `ESIGN_MINT_MODE=envelope`
+on the service, or the envelope preset in your own API - no database needed),
+with the host's values already on the document and locked where the signer
+must not change them, instead of a Web Form that asks for them first.
+Nothing is configured at DocuSign for the lock: it travels with the value.
 
 Read first, once: [docusign-lessons.md](docusign-lessons.md) (the rules that
 are not obvious, one page) and section 1 of
@@ -105,8 +106,12 @@ and `envelopeId` is the stored id.
 ## 3. Verify
 
 - `make test-live` in `packages/esign-service` against the demo account
-  with the fixture: the created envelope's recipient view shows `reference`
-  filled and locked.
-- A two-id `DOCUSIGN_TEMPLATE_ID`: one signing session, both documents.
+  with the fixture (`tests/live/envelope-mint.live.test.ts`): the service
+  endpoint mints with `reference` locked, and the envelope's tabs read back
+  from DocuSign carry the value and the lock; two ids of the same fixture go
+  out as one envelope, one signing session, the value on both documents; a
+  stubbed `TERMS_URL` names the signer and the locked value over what the
+  caller sent. CI runs it on every `main` push and on a PR labelled
+  `e2e:live` ([operations/live-e2e-ci.md](../operations/live-e2e-ci.md)).
 - Then the same against the production account
   ([operations/production.md](../operations/production.md)).

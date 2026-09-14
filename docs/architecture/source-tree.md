@@ -161,6 +161,7 @@ esign/
 │       │   ├── cloudflare.ts      # ./cloudflare: the Worker default export (mint only)
 │       │   ├── app.ts             # The Fetch core (createESignApp): capabilities → routes ⭐
 │       │   ├── capabilities.ts    # What the environment turns on (pure) ⭐
+│       │   ├── mint.ts            # The mint mode: Web Form or envelope, one entry each
 │       │   ├── session.ts         # Session verification: JWKS or HS256, via jose
 │       │   ├── terms.ts           # The TERMS_URL callback and its merge rule
 │       │   ├── envelopes.ts       # The envelope capability: Fetch webhook + Apollo (Node-only)
@@ -271,6 +272,7 @@ esign/
 |------|---------|
 | `packages/esign-service/src/app.ts` | The Fetch core (`createESignApp`) |
 | `packages/esign-service/src/capabilities.ts` | What the environment turns on |
+| `packages/esign-service/src/mint.ts` | The mint mode (`ESIGN_MINT_MODE`), one entry per way to mint |
 | `packages/esign-service/src/config.ts` | The boot guard (`validateConfig`) |
 | `packages/esign-service/src/schema.ts` | GraphQL API |
 | `packages/esign-service/src/envelopes.ts` | The envelope capability: webhook + GraphQL |

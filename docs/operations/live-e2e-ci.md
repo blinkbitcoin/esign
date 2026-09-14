@@ -52,7 +52,10 @@ see.
   repository. Fork PRs receive no secrets, so the label has no effect there.
 - Runs are serialized (`concurrency: live-docusign`); one takes about a
   minute. Each run mints two or three Web Forms instances on the demo account
-  and nothing else; instances expire on their own.
+  and creates four envelopes from the fixture template (the client's one,
+  and the envelope mint's three: a locked value read back, two templates as
+  one session, `TERMS_URL` deciding); instances expire on their own, and the
+  envelopes stay `sent` and unsigned.
 
 ## What you get
 
