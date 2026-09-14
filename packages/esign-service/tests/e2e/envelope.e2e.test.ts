@@ -7,7 +7,8 @@
 
 import { randomUUID } from 'crypto';
 
-import { envApp, graphql } from '../support/app';
+import type { Env } from '../../src/env';
+import { asJson, envApp, graphql, post, testApp } from '../support/app';
 import { cleanTestData, createTestEnvelope } from './factories';
 import { knex } from './setup';
 
@@ -89,6 +90,38 @@ describe('Envelope E2E Tests', () => {
 
       expect(result.errors![0].extensions?.code).toBe('UNAUTHORIZED');
       expect(await knex('Envelope').select('id')).toHaveLength(0);
+    });
+  });
+
+  describe('envelope mint with a database', () => {
+    // The same database, with the mint answering envelopes
+    const mintApp = testApp({ ...process.env, ESIGN_MINT_MODE: 'envelope' } as Env);
+
+    afterAll(async () => {
+      await mintApp.stop();
+    });
+
+    it('should persist the minted envelope and its audit entry', async () => {
+      const response = await post(
+        mintApp,
+        '/envelope/instance',
+        {
+          recipient: { name: 'John Doe', email: 'john@example.com' },
+          prefill: { total_usd: { value: '1000.00', locked: true } },
+        },
+        { authorization: 'Bearer e2e-user-789' }
+      );
+
+      expect(response.status).toBe(200);
+      const { envelopeId } = await asJson<{ envelopeId: string }>(response);
+      const envelope = await knex('Envelope').where({ id: envelopeId }).first();
+      expect(envelope).toMatchObject({
+        userId: 'e2e-user-789',
+        contractType: 'agreement',
+        status: 'sent',
+      });
+      const auditLogs = await knex('AuditLog').where({ envelopeId });
+      expect(auditLogs.map((log) => log.action)).toEqual(['initiated']);
     });
   });
 

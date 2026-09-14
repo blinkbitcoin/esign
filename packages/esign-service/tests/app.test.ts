@@ -402,6 +402,49 @@ describe('the envelope mint', () => {
     expect(await asJson(response)).toEqual({ error: 'Could not compute the signing terms' });
     errors.mockRestore();
   });
+
+  // With a database the mint creates through the envelope service: the
+  // envelope is the GraphQL API's to read back, by the id the mint answered
+  it('stores and audits the envelope when a database is on', async () => {
+    const app = testFullApp({ ESIGN_MINT_MODE: 'envelope' });
+
+    const response = await post(app, '/envelope/instance', signing, mintHeaders);
+
+    expect(response.status).toBe(200);
+    const { url, envelopeId } = await asJson<{ url: string; envelopeId: string }>(response);
+    expect(url).toContain('/signing/mock/');
+    const read = await post(
+      app,
+      '/graphql',
+      {
+        query:
+          'query ($id: String!) { envelope(id: $id) { id status contractType } auditLogs(envelopeId: $id) { action } }',
+        variables: { id: envelopeId },
+      },
+      mintHeaders
+    );
+    expect(await asJson(read)).toEqual({
+      data: {
+        envelope: { id: envelopeId, status: 'sent', contractType: 'agreement' },
+        auditLogs: [{ action: 'initiated' }],
+      },
+    });
+    await app.stop();
+  });
+
+  it('answers 502 when the envelope cannot be stored', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const transaction = vi.spyOn(store, 'transaction').mockRejectedValueOnce(new Error('db down'));
+    const app = testFullApp({ ESIGN_MINT_MODE: 'envelope' });
+
+    const response = await post(app, '/envelope/instance', signing, mintHeaders);
+
+    expect(response.status).toBe(502);
+    expect(await asJson(response)).toEqual({ error: 'Could not create signing session' });
+    await app.stop();
+    transaction.mockRestore();
+    errors.mockRestore();
+  });
 });
 
 describe('the mock provider pages', () => {

@@ -21,7 +21,12 @@
 //     it too), so a client value can never become a locked one unless the
 //     deployment opts in with ESIGN_ALLOW_CLIENT_PREFILL
 
-import { bearerToken, createEnvelopeApp, createHostedFormApp } from '@blinkbitcoin/esign-node';
+import {
+  bearerToken,
+  createEnvelopeApp,
+  createHostedFormApp,
+  envelopeMint,
+} from '@blinkbitcoin/esign-node';
 
 import {
   type Capability,
@@ -156,29 +161,6 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
   const authenticate = (request: Request): Promise<string | null> =>
     verify(bearerToken(request.headers.get('authorization') ?? undefined) ?? '');
 
-  // The mint half: POST /webform/instance, or its envelope spelling (POST
-  // /envelope/instance), with the return-URL bridge and the CORS preflight
-  // around it. /health is this app's own (it reports the capabilities).
-  const mint = isEnvelopeMint(env)
-    ? createEnvelopeApp({
-        provider,
-        authenticate,
-        health: false,
-        ...cors,
-        ...(terms
-          ? { terms: markingFailures(createEnvelopeTerms(terms, { fetch: deps.fetch })) }
-          : {}),
-      })
-    : createHostedFormApp({
-        provider,
-        authenticate,
-        health: false,
-        ...cors,
-        ...(terms
-          ? { prefill: markingFailures(createTermsPrefill(terms, { fetch: deps.fetch })) }
-          : {}),
-      });
-
   // Envelope orchestration, built once and only when it is on, through the
   // loader the entry supplied. A target without one cannot serve the
   // capability at all, and saying so at construction beats 404ing the routes
@@ -201,6 +183,43 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
   // A failure surfaces on the first request that needs the capability; this
   // only marks the promise handled so it is not an unhandled rejection
   envelopes?.catch(() => undefined);
+
+  // Where the envelope mint creates. With a database, through the envelope
+  // service in the provider's place: the envelope is stored and audited like
+  // one the GraphQL mutation created (its status follows the webhook,
+  // getSigningUrl reopens it), and the id answered is the stored one, the id
+  // the GraphQL API takes. Without one, straight at the provider.
+  const envelopeTarget = envelopes
+    ? {
+        mint: envelopeMint({
+          createEnvelope: async (userId, contractType, recipient, prefill) =>
+            (await envelopes).createEnvelope(userId, { contractType, recipient, prefill }),
+        }),
+      }
+    : { provider };
+
+  // The mint half: POST /webform/instance, or its envelope spelling (POST
+  // /envelope/instance), with the return-URL bridge and the CORS preflight
+  // around it. /health is this app's own (it reports the capabilities).
+  const mint = isEnvelopeMint(env)
+    ? createEnvelopeApp({
+        ...envelopeTarget,
+        authenticate,
+        health: false,
+        ...cors,
+        ...(terms
+          ? { terms: markingFailures(createEnvelopeTerms(terms, { fetch: deps.fetch })) }
+          : {}),
+      })
+    : createHostedFormApp({
+        provider,
+        authenticate,
+        health: false,
+        ...cors,
+        ...(terms
+          ? { prefill: markingFailures(createTermsPrefill(terms, { fetch: deps.fetch })) }
+          : {}),
+      });
 
   const route = async (request: Request, url: URL): Promise<Response> => {
     if (request.method === 'GET' && url.pathname === HEALTH_PATH) {
