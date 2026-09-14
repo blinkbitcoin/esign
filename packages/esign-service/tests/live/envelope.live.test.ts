@@ -2,12 +2,15 @@
 //
 // Opt-in exactly like webforms.live.test.ts: runs only via `npm run test:live`
 // and only when the DocuSign env vars below are set (DOCUSIGN_TEMPLATE_ID
-// instead of DOCUSIGN_WEBFORM_ID); otherwise skipped. Never part of CI.
+// instead of DOCUSIGN_WEBFORM_ID); otherwise skipped. CI runs it in the Live
+// DocuSign job (docs/operations/live-e2e-ci.md) on the fixture template.
 //
-// Automates item 1 of the live smoke-test checklist in docs/integration/docusign-proxy.md
-// (JWT auth, template envelope creation, recipient view) and hands off to
-// item 2: the logged signing URL is the entry to the return-URL bridge, so
-// the runner can open it, sign, and capture the `?event=` redirect.
+// Automates the client half of item 1 of the live smoke-test checklist in
+// docs/integration/docusign-proxy.md (JWT auth, template envelope creation,
+// recipient view) and hands off to item 2: the logged signing URL is the
+// entry to the return-URL bridge, so the runner can open it, sign, and
+// capture the `?event=` redirect. The service endpoint and the locked value
+// on the document are envelope-mint.live.test.ts.
 //
 // Calls the client layer directly so a contract mismatch fails with
 // DocuSign's raw HTTP status + body, not the provider's mapped error.

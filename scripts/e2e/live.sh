@@ -17,10 +17,12 @@ live_env
 echo "== docusign check"
 npm run --silent docusign:check -w "$SERVICE"
 
-# The Web Forms half of the live suite (the envelope half needs a template
-# built for the proxy flow: make test-live)
-echo "== api live test (Web Forms)"
-npm run --silent "$LIVE_TEST" -w "$SERVICE" -- tests/live/webforms.live.test.ts
+# The whole API live suite: the Web Forms mint, the envelope client, and the
+# envelope mint on the fixture template (DOCUSIGN_TEMPLATE_ID, the one
+# make docusign-template creates) - a locked value read back from the
+# envelope's tabs, several templates as one session, TERMS_URL deciding
+echo "== api live tests"
+npm run --silent "$LIVE_TEST" -w "$SERVICE"
 
 # The web demo (webform-live-demo spec) calls the service from the browser:
 # allow this worktree's Vite origins (ports-env.sh, sourced by live-service.sh)

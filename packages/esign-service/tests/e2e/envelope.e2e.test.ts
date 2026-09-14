@@ -8,6 +8,7 @@
 import { randomUUID } from 'crypto';
 
 import type { Env } from '../../src/env';
+import { createMock } from '../../src/providers/mock';
 import { asJson, envApp, graphql, post, testApp } from '../support/app';
 import { cleanTestData, createTestEnvelope } from './factories';
 import { knex } from './setup';
@@ -94,21 +95,24 @@ describe('Envelope E2E Tests', () => {
   });
 
   describe('envelope mint with a database', () => {
-    // The same database, with the mint answering envelopes
-    const mintApp = testApp({ ...process.env, ESIGN_MINT_MODE: 'envelope' } as Env);
+    // The same database, with the mint answering envelopes, over the very
+    // mock handle the assertion reads back from: what the mint sent the
+    // provider is the point of the feature, not just that a row exists
+    const mock = createMock(process.env);
+    const mintApp = testApp({ ...process.env, ESIGN_MINT_MODE: 'envelope' } as Env, {
+      provider: mock,
+    });
+    const locked = { total_usd: { value: '1000.00', locked: true } };
 
     afterAll(async () => {
       await mintApp.stop();
     });
 
-    it('should persist the minted envelope and its audit entry', async () => {
+    it('should persist the minted envelope and its audit entry, with the prefill at the provider', async () => {
       const response = await post(
         mintApp,
         '/envelope/instance',
-        {
-          recipient: { name: 'John Doe', email: 'john@example.com' },
-          prefill: { total_usd: { value: '1000.00', locked: true } },
-        },
+        { recipient: { name: 'John Doe', email: 'john@example.com' }, prefill: locked },
         { authorization: 'Bearer e2e-user-789' }
       );
 
@@ -122,6 +126,8 @@ describe('Envelope E2E Tests', () => {
       });
       const auditLogs = await knex('AuditLog').where({ envelopeId });
       expect(auditLogs.map((log) => log.action)).toEqual(['initiated']);
+      // The stored id is the service's; the provider filed it under its own
+      expect(mock.getEnvelopePrefill(envelope!.providerEnvelopeId)).toEqual(locked);
     });
   });
 
