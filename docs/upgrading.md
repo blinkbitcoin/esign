@@ -75,7 +75,9 @@ as well as for the rate limits: without it, `x-forwarded-for` is ignored
 everywhere (it is a caller-controlled header).
 
 New, optional: `TERMS_URL` (the host computes the prefill actually minted;
-its answer wins over client values key by key), `TERMS_SHARED_SECRET`,
+its answer wins over client values key by key on the Web Forms mint, and is
+minted whole with a required recipient on the envelope mint),
+`TERMS_SHARED_SECRET`,
 `TERMS_TIMEOUT_MS`, `TERMS_ALLOW_INSECURE` (production requires an https
 `TERMS_URL` unless its host is private - loopback, `*.svc`,
 `*.svc.cluster.local`, `*.internal` - because the callback carries the

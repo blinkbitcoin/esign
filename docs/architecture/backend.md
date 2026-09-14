@@ -65,7 +65,8 @@ packages/esign-service/src/
 │                     #   (createHostedFormApp or createEnvelopeApp)
 ├── session.ts        # Session verification: JWKS or HS256, via jose (pure factory)
 ├── terms.ts          # The TERMS_URL callback: the host's prefill wins key by key
-│                     #   (and, for an envelope, the host's recipient signs)
+│                     #   (for an envelope, the host's reply is minted whole and
+│                     #   its recipient signs)
 ├── envelopes.ts      # The envelope capability: Fetch webhook + Apollo over Fetch
 │                     #   (Node-only; reached only by dynamic import)
 ├── schema.ts         # createGraphQL(envelopes): typeDefs + resolvers from the package

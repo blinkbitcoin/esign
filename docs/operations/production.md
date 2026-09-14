@@ -236,8 +236,9 @@ The host does not mint. It exposes, instead:
   `x-esign-terms-secret` when `TERMS_SHARED_SECRET` is set) and the reply's
   `{ prefill }` wins over the client's values key by key. Under
   `ESIGN_MINT_MODE=envelope` the POST also carries the client's
-  `recipient`, and a `recipient` in the reply is who signs; without
-  `TERMS_URL` the caller names the signer. A non-2xx, a
+  `recipient`, and the reply `{ prefill, recipient }` is minted whole: nothing
+  of the client's reaches the document, and the `recipient` is required and
+  is who signs; without `TERMS_URL` the caller names the signer. A non-2xx, a
   timeout or a reply without a prefill object is a `502` to the app - it
   never falls back to minting what the client sent. Because that request
   carries the session token and the shared secret, production requires

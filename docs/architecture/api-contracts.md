@@ -350,6 +350,8 @@ enforced when set. The domain rejects `userId: null` with `UNAUTHORIZED`.
 | Status | Body | When |
 |--------|------|------|
 | `200` | `{ url, instanceId }` | Minted |
+| `400` | `{ "error": "Invalid JSON body" }` | The body is not JSON |
+| `400` | `{ "error": "Invalid body: expected a JSON object" }` | The body is JSON but not an object (an array, a string), refused before any check or hook |
 | `400` | `{ "error": "<reason>" }` | The prefill is outside the provider's contract (checked before any provider call), the provider cannot mint hosted forms, or the host's `prefill` hook threw `Errors.validationError(message)` |
 | `401` | `{ "error": "Unauthorized" }` | No verified session (or the hook threw `Errors.unauthorized()`) |
 | `502` | `{ "error": "..." }` | Minting failed - including a failed `TERMS_URL` callback, which answers `Could not compute the signing terms` |
@@ -387,9 +389,10 @@ so the template keeps its own values. The prefill contract is
 |--------|------|------|
 | `200` | `{ url, envelopeId }` | Created; `url` is the embedded signing URL (a Web Forms mint answers `{ url, instanceId }`); `envelopeId` is the provider's id, or the stored one with `DATABASE_URL` |
 | `400` | `{ "error": "Invalid JSON body" }` | The body is not JSON |
+| `400` | `{ "error": "Invalid body: expected a JSON object" }` | The body is JSON but not an object (an array, a string), refused before any check or hook |
 | `400` | `{ "error": "Invalid recipient: ..." }` | `recipient` is present but not `{ name, email }` strings |
 | `400` | `{ "error": "Invalid prefill: <reason>" }` | The prefill is outside the envelope contract (checked before any provider call) |
-| `400` | `{ "error": "recipient is required: a name and an email" }` | No signer remains after the terms callback; a bad name or email answers the recipient validation's own message |
+| `400` | `{ "error": "recipient is required: a name and an email" }` | No signer was sent and no `TERMS_URL` names one (a host's own hook may name none too); a bad name or email answers the recipient validation's own message |
 | `401` | `{ "error": "Unauthorized" }` | No verified session |
 | `502` | `{ "error": "..." }` | Creating the envelope failed (`Could not create signing session`; the log names the error code only) - including a failed or invalid `TERMS_URL` answer, `Could not compute the signing terms` |
 
@@ -403,12 +406,12 @@ The service's own outbound call, made per mint when `TERMS_URL` is set:
 | Mint | Request body | Answer |
 |------|--------------|--------|
 | Web Forms | `{ userId, input }` - `input` is the client's validated prefill | `{ prefill }`, laid over `input` key by key |
-| Envelope | `{ userId, input, recipient }` - `input` is the client's prefill (or `{}`), `recipient` the client's signer (absent when it sent none) | `{ prefill, recipient? }`: the prefill is laid over `input` key by key and must satisfy the envelope contract; a `recipient`, when given, must be `{ name, email }` strings and replaces the client's |
+| Envelope | `{ userId, input, recipient }` - `input` is the client's prefill (or `{}`), `recipient` the client's signer (absent when it sent none) | `{ prefill, recipient }`: the prefill is the whole of what is minted (nothing from `input` is kept, since on an envelope the lock travels with each value; an empty prefill leaves the template its own values) and must satisfy the envelope contract; the `recipient` is required, `{ name, email }` strings, and is who signs |
 
 A non-2xx, a timeout, a non-JSON answer or one without a prefill object -
-and, for an envelope, an out-of-contract prefill or a malformed recipient -
-answers `502 Could not compute the signing terms`, never a fallback to what
-the client sent. Without `TERMS_URL` the client's values (for an envelope,
+and, for an envelope, an out-of-contract prefill or a recipient that is
+missing or malformed - answers `502 Could not compute the signing terms`,
+never a fallback to what the client sent. Without `TERMS_URL` the client's values (for an envelope,
 its signer too) are minted as sent; `ESIGN_ENV=production` refuses that
 unless `ESIGN_ALLOW_CLIENT_PREFILL=true`.
 

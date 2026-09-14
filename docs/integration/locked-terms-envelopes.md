@@ -93,10 +93,13 @@ answers `{ url, envelopeId }` (the Web Forms mint answers
 `{ url, instanceId }`). So the app needs its own minting call, one that
 sends the recipient unless the host names it; opening the URL is the same
 as for a Web Forms instance. With `TERMS_URL` set the service asks the host
-first, as the Web Forms mint does: it POSTs `{ userId, input, recipient }`,
-the host's `{ prefill }` wins key by key and must satisfy the envelope
-contract, and a `recipient` in the answer replaces the caller's - who signs
-is the host's to decide, like every value it locks. Without `TERMS_URL` the
+first: it POSTs `{ userId, input, recipient }` and mints exactly the host's
+`{ prefill, recipient }`. Unlike the Web Forms mint, nothing of the caller's
+is kept: on an envelope the lock travels with each value, so a caller entry
+the host did not name could lock a term the host never computed or unlock one
+the template locked. The prefill must satisfy the envelope contract (empty
+leaves the template its own values) and the `recipient` is required - who
+signs is the host's to decide, like every value it locks. Without `TERMS_URL` the
 caller's signer and prefill are minted as sent, and production needs
 `ESIGN_ALLOW_CLIENT_PREFILL=true`. With `DATABASE_URL` set the mint
 creates through the envelope service, so the envelope is stored and audited
