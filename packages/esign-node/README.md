@@ -200,6 +200,18 @@ create signing session` when creating the envelope fails (logged by error
 code only). A prefill the caller did not send is not sent to the provider,
 so the template keeps its own values.
 
+The two mints are one stack. A `MintKind` (`WEB_FORM_MINT`, `ENVELOPE_MINT`)
+is the three things that differ - the request parser (the body as the mint's
+input), the prefill parser (the contract the `400` reasons come from) and
+the provider call - plus the kind's names for itself (its path and its two
+messages); everything around a kind exists once and takes it -
+`mintInstanceHttp(kind, …)` (the decision), `createMintHandler(kind, …)`
+(the Fetch handler), `createMintApp(kind, …)` (the Fetch surface) and
+`createMintRouter(kind, …)` (the Express surface). The named presets above
+are those over their kind, the contract is tested once for both, and a
+structural test asserts every preset reaches its kind. A third way to mint
+is a third kind, not a third copy of the stack.
+
 The return-URL bridge every Web Forms host serves is a `Response` too:
 
 ```ts
