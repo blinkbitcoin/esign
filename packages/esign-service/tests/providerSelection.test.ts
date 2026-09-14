@@ -74,17 +74,6 @@ describe('Provider Selection (getProvider)', () => {
         })
       ).toThrow(/DOCUSIGN_TEMPLATE_ID/);
     });
-
-    it('asks for the envelope template when the mint answers with envelopes', () => {
-      // No database, but every mint sends the templates
-      const envelopeMint = { ...CREDENTIALS, ESIGN_MINT_MODE: 'envelope' };
-      expect(() => getProvider({ ESIGN_PROVIDER: 'docusign', ...envelopeMint })).toThrow(
-        /Missing required environment variables: DOCUSIGN_TEMPLATE_ID/
-      );
-      expect(() =>
-        getProvider({ ESIGN_PROVIDER: 'docusign', ...envelopeMint, DOCUSIGN_TEMPLATE_ID: 'a, b' })
-      ).not.toThrow();
-    });
   });
 
   describe('when providerName is unknown value', () => {

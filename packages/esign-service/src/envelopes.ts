@@ -32,9 +32,9 @@ type HTTPGraphQLResponseBody = HTTPGraphQLResponse['body'];
 export interface EnvelopeCapability {
   webhook: (request: Request) => Promise<Response>;
   graphql: (request: Request) => Promise<Response>;
-  // The envelope service's own create, for the envelope mint: an envelope it
-  // creates is stored and audited like one the GraphQL mutation created
-  createEnvelope: EnvelopeService['createEnvelope'];
+  // The envelope domain both handlers run on, for a mint that creates
+  // envelopes to create through (stored and audited like the mutation's)
+  envelopes: EnvelopeService;
   stop: () => Promise<void>;
 }
 
@@ -146,7 +146,7 @@ export const createEnvelopeCapability = async (
         headers,
       });
     },
-    createEnvelope: (userId, input) => envelopes.createEnvelope(userId, input),
+    envelopes,
     stop: () => apollo.stop(),
   };
 };

@@ -8,7 +8,7 @@ import {
   JWT_CREDENTIALS,
   missingDocuSignConfig,
 } from '@blinkbitcoin/esign-node';
-import { hasEnvelopes, isEnvelopeMint } from '../../capabilities';
+import { hasEnvelopes } from '../../capabilities';
 import type { Env } from '../../env';
 import { localOrigin } from '../../port';
 
@@ -24,13 +24,12 @@ export const getConfig = (env: Env = process.env): DocuSignConfig => {
 };
 
 // The settings this deployment's capabilities need: the JWT credentials
-// always, and the envelope template whenever envelopes are sent - envelope
-// orchestration, or a mint answering with envelopes (a Web Forms mint sends
-// no template-based envelopes). The hosted-form settings are the boot guard's
-// (config.ts, via hostedFormProviderFromEnv).
+// always, and the envelope template only when envelope orchestration is on
+// (a mint-only deployment sends no template-based envelopes). The mint's own
+// settings are the boot guard's (config.ts, via the mode's selectProvider).
 const requiredSettings = (env: Env): DocuSignConfigKey[] => [
   ...JWT_CREDENTIALS,
-  ...(hasEnvelopes(env) || isEnvelopeMint(env) ? (['templateId'] as const) : []),
+  ...(hasEnvelopes(env) ? (['templateId'] as const) : []),
 ];
 
 // Validate required environment variables.

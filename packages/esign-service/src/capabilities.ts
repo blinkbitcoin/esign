@@ -1,8 +1,8 @@
 // What this deployment can do, decided by the environment alone.
 //
-// The mint (POST /webform/instance, or POST /envelope/instance under
-// ESIGN_MINT_MODE=envelope, plus the return-URL bridge and /health) is always
-// on: it needs no database and no state, so every target - a container, a
+// The mint (POST /webform/instance or POST /envelope/instance - mint.ts
+// decides which - plus the return-URL bridge and /health) is always on: it
+// needs no database and no state, so every target - a container, a
 // Vercel route, a Cloudflare Worker - serves it. Envelope orchestration (the
 // GraphQL API, the provider webhook, the Knex store and its migrations) needs
 // Postgres, so it follows DATABASE_URL: set it and the routes exist, leave it
@@ -39,35 +39,6 @@ export const capabilitiesFromEnv = (env: Env): Capability[] =>
 // The capability list as one line, for /health and the boot guard's message
 export const describeCapabilities = (capabilities: readonly Capability[]): string =>
   capabilities.join(', ');
-
-// --- What the mint answers with ----------------------------------------------
-
-// The variable that chooses it
-export const ESIGN_MINT_MODE = 'ESIGN_MINT_MODE';
-
-// `webform` (the default, what every deployment ran before the choice
-// existed): POST /webform/instance mints a Web Forms instance, whose pages the
-// signer answers before reaching the document. `envelope`: POST
-// /envelope/instance creates an envelope from DOCUSIGN_TEMPLATE_ID (several
-// ids, one envelope, in that order) and answers its signing URL, so the signer
-// opens the documents themselves with the prefill already on them. Neither
-// needs a database, and a deployment serves exactly one of the two.
-const MINT_MODES = ['webform', 'envelope'] as const;
-
-export type MintMode = (typeof MINT_MODES)[number];
-
-export const isMintMode = (value: string): value is MintMode =>
-  (MINT_MODES as readonly string[]).includes(value);
-
-// The mode this environment asks for, as written (the boot guard refuses one
-// that is not a MintMode). Unset is the Web Form, and so is a blank or
-// whitespace-only value, as DATABASE_URL's is: an env file with
-// `ESIGN_MINT_MODE=` must not stop a deployment from booting.
-export const requestedMintMode = (env: Env): string =>
-  (env[ESIGN_MINT_MODE] ?? '').trim() || 'webform';
-
-// Whether the mint answers with an envelope rather than a Web Form
-export const isEnvelopeMint = (env: Env): boolean => requestedMintMode(env) === 'envelope';
 
 // --- The mock provider's signing pages ---------------------------------------
 
