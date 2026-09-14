@@ -177,7 +177,8 @@ export interface EnvelopeMintRequest {
 }
 
 // A minted envelope, answered the way a minted instance is: the URL the app
-// opens, and the id the provider filed it under
+// opens, and the envelope's id (the provider's, or whatever id a host's own
+// mint filed it under, a stored one say)
 export interface EnvelopeInstanceResult {
   url: string;
   envelopeId: string;

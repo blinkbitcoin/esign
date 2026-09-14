@@ -187,7 +187,8 @@ on Node runtimes (needs `node:crypto`); not on edge runtimes.
 
 The envelope mint has the same shape:
 `createEnvelopeInstanceHandler({ provider, authenticate, parsePrefill? })`
-(or `{ mint }`) takes `{ recipient: { name, email }, prefill }`, creates one
+(or `{ mint }`: `envelopeMint(provider)`, over any `createEnvelope`, or your
+own) takes `{ recipient: { name, email }, prefill }`, creates one
 envelope from the provider's template (or templates) and answers
 `{ url, envelopeId }` where a Web Forms mint answers `{ url, instanceId }`.
 Its decisions are `mintEnvelopeInstanceHttp`: `401`; `400` for a body that

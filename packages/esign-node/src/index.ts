@@ -65,6 +65,7 @@ export {
   createHostedFormInstanceHandler,
   createWebFormInstanceHandler,
   createWebhookHandler,
+  envelopeMint,
   mintEnvelopeInstanceHttp,
   mintWebFormInstanceHttp,
   processWebhookHttp,
