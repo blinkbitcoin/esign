@@ -5,11 +5,14 @@
 import { createEnvelopeService } from '../envelopes';
 import { Errors } from '../errors';
 import {
+  createEnvelopeApp,
   createHostedFormApp,
   createHostedFormInstanceHandler,
   createWebFormInstanceHandler,
   createWebhookHandler,
+  type EnvelopeAppTermsInput,
   type HostedFormAppPrefillInput,
+  mintEnvelopeInstanceHttp,
   mintWebFormInstanceHttp,
   processWebhookHttp,
 } from '../handlers';
@@ -636,5 +639,296 @@ describe('createHostedFormApp', () => {
     );
     expect(preflight.headers.get('access-control-allow-origin')).toBe('*');
     expect(preflight.headers.get('vary')).toBe('origin');
+  });
+});
+
+describe('createEnvelopeApp', () => {
+  // Synthetic signer and terms - nothing here is anyone's data
+  const signer = { name: 'Test Signer', email: 'signer@example.com' };
+  const locked = { total_usd: { value: '1000.00', locked: true } };
+
+  const app = (overrides: Record<string, unknown> = {}) => {
+    const p = provider({
+      createEnvelope: jest
+        .fn()
+        .mockResolvedValue({ envelopeId: 'env-1', signingUrl: 'https://s/1' }),
+    });
+    const target = 'mint' in overrides ? {} : { provider: p };
+    const { fetch } = createEnvelopeApp({
+      ...target,
+      authenticate: (request: Request) =>
+        request.headers.get('authorization') === 'Bearer user-1'
+          ? 'user-1'
+          : null,
+      logger: silent,
+      ...overrides,
+    } as Parameters<typeof createEnvelopeApp>[0]);
+    return { fetch, p };
+  };
+
+  const mintAs = (
+    body?: unknown,
+    url = 'https://api.example.com/envelope/instance',
+  ) =>
+    post(url, body === undefined ? undefined : JSON.stringify(body), {
+      authorization: 'Bearer user-1',
+    });
+
+  it('creates one envelope at /envelope/instance and answers its signing URL', async () => {
+    const { fetch, p } = app();
+    const response = await fetch(
+      mintAs({ recipient: signer, prefill: locked }),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      url: 'https://s/1',
+      envelopeId: 'env-1',
+    });
+    expect(p.createEnvelope).toHaveBeenCalledWith(
+      'user-1',
+      'agreement',
+      signer,
+      locked,
+    );
+  });
+
+  // Anything the request carries overrides the template, so a prefill the
+  // caller did not send must not arrive as an empty one
+  it('leaves the template its own values when no prefill is sent', async () => {
+    const { fetch, p } = app();
+    await fetch(mintAs({ recipient: signer }));
+    expect(p.createEnvelope).toHaveBeenCalledWith(
+      'user-1',
+      'agreement',
+      signer,
+      undefined,
+    );
+  });
+
+  it('answers 401 unauthenticated and 400 for a body outside the contract, before the provider', async () => {
+    const { fetch, p } = app();
+    expect((await fetch(post('https://x/envelope/instance'))).status).toBe(401);
+
+    const notASigner =
+      'Invalid recipient: recipient must be an object with a name and an email';
+    const noSigner = 'recipient is required: a name and an email';
+    const cases: [unknown, string][] = [
+      [{ recipient: signer.email }, notASigner],
+      [{ recipient: { name: 7, email: signer.email } }, notASigner],
+      [{ recipient: { name: signer.name, email: 7 } }, notASigner],
+      [
+        { recipient: signer, prefill: { units: 1 } },
+        'Invalid prefill: unsupported value for field "units"',
+      ],
+      [{ prefill: locked }, noSigner],
+      [['not', 'an', 'object'], noSigner],
+      [
+        { recipient: { ...signer, email: 'not-an-email' } },
+        'recipient.email must be a valid email address',
+      ],
+    ];
+    for (const [body, error] of cases) {
+      const response = await fetch(mintAs(body));
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error });
+    }
+
+    const garbage = await fetch(
+      post('https://x/envelope/instance', 'not json', {
+        authorization: 'Bearer user-1',
+      }),
+    );
+    expect(garbage.status).toBe(400);
+    expect(await garbage.json()).toEqual({ error: 'Invalid JSON body' });
+    expect(p.createEnvelope).not.toHaveBeenCalled();
+  });
+
+  it('answers 502 when creating the envelope fails, logging the error code only', async () => {
+    const failing = createEnvelopeApp({
+      provider: provider({
+        createEnvelope: jest
+          .fn()
+          .mockRejectedValue({ extensions: { code: 'PROVIDER_UNAVAILABLE' } }),
+      }),
+      authenticate: () => 'u',
+      logger: silent,
+    });
+    const failed = await failing.fetch(
+      post(
+        'https://x/envelope/instance',
+        JSON.stringify({ recipient: signer }),
+      ),
+    );
+    expect(failed.status).toBe(502);
+    expect(await failed.json()).toEqual({
+      error: 'Could not create signing session',
+    });
+    expect(silent.error).toHaveBeenCalledWith(
+      'Envelope creation failed:',
+      'PROVIDER_UNAVAILABLE',
+    );
+  });
+
+  // Who signs and what is locked are the host's to decide: its answer is what
+  // the envelope is created with, whatever the client sent
+  it('creates the envelope the host terms decide, from the request', async () => {
+    const terms = jest.fn(
+      ({ userId, prefill, request }: EnvelopeAppTermsInput) => ({
+        recipient: { name: 'Verified Name', email: 'verified@example.com' },
+        prefill: {
+          ...prefill,
+          total_usd: {
+            value: userId === 'user-1' ? '1000.00' : '0.00',
+            locked: true,
+          },
+          source: new URL(request.url).host,
+        },
+      }),
+    );
+    const { fetch, p } = app({ terms });
+    const response = await fetch(
+      mintAs({ recipient: signer, prefill: { total_usd: '1', notes: 'hi' } }),
+    );
+    expect(response.status).toBe(200);
+    expect(terms).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        recipient: signer,
+        prefill: { total_usd: '1', notes: 'hi' },
+      }),
+    );
+    expect(p.createEnvelope).toHaveBeenCalledWith(
+      'user-1',
+      'agreement',
+      { name: 'Verified Name', email: 'verified@example.com' },
+      {
+        total_usd: { value: '1000.00', locked: true },
+        notes: 'hi',
+        source: 'api.example.com',
+      },
+    );
+  });
+
+  it('lets the host name a signer the caller did not', async () => {
+    const terms = jest.fn().mockResolvedValue({ recipient: signer });
+    const { fetch, p } = app({ terms });
+    expect((await fetch(mintAs({}))).status).toBe(200);
+    expect(p.createEnvelope).toHaveBeenCalledWith(
+      'user-1',
+      'agreement',
+      signer,
+      undefined,
+    );
+  });
+
+  it('answers the host rejecting the caller as 400 or 401, and asks it only after validation', async () => {
+    const rejecting = jest.fn(() => {
+      throw Errors.validationError('units must be at most 10000');
+    });
+    const { fetch, p } = app({ terms: rejecting });
+    const invalid = await fetch(
+      mintAs({ recipient: signer, prefill: { units: true } }),
+    );
+    expect(invalid.status).toBe(400);
+    expect(rejecting).not.toHaveBeenCalled();
+    const refused = await fetch(mintAs({ recipient: signer }));
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({
+      error: 'units must be at most 10000',
+    });
+    expect(p.createEnvelope).not.toHaveBeenCalled();
+
+    const { fetch: unauthorized } = app({
+      terms: jest.fn(() => {
+        throw Errors.unauthorized();
+      }),
+    });
+    expect((await unauthorized(mintAs({ recipient: signer }))).status).toBe(
+      401,
+    );
+  });
+
+  it('mints through a { mint } target, with the prefill validation the host injects', async () => {
+    const mint = jest
+      .fn()
+      .mockResolvedValue({ url: 'https://h/1', envelopeId: 'e' });
+    const parsePrefill = jest.fn(() => ({
+      ok: true as const,
+      prefill: { anything: 1 },
+    }));
+    const { fetch } = app({ mint, parsePrefill });
+    const response = await fetch(
+      mintAs({ recipient: signer, prefill: { units: true } }),
+    );
+    expect(response.status).toBe(200);
+    expect(mint).toHaveBeenCalledWith('user-1', {
+      recipient: signer,
+      prefill: { anything: 1 },
+    });
+
+    const { fetch: refusing } = app({
+      parsePrefill: () => ({ ok: false as const, error: 'host says no' }),
+    });
+    const refused = await refusing(mintAs({ recipient: signer, prefill: {} }));
+    expect(await refused.json()).toEqual({
+      error: 'Invalid prefill: host says no',
+    });
+  });
+
+  it('takes a custom path, serves the return bridge, and does not serve the Web Forms mint', async () => {
+    const { fetch } = app({ path: '/mint' });
+    expect((await fetch(mintAs({ recipient: signer }))).status).toBe(404);
+    expect(
+      (await fetch(mintAs({ recipient: signer }, 'https://x/mint'))).status,
+    ).toBe(200);
+    expect(
+      (await fetch(mintAs({ prefill: {} }, 'https://x/webform/instance')))
+        .status,
+    ).toBe(404);
+    const bridge = await fetch(
+      new Request('https://x/signing/return?event=signing_complete'),
+    );
+    expect(bridge.status).toBe(200);
+    expect(await bridge.text()).toContain(
+      'postSigningEvent("signing_complete")',
+    );
+  });
+
+  it('serves a health check unless told not to, and answers its preflight with cors', async () => {
+    expect((await app().fetch(new Request('https://x/health'))).status).toBe(
+      200,
+    );
+    expect(
+      (await app({ health: false }).fetch(new Request('https://x/health')))
+        .status,
+    ).toBe(404);
+    const { fetch } = app({ cors: { origins: ['https://app.example.com'] } });
+    const preflight = await fetch(
+      new Request('https://x/envelope/instance', {
+        method: 'OPTIONS',
+        headers: { origin: 'https://app.example.com' },
+      }),
+    );
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get('access-control-allow-origin')).toBe(
+      'https://app.example.com',
+    );
+  });
+});
+
+describe('mintEnvelopeInstanceHttp defaults to the console logger', () => {
+  it('logs a failed envelope through console when no logger is given', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await mintEnvelopeInstanceHttp({
+      userId: 'u',
+      body: { recipient: { name: 'Test Signer', email: 'signer@example.com' } },
+      mint: () => Promise.reject(new Error('x')),
+    });
+    expect(result.status).toBe(502);
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Envelope creation failed:',
+      'UNKNOWN_ERROR',
+    );
+    errorSpy.mockRestore();
   });
 });

@@ -73,6 +73,15 @@ export const HOSTED_FORM_SETTINGS: readonly DocuSignConfigKey[] = [
   'returnUrl',
 ];
 
+// What creating an envelope from the template needs on top of the grant: the
+// template (or templates, one envelope) to send, and the returnUrl the
+// embedded signer comes back to
+export const ENVELOPE_SETTINGS: readonly DocuSignConfigKey[] = [
+  ...JWT_CREDENTIALS,
+  'templateId',
+  'returnUrl',
+];
+
 export type Env = Record<string, string | undefined>;
 
 // Where the RSA private key may come from, in precedence order: the PEM

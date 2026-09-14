@@ -7,8 +7,11 @@ import request from 'supertest';
 import { createEnvelopeService } from '../envelopes';
 import { Errors } from '../errors';
 import {
+  createEnvelopeRouter,
   createESignRouter,
   createHostedFormRouter,
+  type EnvelopeRouterOptions,
+  type EnvelopeRouterTermsInput,
   type ESignRouterOptions,
   type HostedFormRouterOptions,
   type HostedFormRouterPrefillInput,
@@ -386,6 +389,174 @@ describe('POST /webhook/esign', () => {
       .send(tooBig);
     expect(seen).toEqual(['limit']);
     expect(response.status).toBe(413);
+  });
+});
+
+describe('createEnvelopeRouter', () => {
+  // Synthetic signer and terms - nothing here is anyone's data
+  const signer = { name: 'Test Signer', email: 'signer@example.com' };
+  const locked = { total_usd: { value: '1000.00', locked: true } };
+
+  const envelopeProvider = () =>
+    fakeProvider({
+      createEnvelope: jest
+        .fn()
+        .mockResolvedValue({ envelopeId: 'env-1', signingUrl: 'https://s/1' }),
+    });
+
+  const mounted = (
+    overrides: Partial<EnvelopeRouterOptions> = {},
+    provider = envelopeProvider(),
+  ) => {
+    const app = express();
+    // A { mint } target replaces the { provider } one (EnvelopeMintTarget is a union)
+    const target = 'mint' in overrides ? {} : { provider };
+    app.use(
+      createEnvelopeRouter({
+        ...target,
+        authenticate: req =>
+          req.headers.authorization === 'Bearer user-1' ? 'user-1' : null,
+        logger: silentLogger,
+        ...overrides,
+      } as EnvelopeRouterOptions),
+    );
+    return { app, provider };
+  };
+
+  it('creates one envelope at /envelope/instance and answers its signing URL', async () => {
+    const { app, provider } = mounted();
+    const response = await request(app)
+      .post('/envelope/instance')
+      .set('authorization', 'Bearer user-1')
+      .send({ recipient: signer, prefill: locked });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ url: 'https://s/1', envelopeId: 'env-1' });
+    expect(provider.createEnvelope).toHaveBeenCalledWith(
+      'user-1',
+      'agreement',
+      signer,
+      locked,
+    );
+  });
+
+  it('answers 401 unauthenticated, 400 outside the contract and 502 when creating fails', async () => {
+    const { app, provider } = mounted();
+    expect((await request(app).post('/envelope/instance')).status).toBe(401);
+
+    const bad = await request(app)
+      .post('/envelope/instance')
+      .set('authorization', 'Bearer user-1')
+      .send({ recipient: signer, prefill: { units: true } });
+    expect(bad.status).toBe(400);
+    expect(bad.body).toEqual({
+      error: 'Invalid prefill: unsupported value for field "units"',
+    });
+
+    const unsigned = await request(app)
+      .post('/envelope/instance')
+      .set('authorization', 'Bearer user-1');
+    expect(unsigned.status).toBe(400);
+    expect(unsigned.body).toEqual({
+      error: 'recipient is required: a name and an email',
+    });
+    expect(provider.createEnvelope).not.toHaveBeenCalled();
+
+    const { app: failing } = mounted(
+      {},
+      fakeProvider({
+        createEnvelope: jest
+          .fn()
+          .mockRejectedValue({ extensions: { code: 'PROVIDER_UNAVAILABLE' } }),
+      }),
+    );
+    const failed = await request(failing)
+      .post('/envelope/instance')
+      .set('authorization', 'Bearer user-1')
+      .send({ recipient: signer });
+    expect(failed.status).toBe(502);
+    expect(failed.body).toEqual({ error: 'Could not create signing session' });
+  });
+
+  it('creates the envelope the host terms decide, from the request', async () => {
+    const terms = jest.fn(({ prefill, req }: EnvelopeRouterTermsInput) => ({
+      recipient: { name: 'Verified Name', email: 'verified@example.com' },
+      prefill: { ...prefill, agent: String(req.headers['user-agent']) },
+    }));
+    const { app, provider } = mounted({ terms });
+    const response = await request(app)
+      .post('/envelope/instance')
+      .set('authorization', 'Bearer user-1')
+      .set('user-agent', 'jest')
+      .send({ recipient: signer, prefill: { notes: 'hi' } });
+    expect(response.status).toBe(200);
+    expect(provider.createEnvelope).toHaveBeenCalledWith(
+      'user-1',
+      'agreement',
+      { name: 'Verified Name', email: 'verified@example.com' },
+      { notes: 'hi', agent: 'jest' },
+    );
+  });
+
+  it('mints through a { mint } target, on a custom path under a body limit', async () => {
+    const mint = jest
+      .fn()
+      .mockResolvedValue({ url: 'https://h/1', envelopeId: 'e' });
+    const { app } = mounted({ mint, path: '/mint', bodyLimit: '1kb' } as never);
+    expect((await request(app).post('/envelope/instance')).status).toBe(404);
+    const response = await request(app)
+      .post('/mint')
+      .set('authorization', 'Bearer user-1')
+      .send({ recipient: signer });
+    expect(response.status).toBe(200);
+    expect(mint).toHaveBeenCalledWith('user-1', {
+      recipient: signer,
+      prefill: undefined,
+    });
+
+    const tooBig = await request(app)
+      .post('/mint')
+      .set('authorization', 'Bearer user-1')
+      .send({ recipient: signer, prefill: { pad: 'x'.repeat(2000) } });
+    expect(tooBig.status).toBe(413);
+  });
+
+  it('serves the return bridge and a health check unless told not to, and no Web Forms mint', async () => {
+    const { app } = mounted({
+      parsePrefill: () => ({ ok: false as const, error: 'host says no' }),
+    });
+    const bridge = await request(app).get('/signing/return?event=cancel');
+    expect(bridge.status).toBe(200);
+    expect(bridge.text).toContain('postSigningEvent("cancel")');
+    expect((await request(app).get('/health')).status).toBe(200);
+    expect((await request(app).post('/webform/instance')).status).toBe(404);
+    const refused = await request(app)
+      .post('/envelope/instance')
+      .set('authorization', 'Bearer user-1')
+      .send({ recipient: signer, prefill: {} });
+    expect(refused.body).toEqual({ error: 'Invalid prefill: host says no' });
+
+    const { app: noHealth } = mounted({ health: false });
+    expect((await request(noHealth).get('/health')).status).toBe(404);
+  });
+
+  it('runs cors on the preflight and the envelope chain before the mint', async () => {
+    const seen: string[] = [];
+    const cors: RequestHandler = (_req, res) => {
+      seen.push('cors');
+      res.sendStatus(204);
+    };
+    const chain: RequestHandler = (_req, _res, next) => {
+      seen.push('chain');
+      next();
+    };
+    const { app } = mounted({ middleware: { cors, envelope: [chain] } });
+    expect((await request(app).options('/envelope/instance')).status).toBe(204);
+    expect(seen).toEqual(['cors']);
+    await request(app)
+      .post('/envelope/instance')
+      .set('authorization', 'Bearer user-1')
+      .send({ recipient: signer });
+    expect(seen).toEqual(['cors', 'chain']);
   });
 });
 

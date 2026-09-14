@@ -11,10 +11,18 @@
 import express, { type Request, type RequestHandler, Router } from 'express';
 import type { EnvelopeService } from './envelopes';
 import {
+  ENVELOPE_INSTANCE_PATH,
+  type EnvelopeMintTarget,
+  type EnvelopePrefillParser,
+  type EnvelopeTermsHook,
+  type EnvelopeTermsInput,
+  envelopeMint,
+  envelopeMintWithTermsHook,
   type HostedFormPrefillHook,
   type HostedFormPrefillInput,
   type HttpResult,
   type MintTarget,
+  mintEnvelopeInstanceHttp,
   mintWebFormInstanceHttp,
   mintWithPrefillHook,
   type PrefillParser,
@@ -37,6 +45,9 @@ export interface ESignRouterMiddleware {
   // Applied to POST /webform/instance (e.g. CORS, rate limit); the OPTIONS
   // preflight gets `cors` only
   webform?: RequestHandler[];
+  // Applied to POST /envelope/instance (createEnvelopeRouter), as `webform` is
+  // to the Web Forms mint
+  envelope?: RequestHandler[];
   cors?: RequestHandler;
   // Applied to POST /webhook/esign (e.g. rate limit)
   webhook?: RequestHandler[];
@@ -76,28 +87,29 @@ const mountHealthRoute = (router: Router): void => {
 
 interface MintRouteOptions {
   // The host's policy on the mint endpoint: `cors` answers the preflight,
-  // `webform` runs before the body is parsed
-  middleware?: Pick<ESignRouterMiddleware, 'cors' | 'webform'>;
+  // `chain` runs before the body is parsed
+  cors?: RequestHandler;
+  chain?: RequestHandler[];
   bodyLimit: string;
-  // The decision (mintWebFormInstanceHttp) for this request
+  // The decision (mintWebFormInstanceHttp or mintEnvelopeInstanceHttp) for
+  // this request
   handler: (req: Request) => Promise<HttpResult>;
 }
 
 // POST {path} (+ its CORS preflight): the host's middleware, the JSON body
-// under the cap, then the decision as status + body. Both presets mount
-// their mint endpoint this way, so the HTTP semantics exist once.
+// under the cap, then the decision as status + body. Every preset mounts its
+// mint endpoint this way, so the HTTP semantics exist once.
 const mountMintRoute = (
   router: Router,
   path: string,
   options: MintRouteOptions,
 ): void => {
-  const middleware = options.middleware ?? {};
-  if (middleware.cors) {
-    router.options(path, middleware.cors);
+  if (options.cors) {
+    router.options(path, options.cors);
   }
   router.post(
     path,
-    ...(middleware.webform ?? []),
+    ...(options.chain ?? []),
     express.json({ limit: options.bodyLimit }),
     async (req, res) => {
       const result = await options.handler(req);
@@ -131,7 +143,8 @@ export const createESignRouter = (options: ESignRouterOptions): Router => {
   // Mint a prefilled Web Forms instance for the authenticated caller. The
   // CORS preflight for a cross-origin host app is the host's cors handler.
   mountMintRoute(router, MINT_PATH, {
-    middleware,
+    cors: middleware.cors,
+    chain: middleware.webform,
     bodyLimit,
     handler: async req =>
       mintWebFormInstanceHttp({
@@ -216,13 +229,77 @@ export const createHostedFormRouter = (
   mountDocuSignPages(router, { mockPages: options.mockPages });
 
   mountMintRoute(router, options.path ?? MINT_PATH, {
-    middleware: options.middleware,
+    cors: options.middleware?.cors,
+    chain: options.middleware?.webform,
     bodyLimit: options.bodyLimit ?? BODY_LIMIT,
     handler: async req =>
       mintWebFormInstanceHttp({
         userId: await options.authenticate(req),
         body: req.body,
         mint: mintWithPrefillHook(mint, options.prefill, { req }),
+        parsePrefill: options.parsePrefill,
+        logger: options.logger,
+      }),
+  });
+
+  return router;
+};
+
+// What the envelope preset's terms hook is told: the caller, the signer and
+// prefill that caller sent (validated), and the Express request behind them
+export interface EnvelopeRouterTermsInput extends EnvelopeTermsInput {
+  req: Request;
+}
+
+export type EnvelopeRouterOptions = EnvelopeMintTarget & {
+  // The host's authentication: the caller's user id, or null when
+  // unauthenticated (the mint endpoint answers 401)
+  authenticate: (req: Request) => string | null | Promise<string | null>;
+  // The host's chance to decide who signs and what the envelope locks, from
+  // its own data: it receives the caller's validated request and returns the
+  // one the envelope is created with. Client values are input, never trusted
+  // for the signer or for a locked value.
+  terms?: EnvelopeTermsHook<EnvelopeRouterTermsInput>;
+  // Where the mint endpoint lives (default /envelope/instance)
+  path?: string;
+  // Serve GET /health (default true)
+  health?: boolean;
+  middleware?: Pick<ESignRouterMiddleware, 'cors' | 'envelope'>;
+  // JSON body cap (default 64kb)
+  bodyLimit?: string;
+  // The provider's envelope prefill validation (default: DocuSign's)
+  parsePrefill?: EnvelopePrefillParser;
+  logger?: Logger;
+};
+
+// The envelope spelling of createHostedFormRouter: POST {path} creates one
+// envelope from the provider's template (or templates) and answers its
+// signing URL, next to the return-URL bridge the signer comes back to and a
+// health check. Same decisions as the Fetch preset (createEnvelopeApp),
+// because both call mintEnvelopeInstanceHttp.
+export const createEnvelopeRouter = (
+  options: EnvelopeRouterOptions,
+): Router => {
+  const router = Router();
+  const mint =
+    'provider' in options ? envelopeMint(options.provider) : options.mint;
+
+  if (options.health ?? true) {
+    mountHealthRoute(router);
+  }
+
+  // GET /signing/return, the bridge the signer comes back to
+  mountDocuSignPages(router, {});
+
+  mountMintRoute(router, options.path ?? ENVELOPE_INSTANCE_PATH, {
+    cors: options.middleware?.cors,
+    chain: options.middleware?.envelope,
+    bodyLimit: options.bodyLimit ?? BODY_LIMIT,
+    handler: async req =>
+      mintEnvelopeInstanceHttp({
+        userId: await options.authenticate(req),
+        body: req.body,
+        mint: envelopeMintWithTermsHook(mint, options.terms, { req }),
         parsePrefill: options.parsePrefill,
         logger: options.logger,
       }),
