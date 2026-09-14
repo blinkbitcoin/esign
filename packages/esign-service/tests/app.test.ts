@@ -275,6 +275,135 @@ describe('security headers', () => {
   });
 });
 
+describe('the envelope mint', () => {
+  // Dummy values in the real shape - nothing here is anyone's data
+  const signing = {
+    recipient: { name: 'Test Signer', email: 'signer@example.test' },
+    prefill: { total_usd: { value: '1000.00', locked: true } },
+  };
+  const CORS_ALLOWED_ORIGINS = 'https://app.example.com';
+  const envelopeApp = (
+    env: Record<string, string> = {},
+    deps: Parameters<typeof testApp>[1] = {}
+  ) => testApp({ ESIGN_MINT_MODE: 'envelope', ...env }, deps);
+
+  it('creates an envelope for an authenticated caller and answers its signing URL', async () => {
+    const response = await post(envelopeApp(), '/envelope/instance', signing, mintHeaders);
+
+    expect(response.status).toBe(200);
+    const { url, envelopeId } = await asJson<{ url: string; envelopeId: string }>(response);
+    expect(url).toContain(`/signing/mock/${envelopeId}`);
+  });
+
+  it('refuses an unauthenticated caller', async () => {
+    const response = await post(envelopeApp(), '/envelope/instance', signing);
+
+    expect(response.status).toBe(401);
+    expect(await asJson(response)).toEqual({ error: 'Unauthorized' });
+  });
+
+  it('carries the security headers and the CORS answer like every other route', async () => {
+    const response = await post(
+      envelopeApp({ CORS_ALLOWED_ORIGINS }),
+      '/envelope/instance',
+      signing,
+      {
+        ...mintHeaders,
+        origin: 'https://app.example.com',
+      }
+    );
+
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://app.example.com');
+  });
+
+  it('answers its own preflight for an allow-listed origin', async () => {
+    const response = await options(envelopeApp({ CORS_ALLOWED_ORIGINS }), '/envelope/instance', {
+      origin: 'https://app.example.com',
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://app.example.com');
+    expect(response.headers.get('access-control-allow-methods')).toContain('POST');
+  });
+
+  it('serves nothing but POST on its path', async () => {
+    expect((await get(envelopeApp(), '/envelope/instance', mintHeaders)).status).toBe(404);
+  });
+
+  it('does not serve the Web Forms mint: one mint per deployment', async () => {
+    const response = await post(envelopeApp(), '/webform/instance', { prefill: {} }, mintHeaders);
+
+    expect(response.status).toBe(404);
+    expect(await asJson(response)).toEqual({ error: 'Not found' });
+  });
+
+  it('still serves the return-URL bridge the envelope comes back to', async () => {
+    const response = await get(envelopeApp(), '/signing/return?event=signing_complete');
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('text/html');
+  });
+
+  it('is not served by a Web Forms deployment', async () => {
+    expect((await post(testApp(), '/envelope/instance', signing, mintHeaders)).status).toBe(404);
+    expect((await options(testApp(), '/envelope/instance')).status).toBe(404);
+  });
+
+  it('says which mint it serves on /health', async () => {
+    expect(await asJson(await get(envelopeApp(), '/health'))).toMatchObject({
+      capabilities: ['mint'],
+      mint: 'envelope',
+    });
+    expect(await asJson(await get(testApp(), '/health'))).toMatchObject({ mint: 'webform' });
+  });
+
+  // Who signs and what is locked are the host's to decide when it has a say
+  it('creates the envelope with the signer and the terms the host computed', async () => {
+    const createEnvelope = vi.fn(async () => ({
+      envelopeId: 'env-1',
+      signingUrl: 'https://sign.example.com/env-1',
+    }));
+    const termsFetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            recipient: { name: 'Verified Name', email: 'verified@example.com' },
+            prefill: { total_usd: { value: '1000.00', locked: true } },
+          })
+        )
+    );
+    const app = envelopeApp(
+      { TERMS_URL: 'https://host.example.com/terms' },
+      { fetch: termsFetch, provider: { createEnvelope } as never }
+    );
+
+    const response = await post(app, '/envelope/instance', signing, mintHeaders);
+
+    expect(response.status).toBe(200);
+    expect(createEnvelope).toHaveBeenCalledWith(
+      'user-1',
+      'agreement',
+      { name: 'Verified Name', email: 'verified@example.com' },
+      { total_usd: { value: '1000.00', locked: true } }
+    );
+  });
+
+  it('answers 502 with the terms message when the callback fails', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const app = envelopeApp(
+      { TERMS_URL: 'https://host.example.com/terms' },
+      { fetch: vi.fn(async () => new Response('nope', { status: 500 })) }
+    );
+
+    const response = await post(app, '/envelope/instance', signing, mintHeaders);
+
+    expect(response.status).toBe(502);
+    expect(await asJson(response)).toEqual({ error: 'Could not compute the signing terms' });
+    errors.mockRestore();
+  });
+});
+
 describe('the mock provider pages', () => {
   it('serves the mock signing page', async () => {
     const response = await get(testApp(), '/signing/mock/abc-123');

@@ -35,6 +35,24 @@ describe('the Cloudflare entry', () => {
     expect(response.status).toBe(200);
   });
 
+  it('mints an envelope from the Worker bindings under ESIGN_MINT_MODE=envelope', async () => {
+    const response = await silently(() =>
+      worker.fetch(
+        request('/envelope/instance', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: 'Bearer user-1' },
+          body: JSON.stringify({
+            recipient: { name: 'Test Signer', email: 'signer@example.com' },
+          }),
+        }),
+        { ...DEV_ENV, ESIGN_MINT_MODE: 'envelope' }
+      )
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ envelopeId: expect.any(String) });
+  });
+
   it('refuses DATABASE_URL with a message that says why', async () => {
     await expect(
       silently(() => worker.fetch(request('/health'), { ...DEV_ENV, DATABASE_URL: 'postgres://x' }))

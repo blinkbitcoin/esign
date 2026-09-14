@@ -7,6 +7,11 @@
 // that user) and TERMS_SHARED_SECRET in x-esign-terms-secret when set - and
 // the host's `{ prefill }` wins over the client's values, key by key.
 //
+// An envelope (ESIGN_MINT_MODE=envelope) asks the same way with the signer the
+// client named beside its prefill - POST { userId, input, recipient } - and
+// the host may answer `{ prefill, recipient }`: who signs is the host's to
+// decide, like every value it locks.
+//
 // Fail closed: a non-2xx, a timeout, a non-JSON body or a reply without a
 // prefill is an error, never "mint what the client sent". createESignApp
 // turns that into 502 "Could not compute the signing terms".
@@ -15,7 +20,15 @@
 // a mock/dev host and refused under ESIGN_ENV=production unless
 // ESIGN_ALLOW_CLIENT_PREFILL=true says so explicitly (config.ts).
 
-import type { HostedFormAppPrefillInput, HostedFormPrefill } from '@blinkbitcoin/esign-node';
+import {
+  type EnvelopeAppTermsInput,
+  type EnvelopeMintRequest,
+  type EnvelopePrefillParser,
+  type HostedFormAppPrefillInput,
+  type HostedFormPrefill,
+  parseEnvelopePrefill,
+  type RecipientData,
+} from '@blinkbitcoin/esign-node';
 
 import type { Env } from './env';
 
@@ -77,18 +90,57 @@ const merge = (input: HostedFormPrefill, locked: HostedFormPrefill): HostedFormP
   ...locked,
 });
 
-const parsePrefill = async (response: Response): Promise<HostedFormPrefill> => {
+// What the host answered: a prefill object, and whatever else it said
+interface TermsReply {
+  prefill: HostedFormPrefill;
+  recipient?: unknown;
+}
+
+const parseReply = async (response: Response): Promise<TermsReply> => {
   let body: unknown;
   try {
     body = await response.json();
   } catch {
     throw new TermsError('the terms callback did not answer with JSON');
   }
-  const prefill = (body as { prefill?: unknown } | null)?.prefill;
+  const reply = body as { prefill?: unknown; recipient?: unknown } | null;
+  const prefill = reply?.prefill;
   if (!prefill || typeof prefill !== 'object' || Array.isArray(prefill)) {
     throw new TermsError('the terms callback answered without a prefill object');
   }
-  return prefill as HostedFormPrefill;
+  return { prefill: prefill as HostedFormPrefill, recipient: reply?.recipient };
+};
+
+// Ask the host: POST the payload with the caller's bearer token and the shared
+// secret, and read its reply
+const askHost = async (
+  config: TermsConfig,
+  doFetch: typeof globalThis.fetch,
+  request: Request,
+  payload: object
+): Promise<TermsReply> => {
+  const authorization = request.headers.get('authorization');
+  let response: Response;
+  try {
+    response = await doFetch(config.url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(authorization ? { authorization } : {}),
+        ...(config.secret ? { [TERMS_SECRET_HEADER]: config.secret } : {}),
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(config.timeoutMs),
+    });
+  } catch (error) {
+    throw new TermsError(
+      `the terms callback did not answer: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+  if (!response.ok) {
+    throw new TermsError(`the terms callback answered ${response.status}`);
+  }
+  return parseReply(response);
 };
 
 // The prefill hook createESignApp hands to the hosted-form app: ask the
@@ -99,27 +151,45 @@ export const createTermsPrefill = (
 ): ((input: HostedFormAppPrefillInput) => Promise<HostedFormPrefill>) => {
   const doFetch = deps.fetch ?? globalThis.fetch;
   return async ({ userId, prefill, request }) => {
-    const authorization = request.headers.get('authorization');
-    let response: Response;
-    try {
-      response = await doFetch(config.url, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          ...(authorization ? { authorization } : {}),
-          ...(config.secret ? { [TERMS_SECRET_HEADER]: config.secret } : {}),
-        },
-        body: JSON.stringify({ userId, input: prefill }),
-        signal: AbortSignal.timeout(config.timeoutMs),
-      });
-    } catch (error) {
-      throw new TermsError(
-        `the terms callback did not answer: ${error instanceof Error ? error.message : String(error)}`
-      );
+    const reply = await askHost(config, doFetch, request, { userId, input: prefill });
+    return merge(prefill, reply.prefill);
+  };
+};
+
+export interface EnvelopeTermsDeps extends TermsDeps {
+  // What a prefill the host answers must satisfy before an envelope carries
+  // it (default: DocuSign's envelope contract, as the mint checks the client's)
+  parsePrefill?: EnvelopePrefillParser;
+}
+
+// A signer the host names: a name and an email, as strings
+const recipientFrom = (value: unknown): RecipientData => {
+  const signer = value as { name?: unknown; email?: unknown } | null;
+  if (typeof signer?.name !== 'string' || typeof signer.email !== 'string') {
+    throw new TermsError('the terms callback answered a recipient without a name and an email');
+  }
+  return { name: signer.name, email: signer.email };
+};
+
+// The terms hook createESignApp hands to the envelope app: ask the host with
+// the client's signer and prefill, lay its prefill over the client's, and let
+// its signer, when it names one, be the one who signs.
+export const createEnvelopeTerms = (
+  config: TermsConfig,
+  deps: EnvelopeTermsDeps = {}
+): ((input: EnvelopeAppTermsInput) => Promise<EnvelopeMintRequest>) => {
+  const doFetch = deps.fetch ?? globalThis.fetch;
+  const parsePrefill = deps.parsePrefill ?? parseEnvelopePrefill;
+  return async ({ userId, recipient, prefill, request }) => {
+    const input = prefill ?? {};
+    const reply = await askHost(config, doFetch, request, { userId, input, recipient });
+    const locked = parsePrefill(reply.prefill);
+    if (!locked.ok) {
+      throw new TermsError(`the terms callback answered an invalid prefill: ${locked.error}`);
     }
-    if (!response.ok) {
-      throw new TermsError(`the terms callback answered ${response.status}`);
-    }
-    return merge(prefill, await parsePrefill(response));
+    return {
+      recipient: reply.recipient === undefined ? recipient : recipientFrom(reply.recipient),
+      prefill: { ...input, ...locked.prefill },
+    };
   };
 };

@@ -1,11 +1,15 @@
 // The capability set is decided by the environment alone: the mint is
-// always on, envelope orchestration follows DATABASE_URL.
+// always on (a Web Form, or an envelope under ESIGN_MINT_MODE=envelope),
+// envelope orchestration follows DATABASE_URL.
 
 import {
   capabilitiesFromEnv,
   describeCapabilities,
   hasEnvelopes,
+  isEnvelopeMint,
+  isMintMode,
   mockPagesEnabled,
+  requestedMintMode,
 } from '../src/capabilities';
 
 describe('hasEnvelopes', () => {
@@ -44,6 +48,33 @@ describe('describeCapabilities', () => {
   it('lists the capabilities that are on', () => {
     expect(describeCapabilities(['mint'])).toBe('mint');
     expect(describeCapabilities(['mint', 'envelopes'])).toBe('mint, envelopes');
+  });
+});
+
+describe('the mint mode', () => {
+  it('is the Web Form unless the environment asks for envelopes', () => {
+    expect(requestedMintMode({})).toBe('webform');
+    expect(isEnvelopeMint({})).toBe(false);
+    expect(isEnvelopeMint({ ESIGN_MINT_MODE: 'webform' })).toBe(false);
+  });
+
+  it('answers with envelopes under ESIGN_MINT_MODE=envelope', () => {
+    expect(requestedMintMode({ ESIGN_MINT_MODE: 'envelope' })).toBe('envelope');
+    expect(isEnvelopeMint({ ESIGN_MINT_MODE: 'envelope' })).toBe(true);
+  });
+
+  it('reports a mode it does not know as written, for the boot guard to refuse', () => {
+    expect(requestedMintMode({ ESIGN_MINT_MODE: 'pdf' })).toBe('pdf');
+    expect(isMintMode('pdf')).toBe(false);
+    expect(isMintMode('webform')).toBe(true);
+    expect(isMintMode('envelope')).toBe(true);
+  });
+
+  // An env file with `ESIGN_MINT_MODE=` must not stop a deployment from booting
+  it('reads a blank ESIGN_MINT_MODE as unset, as a blank DATABASE_URL is', () => {
+    expect(requestedMintMode({ ESIGN_MINT_MODE: '' })).toBe('webform');
+    expect(requestedMintMode({ ESIGN_MINT_MODE: '   ' })).toBe('webform');
+    expect(requestedMintMode({ ESIGN_MINT_MODE: ' envelope ' })).toBe('envelope');
   });
 });
 

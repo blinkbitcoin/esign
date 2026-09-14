@@ -35,12 +35,19 @@ export const RATE_LIMIT_WINDOW_MS = 60_000;
 
 export interface RateLimits {
   webform: number;
+  envelope: number;
   webhook: number;
   graphql: number;
 }
 
-// What Express's rate limiters allowed, unchanged
-export const DEFAULT_RATE_LIMITS: RateLimits = { webform: 60, webhook: 120, graphql: 100 };
+// What Express's rate limiters allowed, unchanged; the envelope mint takes the
+// Web Forms mint's, being the same call in its other spelling
+export const DEFAULT_RATE_LIMITS: RateLimits = {
+  webform: 60,
+  envelope: 60,
+  webhook: 120,
+  graphql: 100,
+};
 
 const limitFromEnv = (value: string | undefined, fallback: number): number => {
   const parsed = Number(value);
@@ -51,6 +58,7 @@ const limitFromEnv = (value: string | undefined, fallback: number): number => {
 // limit off (a deployment behind its own gateway).
 export const rateLimitsFromEnv = (env: Env): RateLimits => ({
   webform: limitFromEnv(env.RATE_LIMIT_WEBFORM_PER_MIN, DEFAULT_RATE_LIMITS.webform),
+  envelope: limitFromEnv(env.RATE_LIMIT_ENVELOPE_PER_MIN, DEFAULT_RATE_LIMITS.envelope),
   webhook: limitFromEnv(env.RATE_LIMIT_WEBHOOK_PER_MIN, DEFAULT_RATE_LIMITS.webhook),
   graphql: limitFromEnv(env.RATE_LIMIT_GRAPHQL_PER_MIN, DEFAULT_RATE_LIMITS.graphql),
 });
@@ -61,6 +69,9 @@ export const rateLimitsFromEnv = (env: Env): RateLimits => ({
 const limitedRoute = (pathname: string): keyof RateLimits | undefined => {
   if (pathname === '/webform/instance') {
     return 'webform';
+  }
+  if (pathname === '/envelope/instance') {
+    return 'envelope';
   }
   if (pathname === '/webhook/esign') {
     return 'webhook';

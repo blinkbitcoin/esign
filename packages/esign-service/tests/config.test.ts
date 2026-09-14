@@ -262,6 +262,124 @@ describe('configErrors - runtime vs capability', () => {
   });
 });
 
+describe('configErrors - the mint mode', () => {
+  // The DocuSign settings an envelope mint needs: the templates instead of a
+  // Web Form (dummy ids in the real shape - nothing here is a real template)
+  const envelopeEnv = (extra: Record<string, string | undefined> = {}) =>
+    docusignEnv({
+      ALLOW_INSECURE_DEV: 'true',
+      ESIGN_MINT_MODE: 'envelope',
+      DOCUSIGN_WEBFORM_ID: undefined,
+      DOCUSIGN_TEMPLATE_ID: 'membership,subscription,joinder',
+      ...extra,
+    });
+
+  it('accepts the Web Form spelled out', () => {
+    expect(configErrors(devEnv({ ESIGN_MINT_MODE: 'webform' }))).toEqual([]);
+  });
+
+  it('accepts DocuSign envelopes with no Web Form configured', () => {
+    expect(configErrors(envelopeEnv())).toEqual([]);
+  });
+
+  it('refuses envelopes without the templates to send', () => {
+    expect(configErrors(envelopeEnv({ DOCUSIGN_TEMPLATE_ID: undefined }))).toEqual([
+      expect.stringMatching(/DOCUSIGN_TEMPLATE_ID/),
+    ]);
+  });
+
+  it('refuses envelopes without the page DocuSign returns the signer to', () => {
+    expect(configErrors(envelopeEnv({ DOCUSIGN_RETURN_URL: undefined }))).toEqual([
+      expect.stringMatching(/DOCUSIGN_RETURN_URL/),
+    ]);
+  });
+
+  it('still refuses production on DocuSign demo hosts', () => {
+    const errors = configErrors(
+      envelopeEnv({
+        ESIGN_ENV: 'production',
+        ESIGN_ALLOW_CLIENT_PREFILL: 'true',
+        DOCUSIGN_BASE_URL: 'https://demo.docusign.net/restapi',
+      })
+    );
+    expect(errors).toEqual([expect.stringMatching(/demo host/)]);
+  });
+
+  // A production-shaped staging deployment on the DocuSign demo account: the
+  // image's own posture, with the one bypass it documents
+  it('accepts the demo account in production when demo settings are allowed', () => {
+    expect(
+      configErrors(
+        envelopeEnv({
+          ALLOW_INSECURE_DEV: undefined,
+          SESSION_HS256_SECRET: 's',
+          ESIGN_ENV: 'production',
+          ESIGN_ALLOW_DEMO: 'true',
+          ESIGN_ALLOW_CLIENT_PREFILL: 'true',
+        })
+      )
+    ).toEqual([]);
+  });
+
+  // The host decides the signer and the locked values from its own data, as
+  // it decides a Web Form's
+  it('accepts a terms callback for envelopes', () => {
+    expect(configErrors(envelopeEnv({ TERMS_URL: 'https://api.example.com/terms' }))).toEqual([]);
+  });
+
+  it('refuses production envelopes minting the client signer and prefill without the opt-in', () => {
+    expect(
+      configErrors(
+        envelopeEnv({
+          ALLOW_INSECURE_DEV: undefined,
+          SESSION_HS256_SECRET: 's',
+          ESIGN_ENV: 'production',
+          ESIGN_ALLOW_DEMO: 'true',
+        })
+      )
+    ).toEqual([
+      expect.stringMatching(
+        /without TERMS_URL: the client's own signer and prefill would be minted as sent/
+      ),
+    ]);
+  });
+
+  it('refuses the mock provider in production for envelopes too', () => {
+    expect(
+      configErrors(
+        devEnv({
+          ESIGN_MINT_MODE: 'envelope',
+          ESIGN_ENV: 'production',
+          ESIGN_ALLOW_CLIENT_PREFILL: 'true',
+        })
+      )
+    ).toEqual([expect.stringMatching(/mock provider is a demo provider/)]);
+  });
+
+  it('refuses a mode it does not know', () => {
+    expect(configErrors(devEnv({ ESIGN_MINT_MODE: 'pdf' }))).toEqual([
+      "ESIGN_MINT_MODE must be 'webform' or 'envelope' (got pdf)",
+    ]);
+  });
+
+  it('refuses an unknown ESIGN_PROVIDER for envelopes too', () => {
+    expect(configErrors(devEnv({ ESIGN_MINT_MODE: 'envelope', ESIGN_PROVIDER: 'adobe' }))).toEqual([
+      expect.stringMatching(/unknown ESIGN_PROVIDER: adobe/),
+    ]);
+  });
+
+  it('refuses a PEM file path on the edge runtime for envelopes too', () => {
+    const errors = configErrors(
+      envelopeEnv({
+        DOCUSIGN_PRIVATE_KEY: undefined,
+        DOCUSIGN_PRIVATE_KEY_FILE: '/run/secrets/docusign.pem',
+      }),
+      { runtime: 'edge' }
+    );
+    expect(errors).toEqual([expect.stringMatching(/container-only/)]);
+  });
+});
+
 describe('validateConfig', () => {
   afterEach(() => vi.restoreAllMocks());
 

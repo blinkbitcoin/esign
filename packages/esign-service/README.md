@@ -20,14 +20,15 @@ suite run against: `npm i @blinkbitcoin/esign-service`, or run the
 
 | Capability | Routes | Turned on by |
 |---|---|---|
-| mint | `POST /webform/instance`, `GET /signing/return`,<br>`GET /health` | always |
+| mint | `POST /webform/instance` (or `POST /envelope/instance`<br>under `ESIGN_MINT_MODE=envelope`), `GET /signing/return`,<br>`GET /health` | always |
 | envelopes | `POST /webhook/esign`, `/graphql`, the Knex store<br>and its migrations | `DATABASE_URL` |
 
 Without `DATABASE_URL` the envelope routes are absent (404), no `pg`
 connection is opened and no `DOCUSIGN_HMAC_KEY` is required. `GET /health`
-answers `{ status, capabilities, timestamp }`, so a deployment says what it
-is serving. The boot guard lists every misconfiguration at once — and the
-capabilities that were on — and refuses to start.
+answers `{ status, capabilities, mint, timestamp }` (`mint` is `webform` or
+`envelope`), so a deployment says what it is serving. The boot guard lists
+every misconfiguration at once — and the capabilities that were on — and
+refuses to start.
 
 ## Deploy
 
@@ -71,6 +72,9 @@ and the verification checklist - is the runbook,
    data. Expose `TERMS_URL`: the service POSTs `{ userId, input }` with the
    caller's bearer token forwarded, and your `{ prefill }` wins over the
    client's values key by key. Client input is intent, never a locked value.
+   An envelope mint (`ESIGN_MINT_MODE=envelope`) also sends the client's
+   `recipient`, and a `recipient` in your answer is who signs. Without
+   `TERMS_URL` any authenticated caller names the signer.
 
 ## Environment
 
@@ -84,12 +88,13 @@ list with comments.
 | `SESSION_ISSUER`,<br>`SESSION_AUDIENCE` | Enforced when set |
 | `SESSION_USER_CLAIM` | The claim carrying the user id (default `sub`) |
 | `SESSION_HS256_SECRET` | Shared secret instead of a key set (`JWT_SECRET` is<br>an accepted alias) |
-| `TERMS_URL` | Where the host computes the prefill actually minted |
+| `TERMS_URL` | Where the host computes the prefill actually minted<br>(and, under `ESIGN_MINT_MODE=envelope`, who signs) |
 | `TERMS_SHARED_SECRET` | Sent as `x-esign-terms-secret` when set |
 | `TERMS_TIMEOUT_MS` | Default 5000; a timeout or non-2xx answers `502` |
 | `TERMS_ALLOW_INSECURE` | `true` to allow a plaintext `TERMS_URL` in production.<br>The callback carries the caller's session token and<br>`TERMS_SHARED_SECRET`, so `http:` is refused unless the<br>host is private (loopback, `*.svc`,<br>`*.svc.cluster.local`, `*.internal`) |
-| `ESIGN_ALLOW_CLIENT_PREFILL` | `true` to mint the client's own prefill in production |
+| `ESIGN_ALLOW_CLIENT_PREFILL` | `true` to mint the client's own prefill in production<br>(and, under `ESIGN_MINT_MODE=envelope`, its signer) |
 | `ESIGN_PROVIDER` | `mock` (default) or `docusign` |
+| `ESIGN_MINT_MODE` | `webform` (default): `POST /webform/instance` mints a<br>Web Forms instance. `envelope`: `POST /envelope/instance`<br>takes `{ recipient, prefill }`, creates one envelope from<br>`DOCUSIGN_TEMPLATE_ID` (several ids, one envelope, in that<br>order) and answers `{ url, envelopeId }`, so the signer<br>opens the documents themselves. Neither needs a database,<br>and `TERMS_URL` applies to both. Any other value refuses<br>to start |
 | `MOCK_PAGES` | `false` turns the mock provider's signing pages off |
 | `DOCUSIGN_*` | Provider settings (`.env.docusign.example`) |
 | `ESIGN_ENV` | `production` refuses demo settings and disables<br>introspection (`ESIGN_ALLOW_DEMO=true` overrides).<br>**The image sets it**, so a container refuses the mock<br>provider and demo DocuSign hosts unless you opt out |
@@ -126,7 +131,8 @@ make dev            # service at http://localhost:4100 (PORT, default ESIGN_PORT
 ## Architecture in Brief
 
 - **One Fetch core**: `src/app.ts` routes from the capability set. The mint
-  half is the package's `createHostedFormApp`; the envelope half
+  half is the package's `createHostedFormApp` (`createEnvelopeApp` under
+  `ESIGN_MINT_MODE=envelope`); the envelope half
   (`src/envelopes.ts`: the Fetch webhook handler and Apollo over
   `executeHTTPGraphQLRequest`) is behind a dynamic import, so nothing pulls
   Apollo or `pg` into a mint-only deployment — a guard test walks the

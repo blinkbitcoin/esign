@@ -12,13 +12,17 @@
 // first import, and `validateConfig` throws one message listing all of them
 // plus the capabilities that are on.
 
-import { hostedFormProviderFromEnv } from '@blinkbitcoin/esign-node';
+import { envelopeProviderFromEnv, hostedFormProviderFromEnv } from '@blinkbitcoin/esign-node';
 
 import {
   type Capability,
   capabilitiesFromEnv,
   describeCapabilities,
+  ESIGN_MINT_MODE,
   hasEnvelopes,
+  isEnvelopeMint,
+  isMintMode,
+  requestedMintMode,
 } from './capabilities';
 import { type Env, isInsecureDevAllowed } from './env';
 import { SESSION_HS256_SECRET, SESSION_JWKS_URL, sessionSourceFromEnv } from './session';
@@ -99,9 +103,13 @@ const isPrivateHost = (hostname: string): boolean => {
 const termsErrors = (env: Env): string[] => {
   const url = env[TERMS_URL];
   if (!url) {
+    // An envelope takes its signer from the same place as its values
+    const minted = isEnvelopeMint(env)
+      ? "the client's own signer and prefill"
+      : "the client's own prefill";
     return isProductionEnv(env) && env[ESIGN_ALLOW_CLIENT_PREFILL] !== 'true'
       ? [
-          `${ESIGN_ENV}=production without ${TERMS_URL}: the client's own prefill would be minted as sent. Set ${TERMS_URL}, or ${ESIGN_ALLOW_CLIENT_PREFILL}=true to accept client-supplied terms`,
+          `${ESIGN_ENV}=production without ${TERMS_URL}: ${minted} would be minted as sent. Set ${TERMS_URL}, or ${ESIGN_ALLOW_CLIENT_PREFILL}=true to accept client-supplied terms`,
         ]
       : [];
   }
@@ -125,31 +133,41 @@ const termsErrors = (env: Env): string[] => {
     : [];
 };
 
-// The provider must be able to mint: the settings a hosted form needs have
-// to be present, and a production deployment must not be on demo settings.
-// The package's own selection does both checks (PR a) - running it here is
-// how they happen at boot instead of on the first mint.
+// The mint answers one way per deployment, and only a way it knows
+const mintModeErrors = (env: Env): string[] => {
+  const mode = requestedMintMode(env);
+  return isMintMode(mode)
+    ? []
+    : [`${ESIGN_MINT_MODE} must be 'webform' or 'envelope' (got ${mode})`];
+};
+
+// The provider must be able to mint what this deployment mints: the settings
+// a hosted form (or an envelope) needs have to be present, and a production
+// deployment must not be on demo settings. The package's own selection does
+// both checks (PR a) - running it here is how they happen at boot instead of
+// on the first mint.
 const providerErrors = (env: Env, runtime: Runtime): string[] => {
+  // A typo'd ESIGN_PROVIDER must be a boot error here, not a silent fallback
+  // with a warning
+  const onUnknown = (name: string): never => {
+    throw new Error(`unknown ESIGN_PROVIDER: ${name}`);
+  };
+  const edgeDocuSign =
+    runtime === 'edge'
+      ? {
+          readFile: (): never => {
+            throw new Error(
+              'DOCUSIGN_PRIVATE_KEY_FILE is container-only: use DOCUSIGN_PRIVATE_KEY_BASE64 on this runtime'
+            );
+          },
+        }
+      : {};
   try {
-    hostedFormProviderFromEnv(env, {
-      default: 'mock',
-      // A typo'd ESIGN_PROVIDER must be a boot error here, not a silent
-      // fallback with a warning
-      onUnknown: (name) => {
-        throw new Error(`unknown ESIGN_PROVIDER: ${name}`);
-      },
-      ...(runtime === 'edge'
-        ? {
-            docusign: {
-              readFile: () => {
-                throw new Error(
-                  'DOCUSIGN_PRIVATE_KEY_FILE is container-only: use DOCUSIGN_PRIVATE_KEY_BASE64 on this runtime'
-                );
-              },
-            },
-          }
-        : {}),
-    });
+    if (isEnvelopeMint(env)) {
+      envelopeProviderFromEnv(env, { default: 'mock', onUnknown, docusign: edgeDocuSign });
+    } else {
+      hostedFormProviderFromEnv(env, { default: 'mock', onUnknown, docusign: edgeDocuSign });
+    }
     return [];
   } catch (error) {
     // Everything the package's selection throws is an Error
@@ -184,6 +202,7 @@ export const configErrors = (env: Env, options: ValidateConfigOptions = {}): str
   return [
     ...sessionErrors(env),
     ...termsErrors(env),
+    ...mintModeErrors(env),
     ...providerErrors(env, runtime),
     ...webhookErrors(env),
     ...runtimeErrors(env, runtime),

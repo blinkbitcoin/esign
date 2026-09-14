@@ -4,9 +4,10 @@
 // the boot guard runs once at construction (so a misconfigured function fails
 // at first import, exactly as a container fails at boot), the capabilities
 // decide which routes exist, and the routes themselves are the package's
-// presets - createHostedFormApp for the mint half, and, only when
-// DATABASE_URL turned envelopes on, this service's Fetch webhook + GraphQL
-// handlers, reached through the loader its entry supplied.
+// presets - createHostedFormApp (or, under ESIGN_MINT_MODE=envelope,
+// createEnvelopeApp) for the mint half, and, only when DATABASE_URL turned
+// envelopes on, this service's Fetch webhook + GraphQL handlers, reached
+// through the loader its entry supplied.
 //
 // Node-only pieces (Apollo, Knex, `pg`) are reachable only through the
 // `loadEnvelopes` loader an entry hands in - this module never names
@@ -16,12 +17,19 @@
 // The host's two obligations are the two hooks:
 //   - session verification (JWKS or a shared secret) turns the caller's
 //     bearer token into the user id the mint locks the instance to
-//   - TERMS_URL computes what is actually minted, so a client value can
-//     never become a locked one
+//   - TERMS_URL computes what is actually minted (for an envelope, who signs
+//     it too), so a client value can never become a locked one unless the
+//     deployment opts in with ESIGN_ALLOW_CLIENT_PREFILL
 
-import { bearerToken, createHostedFormApp } from '@blinkbitcoin/esign-node';
+import { bearerToken, createEnvelopeApp, createHostedFormApp } from '@blinkbitcoin/esign-node';
 
-import { type Capability, ENVELOPES, mockPagesEnabled } from './capabilities';
+import {
+  type Capability,
+  ENVELOPES,
+  isEnvelopeMint,
+  mockPagesEnabled,
+  requestedMintMode,
+} from './capabilities';
 import { ESIGN_ENV, getAllowedOrigins, type Runtime, validateConfig } from './config';
 import type { Env } from './env';
 import type { LoadEnvelopes } from './envelopes';
@@ -30,7 +38,12 @@ import { mockPageResponse } from './providers/pages';
 import type { ESignProvider } from './providers/port';
 import { trustsProxy } from './proxy';
 import { sessionVerifierFromEnv } from './session';
-import { createTermsPrefill, TERMS_FAILURE_MESSAGE, termsConfigFromEnv } from './terms';
+import {
+  createEnvelopeTerms,
+  createTermsPrefill,
+  TERMS_FAILURE_MESSAGE,
+  termsConfigFromEnv,
+} from './terms';
 
 const HEALTH_PATH = '/health';
 const WEBHOOK_PATH = '/webhook/esign';
@@ -113,6 +126,18 @@ export const withDefaults = (response: Response, headers: Record<string, string>
 // terms could not be computed, which is not a signing failure.
 const termsFailures = new WeakSet<Request>();
 
+// A terms hook that marks its request when it fails, for the rewrite above
+const markingFailures =
+  <TInput extends { request: Request }, TResult>(compute: (input: TInput) => Promise<TResult>) =>
+  async (input: TInput): Promise<TResult> => {
+    try {
+      return await compute(input);
+    } catch (error) {
+      termsFailures.add(input.request);
+      throw error;
+    }
+  };
+
 export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}): ESignApp => {
   // Fail closed before anything is constructed: one message, every problem,
   // and the capabilities that were on.
@@ -126,32 +151,33 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
   const origins = getAllowedOrigins(env);
   const terms = termsConfigFromEnv(env);
   const mockPages = mockPagesEnabled(env);
+  const cors = origins.length > 0 ? { cors: { origins } } : {};
 
   const authenticate = (request: Request): Promise<string | null> =>
     verify(bearerToken(request.headers.get('authorization') ?? undefined) ?? '');
 
-  const lockedPrefill = terms ? createTermsPrefill(terms, { fetch: deps.fetch }) : undefined;
-
-  // The mint half: POST /webform/instance, the return-URL bridge, the CORS
-  // preflight. /health is this app's own (it reports the capabilities).
-  const hostedForm = createHostedFormApp({
-    provider,
-    authenticate,
-    health: false,
-    ...(origins.length > 0 ? { cors: { origins } } : {}),
-    ...(lockedPrefill
-      ? {
-          prefill: async (input) => {
-            try {
-              return await lockedPrefill(input);
-            } catch (error) {
-              termsFailures.add(input.request);
-              throw error;
-            }
-          },
-        }
-      : {}),
-  });
+  // The mint half: POST /webform/instance, or its envelope spelling (POST
+  // /envelope/instance), with the return-URL bridge and the CORS preflight
+  // around it. /health is this app's own (it reports the capabilities).
+  const mint = isEnvelopeMint(env)
+    ? createEnvelopeApp({
+        provider,
+        authenticate,
+        health: false,
+        ...cors,
+        ...(terms
+          ? { terms: markingFailures(createEnvelopeTerms(terms, { fetch: deps.fetch })) }
+          : {}),
+      })
+    : createHostedFormApp({
+        provider,
+        authenticate,
+        health: false,
+        ...cors,
+        ...(terms
+          ? { prefill: markingFailures(createTermsPrefill(terms, { fetch: deps.fetch })) }
+          : {}),
+      });
 
   // Envelope orchestration, built once and only when it is on, through the
   // loader the entry supplied. A target without one cannot serve the
@@ -178,7 +204,12 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
 
   const route = async (request: Request, url: URL): Promise<Response> => {
     if (request.method === 'GET' && url.pathname === HEALTH_PATH) {
-      return json({ status: 'ok', capabilities, timestamp: new Date().toISOString() });
+      return json({
+        status: 'ok',
+        capabilities,
+        mint: requestedMintMode(env),
+        timestamp: new Date().toISOString(),
+      });
     }
 
     if (envelopes && url.pathname === WEBHOOK_PATH && request.method === 'POST') {
@@ -196,7 +227,7 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
       }
     }
 
-    return hostedForm.fetch(request);
+    return mint.fetch(request);
   };
 
   return {
