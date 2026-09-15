@@ -33,7 +33,7 @@ Fetch Request (container, Vercel route, Worker - the same core)
 createESignApp(env)  - boot guard, session verification, CORS, headers
     ↓
 ┌────────────────────────────────────────────────────────────┐
-│  ALWAYS: POST /webform/instance  → TERMS_URL → the provider │
+│  ALWAYS: POST /webform/instance  → ESIGN_PREFILL_URL → the provider │
 │          (or POST /envelope/instance, ESIGN_MINT_MODE)      │
 │          GET  /signing/return, GET /health                  │
 │  DATABASE_URL: /graphql (Apollo)   POST /webhook/esign      │
@@ -64,7 +64,7 @@ packages/esign-service/src/
 │                     #   its provider selection, its terms hook, its preset
 │                     #   (createHostedFormApp or createEnvelopeApp)
 ├── session.ts        # Session verification: JWKS or HS256, via jose (pure factory)
-├── terms.ts          # The TERMS_URL callback: the host's prefill wins key by key
+├── terms.ts          # The ESIGN_PREFILL_URL callback: the host's prefill wins key by key
 │                     #   (for an envelope, the host's reply is minted whole and
 │                     #   its recipient signs)
 ├── envelopes.ts      # The envelope capability: Fetch webhook + Apollo over Fetch
@@ -73,8 +73,8 @@ packages/esign-service/src/
 ├── services.ts       # createServices(provider): createEnvelopeService over the store
 ├── store.ts          # Knex implementation of the package's EnvelopeStore port
 ├── db.ts             # Knex instance (fail-fast on missing DATABASE_URL)
-├── env.ts            # The Env type + ALLOW_INSECURE_DEV (nothing depends on it)
-├── proxy.ts          # TRUST_PROXY: whether x-forwarded-for names the client
+├── env.ts            # The Env type + ESIGN_STRICT (nothing depends on it)
+├── proxy.ts          # ESIGN_TRUST_PROXY: whether x-forwarded-for names the client
 ├── loadEnvelopes.ts  # The one place that names ./envelopes (Node targets only)
 ├── providers/        # Hexagonal provider layer
 │   ├── port.ts       #   ESignProvider port + supportsHostedForms (supportsWebForms kept as alias)
@@ -191,16 +191,16 @@ type EnvelopeResult {
 `Authorization: Bearer <token>` handled by `src/session.ts` (via `jose`) -
 the same verification the mint uses, applied to the GraphQL context:
 
-- **`SESSION_JWKS_URL` set**: RS/ES token verified against a remote, cached
+- **`ESIGN_SESSION_JWKS_URL` set**: RS/ES token verified against a remote, cached
   key set (asymmetric algorithms only, so an HS256 token can never be
-  accepted); `SESSION_ISSUER` / `SESSION_AUDIENCE` enforced when set
-- **`SESSION_HS256_SECRET` set** (`JWT_SECRET` is an accepted alias): HS256
+  accepted); `ESIGN_SESSION_ISSUER` / `ESIGN_SESSION_AUDIENCE` enforced when set
+- **`ESIGN_SESSION_SECRET` set**: HS256
   against the shared secret
-- Either way `exp` is required and the claim named by `SESSION_USER_CLAIM`
+- Either way `exp` is required and the claim named by `ESIGN_SESSION_USER_CLAIM`
   (default `sub`) becomes the context `userId`; anything unverifiable is
   simply unauthenticated
 - **Neither set**: fail closed at boot - the service refuses to start unless
-  `ALLOW_INSECURE_DEV=true` (then the bearer token is taken as the user id).
+  neither, in which case the bearer token is taken as the user id.
   This is not gated on `NODE_ENV`. See [security.md](security.md).
 
 ## Webhook Processing
@@ -212,7 +212,7 @@ the same verification the mint uses, applied to the GraphQL context:
 - Signature verification delegated to `provider.verifyWebhook()` before any
   processing (DocuSign: HMAC-SHA256 of the raw body, `X-DocuSign-Signature-1`
   header, keyed by `DOCUSIGN_HMAC_KEY`)
-- Missing HMAC key: **rejected (fail-closed)** unless `ALLOW_INSECURE_DEV=true`
+- Missing HMAC key: **accepted** - nothing to check, reported at boot
   says unsigned webhooks are acceptable; with envelopes on and the DocuSign
   provider selected, the boot guard refuses to start without the key at all
 - Raw body is used for verification (`await request.text()`) - re-serializing
@@ -319,27 +319,23 @@ npm run test:e2e
 | ID protection | Internal UUIDs only; provider envelope IDs never exposed |
 | User scoping | All envelope queries filtered by userId (no info leak on miss) |
 | Audit logging | All actions tracked; metadata sanitized against a PII allow-list |
-| Fail-fast config | `configErrors` (`src/config.ts`) aborts startup on any problem: no session source, an unknown `ESIGN_MINT_MODE`, bad provider config (the Web Form's settings, or under `ESIGN_MINT_MODE=envelope` the template's), demo settings under `ESIGN_ENV=production`, a bad/plaintext `TERMS_URL`, a missing `DOCUSIGN_HMAC_KEY` with envelopes + docusign, `DATABASE_URL` on edge |
+| Fail-fast config | `configErrors` (`src/config.ts`) aborts startup on what is broken: an unknown `ESIGN_MINT_MODE` or `ESIGN_PROVIDER`, bad provider config (the Web Form's settings, or under `ESIGN_MINT_MODE=envelope` the template's), an `ESIGN_PREFILL_URL` that is not an absolute http(s) URL, `DATABASE_URL` on edge. Everything a deployment does not verify is reported by the banner (`src/posture.ts`) and refused only under `ESIGN_STRICT=true` |
 
 ## Environment Variables
 
-| Variable | Purpose |
-|----------|---------|
-| `DATABASE_URL` | PostgreSQL connection string. **Optional**: its presence turns envelope orchestration on |
-| `SESSION_JWKS_URL` | Remote key set (RS/ES) for session verification |
-| `SESSION_HS256_SECRET` | Shared secret instead of a key set (`JWT_SECRET` is an accepted alias) |
-| `SESSION_ISSUER` / `SESSION_AUDIENCE` / `SESSION_USER_CLAIM` | Enforced when set; claim default `sub` |
-| `TERMS_URL`, `TERMS_SHARED_SECRET`, `TERMS_TIMEOUT_MS`, `TERMS_ALLOW_INSECURE` | The host callback that computes the locked prefill (and, for an envelope mint, may name the signer) |
-| `ESIGN_ENV` / `ESIGN_ALLOW_DEMO` | `production` refuses demo settings and disables introspection; `true` is the one bypass |
-| `ESIGN_ALLOW_CLIENT_PREFILL` | Mint the client's own prefill (and an envelope's signer) in production |
-| `ESIGN_PROVIDER` | Provider selection: `mock` (default) / `docusign` |
-| `ESIGN_MINT_MODE` | What the mint answers with: `webform` (default, `POST /webform/instance`) / `envelope` (`POST /envelope/instance`, one envelope from `DOCUSIGN_TEMPLATE_ID`); anything else refuses to start |
-| `MOCK_PAGES` | `false` turns the mock provider's signing pages off |
-| `DOCUSIGN_*` | DocuSign credentials (required when provider=docusign) |
-| `DOCUSIGN_HMAC_KEY` | Webhook HMAC key (required when envelopes are on and the provider signs) |
-| `CORS_ALLOWED_ORIGINS` | Browser origins allowed to call the API |
-| `ALLOW_INSECURE_DEV` | The explicit opt-in to no verification (never in production) |
-| `PORT`, `TRUST_PROXY`, `RATE_LIMIT_*_PER_MIN` | Container only (port default `ESIGN_PORT_BASE` + 0 = 4100) |
+<!-- BEGIN GENERATED env backend - edit packages/esign-service/src/env/registry.ts -->
+| Variable | Why | When | How to obtain |
+|---|---|---|---|
+| `ESIGN_MINT_MODE` | Which of the two mints this deployment answers with. They are different<br>products: a Web Form asks the signer questions first, an envelope puts<br>them straight into the documents. | default: 'webform' | — |
+| `ESIGN_PROVIDER` | Which e-signature provider mints. The mock needs no credentials and<br>signs nothing that holds. | default: 'mock' - which the boot banner reports as a demo provider | — |
+| `ESIGN_PREFILL_URL` | Decides who computes the values a signer cannot change. Unset, the<br>client's own prefill is minted as sent - which is fine for a fixed<br>consent form and wrong for anything whose fields carry the deal. | default: unset - the client's prefill is minted as sent | An endpoint on your own backend that you write. It receives { userId,<br>input }        (an envelope mint also sends recipient) and answers {<br>prefill: { ... } }     (and, for an envelope, an optional recipient)<br>Confirm it answers correctly with: node dist/node.js check-prefill |
+| `ESIGN_GRAPHQL_INTROSPECTION` | Apollo's schema discovery. Off by default so a deployment does not<br>publish its schema without saying so. | default: unset - introspection is off | — |
+| `ESIGN_PORT_BASE` | The base every service in this repo derives its port from, so parallel<br>worktrees do not collide. | default: 4100 | — |
+| `ESIGN_MOCK_PAGES` | Whether the mock provider serves its own signing pages. A deployment<br>that only wants the mint surface turns them off. | default: on for the mock provider | — |
+| `ESIGN_MOCK_PAGES_ORIGIN` | Where the mock's signing URLs point, when it is not this service's own<br>origin. | default: this service's own origin | — |
+| `OTEL_TRACES_EXPORTER` | Prints spans to stdout instead of shipping them, for debugging without a<br>collector. | default: unset | — |
+| `NODE_ENV` | Node's own switch (dependency resolution, framework defaults). It<br>decides nothing about this service's posture - ESIGN_STRICT does. | default: 'production' in the image | — |
+<!-- END GENERATED -->
 
 Full reference (every variable, incl. optional overrides and OTEL): the
 service README's

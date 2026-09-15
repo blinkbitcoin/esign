@@ -1,5 +1,5 @@
 // The DocuSign adapter for the service: the package's adapter over the
-// service's configuration and webhook policy (ALLOW_INSECURE_DEV allows
+// service's configuration and webhook policy (an absent HMAC key allows
 // unsigned webhooks; DOCUSIGN_HMAC_KEY is read per call so rotation and
 // tests see the current environment).
 //
@@ -8,7 +8,7 @@
 // entry reaches this module and must not build anything from `process.env`.
 
 import { createDocuSignProvider } from '@blinkbitcoin/esign-node';
-import { type Env, isInsecureDevAllowed } from '../../env';
+import type { Env } from '../../env';
 import { getConfig } from './config';
 
 // The adapter over one environment. Values are read per call, so credential
@@ -18,7 +18,10 @@ export const createProvider = (env: Env = process.env) =>
     config: () => getConfig(env),
     webhook: {
       hmacKey: () => env.DOCUSIGN_HMAC_KEY,
-      allowMissingKey: () => isInsecureDevAllowed(env),
+      // No key configured means no signature to check - which the boot
+      // banner already reported as an unverified webhook. A key that IS
+      // configured is always enforced.
+      allowMissingKey: () => !env.DOCUSIGN_HMAC_KEY,
     },
   });
 
@@ -32,4 +35,4 @@ export {
   sleep,
   withRetry,
 } from '@blinkbitcoin/esign-node';
-export { validateConfig } from './config';
+export { demoSettings, validateConfig } from './config';

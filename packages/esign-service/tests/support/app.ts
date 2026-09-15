@@ -6,9 +6,14 @@ import { vi } from 'vitest';
 import { createESignApp, type ESignAppDeps } from '../../src/app';
 import type { Env } from '../../src/env';
 
-// The environment a local/dev deployment runs with: the dev passthrough (the
-// bearer token IS the user id) and the mock provider, mint only.
-export const DEV_ENV: Env = { ALLOW_INSECURE_DEV: 'true', ESIGN_PROVIDER: 'mock' };
+// The environment a local/dev deployment runs with: no session source (the
+// bearer token IS the user id) and the mock provider, mint only. Nothing
+// opts into that any more - it is what an unconfigured deployment does.
+export const DEV_ENV: Env = { ESIGN_PROVIDER: 'mock' };
+
+// The boot banner every app prints, sunk so the suite stays silent. Tests
+// that assert on the banner pass their own logger instead.
+export const silentLogger = () => ({ log: vi.fn(), warn: vi.fn(), error: vi.fn() });
 
 // How the Node targets reach the envelope module; the tests are a Node
 // target too, so they hand in the same loader
@@ -29,16 +34,11 @@ export const silently = async <T>(run: () => T | Promise<T>): Promise<T> => {
   }
 };
 
-// An app for `env`, with the one boot warning ALLOW_INSECURE_DEV prints
-// silenced (test output stays clean)
-export const testApp = (env: Env = {}, deps: ESignAppDeps = {}) => {
-  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-  try {
-    return createESignApp({ ...DEV_ENV, ...env }, { loadEnvelopes, ...deps });
-  } finally {
-    warn.mockRestore();
-  }
-};
+// An app for `env`, with the boot banner sunk into a spy logger so test
+// output stays clean (the banner itself is asserted in posture.test.ts and
+// config.test.ts, which pass their own)
+export const testApp = (env: Env = {}, deps: ESignAppDeps = {}) =>
+  createESignApp({ ...DEV_ENV, ...env }, { loadEnvelopes, logger: silentLogger(), ...deps });
 
 // The same app with envelope orchestration on (the store is mocked by the
 // suite that asks for it)
@@ -84,9 +84,9 @@ export interface GraphQLResult<T> {
 // A GraphQL operation through the app under test: the real /graphql route,
 // over the app's own executor, provider and store. Never a second Apollo
 // server built beside it - a suite that composed its own would be proving
-// the domain, not the service's wiring. Under ALLOW_INSECURE_DEV (what the
-// E2E .env.test sets) the bearer token IS the user id, which is how a caller
-// is chosen here.
+// the domain, not the service's wiring. With no session source configured -
+// what these suites and the E2E .env.test run on - the bearer token IS the
+// user id, which is how a caller is chosen here.
 export const graphql = async <T = Record<string, unknown>>(
   app: App,
   query: string,

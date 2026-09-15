@@ -10,12 +10,16 @@
 // import exactly like a container validates it at boot.
 export type Env = Record<string, string | undefined>;
 
-// The explicit opt-in to running without session verification or webhook
-// signatures. A deliberate, greppable flag: it can never be triggered by a
-// missing or typo'd NODE_ENV.
-export const ALLOW_INSECURE_DEV = 'ALLOW_INSECURE_DEV';
+// The opt-in to refusing to start over anything this deployment does not
+// verify.
+//
+// Off by default, and that default is the point: what an unverified session
+// or a client-supplied prefill means depends on what sits in front of the
+// service and what the template's fields carry, neither of which is visible
+// from in here. So the service reports its posture (posture.ts) and runs,
+// and an operator who wants a deployment to fail closed says so once.
+export const ESIGN_STRICT = 'ESIGN_STRICT';
 
-// True only when the operator has explicitly allowed running without the
-// security secrets (local dev, E2E, CI against the mock provider).
-export const isInsecureDevAllowed = (env: Env = process.env): boolean =>
-  env[ALLOW_INSECURE_DEV] === 'true';
+// True only for the exact string: a typo must not silently arm a gate that
+// refuses to boot, and must not silently disarm one either.
+export const isStrict = (env: Env = process.env): boolean => env[ESIGN_STRICT] === 'true';

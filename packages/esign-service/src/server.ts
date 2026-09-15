@@ -6,13 +6,14 @@
 // provide is either in the Fetch core (the security headers, CORS, the
 // routes) or right here, because it is container-only:
 //   - in-memory rate limits per route (a function relies on its platform's)
-//   - TRUST_PROXY, so the limiter keys on the real client, not the proxy
+//   - ESIGN_TRUST_PROXY, so the limiter keys on the real client, not the proxy
 //   - a SIGTERM drain
-// PORT, the rate limits, TRUST_PROXY and DOCUSIGN_PRIVATE_KEY_FILE are the
+// PORT, the rate limits, ESIGN_TRUST_PROXY and DOCUSIGN_PRIVATE_KEY_FILE are the
 // only container-only variables: every other name means the same thing on
 // every target.
 
 import type { AddressInfo } from 'node:net';
+import { consoleLogger } from '@blinkbitcoin/esign-node';
 import { serve } from '@hono/node-server';
 
 import {
@@ -23,12 +24,13 @@ import {
   withDefaults,
 } from './app';
 import { getAllowedOrigins } from './config';
-import type { Env } from './env';
+import { type Env, ESIGN_STRICT, isStrict } from './env';
 import { loadEnvelopes } from './loadEnvelopes';
 import { resolvePort } from './port';
+import { formatProbes, preflight } from './preflight';
 import { forwardedClientIp, trustsProxy } from './proxy';
 
-export { TRUST_PROXY } from './proxy';
+export { ESIGN_TRUST_PROXY } from './proxy';
 
 // The rate-limit window. Limits are per client, per route, per minute.
 export const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -57,10 +59,10 @@ const limitFromEnv = (value: string | undefined, fallback: number): number => {
 // RATE_LIMIT_*_PER_MIN, one per rate-limited route. 0 switches a route's
 // limit off (a deployment behind its own gateway).
 export const rateLimitsFromEnv = (env: Env): RateLimits => ({
-  webform: limitFromEnv(env.RATE_LIMIT_WEBFORM_PER_MIN, DEFAULT_RATE_LIMITS.webform),
-  envelope: limitFromEnv(env.RATE_LIMIT_ENVELOPE_PER_MIN, DEFAULT_RATE_LIMITS.envelope),
-  webhook: limitFromEnv(env.RATE_LIMIT_WEBHOOK_PER_MIN, DEFAULT_RATE_LIMITS.webhook),
-  graphql: limitFromEnv(env.RATE_LIMIT_GRAPHQL_PER_MIN, DEFAULT_RATE_LIMITS.graphql),
+  webform: limitFromEnv(env.ESIGN_RATE_LIMIT_WEBFORM_PER_MIN, DEFAULT_RATE_LIMITS.webform),
+  envelope: limitFromEnv(env.ESIGN_RATE_LIMIT_ENVELOPE_PER_MIN, DEFAULT_RATE_LIMITS.envelope),
+  webhook: limitFromEnv(env.ESIGN_RATE_LIMIT_WEBHOOK_PER_MIN, DEFAULT_RATE_LIMITS.webhook),
+  graphql: limitFromEnv(env.ESIGN_RATE_LIMIT_GRAPHQL_PER_MIN, DEFAULT_RATE_LIMITS.graphql),
 });
 
 // The rate-limited routes. Everything else (the health check, the signing
@@ -186,6 +188,8 @@ export interface RunningServer {
 export interface StartServerDeps extends ESignAppDeps {
   // The socket address, when the platform reports one (the Node bridge does)
   clientAddress?: (bindings: unknown) => string | undefined;
+  // How the preflight reaches the configured URLs (default: global fetch)
+  fetch?: typeof globalThis.fetch;
 }
 
 const socketAddress = (bindings: unknown): string | undefined =>
@@ -200,6 +204,20 @@ export const startServer = async (
   // accepts a connection. This target can serve envelopes, so it is the one
   // that knows how to reach the Node-only module.
   const app = createESignApp(env, { loadEnvelopes, ...deps });
+  const logger = deps.logger ?? consoleLogger;
+
+  // Do the URLs this deployment was given actually answer? Only this target
+  // asks: a function has no startup phase to spend on it (preflight.ts).
+  const probes = await preflight(env, { fetch: deps.fetch });
+  if (probes.length > 0) {
+    logger.log(formatProbes(probes));
+  }
+  const failed = probes.filter((probe) => !probe.ok);
+  if (failed.length > 0 && isStrict(env)) {
+    throw new Error(
+      `Refusing to listen (${ESIGN_STRICT}=true): ${failed.map((probe) => `${probe.check}: ${probe.detail}`).join('; ')}`
+    );
+  }
 
   const limiter = createRateLimiter(rateLimitsFromEnv(env));
   const trustProxy = trustsProxy(env);
@@ -254,9 +272,10 @@ export const startServer = async (
   };
   process.once('SIGTERM', drain);
 
-  console.log(`🚀 esign-service ready at ${url} (capabilities: ${app.capabilities.join(', ')})`);
-  console.log(`🏥 Health check at ${url}/health`);
-  console.log(`📝 E-signature provider: ${env.ESIGN_PROVIDER || 'mock'}`);
+  // The posture banner is already out (validateConfig, inside createESignApp
+  // above): it named the capabilities, the mint mode and every check. All
+  // that is left to say is where to reach it.
+  logger.log(`esign-service ready at ${url}`);
 
   return {
     url,

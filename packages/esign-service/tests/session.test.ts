@@ -1,15 +1,13 @@
 // Session verification: the one place a caller's bearer token becomes a user
-// id. JWKS (RS/ES via a remote key set), HS256 (a shared secret), or the
-// explicit dev passthrough - selected by the environment alone.
+// id. JWKS (RS/ES via a remote key set), HS256 (a shared secret), or neither
+// - in which case the token is taken at face value. Selected by the
+// environment alone.
 
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { vi } from 'vitest';
 
-import {
-  resetDevPassthroughWarning,
-  sessionSourceFromEnv,
-  sessionVerifierFromEnv,
-} from '../src/session';
+import { describeRejection, sessionSourceFromEnv, sessionVerifierFromEnv } from '../src/session';
+import { silentLogger } from './support/app';
 
 const HS256_SECRET = 'a-shared-session-secret-of-some-length';
 const secretKey = () => new TextEncoder().encode(HS256_SECRET);
@@ -26,48 +24,46 @@ const signHs256 = async (
 };
 
 describe('sessionSourceFromEnv', () => {
-  it('is jwks when SESSION_JWKS_URL is set', () => {
-    expect(sessionSourceFromEnv({ SESSION_JWKS_URL: 'https://id.example.com/jwks' })).toBe('jwks');
+  it('is jwks when ESIGN_SESSION_JWKS_URL is set', () => {
+    expect(sessionSourceFromEnv({ ESIGN_SESSION_JWKS_URL: 'https://id.example.com/jwks' })).toBe(
+      'jwks'
+    );
   });
 
-  it('is hs256 for SESSION_HS256_SECRET and for the JWT_SECRET alias', () => {
-    expect(sessionSourceFromEnv({ SESSION_HS256_SECRET: 's' })).toBe('hs256');
-    expect(sessionSourceFromEnv({ JWT_SECRET: 's' })).toBe('hs256');
+  it('is hs256 for ESIGN_SESSION_SECRET', () => {
+    expect(sessionSourceFromEnv({ ESIGN_SESSION_SECRET: 's' })).toBe('hs256');
+    expect(sessionSourceFromEnv({ ESIGN_SESSION_SECRET: 's' })).toBe('hs256');
   });
 
   it('prefers JWKS when both are configured', () => {
     expect(
-      sessionSourceFromEnv({ SESSION_JWKS_URL: 'https://id.example.com/jwks', JWT_SECRET: 's' })
+      sessionSourceFromEnv({
+        ESIGN_SESSION_JWKS_URL: 'https://id.example.com/jwks',
+        ESIGN_SESSION_SECRET: 's',
+      })
     ).toBe('jwks');
   });
 
-  it('is the dev passthrough only with the explicit switch', () => {
-    expect(sessionSourceFromEnv({ ALLOW_INSECURE_DEV: 'true' })).toBe('insecure');
-    expect(sessionSourceFromEnv({ ALLOW_INSECURE_DEV: 'TRUE' })).toBeNull();
-    expect(sessionSourceFromEnv({})).toBeNull();
+  // Total: an unconfigured environment describes a source too, so no caller
+  // has to handle "no source"
+  it('is unverified when neither is configured', () => {
+    expect(sessionSourceFromEnv({})).toBe('unverified');
   });
 });
 
 describe('sessionVerifierFromEnv', () => {
-  afterEach(() => {
-    resetDevPassthroughWarning();
-    vi.restoreAllMocks();
-  });
+  afterEach(() => vi.restoreAllMocks());
 
-  it('refuses to build a verifier without a session source', () => {
-    expect(() => sessionVerifierFromEnv({})).toThrow(/no session verification/i);
+  it('builds a verifier for every environment, configured or not', () => {
+    expect(() => sessionVerifierFromEnv({})).not.toThrow();
   });
 
   describe('HS256', () => {
-    const verifier = () => sessionVerifierFromEnv({ SESSION_HS256_SECRET: HS256_SECRET });
+    const verifier = () =>
+      sessionVerifierFromEnv({ ESIGN_SESSION_SECRET: HS256_SECRET }, silentLogger());
 
     it('returns the sub of a valid token', async () => {
       await expect(verifier()(await signHs256({ sub: 'user-123' }))).resolves.toBe('user-123');
-    });
-
-    it('accepts the JWT_SECRET alias for the same secret', async () => {
-      const aliased = sessionVerifierFromEnv({ JWT_SECRET: HS256_SECRET });
-      await expect(aliased(await signHs256({ sub: 'user-123' }))).resolves.toBe('user-123');
     });
 
     it('rejects an expired token', async () => {
@@ -100,22 +96,25 @@ describe('sessionVerifierFromEnv', () => {
       await expect(verifier()(await signHs256({ sub: 42 }))).resolves.toBeNull();
     });
 
-    it('reads the user id from SESSION_USER_CLAIM when set', async () => {
-      const claimed = sessionVerifierFromEnv({
-        SESSION_HS256_SECRET: HS256_SECRET,
-        SESSION_USER_CLAIM: 'uid',
-      });
+    it('reads the user id from ESIGN_SESSION_USER_CLAIM when set', async () => {
+      const claimed = sessionVerifierFromEnv(
+        { ESIGN_SESSION_SECRET: HS256_SECRET, ESIGN_SESSION_USER_CLAIM: 'uid' },
+        silentLogger()
+      );
       await expect(claimed(await signHs256({ sub: 'ignored', uid: 'user-9' }))).resolves.toBe(
         'user-9'
       );
     });
 
-    it('enforces SESSION_ISSUER and SESSION_AUDIENCE', async () => {
-      const strict = sessionVerifierFromEnv({
-        SESSION_HS256_SECRET: HS256_SECRET,
-        SESSION_ISSUER: 'https://id.example.com',
-        SESSION_AUDIENCE: 'esign',
-      });
+    it('enforces ESIGN_SESSION_ISSUER and ESIGN_SESSION_AUDIENCE', async () => {
+      const strict = sessionVerifierFromEnv(
+        {
+          ESIGN_SESSION_SECRET: HS256_SECRET,
+          ESIGN_SESSION_ISSUER: 'https://id.example.com',
+          ESIGN_SESSION_AUDIENCE: 'esign',
+        },
+        silentLogger()
+      );
       const good = await signHs256({
         sub: 'user-123',
         iss: 'https://id.example.com',
@@ -162,14 +161,14 @@ describe('sessionVerifierFromEnv', () => {
 
     it('returns the sub of a token signed by a key in the set', async () => {
       const { sign } = await withKeys();
-      const verify = sessionVerifierFromEnv({ SESSION_JWKS_URL: JWKS_URL });
+      const verify = sessionVerifierFromEnv({ ESIGN_SESSION_JWKS_URL: JWKS_URL }, silentLogger());
 
       await expect(verify(await sign({ sub: 'user-123' }))).resolves.toBe('user-123');
     });
 
     it('caches the key set across calls (one fetch for two tokens)', async () => {
       const { sign, fetchStub } = await withKeys();
-      const verify = sessionVerifierFromEnv({ SESSION_JWKS_URL: JWKS_URL });
+      const verify = sessionVerifierFromEnv({ ESIGN_SESSION_JWKS_URL: JWKS_URL }, silentLogger());
 
       await verify(await sign({ sub: 'user-1' }));
       await verify(await sign({ sub: 'user-2' }));
@@ -193,7 +192,10 @@ describe('sessionVerifierFromEnv', () => {
         'fetch',
         vi.fn(async () => new Response(JSON.stringify({ keys: [otherJwk] })))
       );
-      const otherVerify = sessionVerifierFromEnv({ SESSION_JWKS_URL: JWKS_URL });
+      const otherVerify = sessionVerifierFromEnv(
+        { ESIGN_SESSION_JWKS_URL: JWKS_URL },
+        silentLogger()
+      );
 
       await expect(otherVerify(token)).resolves.toBeNull();
     });
@@ -203,29 +205,150 @@ describe('sessionVerifierFromEnv', () => {
         'fetch',
         vi.fn(async () => new Response('nope', { status: 500 }))
       );
-      const verify = sessionVerifierFromEnv({ SESSION_JWKS_URL: JWKS_URL });
+      const verify = sessionVerifierFromEnv({ ESIGN_SESSION_JWKS_URL: JWKS_URL }, silentLogger());
 
       await expect(verify('a.b.c')).resolves.toBeNull();
     });
   });
 
-  describe('dev passthrough', () => {
-    it('treats the bearer token as the user id and warns once', async () => {
+  describe('unverified', () => {
+    // Silently: the boot banner said this once already, so a per-request
+    // warning would only be noise a deployment cannot act on
+    it('treats the bearer token as the user id, without logging', async () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const verify = sessionVerifierFromEnv({ ALLOW_INSECURE_DEV: 'true' });
+      const verify = sessionVerifierFromEnv({});
 
       await expect(verify('local-dev-user')).resolves.toBe('local-dev-user');
       await expect(verify('another-user')).resolves.toBe('another-user');
 
-      expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('ALLOW_INSECURE_DEV'));
+      expect(warn).not.toHaveBeenCalled();
     });
 
     it('still refuses an empty token', async () => {
-      vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const verify = sessionVerifierFromEnv({ ALLOW_INSECURE_DEV: 'true' });
-
-      await expect(verify('')).resolves.toBeNull();
+      await expect(sessionVerifierFromEnv({})('')).resolves.toBeNull();
     });
+  });
+});
+
+// Why a token was rejected. All of these used to collapse into the same
+// silent 401, which is what made ESIGN_SESSION_* effectively unconfigurable.
+describe('describeRejection', () => {
+  const joseError = (code: string, extra: Record<string, unknown> = {}) =>
+    Object.assign(new Error(code), { code, ...extra });
+
+  it('names both sides of an issuer mismatch', () => {
+    expect(
+      describeRejection(joseError('ERR_JWT_CLAIM_VALIDATION_FAILED', { claim: 'iss' }), {
+        ESIGN_SESSION_ISSUER: 'https://id.example.com',
+      })
+    ).toEqual({
+      cause: 'issuer',
+      detail: expect.stringContaining('"https://id.example.com"'),
+    });
+  });
+
+  it('mentions the trailing slash, because that is usually the bug', () => {
+    const { detail } = describeRejection(
+      joseError('ERR_JWT_CLAIM_VALIDATION_FAILED', { claim: 'iss' }),
+      { ESIGN_SESSION_ISSUER: 'https://id.example.com' }
+    );
+    expect(detail).toContain('trailing slash');
+  });
+
+  it('names the audience variable on an audience mismatch', () => {
+    expect(
+      describeRejection(joseError('ERR_JWT_CLAIM_VALIDATION_FAILED', { claim: 'aud' }), {
+        ESIGN_SESSION_AUDIENCE: 'esign',
+      })
+    ).toMatchObject({
+      cause: 'audience',
+      detail: expect.stringContaining('ESIGN_SESSION_AUDIENCE'),
+    });
+  });
+
+  it('names a missing required claim', () => {
+    expect(
+      describeRejection(joseError('ERR_JWT_CLAIM_VALIDATION_FAILED', { claim: 'exp' }), {})
+    ).toMatchObject({ cause: 'claim', detail: expect.stringContaining('exp') });
+  });
+
+  it('falls back to exp when jose names no claim', () => {
+    expect(describeRejection(joseError('ERR_JWT_CLAIM_VALIDATION_FAILED'), {})).toMatchObject({
+      cause: 'claim',
+    });
+  });
+
+  it('calls an expired token expired', () => {
+    expect(describeRejection(joseError('ERR_JWT_EXPIRED'), {}).cause).toBe('expired');
+  });
+
+  it.each(['ERR_JWS_SIGNATURE_VERIFICATION_FAILED', 'ERR_JWS_INVALID', 'ERR_JWT_INVALID'])(
+    'calls %s a signature failure',
+    (code) => {
+      expect(describeRejection(joseError(code), {}).cause).toBe('signature');
+    }
+  );
+
+  it('points at the key set when no key matches the kid', () => {
+    expect(describeRejection(joseError('ERR_JWKS_NO_MATCHING_KEY'), {})).toMatchObject({
+      cause: 'signature',
+      detail: expect.stringContaining('ESIGN_SESSION_JWKS_URL'),
+    });
+  });
+
+  it.each(['ERR_JWKS_TIMEOUT', 'ERR_JWKS_MULTIPLE_MATCHING_KEYS'])(
+    'calls %s an unreachable key set',
+    (code) => {
+      expect(describeRejection(joseError(code), {}).cause).toBe('unreachable');
+    }
+  );
+
+  it('describes something that is not a jose error at all', () => {
+    expect(describeRejection('boom', {})).toEqual({ cause: 'signature', detail: 'boom' });
+  });
+});
+
+describe('the verifier telling an operator why', () => {
+  it('logs each distinct cause once, and still answers null', async () => {
+    const logger = silentLogger();
+    const verify = sessionVerifierFromEnv({ ESIGN_SESSION_SECRET: HS256_SECRET }, logger);
+
+    await expect(verify('not-a-token')).resolves.toBeNull();
+    await expect(verify('also-not-a-token')).resolves.toBeNull();
+
+    // Once: a client retrying a bad token must not flood the log
+    expect(logger.warn).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('token rejected'));
+  });
+
+  it('logs a second, different cause', async () => {
+    const logger = silentLogger();
+    const verify = sessionVerifierFromEnv({ ESIGN_SESSION_SECRET: HS256_SECRET }, logger);
+
+    await verify('not-a-token');
+    await verify(await signHs256({ sub: 'u1' }, { expiresIn: 'none' }));
+
+    expect(logger.warn).toHaveBeenCalledTimes(2);
+  });
+
+  it('names the claim variable when the user id is not where it looked', async () => {
+    const logger = silentLogger();
+    const verify = sessionVerifierFromEnv({ ESIGN_SESSION_SECRET: HS256_SECRET }, logger);
+
+    await expect(verify(await signHs256({ uid: 'u1' }))).resolves.toBeNull();
+
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('ESIGN_SESSION_USER_CLAIM'));
+    // Once only, like every other cause
+    await verify(await signHs256({ uid: 'u2' }));
+    expect(logger.warn).toHaveBeenCalledTimes(1);
+  });
+
+  it('says nothing when a token verifies', async () => {
+    const logger = silentLogger();
+    const verify = sessionVerifierFromEnv({ ESIGN_SESSION_SECRET: HS256_SECRET }, logger);
+
+    await expect(verify(await signHs256({ sub: 'u1' }))).resolves.toBe('u1');
+
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 });

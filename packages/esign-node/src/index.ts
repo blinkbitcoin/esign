@@ -27,7 +27,7 @@ export type { ESignGraphQLOptions, GraphQLContext } from './graphql';
 export { createESignGraphQL, typeDefs } from './graphql';
 export type {
   EnvelopeAppOptions,
-  EnvelopeAppTermsInput,
+  EnvelopeAppPrefillInput,
   EnvelopeHandlerOptions,
   EnvelopeInstanceHandlerOptions,
   EnvelopeInstanceResult,
@@ -102,15 +102,9 @@ export type { Logger } from './log';
 export { consoleLogger, sanitizeForLog } from './log';
 export type { MockFormButton, MockFormField, MockFormPage } from './pages';
 export { renderMockFormPage, renderMockSigningPage } from './pages';
-// --- Production boot guard ---------------------------------------------------
-export type { ProductionConfig } from './production';
-export {
-  assertProductionConfig,
-  ESIGN_ALLOW_DEMO,
-  ESIGN_ENV,
-  ProductionConfigError,
-  productionErrors,
-} from './production';
+// --- Demo settings -----------------------------------------------------------
+export type { DemoConfig } from './production';
+export { demoSettings } from './production';
 export type {
   ESignProvider,
   HostedFormMint,

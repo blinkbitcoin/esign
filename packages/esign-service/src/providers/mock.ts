@@ -15,9 +15,9 @@ import { createProvider as createDocuSignProvider } from './docusign';
 export type MockHandle = ReturnType<typeof createMockProvider>;
 
 // Where the mock's pages are served: this service, on the port it was told
-// to listen on (MOCK_PAGES_ORIGIN overrides, for a host behind a proxy).
+// to listen on (ESIGN_MOCK_PAGES_ORIGIN overrides, for a host behind a proxy).
 export const createMock = (env: Env = process.env): MockHandle =>
   createMockProvider({
-    baseUrl: () => env.MOCK_PAGES_ORIGIN || localOrigin(env),
+    baseUrl: () => env.ESIGN_MOCK_PAGES_ORIGIN || localOrigin(env),
     webhook: createDocuSignProvider(env),
   });

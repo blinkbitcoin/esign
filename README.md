@@ -35,9 +35,9 @@ signer should land on the agreement itself - both lock fields, both need
 one call on your backend and no database. A document workflow with
 per-recipient sessions, restarts and status tracking: mode 3 with a
 database. **Reading path for locked terms:**
-[docs/integration/locked-terms.md](docs/integration/locked-terms.md) (the
+[docs/integration/locked-prefill.md](docs/integration/locked-prefill.md) (the
 Web Forms recipe, backend + app) or
-[docs/integration/locked-terms-envelopes.md](docs/integration/locked-terms-envelopes.md)
+[docs/integration/locked-prefill-envelopes.md](docs/integration/locked-prefill-envelopes.md)
 (the envelope recipe) → [docs/integration/docusign-lessons.md](docs/integration/docusign-lessons.md)
 (the rules, one page) → [docs/integration/webforms.md](docs/integration/webforms.md)
 (the details) → [`examples/mint-only-demo`](examples/mint-only-demo/README.md)
@@ -47,7 +47,7 @@ Web Forms recipe, backend + app) or
 
 | You are | Your path |
 |---------|-----------|
-| **App developer /<br>integrator** | [Integration](#integration) - the three modes, same component<br>[consuming.md](docs/integration/consuming.md) - registry setup and the minimal install<br>[locked-terms.md](docs/integration/locked-terms.md) - the mode 2 recipe, backend + app |
+| **App developer /<br>integrator** | [Integration](#integration) - the three modes, same component<br>[consuming.md](docs/integration/consuming.md) - registry setup and the minimal install<br>[locked-prefill.md](docs/integration/locked-prefill.md) - the mode 2 recipe, backend + app |
 | **Backend<br>developer** | [The in-process mint preset](packages/esign-node/README.md#the-http-surface-blinkbitcoinesign-nodeexpress) - routes in your own API<br>[`examples/mint-only-demo`](examples/mint-only-demo/README.md) - a runnable API that mints<br>[Runbook: backend developer](docs/operations/production.md#3-backend-developer) - what to build once |
 | **DevOps<br>engineer** | [Backend options](#backend-options) - the two tiers, side by side<br>[Deploy table](packages/esign-service/README.md#deploy) - the copy-paste per target<br>[Runbook: DevOps](docs/operations/production.md#4-devops) - env, keys, boot guard, health |
 
@@ -120,7 +120,7 @@ const source = createWebFormsSource({
 Completion reaches the app through the instance's return URL: your backend
 serves the small bridge page (`renderSigningReturnBridge`) that the
 component listens to - no DocuSign.js, works in a plain WebView. The whole
-recipe, backend and app: [docs/integration/locked-terms.md](docs/integration/locked-terms.md).
+recipe, backend and app: [docs/integration/locked-prefill.md](docs/integration/locked-prefill.md).
 
 Modes 1 and 2 import from the `/webform` subpath, which is **Apollo-free by
 construction** (a guard test walks the import graph to keep it that way).
@@ -206,7 +206,7 @@ tiers to choose between. **The app code is identical for both** - the same
 | Tier | What you run | What your API must provide | Capabilities | Copy-paste |
 |------|--------------|----------------------------|--------------|------------|
 | **In-process**<br>`@blinkbitcoin/esign-node` | The package inside<br>your own Node API<br>(router or Fetch<br>handler) | Your own session check<br>(`authenticate`), and the<br>locked terms from the<br>`prefill` hook - which can<br>reject a mint by throwing<br>`Errors.validationError` | Mint; the envelope<br>domain too, over<br>your own store | [The mint-only preset](packages/esign-node/README.md#mint-only-the-whole-surface-in-three-lines) |
-| **Deployable**<br>`@blinkbitcoin/esign-service` | The package or the<br>`ghcr.io/blinkbitcoin/esign-service`<br>image, as a function<br>or a container | `SESSION_JWKS_URL` or<br>`SESSION_HS256_SECRET`<br>(who the caller is), plus<br>`TERMS_URL` when the<br>locked terms come from<br>your data | Mint always on;<br>envelopes, webhooks<br>and GraphQL with<br>`DATABASE_URL` | [Deploy table](packages/esign-service/README.md#deploy) |
+| **Deployable**<br>`@blinkbitcoin/esign-service` | The package or the<br>`ghcr.io/blinkbitcoin/esign-service`<br>image, as a function<br>or a container | `ESIGN_SESSION_JWKS_URL` or<br>`ESIGN_SESSION_SECRET`<br>(who the caller is), plus<br>`ESIGN_PREFILL_URL` when the<br>locked terms come from<br>your data | Mint always on;<br>envelopes, webhooks<br>and GraphQL with<br>`DATABASE_URL` | [Deploy table](packages/esign-service/README.md#deploy) |
 
 **Mode 2 needs no database with the service**: the mint is always on, and
 `DATABASE_URL` only adds the envelope half. Deploy targets are a Node
@@ -311,7 +311,7 @@ environment variables, and troubleshooting.
 ## Documentation and contributing
 
 - [docs/index.md](docs/index.md) - the map of every page, by what you are doing
-- [docs/integration/](docs/integration/consuming.md) - using the packages: registry, the three modes, [locked terms](docs/integration/locked-terms.md), [error codes](docs/integration/error-codes.md), DocuSign
+- [docs/integration/](docs/integration/consuming.md) - using the packages: registry, the three modes, [locked terms](docs/integration/locked-prefill.md), [error codes](docs/integration/error-codes.md), DocuSign
 - [docs/architecture/](docs/architecture/source-tree.md) - how it works inside, [security](docs/architecture/security.md), the [nine diagrams](docs/diagrams/README.md)
 - [docs/operations/](docs/operations/live-e2e-ci.md) - the live DocuSign job in CI; [releasing](docs/releasing.md) and [upgrading](docs/upgrading.md)
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Conventional Commits (enforced by hooks and CI), the quality gates, the PR checklist

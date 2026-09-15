@@ -68,7 +68,7 @@ make docusign-env ACCOUNT_ID=… INTEGRATION_KEY=… USER_ID=… TEMPLATE_ID=…
 make docusign-check
 ```
 
-`docusign-env` deliberately writes no `JWT_SECRET`: with `ALLOW_INSECURE_DEV`
+`docusign-env` deliberately writes no `ESIGN_SESSION_SECRET`: with no session source
 the bearer token is the user id, which the live specs rely on. The template
 id is required by the service config even for Web Forms; the fixture form's
 own template is not listed under My Templates, any template works for the

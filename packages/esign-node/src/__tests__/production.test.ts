@@ -1,108 +1,66 @@
-// The production boot guard: what ESIGN_ENV=production refuses, and the one
-// explicit override. Provider-agnostic - the caller says which provider it
-// selected and which demo settings that provider still uses.
+// Demo settings are described, never judged: the same configuration
+// describes the same way whatever the deployment claims to be, because this
+// library cannot tell a staging deployment on the sandbox (correct) from a
+// production one (a mistake). The service decides what to do with the answer.
 
-import {
-  assertProductionConfig,
-  ESIGN_ALLOW_DEMO,
-  ESIGN_ENV,
-  ProductionConfigError,
-  productionErrors,
-} from '../production';
+import { demoSettings } from '../production';
 
-const production = { [ESIGN_ENV]: 'production' };
+describe('demoSettings', () => {
+  it('is empty for a real provider on real hosts', () => {
+    expect(demoSettings({ provider: 'docusign', demoHosts: [] })).toEqual([]);
+  });
 
-describe('productionErrors', () => {
-  it.each([
-    ['unset ESIGN_ENV', {}, { provider: 'mock', demo: true }, []],
-    [
-      'ESIGN_ENV=development',
-      { [ESIGN_ENV]: 'development' },
-      { provider: 'mock', demo: true },
-      [],
-    ],
-    [
-      'NODE_ENV=production alone (never the gate)',
-      { NODE_ENV: 'production' },
-      { provider: 'mock', demo: true },
-      [],
-    ],
-    [
-      'production with a real provider on real hosts',
-      production,
-      { provider: 'docusign', demoHosts: [] },
-      [],
-    ],
-    [
-      'production with a demo provider',
-      production,
-      { provider: 'mock', demo: true },
-      ['ESIGN_ENV=production: the mock provider is a demo provider'],
-    ],
-    [
-      'production with demo hosts',
-      production,
-      {
+  it('is empty when no demo settings are declared at all', () => {
+    expect(demoSettings({ provider: 'docusign' })).toEqual([]);
+  });
+
+  it('names a demo provider', () => {
+    expect(demoSettings({ provider: 'mock', demo: true })).toEqual([
+      'the mock provider is a demo provider',
+    ]);
+  });
+
+  it('names each demo host, in the order given', () => {
+    expect(
+      demoSettings({
         provider: 'docusign',
         demoHosts: [
           'DOCUSIGN_BASE_URL=https://demo.docusign.net/restapi',
           'DOCUSIGN_OAUTH_URL=https://account-d.docusign.com',
         ],
-      },
-      [
-        'ESIGN_ENV=production: DOCUSIGN_BASE_URL=https://demo.docusign.net/restapi is a demo host',
-        'ESIGN_ENV=production: DOCUSIGN_OAUTH_URL=https://account-d.docusign.com is a demo host',
-      ],
-    ],
-    [
-      'ESIGN_ALLOW_DEMO=true bypasses everything',
-      { ...production, [ESIGN_ALLOW_DEMO]: 'true' },
-      { provider: 'mock', demo: true, demoHosts: ['DOCUSIGN_BASE_URL=x'] },
-      [],
-    ],
-    [
-      'ESIGN_ALLOW_DEMO=false is not a bypass',
-      { ...production, [ESIGN_ALLOW_DEMO]: 'false' },
-      { provider: 'mock', demo: true },
-      ['ESIGN_ENV=production: the mock provider is a demo provider'],
-    ],
-  ])('%s', (_case, env, config, expected) => {
-    expect(productionErrors(env, config)).toEqual(expected);
+      }),
+    ).toEqual([
+      'DOCUSIGN_BASE_URL=https://demo.docusign.net/restapi is a demo host',
+      'DOCUSIGN_OAUTH_URL=https://account-d.docusign.com is a demo host',
+    ]);
   });
 
-  it('names both the variable it gates on and the override', () => {
-    expect(ESIGN_ENV).toBe('ESIGN_ENV');
-    expect(ESIGN_ALLOW_DEMO).toBe('ESIGN_ALLOW_DEMO');
-  });
-});
-
-describe('assertProductionConfig', () => {
-  it('passes silently when there is nothing to report', () => {
-    expect(() =>
-      assertProductionConfig(production, { provider: 'docusign' }),
-    ).not.toThrow();
-  });
-
-  it('throws a ProductionConfigError listing every problem and the override', () => {
-    try {
-      assertProductionConfig(production, {
+  it('names the provider and its hosts together', () => {
+    expect(
+      demoSettings({
         provider: 'mock',
         demo: true,
         demoHosts: ['DOCUSIGN_BASE_URL=https://demo.docusign.net/restapi'],
-      });
-      throw new Error('did not throw');
-    } catch (error) {
-      expect(error).toBeInstanceOf(ProductionConfigError);
-      expect((error as ProductionConfigError).errors).toEqual([
-        'ESIGN_ENV=production: the mock provider is a demo provider',
-        'ESIGN_ENV=production: DOCUSIGN_BASE_URL=https://demo.docusign.net/restapi is a demo host',
+      }),
+    ).toEqual([
+      'the mock provider is a demo provider',
+      'DOCUSIGN_BASE_URL=https://demo.docusign.net/restapi is a demo host',
+    ]);
+  });
+
+  // The regression this file exists for: the old guard read ESIGN_ENV and
+  // ESIGN_ALLOW_DEMO and threw. Nothing here reads an environment at all, so
+  // no deployment can be refused by this package for how it is labelled.
+  it('reads no environment', () => {
+    const before = { ...process.env };
+    process.env.ESIGN_ENV = 'production';
+    process.env.ESIGN_ALLOW_DEMO = 'false';
+    try {
+      expect(demoSettings({ provider: 'mock', demo: true })).toEqual([
+        'the mock provider is a demo provider',
       ]);
-      expect((error as Error).name).toBe('ProductionConfigError');
-      expect((error as Error).message).toBe(
-        'ESIGN_ENV=production: the mock provider is a demo provider; ' +
-          'ESIGN_ENV=production: DOCUSIGN_BASE_URL=https://demo.docusign.net/restapi is a demo host. ' +
-          'Set ESIGN_ALLOW_DEMO=true to allow demo settings in production.',
-      );
+    } finally {
+      process.env = before;
     }
   });
 });

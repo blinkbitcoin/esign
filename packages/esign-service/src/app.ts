@@ -17,23 +17,29 @@
 // The host's two obligations are the two hooks:
 //   - session verification (JWKS or a shared secret) turns the caller's
 //     bearer token into the user id the mint locks the instance to
-//   - TERMS_URL computes what is actually minted (for an envelope, who signs
-//     it too), so a client value can never become a locked one unless the
-//     deployment opts in with ESIGN_ALLOW_CLIENT_PREFILL
+//   - ESIGN_PREFILL_URL computes what is actually minted (for an envelope, who
+//     signs it too), so a client value never becomes a locked one. Unset, the
+//     client's own prefill is minted - reported at boot, refused by
+//     ESIGN_STRICT
 
-import { bearerToken } from '@blinkbitcoin/esign-node';
+import { bearerToken, consoleLogger, type Logger } from '@blinkbitcoin/esign-node';
 
 import { type Capability, ENVELOPES, mockPagesEnabled } from './capabilities';
-import { ESIGN_ENV, getAllowedOrigins, type Runtime, validateConfig } from './config';
+import { getAllowedOrigins, type Runtime, validateConfig } from './config';
+
+// Apollo's schema discovery. Off unless asked for: a deployment that wants
+// it says so, rather than it following from how the environment is labelled.
+export const ESIGN_GRAPHQL_INTROSPECTION = 'ESIGN_GRAPHQL_INTROSPECTION';
+
 import type { Env } from './env';
 import type { LoadEnvelopes } from './envelopes';
-import { isTermsFailure, mintModeFromEnv } from './mint';
+import { isPrefillFailure, mintModeFromEnv } from './mint';
+import { PREFILL_FAILURE_MESSAGE, prefillConfigFromEnv } from './prefill';
 import { type MockPrefillLookup, selectProvider } from './providers';
 import { mockPageResponse } from './providers/pages';
 import type { ESignProvider } from './providers/port';
 import { trustsProxy } from './proxy';
 import { sessionVerifierFromEnv } from './session';
-import { TERMS_FAILURE_MESSAGE, termsConfigFromEnv } from './terms';
 
 const HEALTH_PATH = '/health';
 const WEBHOOK_PATH = '/webhook/esign';
@@ -52,6 +58,9 @@ export const SECURITY_HEADERS: Record<string, string> = {
 };
 
 export interface ESignAppDeps {
+  // Where the boot banner goes (default: the console). Injected so tests
+  // stay silent and so a host can route it into its own logging.
+  logger?: Logger;
   // The provider to mint with (default: ESIGN_PROVIDER over this service's
   // registry)
   provider?: ESignProvider;
@@ -62,7 +71,7 @@ export interface ESignAppDeps {
   // envelopes passes `() => import('./envelopes.js')`; the Cloudflare entry
   // passes nothing, and a DATABASE_URL it cannot honour is a boot error.
   loadEnvelopes?: LoadEnvelopes;
-  // The fetch the TERMS_URL callback uses (default: the platform's)
+  // The fetch the ESIGN_PREFILL_URL callback uses (default: the platform's)
   fetch?: typeof globalThis.fetch;
   // The target this app runs on (default 'node'); the boot guard refuses a
   // configuration the runtime cannot serve
@@ -113,15 +122,15 @@ export const withDefaults = (response: Response, headers: Record<string, string>
 export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}): ESignApp => {
   // Fail closed before anything is constructed: one message, every problem,
   // and the capabilities that were on.
-  const capabilities = validateConfig(env, { runtime: deps.runtime });
+  const capabilities = validateConfig(env, { runtime: deps.runtime, logger: deps.logger });
 
   const selected = deps.provider
     ? { provider: deps.provider, mockPrefill: deps.mockPrefill }
     : selectProvider(env);
   const provider = selected.provider;
-  const verify = sessionVerifierFromEnv(env);
+  const verify = sessionVerifierFromEnv(env, deps.logger ?? consoleLogger);
   const origins = getAllowedOrigins(env);
-  const terms = termsConfigFromEnv(env);
+  const terms = prefillConfigFromEnv(env);
   const mockPages = mockPagesEnabled(env);
   const mode = mintModeFromEnv(env);
 
@@ -143,7 +152,7 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
       env,
       provider,
       authenticate,
-      introspection: env[ESIGN_ENV] !== 'production',
+      introspection: env[ESIGN_GRAPHQL_INTROSPECTION] === 'true',
       trustProxy: trustsProxy(env),
     })
   );
@@ -222,8 +231,8 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
 
       const response = await route(request, url);
 
-      if (response.status === 502 && isTermsFailure(request)) {
-        return withDefaults(json({ error: TERMS_FAILURE_MESSAGE }, 502, cors), SECURITY_HEADERS);
+      if (response.status === 502 && isPrefillFailure(request)) {
+        return withDefaults(json({ error: PREFILL_FAILURE_MESSAGE }, 502, cors), SECURITY_HEADERS);
       }
 
       return withDefaults(withDefaults(response, cors), SECURITY_HEADERS);

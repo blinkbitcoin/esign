@@ -106,9 +106,13 @@ codegen: ## Regenerate schema.graphql + client types from the backend SDL
 diagrams-check: ## Fail if docs/diagrams/README.md is stale relative to src/*.mmd (what CI runs)
 	bash scripts/ci/diagrams-check.sh
 
-docs-check: ## Warn when architecture-relevant changes (vs origin/main) ship without a docs/ update; fail on stale diagram SVGs
+docs-check: ## Warn when architecture-relevant changes (vs origin/main) ship without a docs/ update; fail on stale diagram SVGs or env docs
 	bash scripts/ci/docs-freshness.sh
 	node scripts/ci/docs-tables.mjs
+	npx tsx scripts/ci/env-docs.mjs --check
+
+env-docs: ## Regenerate the env tables and .env.example from src/env/registry.ts
+	npx tsx scripts/ci/env-docs.mjs
 
 codeql: ## GitHub's CodeQL analysis here (LOCAL ONLY - CI runs it on GitHub): codeql.yml's suite + inline-marker suppression, findings with rule ids in .codeql/
 	bash scripts/codeql-local.sh

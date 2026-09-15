@@ -17,7 +17,16 @@ vi.mock('../src/store', async () => {
 
 import { createESignApp } from '../src/app';
 import { createStore } from '../src/store';
-import { asJson, get, options, post, silently, testApp, testFullApp } from './support/app';
+import {
+  asJson,
+  get,
+  options,
+  post,
+  silentLogger,
+  silently,
+  testApp,
+  testFullApp,
+} from './support/app';
 import { memoryStore as store } from './support/store';
 
 const mintHeaders = { authorization: 'Bearer user-1' };
@@ -82,8 +91,17 @@ describe('capabilities', () => {
     expect(await asJson(response)).toEqual({ error: 'Not found' });
   });
 
-  it('refuses to construct when the configuration is wrong', () => {
-    expect(() => createESignApp({ ESIGN_PROVIDER: 'mock' })).toThrow(/Refusing to start/);
+  // The vanilla deploy: nothing but a provider, and it starts
+  it('constructs with nothing configured beyond the provider', () => {
+    expect(() =>
+      createESignApp({ ESIGN_PROVIDER: 'mock' }, { logger: silentLogger() })
+    ).not.toThrow();
+  });
+
+  it('refuses to construct when the configuration is actually broken', () => {
+    expect(() =>
+      createESignApp({ ESIGN_PROVIDER: 'docusign' }, { logger: silentLogger() })
+    ).toThrow(/Refusing to start/);
   });
 
   it('refuses a database it was not built to serve (no envelope module)', async () => {
@@ -92,7 +110,6 @@ describe('capabilities', () => {
     await silently(() =>
       expect(() =>
         createESignApp({
-          ALLOW_INSECURE_DEV: 'true',
           ESIGN_PROVIDER: 'mock',
           DATABASE_URL: 'postgres://u@h/db',
         })
@@ -103,7 +120,7 @@ describe('capabilities', () => {
   it('refuses envelope orchestration on the edge runtime', () => {
     expect(() =>
       createESignApp(
-        { ALLOW_INSECURE_DEV: 'true', ESIGN_PROVIDER: 'mock', DATABASE_URL: 'postgres://u@h/db' },
+        { ESIGN_PROVIDER: 'mock', DATABASE_URL: 'postgres://u@h/db' },
         { runtime: 'edge' }
       )
     ).toThrow(/cannot open a Postgres connection/);
@@ -128,7 +145,7 @@ describe('the mint', () => {
   });
 
   it('verifies the session rather than trusting the token, when a secret is configured', async () => {
-    const app = testApp({ ALLOW_INSECURE_DEV: undefined, SESSION_HS256_SECRET: 'a-secret' });
+    const app = testApp({ ESIGN_SESSION_SECRET: 'a-secret' });
 
     const response = await post(app, '/webform/instance', { prefill: {} }, mintHeaders);
     expect(response.status).toBe(401);
@@ -136,13 +153,13 @@ describe('the mint', () => {
 });
 
 describe('locked terms', () => {
-  const TERMS_URL = 'https://host.example.com/terms';
+  const ESIGN_PREFILL_URL = 'https://host.example.com/terms';
 
   it('mints the terms the host computed, not the values the client sent', async () => {
     const termsFetch = vi.fn(
       async () => new Response(JSON.stringify({ prefill: { total_usd: '1000.00' } }))
     );
-    const app = testApp({ TERMS_URL }, { fetch: termsFetch });
+    const app = testApp({ ESIGN_PREFILL_URL }, { fetch: termsFetch });
 
     const response = await post(
       app,
@@ -162,7 +179,7 @@ describe('locked terms', () => {
   it('answers 502 with the terms message when the callback fails', async () => {
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
     const termsFetch = vi.fn(async () => new Response('nope', { status: 500 }));
-    const app = testApp({ TERMS_URL }, { fetch: termsFetch });
+    const app = testApp({ ESIGN_PREFILL_URL }, { fetch: termsFetch });
 
     const response = await post(app, '/webform/instance', { prefill: {} }, mintHeaders);
 
@@ -173,7 +190,7 @@ describe('locked terms', () => {
 
   it('keeps the generic 502 for a provider failure', async () => {
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
-    // No TERMS_URL, so nothing can be blamed on the callback: a provider
+    // No ESIGN_PREFILL_URL, so nothing can be blamed on the callback: a provider
     // failure keeps the mint's own generic message
     const failing = testApp(
       {},
@@ -194,10 +211,10 @@ describe('locked terms', () => {
 });
 
 describe('CORS', () => {
-  const CORS_ALLOWED_ORIGINS = 'https://app.example.com';
+  const ESIGN_CORS_ALLOWED_ORIGINS = 'https://app.example.com';
 
   it('answers the mint preflight for an allow-listed origin', async () => {
-    const response = await options(testApp({ CORS_ALLOWED_ORIGINS }), '/webform/instance', {
+    const response = await options(testApp({ ESIGN_CORS_ALLOWED_ORIGINS }), '/webform/instance', {
       origin: 'https://app.example.com',
     });
 
@@ -207,7 +224,7 @@ describe('CORS', () => {
   });
 
   it('answers the GraphQL preflight and marks the answer', async () => {
-    const app = testFullApp({ CORS_ALLOWED_ORIGINS });
+    const app = testFullApp({ ESIGN_CORS_ALLOWED_ORIGINS });
 
     const preflight = await options(app, '/graphql', { origin: 'https://app.example.com' });
     expect(preflight.status).toBe(204);
@@ -224,7 +241,7 @@ describe('CORS', () => {
   });
 
   it('does not mark an answer for an origin outside the list', async () => {
-    const response = await get(testApp({ CORS_ALLOWED_ORIGINS }), '/health', {
+    const response = await get(testApp({ ESIGN_CORS_ALLOWED_ORIGINS }), '/health', {
       origin: 'https://evil.example.com',
     });
 
@@ -233,12 +250,12 @@ describe('CORS', () => {
   });
 
   it('varies on origin even when the caller sent none', async () => {
-    const response = await get(testApp({ CORS_ALLOWED_ORIGINS }), '/health');
+    const response = await get(testApp({ ESIGN_CORS_ALLOWED_ORIGINS }), '/health');
     expect(response.headers.get('vary')).toBe('origin');
   });
 
   it('allows any origin with a wildcard', async () => {
-    const response = await get(testApp({ CORS_ALLOWED_ORIGINS: '*' }), '/health', {
+    const response = await get(testApp({ ESIGN_CORS_ALLOWED_ORIGINS: '*' }), '/health', {
       origin: 'https://anywhere.example.com',
     });
     expect(response.headers.get('access-control-allow-origin')).toBe('*');
@@ -281,7 +298,7 @@ describe('the envelope mint', () => {
     recipient: { name: 'Test Signer', email: 'signer@example.test' },
     prefill: { total_usd: { value: '1000.00', locked: true } },
   };
-  const CORS_ALLOWED_ORIGINS = 'https://app.example.com';
+  const ESIGN_CORS_ALLOWED_ORIGINS = 'https://app.example.com';
   const envelopeApp = (
     env: Record<string, string> = {},
     deps: Parameters<typeof testApp>[1] = {}
@@ -304,7 +321,7 @@ describe('the envelope mint', () => {
 
   it('carries the security headers and the CORS answer like every other route', async () => {
     const response = await post(
-      envelopeApp({ CORS_ALLOWED_ORIGINS }),
+      envelopeApp({ ESIGN_CORS_ALLOWED_ORIGINS }),
       '/envelope/instance',
       signing,
       {
@@ -318,9 +335,13 @@ describe('the envelope mint', () => {
   });
 
   it('answers its own preflight for an allow-listed origin', async () => {
-    const response = await options(envelopeApp({ CORS_ALLOWED_ORIGINS }), '/envelope/instance', {
-      origin: 'https://app.example.com',
-    });
+    const response = await options(
+      envelopeApp({ ESIGN_CORS_ALLOWED_ORIGINS }),
+      '/envelope/instance',
+      {
+        origin: 'https://app.example.com',
+      }
+    );
 
     expect(response.status).toBe(204);
     expect(response.headers.get('access-control-allow-origin')).toBe('https://app.example.com');
@@ -374,7 +395,7 @@ describe('the envelope mint', () => {
         )
     );
     const app = envelopeApp(
-      { TERMS_URL: 'https://host.example.com/terms' },
+      { ESIGN_PREFILL_URL: 'https://host.example.com/terms' },
       { fetch: termsFetch, provider: { createEnvelope } as never }
     );
 
@@ -392,7 +413,7 @@ describe('the envelope mint', () => {
   it('answers 502 with the terms message when the callback fails', async () => {
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
     const app = envelopeApp(
-      { TERMS_URL: 'https://host.example.com/terms' },
+      { ESIGN_PREFILL_URL: 'https://host.example.com/terms' },
       { fetch: vi.fn(async () => new Response('nope', { status: 500 })) }
     );
 
@@ -471,7 +492,9 @@ describe('the mock provider pages', () => {
   });
 
   it('can be switched off for the mock provider too', async () => {
-    expect((await get(testApp({ MOCK_PAGES: 'false' }), '/signing/mock/abc-123')).status).toBe(404);
+    expect(
+      (await get(testApp({ ESIGN_MOCK_PAGES: 'false' }), '/signing/mock/abc-123')).status
+    ).toBe(404);
   });
 });
 
@@ -605,7 +628,7 @@ describe('the envelope webhook', () => {
   });
 
   it('logs the client a trusted proxy reports', async () => {
-    const trusting = testFullApp({ DOCUSIGN_HMAC_KEY: HMAC_KEY, TRUST_PROXY: 'true' });
+    const trusting = testFullApp({ DOCUSIGN_HMAC_KEY: HMAC_KEY, ESIGN_TRUST_PROXY: 'true' });
     const body = payload('docusign-test-123');
 
     const response = await post(trusting, '/webhook/esign', body, {
@@ -623,7 +646,7 @@ describe('the envelope webhook', () => {
   });
 
   it('ignores a forwarded client the deployment does not trust', async () => {
-    // Without TRUST_PROXY the header is caller-controlled, so it must not
+    // Without ESIGN_TRUST_PROXY the header is caller-controlled, so it must not
     // reach the audit trail as if it were the caller's address
     errors.mockClear();
     const body = payload('docusign-test-123');
@@ -708,27 +731,25 @@ describe('the GraphQL API', () => {
     expect(response.headers.get('content-type')).toContain('text/html');
   });
 
-  it('allows introspection outside production', async () => {
+  // Off by default, and asked for by name: introspection no longer follows
+  // from how the deployment labels itself
+  it('disables introspection by default', async () => {
     const response = await post(app, '/graphql', {
       query: '{ __schema { queryType { name } } }',
     });
 
-    expect(await asJson<{ errors?: unknown }>(response)).not.toHaveProperty('errors');
+    expect(await asJson<{ errors?: unknown }>(response)).toHaveProperty('errors');
   });
 
-  it('disables introspection when ESIGN_ENV=production', async () => {
-    const production = testFullApp({
-      ESIGN_ENV: 'production',
-      ESIGN_ALLOW_DEMO: 'true',
-      ESIGN_ALLOW_CLIENT_PREFILL: 'true',
-    });
+  it('allows introspection when ESIGN_GRAPHQL_INTROSPECTION=true', async () => {
+    const introspectable = testFullApp({ ESIGN_GRAPHQL_INTROSPECTION: 'true' });
 
-    const response = await post(production, '/graphql', {
+    const response = await post(introspectable, '/graphql', {
       query: '{ __schema { queryType { name } } }',
     });
 
-    expect(await asJson<{ errors?: unknown }>(response)).toHaveProperty('errors');
-    await production.stop();
+    expect(await asJson<{ errors?: unknown }>(response)).not.toHaveProperty('errors');
+    await introspectable.stop();
   });
 
   it('surfaces a failure to build the capability on the first request that needs it', async () => {

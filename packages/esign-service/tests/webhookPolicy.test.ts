@@ -1,6 +1,6 @@
 // The service's webhook policy as wired into the DocuSign adapter: the key
 // is read from DOCUSIGN_HMAC_KEY on every call, and an unsigned webhook is
-// accepted only when ALLOW_INSECURE_DEV=true and no key is configured.
+// accepted only when no key is configured - there is nothing to check.
 
 import crypto from 'crypto';
 import { vi } from 'vitest';
@@ -16,7 +16,6 @@ const sign = (body: string, key: string): string =>
 describe('DocuSignProvider.verifyWebhook policy', () => {
   const body = '{"data":{"envelopeId":"e","envelopeSummary":{"status":"completed"}}}';
   const originalKey = process.env.DOCUSIGN_HMAC_KEY;
-  const originalDev = process.env.ALLOW_INSECURE_DEV;
   let errorSpy: ReturnType<typeof vi.spyOn>;
   let warnSpy: ReturnType<typeof vi.spyOn>;
 
@@ -30,8 +29,6 @@ describe('DocuSignProvider.verifyWebhook policy', () => {
     warnSpy.mockRestore();
     if (originalKey === undefined) delete process.env.DOCUSIGN_HMAC_KEY;
     else process.env.DOCUSIGN_HMAC_KEY = originalKey;
-    if (originalDev === undefined) delete process.env.ALLOW_INSECURE_DEV;
-    else process.env.ALLOW_INSECURE_DEV = originalDev;
   });
 
   it('reads the key per call: a key set after boot is enforced', () => {
@@ -48,13 +45,15 @@ describe('DocuSignProvider.verifyWebhook policy', () => {
     ).toBe(true);
   });
 
-  it('allows an unsigned webhook without a key only in insecure-dev mode', () => {
+  // No key configured means there is no signature to check - which the boot
+  // banner reported as an unverified webhook. A key that IS configured is
+  // always enforced, whatever else the environment says.
+  it('allows an unsigned webhook only when no key is configured', () => {
     delete process.env.DOCUSIGN_HMAC_KEY;
-    process.env.ALLOW_INSECURE_DEV = 'true';
     expect(DocuSignProvider.verifyWebhook({}, body)).toBe(true);
     expect(warnSpy).toHaveBeenCalled();
 
-    process.env.ALLOW_INSECURE_DEV = 'false';
+    process.env.DOCUSIGN_HMAC_KEY = 'k1';
     expect(DocuSignProvider.verifyWebhook({}, body, '10.0.0.1')).toBe(false);
     expect(errorSpy).toHaveBeenCalledWith(
       'Security event:',

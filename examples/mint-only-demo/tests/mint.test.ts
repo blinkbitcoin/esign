@@ -4,7 +4,7 @@ describe('createMint', () => {
   it('mock provider: mints a URL onto the mock Web Forms page', async () => {
     const mint = createMint({
       ESIGN_PROVIDER: 'mock',
-      MOCK_PAGES_ORIGIN: 'http://pages:4000',
+      ESIGN_MOCK_PAGES_ORIGIN: 'http://pages:4000',
     });
     const result = await mint('user-1', { number_of_units: 10 });
     expect(result.url).toMatch(/^http:\/\/pages:4000\/signing\/mock-webform\//);

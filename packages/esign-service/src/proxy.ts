@@ -2,17 +2,17 @@
 //
 // `x-forwarded-for` is a request header: any caller can set it. It may only
 // be believed when the deployment says a proxy it trusts sits in front and
-// rewrites it - which is what TRUST_PROXY declares. Both places that need a
+// rewrites it - which is what ESIGN_TRUST_PROXY declares. Both places that need a
 // client address (the Node server's rate-limit key and the webhook's
 // security logging) go through here, so one deployment cannot trust the
 // header for one and not the other.
 
 import type { Env } from './env';
 
-export const TRUST_PROXY = 'TRUST_PROXY';
+export const ESIGN_TRUST_PROXY = 'ESIGN_TRUST_PROXY';
 
 // Does this deployment sit behind a proxy it trusts?
-export const trustsProxy = (env: Env): boolean => env[TRUST_PROXY] === 'true';
+export const trustsProxy = (env: Env): boolean => env[ESIGN_TRUST_PROXY] === 'true';
 
 // The client address a trusted proxy reported (the first entry of the
 // forwarded chain), or undefined - because there is no proxy, because the

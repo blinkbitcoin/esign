@@ -43,10 +43,10 @@ export const describeCapabilities = (capabilities: readonly Capability[]): strin
 // --- The mock provider's signing pages ---------------------------------------
 
 // Whether this service serves the mock provider's signing pages
-export const MOCK_PAGES = 'MOCK_PAGES';
+export const ESIGN_MOCK_PAGES = 'ESIGN_MOCK_PAGES';
 
 // The pages exist only for the mock provider - a real provider hosts its own
-// - and MOCK_PAGES=false turns them off even for the mock (a deployment that
+// - and ESIGN_MOCK_PAGES=false turns them off even for the mock (a deployment that
 // only wants the mint surface).
 export const mockPagesEnabled = (env: Env): boolean =>
-  (env.ESIGN_PROVIDER ?? 'mock') === 'mock' && env[MOCK_PAGES] !== 'false';
+  (env.ESIGN_PROVIDER ?? 'mock') === 'mock' && env[ESIGN_MOCK_PAGES] !== 'false';

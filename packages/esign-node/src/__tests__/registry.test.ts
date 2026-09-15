@@ -1,14 +1,12 @@
 // Provider selection: ESIGN_PROVIDER → a registry entry, lazily; the
 // default registry wires the two shipped adapters from the environment.
 
-import { ProductionConfigError } from '../production';
 import {
   type ESignProvider,
   hostedFormMint,
   supportsHostedForms,
 } from '../provider';
 import {
-  DOCUSIGN_DEMO_URLS,
   DocuSignConfigError,
   ENVELOPE_SETTINGS,
   HOSTED_FORM_SETTINGS,
@@ -130,12 +128,12 @@ describe('providerFromEnv', () => {
 });
 
 describe('defaultRegistry', () => {
-  it('mock: mints onto MOCK_PAGES_ORIGIN with no DocuSign settings at all', async () => {
+  it('mock: mints onto ESIGN_MOCK_PAGES_ORIGIN with no DocuSign settings at all', async () => {
     const provider = providerFromEnv(
-      { ESIGN_PROVIDER: 'mock', MOCK_PAGES_ORIGIN: 'http://pages:4000' },
+      { ESIGN_PROVIDER: 'mock', ESIGN_MOCK_PAGES_ORIGIN: 'http://pages:4000' },
       defaultRegistry({
         ESIGN_PROVIDER: 'mock',
-        MOCK_PAGES_ORIGIN: 'http://pages:4000',
+        ESIGN_MOCK_PAGES_ORIGIN: 'http://pages:4000',
       }),
     );
     const { url, instanceId } = await provider.createHostedFormInstance!('u', {
@@ -272,30 +270,21 @@ describe('defaultRegistry boot checks', () => {
     expect(mock.verifyWebhook({}, '{}')).toBe(false);
   });
 
-  it('refuses the mock in production, unless demo is explicitly allowed', () => {
-    const production = { ESIGN_ENV: 'production' };
-    expect(() => defaultRegistry(production).mock()).toThrow(
-      ProductionConfigError,
-    );
-    expect(() => defaultRegistry(production).mock()).toThrow(
-      'ESIGN_ENV=production: the mock provider is a demo provider',
-    );
+  // Selection never refuses a provider for being a demo one: what is a
+  // sandbox is reported by the service at boot (posture.ts), and how any
+  // deployment labels itself is not this registry's business.
+  it('selects the mock whatever the environment claims to be', () => {
     expect(() =>
-      defaultRegistry({ ...production, ESIGN_ALLOW_DEMO: 'true' }).mock(),
+      defaultRegistry({ ESIGN_ENV: 'production' }).mock(),
     ).not.toThrow();
     expect(() => defaultRegistry({}).mock()).not.toThrow();
   });
 
-  it('refuses DocuSign on the demo hosts in production, naming them', () => {
+  it('selects DocuSign on the demo hosts whatever the environment claims to be', () => {
     const production = { ...hostedFormEnv, ESIGN_ENV: 'production' };
-    expect(() => defaultRegistry(production).docusign()).toThrow(
-      `ESIGN_ENV=production: DOCUSIGN_BASE_URL=${DOCUSIGN_DEMO_URLS.apiBaseUrl} is a demo host`,
-    );
+    expect(() => defaultRegistry(production).docusign()).not.toThrow();
     expect(() =>
       defaultRegistry({ ...production, ...productionHosts }).docusign(),
-    ).not.toThrow();
-    expect(() =>
-      defaultRegistry({ ...production, ESIGN_ALLOW_DEMO: 'true' }).docusign(),
     ).not.toThrow();
   });
 });
@@ -350,7 +339,7 @@ describe('hostedFormProviderFromEnv', () => {
   it('selects the mock when ESIGN_PROVIDER says so, and mints with it', async () => {
     const provider = hostedFormProviderFromEnv({
       ESIGN_PROVIDER: 'mock',
-      MOCK_PAGES_ORIGIN: 'http://pages:4000',
+      ESIGN_MOCK_PAGES_ORIGIN: 'http://pages:4000',
     });
     const { url } = await hostedFormMint(provider)!('u', { units: 1 });
     expect(url).toMatch(/^http:\/\/pages:4000\/signing\/mock-webform\//);
@@ -433,7 +422,7 @@ describe('envelopeProviderFromEnv', () => {
   it('selects the mock when ESIGN_PROVIDER says so, and creates envelopes with it', async () => {
     const provider = envelopeProviderFromEnv({
       ESIGN_PROVIDER: 'mock',
-      MOCK_PAGES_ORIGIN: 'http://pages:4000',
+      ESIGN_MOCK_PAGES_ORIGIN: 'http://pages:4000',
     });
     const { signingUrl } = await provider.createEnvelope('u', 'agreement', {
       name: 'Test Signer',
@@ -442,14 +431,9 @@ describe('envelopeProviderFromEnv', () => {
     expect(signingUrl).toMatch(/^http:\/\/pages:4000\/signing\/mock\//);
   });
 
-  it('refuses DocuSign on the demo hosts in production, unless demo is allowed', () => {
+  it('selects DocuSign on the demo hosts whatever the environment claims to be', () => {
     const production = { ...envelopeEnv, ESIGN_ENV: 'production' };
-    expect(() => envelopeProviderFromEnv(production)).toThrow(
-      ProductionConfigError,
-    );
-    expect(() =>
-      envelopeProviderFromEnv({ ...production, ESIGN_ALLOW_DEMO: 'true' }),
-    ).not.toThrow();
+    expect(() => envelopeProviderFromEnv(production)).not.toThrow();
   });
 
   it('takes the registry, the default entry and a required set of its own', () => {

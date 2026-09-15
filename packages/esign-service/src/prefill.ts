@@ -1,10 +1,10 @@
 // Locked terms, computed by the host.
 //
 // The client's prefill is intent, never a locked value: it says "10 units",
-// it does not say what 10 units cost. With TERMS_URL configured, this service
+// it does not say what 10 units cost. With ESIGN_PREFILL_URL configured, this service
 // asks the host what to actually mint - POST { userId, input } with the
 // caller's own bearer token forwarded (so the host can authorize the call as
-// that user) and TERMS_SHARED_SECRET in x-esign-terms-secret when set - and
+// that user) and ESIGN_PREFILL_SECRET in x-esign-prefill-secret when set - and
 // the host's `{ prefill }` wins over the client's values, key by key.
 //
 // An envelope (ESIGN_MINT_MODE=envelope) asks the same way with the signer the
@@ -19,12 +19,13 @@
 // prefill is an error, never "mint what the client sent". createESignApp
 // turns that into 502 "Could not compute the signing terms".
 //
-// Without TERMS_URL the service mints the client's prefill as sent - fine for
+// Without ESIGN_PREFILL_URL the service mints the client's prefill as sent - fine for
 // a mock/dev host and refused under ESIGN_ENV=production unless
-// ESIGN_ALLOW_CLIENT_PREFILL=true says so explicitly (config.ts).
+// the boot banner reports it as client-supplied and ESIGN_STRICT refuses it
+// (config.ts).
 
 import {
-  type EnvelopeAppTermsInput,
+  type EnvelopeAppPrefillInput,
   type EnvelopeMintRequest,
   type EnvelopePrefillParser,
   type HostedFormAppPrefillInput,
@@ -35,23 +36,23 @@ import {
 
 import type { Env } from './env';
 
-export const TERMS_URL = 'TERMS_URL';
-export const TERMS_SHARED_SECRET = 'TERMS_SHARED_SECRET';
-export const TERMS_TIMEOUT_MS = 'TERMS_TIMEOUT_MS';
+export const ESIGN_PREFILL_URL = 'ESIGN_PREFILL_URL';
+export const ESIGN_PREFILL_SECRET = 'ESIGN_PREFILL_SECRET';
+export const ESIGN_PREFILL_TIMEOUT_MS = 'ESIGN_PREFILL_TIMEOUT_MS';
 
 // The header the shared secret travels in
-export const TERMS_SECRET_HEADER = 'x-esign-terms-secret';
+export const PREFILL_SECRET_HEADER = 'x-esign-prefill-secret';
 
-export const DEFAULT_TERMS_TIMEOUT_MS = 5000;
+export const DEFAULT_PREFILL_TIMEOUT_MS = 5000;
 
 // What the mint answers when the terms could not be computed. The client
 // asked for something the host could not price - not a signing failure.
-export const TERMS_FAILURE_MESSAGE = 'Could not compute the signing terms';
+export const PREFILL_FAILURE_MESSAGE = 'Could not compute the signing terms';
 
-export interface TermsConfig {
+export interface PrefillConfig {
   // Where to ask
   url: string;
-  // Sent as x-esign-terms-secret when set, so the host can tell this service
+  // Sent as x-esign-prefill-secret when set, so the host can tell this service
   // apart from anything else that reaches the callback
   secret?: string;
   timeoutMs: number;
@@ -59,29 +60,29 @@ export interface TermsConfig {
 
 // The terms callback could not answer: everything the caller needs to know
 // is that the terms are unavailable, so the message is the same either way.
-export class TermsError extends Error {
+export class PrefillError extends Error {
   constructor(readonly reason: string) {
-    super(TERMS_FAILURE_MESSAGE);
-    this.name = 'TermsError';
+    super(PREFILL_FAILURE_MESSAGE);
+    this.name = 'PrefillError';
   }
 }
 
 // The callback this environment configures, or undefined when it configures
 // none (the client's prefill is minted as sent)
-export const termsConfigFromEnv = (env: Env): TermsConfig | undefined => {
-  const url = env[TERMS_URL];
+export const prefillConfigFromEnv = (env: Env): PrefillConfig | undefined => {
+  const url = env[ESIGN_PREFILL_URL];
   if (!url) {
     return undefined;
   }
-  const timeout = Number(env[TERMS_TIMEOUT_MS]);
+  const timeout = Number(env[ESIGN_PREFILL_TIMEOUT_MS]);
   return {
     url,
-    secret: env[TERMS_SHARED_SECRET],
-    timeoutMs: Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_TERMS_TIMEOUT_MS,
+    secret: env[ESIGN_PREFILL_SECRET],
+    timeoutMs: Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_PREFILL_TIMEOUT_MS,
   };
 };
 
-export interface TermsDeps {
+export interface PrefillDeps {
   // The fetch used for the callback (default: the platform's)
   fetch?: typeof globalThis.fetch;
 }
@@ -104,12 +105,12 @@ const parseReply = async (response: Response): Promise<TermsReply> => {
   try {
     body = await response.json();
   } catch {
-    throw new TermsError('the terms callback did not answer with JSON');
+    throw new PrefillError('the terms callback did not answer with JSON');
   }
   const reply = body as { prefill?: unknown; recipient?: unknown } | null;
   const prefill = reply?.prefill;
   if (!prefill || typeof prefill !== 'object' || Array.isArray(prefill)) {
-    throw new TermsError('the terms callback answered without a prefill object');
+    throw new PrefillError('the terms callback answered without a prefill object');
   }
   return { prefill: prefill as HostedFormPrefill, recipient: reply?.recipient };
 };
@@ -117,7 +118,7 @@ const parseReply = async (response: Response): Promise<TermsReply> => {
 // Ask the host: POST the payload with the caller's bearer token and the shared
 // secret, and read its reply
 const askHost = async (
-  config: TermsConfig,
+  config: PrefillConfig,
   doFetch: typeof globalThis.fetch,
   request: Request,
   payload: object
@@ -130,27 +131,27 @@ const askHost = async (
       headers: {
         'content-type': 'application/json',
         ...(authorization ? { authorization } : {}),
-        ...(config.secret ? { [TERMS_SECRET_HEADER]: config.secret } : {}),
+        ...(config.secret ? { [PREFILL_SECRET_HEADER]: config.secret } : {}),
       },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(config.timeoutMs),
     });
   } catch (error) {
-    throw new TermsError(
+    throw new PrefillError(
       `the terms callback did not answer: ${error instanceof Error ? error.message : String(error)}`
     );
   }
   if (!response.ok) {
-    throw new TermsError(`the terms callback answered ${response.status}`);
+    throw new PrefillError(`the terms callback answered ${response.status}`);
   }
   return parseReply(response);
 };
 
 // The prefill hook createESignApp hands to the hosted-form app: ask the
 // host, lay its answer over the client's input, mint that.
-export const createTermsPrefill = (
-  config: TermsConfig,
-  deps: TermsDeps = {}
+export const createPrefillHook = (
+  config: PrefillConfig,
+  deps: PrefillDeps = {}
 ): ((input: HostedFormAppPrefillInput) => Promise<HostedFormPrefill>) => {
   const doFetch = deps.fetch ?? globalThis.fetch;
   return async ({ userId, prefill, request }) => {
@@ -159,7 +160,7 @@ export const createTermsPrefill = (
   };
 };
 
-export interface EnvelopeTermsDeps extends TermsDeps {
+export interface EnvelopePrefillDeps extends PrefillDeps {
   // What a prefill the host answers must satisfy before an envelope carries
   // it (default: DocuSign's envelope contract, as the mint checks the client's)
   parsePrefill?: EnvelopePrefillParser;
@@ -169,7 +170,7 @@ export interface EnvelopeTermsDeps extends TermsDeps {
 const recipientFrom = (value: unknown): RecipientData => {
   const signer = value as { name?: unknown; email?: unknown } | null;
   if (typeof signer?.name !== 'string' || typeof signer.email !== 'string') {
-    throw new TermsError('the terms callback answered a recipient without a name and an email');
+    throw new PrefillError('the terms callback answered a recipient without a name and an email');
   }
   return { name: signer.name, email: signer.email };
 };
@@ -178,10 +179,10 @@ const recipientFrom = (value: unknown): RecipientData => {
 // the client's signer and prefill as input, and mint exactly what it answers -
 // its signer, and its prefill alone. A reply that names no term leaves the
 // template its own values, the same envelope the no-callback path asks for.
-export const createEnvelopeTerms = (
-  config: TermsConfig,
-  deps: EnvelopeTermsDeps = {}
-): ((input: EnvelopeAppTermsInput) => Promise<EnvelopeMintRequest>) => {
+export const createEnvelopePrefillHook = (
+  config: PrefillConfig,
+  deps: EnvelopePrefillDeps = {}
+): ((input: EnvelopeAppPrefillInput) => Promise<EnvelopeMintRequest>) => {
   const doFetch = deps.fetch ?? globalThis.fetch;
   const parsePrefill = deps.parsePrefill ?? parseEnvelopePrefill;
   return async ({ userId, recipient, prefill, request }) => {
@@ -189,7 +190,7 @@ export const createEnvelopeTerms = (
     const reply = await askHost(config, doFetch, request, { userId, input, recipient });
     const locked = parsePrefill(reply.prefill);
     if (!locked.ok) {
-      throw new TermsError(`the terms callback answered an invalid prefill: ${locked.error}`);
+      throw new PrefillError(`the terms callback answered an invalid prefill: ${locked.error}`);
     }
     const isEmpty = Object.keys(locked.prefill).length === 0;
     return {

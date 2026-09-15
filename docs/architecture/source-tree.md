@@ -40,7 +40,7 @@ esign/
 │       │   ├── envelopes.ts       # createEnvelopeService: rules, audit, webhook state machine ⭐
 │       │   ├── provider.ts        # ESignProvider port (+ hosted-form capability: supportsHostedForms, hostedFormMint)
 │       │   ├── registry.ts        # providerFromEnv + defaultRegistry (boot checks) + hostedFormProviderFromEnv / envelopeProviderFromEnv: ESIGN_PROVIDER → adapter, lazily
-│       │   ├── production.ts      # ESIGN_ENV=production guard: productionErrors / assertProductionConfig (provider-agnostic, never NODE_ENV)
+│       │   ├── production.ts      # demoSettings: which settings are demo settings (a description, never a refusal)
 │       │   ├── store.ts           # EnvelopeStore port + in-memory implementation
 │       │   ├── handlers.ts        # Fetch-API mint (Web Forms + envelope) + webhook handlers + createHostedFormApp / createEnvelopeApp (the whole mint-only surface, per mint); MintTarget = provider | mint fn ⭐
 │       │   ├── signingPage.ts     # Signing-page CSP + nonce; signingPageResponse (Fetch); signingPageExpress.ts is its Express spelling
@@ -163,7 +163,7 @@ esign/
 │       │   ├── capabilities.ts    # What the environment turns on (pure) ⭐
 │       │   ├── mint.ts            # The mint mode: Web Form or envelope, one entry each
 │       │   ├── session.ts         # Session verification: JWKS or HS256, via jose
-│       │   ├── terms.ts           # The TERMS_URL callback and its merge rule
+│       │   ├── terms.ts           # The ESIGN_PREFILL_URL callback and its merge rule
 │       │   ├── envelopes.ts       # The envelope capability: Fetch webhook + Apollo (Node-only)
 │       │   ├── loadEnvelopes.ts   # The one place that names ./envelopes (Node targets only)
 │       │   ├── schema.ts          # createGraphQL over the envelope service ⭐
@@ -172,8 +172,8 @@ esign/
 │       │   ├── store.ts           # The package's Knex EnvelopeStore over db.ts
 │       │   ├── migrate.ts         # Applies the package's migrations (node dist/node.js migrate)
 │       │   ├── db.ts              # Knex instance (fail-fast)
-│       │   ├── env.ts             # The Env type + ALLOW_INSECURE_DEV
-│       │   ├── proxy.ts           # TRUST_PROXY: whether x-forwarded-for names the client
+│       │   ├── env.ts             # The Env type + ESIGN_STRICT
+│       │   ├── proxy.ts           # ESIGN_TRUST_PROXY: whether x-forwarded-for names the client
 │       │   ├── port.ts            # PORT / ESIGN_PORT_BASE resolution
 │       │   ├── config.ts          # The boot guard: validateConfig(env, { runtime }), pure ⭐
 │       │   ├── instrumentation.ts # OpenTelemetry init (before the app loads)
@@ -192,7 +192,7 @@ esign/
 │       │   └── __mocks__/
 │       │       └── db.ts          # knex-mock-client for unit tests
 │       │
-│       ├── Dockerfile             # The esign-service image (defaults ESIGN_ENV=production)
+│       ├── Dockerfile             # The esign-service image (claims no posture of its own)
 │       ├── deploy/                # Deploy templates: compose, k8s, nix, vercel, cloudflare
 │       │
 │       └── tests/

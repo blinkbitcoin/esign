@@ -22,11 +22,10 @@ fi
   echo "# Written by make docusign-env ($(date -u +%Y-%m-%dT%H:%M:%SZ)); local only"
   echo "PORT=${PORT:-$ESIGN_API_PORT}"
   echo "DATABASE_URL=${DATABASE_URL:-$ESIGN_DEV_DATABASE_URL}"
-  # No JWT_SECRET: with ALLOW_INSECURE_DEV the bearer token is the user id,
-  # which is what the live specs send (E2E_LIVE_AUTH_TOKEN). Set JWT_SECRET=
-  # when writing to get real HS256 verification instead.
-  [ -n "${JWT_SECRET:-}" ] && echo "JWT_SECRET=$JWT_SECRET"
-  echo "ALLOW_INSECURE_DEV=true"
+  # No ESIGN_SESSION_SECRET: with no session source the bearer token is the
+  # user id, which is what the live specs send (E2E_LIVE_AUTH_TOKEN). Export
+  # ESIGN_SESSION_SECRET before writing to get real HS256 verification.
+  [ -n "${ESIGN_SESSION_SECRET:-}" ] && echo "ESIGN_SESSION_SECRET=$ESIGN_SESSION_SECRET"
   echo "ESIGN_PROVIDER=docusign"
   echo "DOCUSIGN_HMAC_KEY=${DOCUSIGN_HMAC_KEY:-local-dev-hmac}"
   echo "DOCUSIGN_ACCOUNT_ID=$ACCOUNT_ID"

@@ -25,8 +25,8 @@ import {
 } from '@blinkbitcoin/esign-node';
 
 import type { Env } from './env';
+import { createEnvelopePrefillHook, createPrefillHook, type PrefillConfig } from './prefill';
 import type { ESignProvider } from './providers/port';
-import { createEnvelopeTerms, createTermsPrefill, type TermsConfig } from './terms';
 
 // The variable that names the mode
 export const ESIGN_MINT_MODE = 'ESIGN_MINT_MODE';
@@ -41,8 +41,8 @@ export interface MintDeps {
   authenticate: (request: Request) => Promise<string | null>;
   // The browser origins allowed to call the mint (none: same-origin only)
   origins: string[];
-  // The host's terms endpoint, when TERMS_URL is set
-  terms?: TermsConfig;
+  // The host's terms endpoint, when ESIGN_PREFILL_URL is set
+  terms?: PrefillConfig;
   // The fetch the terms callback uses (default: the platform's)
   fetch?: typeof globalThis.fetch;
   // The envelope domain's create, when orchestration is on: a mint that
@@ -52,8 +52,8 @@ export interface MintDeps {
 
 export interface MintMode {
   name: MintModeName;
-  // What is minted as sent without TERMS_URL, as the production guard names it
-  clientTerms: string;
+  // What is minted as sent without ESIGN_PREFILL_URL, as the production guard names it
+  clientPrefill: string;
   // The package's provider selection for this mint: the settings the mint
   // needs and the production checks, run at boot rather than on the first mint
   selectProvider: (env: Env, options: EnvelopeProviderOptions) => ESignProvider;
@@ -67,7 +67,7 @@ export interface MintMode {
 // it: the terms could not be computed, which is not a signing failure.
 const termsFailures = new WeakSet<Request>();
 
-export const isTermsFailure = (request: Request): boolean => termsFailures.has(request);
+export const isPrefillFailure = (request: Request): boolean => termsFailures.has(request);
 
 // A terms hook that marks its request when it fails, for the rewrite above
 const markingFailures =
@@ -87,7 +87,7 @@ const corsFor = (origins: string[]) => (origins.length > 0 ? { cors: { origins }
 // the document
 const webform: MintMode = {
   name: 'webform',
-  clientTerms: "the client's own prefill",
+  clientPrefill: "the client's own prefill",
   selectProvider: hostedFormProviderFromEnv,
   createApp: ({ provider, authenticate, origins, terms, fetch }) =>
     createHostedFormApp({
@@ -95,7 +95,7 @@ const webform: MintMode = {
       authenticate,
       health: false,
       ...corsFor(origins),
-      ...(terms ? { prefill: markingFailures(createTermsPrefill(terms, { fetch })) } : {}),
+      ...(terms ? { prefill: markingFailures(createPrefillHook(terms, { fetch })) } : {}),
     }),
 };
 
@@ -124,7 +124,7 @@ const envelopeTarget = (
 // prefill already on them
 const envelope: MintMode = {
   name: 'envelope',
-  clientTerms: "the client's own signer and prefill",
+  clientPrefill: "the client's own signer and prefill",
   selectProvider: envelopeProviderFromEnv,
   createApp: ({ provider, authenticate, origins, terms, fetch, envelopes }) =>
     createEnvelopeApp({
@@ -132,7 +132,7 @@ const envelope: MintMode = {
       authenticate,
       health: false,
       ...corsFor(origins),
-      ...(terms ? { terms: markingFailures(createEnvelopeTerms(terms, { fetch })) } : {}),
+      ...(terms ? { terms: markingFailures(createEnvelopePrefillHook(terms, { fetch })) } : {}),
     }),
 };
 

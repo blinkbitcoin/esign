@@ -4,13 +4,13 @@
 import { vi } from 'vitest';
 
 import {
-  createEnvelopeTerms,
-  createTermsPrefill,
-  DEFAULT_TERMS_TIMEOUT_MS,
-  TERMS_FAILURE_MESSAGE,
-  TermsError,
-  termsConfigFromEnv,
-} from '../src/terms';
+  createEnvelopePrefillHook,
+  createPrefillHook,
+  DEFAULT_PREFILL_TIMEOUT_MS,
+  PREFILL_FAILURE_MESSAGE,
+  PrefillError,
+  prefillConfigFromEnv,
+} from '../src/prefill';
 
 const URL_ = 'https://host.example.com/esign/terms';
 
@@ -31,40 +31,40 @@ const replyWith = (body: unknown, status = 200) =>
       })
   );
 
-describe('termsConfigFromEnv', () => {
-  it('is undefined without TERMS_URL', () => {
-    expect(termsConfigFromEnv({})).toBeUndefined();
+describe('prefillConfigFromEnv', () => {
+  it('is undefined without ESIGN_PREFILL_URL', () => {
+    expect(prefillConfigFromEnv({})).toBeUndefined();
   });
 
   it('reads the url, the shared secret and the timeout', () => {
     expect(
-      termsConfigFromEnv({
-        TERMS_URL: URL_,
-        TERMS_SHARED_SECRET: 'shhh',
-        TERMS_TIMEOUT_MS: '250',
+      prefillConfigFromEnv({
+        ESIGN_PREFILL_URL: URL_,
+        ESIGN_PREFILL_SECRET: 'shhh',
+        ESIGN_PREFILL_TIMEOUT_MS: '250',
       })
     ).toEqual({ url: URL_, secret: 'shhh', timeoutMs: 250 });
   });
 
   it('defaults the timeout and leaves the secret unset', () => {
-    expect(termsConfigFromEnv({ TERMS_URL: URL_ })).toEqual({
+    expect(prefillConfigFromEnv({ ESIGN_PREFILL_URL: URL_ })).toEqual({
       url: URL_,
       secret: undefined,
-      timeoutMs: DEFAULT_TERMS_TIMEOUT_MS,
+      timeoutMs: DEFAULT_PREFILL_TIMEOUT_MS,
     });
   });
 
   it('falls back to the default for a non-numeric timeout', () => {
-    expect(termsConfigFromEnv({ TERMS_URL: URL_, TERMS_TIMEOUT_MS: 'soon' })?.timeoutMs).toBe(
-      DEFAULT_TERMS_TIMEOUT_MS
-    );
+    expect(
+      prefillConfigFromEnv({ ESIGN_PREFILL_URL: URL_, ESIGN_PREFILL_TIMEOUT_MS: 'soon' })?.timeoutMs
+    ).toBe(DEFAULT_PREFILL_TIMEOUT_MS);
   });
 });
 
-describe('createTermsPrefill', () => {
+describe('createPrefillHook', () => {
   it('posts the caller and the client input, and mints the reply', async () => {
     const fetchStub = replyWith({ prefill: { total_subscription_usd: '1000.00' } });
-    const terms = createTermsPrefill({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
+    const terms = createPrefillHook({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
 
     const prefill = await terms({
       userId: 'user-1',
@@ -84,7 +84,7 @@ describe('createTermsPrefill', () => {
 
   it('lets the reply win key by key over the client values', async () => {
     const fetchStub = replyWith({ prefill: { number_of_units: '3' } });
-    const terms = createTermsPrefill({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
+    const terms = createPrefillHook({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
 
     await expect(
       terms({
@@ -97,7 +97,7 @@ describe('createTermsPrefill', () => {
 
   it('mints exactly the reply when it replaces every field', async () => {
     const fetchStub = replyWith({ prefill: {} });
-    const terms = createTermsPrefill({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
+    const terms = createPrefillHook({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
 
     await expect(
       terms({ userId: 'user-1', prefill: { number_of_units: '9' }, request: request() })
@@ -106,7 +106,7 @@ describe('createTermsPrefill', () => {
 
   it("forwards the caller's bearer token and the shared secret", async () => {
     const fetchStub = replyWith({ prefill: {} });
-    const terms = createTermsPrefill(
+    const terms = createPrefillHook(
       { url: URL_, secret: 'shhh', timeoutMs: 1000 },
       { fetch: fetchStub }
     );
@@ -115,27 +115,27 @@ describe('createTermsPrefill', () => {
 
     const headers = new Headers((fetchStub.mock.calls[0] as [string, RequestInit])[1].headers);
     expect(headers.get('authorization')).toBe('Bearer token-abc');
-    expect(headers.get('x-esign-terms-secret')).toBe('shhh');
+    expect(headers.get('x-esign-prefill-secret')).toBe('shhh');
     expect(headers.get('content-type')).toBe('application/json');
   });
 
   it('sends no authorization header when the caller had none', async () => {
     const fetchStub = replyWith({ prefill: {} });
-    const terms = createTermsPrefill({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
+    const terms = createPrefillHook({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
 
     await terms({ userId: 'u', prefill: {}, request: request() });
 
     const headers = new Headers((fetchStub.mock.calls[0] as [string, RequestInit])[1].headers);
     expect(headers.has('authorization')).toBe(false);
-    expect(headers.has('x-esign-terms-secret')).toBe(false);
+    expect(headers.has('x-esign-prefill-secret')).toBe(false);
   });
 
   it('fails on a non-2xx reply', async () => {
     const fetchStub = replyWith({ error: 'nope' }, 500);
-    const terms = createTermsPrefill({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
+    const terms = createPrefillHook({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
 
     await expect(terms({ userId: 'u', prefill: {}, request: request() })).rejects.toThrow(
-      TermsError
+      PrefillError
     );
   });
 
@@ -143,28 +143,28 @@ describe('createTermsPrefill', () => {
     const fetchStub = vi.fn(async () => {
       throw new DOMException('The operation was aborted.', 'TimeoutError');
     });
-    const terms = createTermsPrefill({ url: URL_, timeoutMs: 1 }, { fetch: fetchStub });
+    const terms = createPrefillHook({ url: URL_, timeoutMs: 1 }, { fetch: fetchStub });
 
     await expect(terms({ userId: 'u', prefill: {}, request: request() })).rejects.toThrow(
-      TERMS_FAILURE_MESSAGE
+      PREFILL_FAILURE_MESSAGE
     );
   });
 
   it('fails when the reply is not JSON', async () => {
     const fetchStub = vi.fn(async () => new Response('<html>oops</html>'));
-    const terms = createTermsPrefill({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
+    const terms = createPrefillHook({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
 
     await expect(terms({ userId: 'u', prefill: {}, request: request() })).rejects.toThrow(
-      TermsError
+      PrefillError
     );
   });
 
   it('fails when the reply carries no prefill (never mints the client values instead)', async () => {
     const fetchStub = replyWith({ ok: true });
-    const terms = createTermsPrefill({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
+    const terms = createPrefillHook({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
 
     await expect(terms({ userId: 'u', prefill: {}, request: request() })).rejects.toThrow(
-      TermsError
+      PrefillError
     );
   });
 
@@ -173,14 +173,14 @@ describe('createTermsPrefill', () => {
       expect(init.signal).toBeInstanceOf(AbortSignal);
       return new Response(JSON.stringify({ prefill: {} }));
     });
-    const terms = createTermsPrefill({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
+    const terms = createPrefillHook({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
 
     await terms({ userId: 'u', prefill: {}, request: request() });
     expect(fetchStub).toHaveBeenCalled();
   });
 });
 
-describe('createTermsPrefill without an injected fetch', () => {
+describe('createPrefillHook without an injected fetch', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it('uses the platform fetch', async () => {
@@ -188,7 +188,7 @@ describe('createTermsPrefill without an injected fetch', () => {
       'fetch',
       vi.fn(async () => new Response(JSON.stringify({ prefill: { units: '3' } })))
     );
-    const terms = createTermsPrefill({ url: URL_, timeoutMs: 1000 });
+    const terms = createPrefillHook({ url: URL_, timeoutMs: 1000 });
 
     await expect(
       terms({ userId: 'u', prefill: { units: '1' }, request: request() })
@@ -202,17 +202,17 @@ describe('createTermsPrefill without an injected fetch', () => {
         throw 'socket hang up';
       })
     );
-    const terms = createTermsPrefill({ url: URL_, timeoutMs: 1000 });
+    const terms = createPrefillHook({ url: URL_, timeoutMs: 1000 });
 
     await expect(terms({ userId: 'u', prefill: {}, request: request() })).rejects.toThrow(
-      TERMS_FAILURE_MESSAGE
+      PREFILL_FAILURE_MESSAGE
     );
   });
 });
 
 // The envelope spelling: the host is asked with the client's signer beside its
 // prefill, and who signs is the host's to decide, like every value it locks
-describe('createEnvelopeTerms', () => {
+describe('createEnvelopePrefillHook', () => {
   // Synthetic signers - nothing here is anyone's data
   const signer = { name: 'Test Signer', email: 'signer@example.com' };
   const verified = { name: 'Verified Name', email: 'verified@example.com' };
@@ -234,7 +234,7 @@ describe('createEnvelopeTerms', () => {
       recipient: verified,
       prefill: { total_usd: { value: '1000.00', locked: true } },
     });
-    const terms = createEnvelopeTerms({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
+    const terms = createEnvelopePrefillHook({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
 
     const minted = await terms({
       userId: 'user-1',
@@ -260,7 +260,7 @@ describe('createEnvelopeTerms', () => {
   // A reply naming no term leaves the template its own values: the same
   // envelope the no-callback path asks for, not one with an empty tab list
   it('mints the signer the host names and no prefill when it names no term', async () => {
-    const terms = createEnvelopeTerms(
+    const terms = createEnvelopePrefillHook(
       { url: URL_, timeoutMs: 1000 },
       { fetch: replyWith({ prefill: {}, recipient: verified }) }
     );
@@ -272,7 +272,7 @@ describe('createEnvelopeTerms', () => {
 
   it('asks with an empty input and no signer when the client sent neither', async () => {
     const fetchStub = replyWith({ prefill: {}, recipient: verified });
-    const terms = createEnvelopeTerms({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
+    const terms = createEnvelopePrefillHook({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
 
     await terms({ userId: 'u', request: envelopeRequest() });
 
@@ -284,60 +284,60 @@ describe('createEnvelopeTerms', () => {
   // Who signs is the host's to decide: a reply that names nobody must not
   // leave the caller's signer in force with the host's locked terms attached
   it('fails when the host names no signer', async () => {
-    const terms = createEnvelopeTerms(
+    const terms = createEnvelopePrefillHook(
       { url: URL_, timeoutMs: 1000 },
       { fetch: replyWith({ prefill: {} }) }
     );
 
     await expect(
       terms({ userId: 'u', recipient: signer, request: envelopeRequest() })
-    ).rejects.toThrow(TermsError);
+    ).rejects.toThrow(PrefillError);
   });
 
   // A reply the envelope could not carry is a failure, never minted as sent
   it('fails on a prefill outside the envelope contract', async () => {
-    const terms = createEnvelopeTerms(
+    const terms = createEnvelopePrefillHook(
       { url: URL_, timeoutMs: 1000 },
       { fetch: replyWith({ prefill: { total_usd: 1000 } }) }
     );
 
     await expect(
       terms({ userId: 'u', recipient: signer, request: envelopeRequest() })
-    ).rejects.toThrow(TermsError);
+    ).rejects.toThrow(PrefillError);
   });
 
   it('fails on a signer without a name and an email', async () => {
     for (const recipient of [{ name: 'Only A Name' }, 'verified@example.com', null, undefined]) {
-      const terms = createEnvelopeTerms(
+      const terms = createEnvelopePrefillHook(
         { url: URL_, timeoutMs: 1000 },
         { fetch: replyWith({ prefill: {}, recipient }) }
       );
 
       await expect(
         terms({ userId: 'u', recipient: signer, request: envelopeRequest() })
-      ).rejects.toThrow(TermsError);
+      ).rejects.toThrow(PrefillError);
     }
   });
 
   it('fails as the Web Form terms do when the host does not answer', async () => {
-    const terms = createEnvelopeTerms(
+    const terms = createEnvelopePrefillHook(
       { url: URL_, timeoutMs: 1000 },
       { fetch: replyWith({ error: 'nope' }, 500) }
     );
 
     await expect(terms({ userId: 'u', request: envelopeRequest() })).rejects.toThrow(
-      TERMS_FAILURE_MESSAGE
+      PREFILL_FAILURE_MESSAGE
     );
   });
 
   it('holds the reply to the prefill contract it is given', async () => {
     const parsePrefill = vi.fn(() => ({ ok: false as const, error: 'host contract' }));
-    const terms = createEnvelopeTerms(
+    const terms = createEnvelopePrefillHook(
       { url: URL_, timeoutMs: 1000 },
       { fetch: replyWith({ prefill: {} }), parsePrefill }
     );
 
-    await expect(terms({ userId: 'u', request: envelopeRequest() })).rejects.toThrow(TermsError);
+    await expect(terms({ userId: 'u', request: envelopeRequest() })).rejects.toThrow(PrefillError);
     expect(parsePrefill).toHaveBeenCalledWith({});
   });
 
@@ -346,7 +346,7 @@ describe('createEnvelopeTerms', () => {
       'fetch',
       vi.fn(async () => new Response(JSON.stringify({ prefill: {}, recipient: verified })))
     );
-    const terms = createEnvelopeTerms({ url: URL_, timeoutMs: 1000 });
+    const terms = createEnvelopePrefillHook({ url: URL_, timeoutMs: 1000 });
 
     await expect(
       terms({ userId: 'u', recipient: signer, request: envelopeRequest() })

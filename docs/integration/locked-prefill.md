@@ -12,7 +12,7 @@ Every step below is what `examples/mint-only-demo` (the API side) and
 Read first, once: [docusign-lessons.md](docusign-lessons.md) (the rules
 that are not obvious, one page). The same outcome on a template envelope
 (mode 3), with the values written onto the document itself:
-[locked-terms-envelopes.md](locked-terms-envelopes.md).
+[locked-prefill-envelopes.md](locked-prefill-envelopes.md).
 
 ## The shape
 
@@ -198,6 +198,6 @@ What the app can expect:
 - No new service, no database, no webhooks for this flow: the envelope
   status lives in DocuSign; `onComplete` is the app's signal. (Webhooks and
   envelope persistence are mode 3, [docusign-proxy.md](docusign-proxy.md).)
-- No `SESSION_JWKS_URL` / `SESSION_HS256_SECRET`: session verification
+- No `ESIGN_SESSION_JWKS_URL` / `ESIGN_SESSION_SECRET`: session verification
   belongs to this repo's full service. Your backend verifies its own session
   however it already does.

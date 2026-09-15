@@ -21,7 +21,7 @@ if [ "$PROVIDER" = docusign ]; then
   : "${DOCUSIGN_INTEGRATION_KEY:?}" "${DOCUSIGN_PRIVATE_KEY:?}" "${DOCUSIGN_WEBFORM_ID:?}"
   URL_PATTERN='"url":"https://[^"]*#instanceToken='
 else
-  URL_PATTERN="\"url\":\"${MOCK_PAGES_ORIGIN:-http://localhost:$ESIGN_API_PORT}/signing/mock-webform/"
+  URL_PATTERN="\"url\":\"${ESIGN_MOCK_PAGES_ORIGIN:-http://localhost:$ESIGN_API_PORT}/signing/mock-webform/"
 fi
 PIDS=()
 cleanup() { for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null || true; done; }
@@ -99,7 +99,7 @@ BODY=$(curl -fsS -X POST "http://127.0.0.1:$HANDLER_PORT/webhook/esign" \
 expect_match "serverless webhook" '"received":true' "$BODY"
 
 # The service (the deployable) with locked terms. The stub stands in for the
-# host endpoint TERMS_URL points at: it answers a price the client never sent.
+# host endpoint ESIGN_PREFILL_URL points at: it answers a price the client never sent.
 PORT="$TERMS_PORT" node -e '
   const { createServer } = require("node:http");
   createServer((req, res) => {
@@ -107,16 +107,17 @@ PORT="$TERMS_PORT" node -e '
     req.on("data", chunk => { body += chunk; });
     req.on("end", () => {
       const { userId, input } = JSON.parse(body || "{}");
+      const sent = input || {};
       res.setHeader("content-type", "application/json");
       res.end(JSON.stringify({
-        prefill: { total_subscription_usd: "1000.00", locked_for: userId, ...(input.full_name ? { full_name: input.full_name } : {}) },
+        prefill: { total_subscription_usd: "1000.00", locked_for: userId, ...(sent.full_name ? { full_name: sent.full_name } : {}) },
       }));
     });
   }).listen(Number(process.env.PORT));
 ' > "$LOG_DIR/terms-stub.log" 2>&1 &
 PIDS+=($!)
-DATABASE_URL='' ESIGN_PROVIDER=mock ALLOW_INSECURE_DEV=true PORT="$SERVICE_PORT" \
-  TERMS_URL="http://127.0.0.1:$TERMS_PORT/terms" \
+DATABASE_URL='' ESIGN_PROVIDER=mock PORT="$SERVICE_PORT" \
+  ESIGN_PREFILL_URL="http://127.0.0.1:$TERMS_PORT/terms" \
   npm run dev -w packages/esign-service > "$LOG_DIR/esign-service.log" 2>&1 &
 PIDS+=($!)
 up esign-service "http://127.0.0.1:$SERVICE_PORT/health"

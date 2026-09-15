@@ -5,7 +5,6 @@
 // adapter adds an entry.
 
 import { serviceOrigin } from './port';
-import { assertProductionConfig } from './production';
 import {
   type ESignProvider,
   type HostedFormProvider,
@@ -16,7 +15,6 @@ import {
   type DocuSignConfig,
   type DocuSignConfigKey,
   docuSignConfigFromEnv,
-  docuSignDemoHostsInUse,
   ENVELOPE_SETTINGS,
   type Env,
   HOSTED_FORM_SETTINGS,
@@ -69,7 +67,7 @@ export interface DefaultRegistryOptions {
   // Connect HMAC key from DOCUSIGN_HMAC_KEY, signatures required.
   webhook?: Partial<DocuSignWebhookOptions>;
   // Where the mock's signing pages are served (the esign service does).
-  // Default: MOCK_PAGES_ORIGIN, else the service's origin for this worktree
+  // Default: ESIGN_MOCK_PAGES_ORIGIN, else the service's origin for this worktree
   // (ESIGN_PORT_BASE + the service's offset - see ./port; a dev-only
   // fallback).
   mockBaseUrl?: () => string;
@@ -108,23 +106,19 @@ export const defaultRegistry = (
 
   return {
     // Selecting DocuSign is a boot check: the settings the host declared
-    // required must be present, and production must not be on demo hosts.
+    // required must be present. Whether those settings point at the sandbox
+    // is described, not refused - see production.ts.
     // The configuration is read once - a _FILE key is not re-read per call.
     docusign: () => {
       const config = configFromEnv();
       assertDocuSignConfig(config, options.docusign?.required ?? []);
-      assertProductionConfig(env, {
-        provider: 'docusign',
-        demoHosts: docuSignDemoHostsInUse(config),
-      });
       return docusignAdapter(config);
     },
     mock: () => {
-      assertProductionConfig(env, { provider: 'mock', demo: true });
       return createMockProvider({
         baseUrl:
           options.mockBaseUrl ??
-          (() => env.MOCK_PAGES_ORIGIN || serviceOrigin(env)),
+          (() => env.ESIGN_MOCK_PAGES_ORIGIN || serviceOrigin(env)),
         // A getter: the mirror is built on first use, so a selected mock
         // never reads the credentials
         webhook: docusignAdapter(configFromEnv),
@@ -143,9 +137,8 @@ export interface HostedFormProviderOptions
 // The provider a hosted-form host mints with: ESIGN_PROVIDER over the
 // default registry, DocuSign unless set, with everything a mint needs
 // required at selection time. Throws when the settings are missing
-// (DocuSignConfigError), when production is on demo settings
-// (ProductionConfigError), or when the selected provider has no hosted-form
-// capability at all - all three at boot, never on the first request.
+// (DocuSignConfigError) or when the selected provider has no hosted-form
+// capability at all - both at boot, never on the first request.
 export const hostedFormProviderFromEnv = (
   env: Env,
   options: HostedFormProviderOptions = {},

@@ -16,7 +16,7 @@ orchestration on. `GET /health` reports which.
    which creates one envelope from the template and answers its signing URL
 2. **HTML signing pages** - `GET /signing/return` (the DocuSign return-URL
    bridge, always); `GET /signing/mock/:id`, `GET /signing/mock-webform/:id`
-   (mock ceremonies for E2E, only with the mock provider and `MOCK_PAGES`
+   (mock ceremonies for E2E, only with the mock provider and `ESIGN_MOCK_PAGES`
    not `false`)
 3. **GraphQL API** - client interface at `/graphql` (with `DATABASE_URL`)
 4. **REST Webhook** - e-sign provider callbacks at `/webhook/esign`
@@ -102,7 +102,7 @@ its `initiated` audit log are persisted in a single transaction.
 The input carries no prefill: values the signer must not change are the
 host's to compute, never the client's to send. A host that embeds the
 package passes them in-process
-([locked-terms-envelopes.md](../integration/locked-terms-envelopes.md)).
+([locked-prefill-envelopes.md](../integration/locked-prefill-envelopes.md)).
 
 [![GraphQL Request Flow](../diagrams/dist/graphql-request-flow.svg)](../diagrams/src/graphql-request-flow.mmd)
 
@@ -337,12 +337,12 @@ interface GraphQLContext {
 
 | Configuration | Behavior |
 |---------------|----------|
-| `SESSION_JWKS_URL` set | Token verified against the remote key set (RS/ES only); `SESSION_USER_CLAIM` (default `sub`) → `userId`; anything unverifiable → `userId: null` |
-| `SESSION_HS256_SECRET` set (`JWT_SECRET` alias) | Same, verified as HS256 against the shared secret |
-| `ALLOW_INSECURE_DEV=true`, no source | Bearer token used as opaque `userId` (dev passthrough, warns once) |
+| `ESIGN_SESSION_JWKS_URL` set | Token verified against the remote key set (RS/ES only); `ESIGN_SESSION_USER_CLAIM` (default `sub`) → `userId`; anything unverifiable → `userId: null` |
+| `ESIGN_SESSION_SECRET` set | Same, verified as HS256 against the shared secret |
+| no session source configured | Bearer token used as opaque `userId`; reported at boot as `session not verified` |
 | No source at all | The service **refuses to boot** - it never runs unauthenticated |
 
-`exp` is required in every token; `SESSION_ISSUER` / `SESSION_AUDIENCE` are
+`exp` is required in every token; `ESIGN_SESSION_ISSUER` / `ESIGN_SESSION_AUDIENCE` are
 enforced when set. The domain rejects `userId: null` with `UNAUTHORIZED`.
 
 ### Mint (`POST /webform/instance`)
@@ -354,7 +354,7 @@ enforced when set. The domain rejects `userId: null` with `UNAUTHORIZED`.
 | `400` | `{ "error": "Invalid body: expected a JSON object" }` | The body is JSON but not an object (an array, a string), refused before any check or hook |
 | `400` | `{ "error": "<reason>" }` | The prefill is outside the provider's contract (checked before any provider call), the provider cannot mint hosted forms, or the host's `prefill` hook threw `Errors.validationError(message)` |
 | `401` | `{ "error": "Unauthorized" }` | No verified session (or the hook threw `Errors.unauthorized()`) |
-| `502` | `{ "error": "..." }` | Minting failed - including a failed `TERMS_URL` callback, which answers `Could not compute the signing terms` |
+| `502` | `{ "error": "..." }` | Minting failed - including a failed `ESIGN_PREFILL_URL` callback, which answers `Could not compute the signing terms` |
 
 The same table, from the package's side, is
 [`packages/esign-node/README.md`](../../packages/esign-node/README.md).
@@ -380,7 +380,7 @@ the envelope stays at the provider unrecorded.
 }
 ```
 
-Both fields are optional on the wire: the host's `TERMS_URL` may name the
+Both fields are optional on the wire: the host's `ESIGN_PREFILL_URL` may name the
 signer, and a prefill the caller did not send is not sent to the provider,
 so the template keeps its own values. The prefill contract is
 `parseEnvelopePrefill`: Text tab labels to a string or `{ value, locked? }`.
@@ -392,16 +392,16 @@ so the template keeps its own values. The prefill contract is
 | `400` | `{ "error": "Invalid body: expected a JSON object" }` | The body is JSON but not an object (an array, a string), refused before any check or hook |
 | `400` | `{ "error": "Invalid recipient: ..." }` | `recipient` is present but not `{ name, email }` strings |
 | `400` | `{ "error": "Invalid prefill: <reason>" }` | The prefill is outside the envelope contract (checked before any provider call) |
-| `400` | `{ "error": "recipient is required: a name and an email" }` | No signer was sent and no `TERMS_URL` names one (a host's own hook may name none too); a bad name or email answers the recipient validation's own message |
+| `400` | `{ "error": "recipient is required: a name and an email" }` | No signer was sent and no `ESIGN_PREFILL_URL` names one (a host's own hook may name none too); a bad name or email answers the recipient validation's own message |
 | `401` | `{ "error": "Unauthorized" }` | No verified session |
-| `502` | `{ "error": "..." }` | Creating the envelope failed (`Could not create signing session`; the log names the error code only) - including a failed or invalid `TERMS_URL` answer, `Could not compute the signing terms` |
+| `502` | `{ "error": "..." }` | Creating the envelope failed (`Could not create signing session`; the log names the error code only) - including a failed or invalid `ESIGN_PREFILL_URL` answer, `Could not compute the signing terms` |
 
-### Terms callback (`TERMS_URL`)
+### Terms callback (`ESIGN_PREFILL_URL`)
 
-The service's own outbound call, made per mint when `TERMS_URL` is set:
+The service's own outbound call, made per mint when `ESIGN_PREFILL_URL` is set:
 `POST` with the caller's `Authorization` header forwarded,
-`x-esign-terms-secret` when `TERMS_SHARED_SECRET` is set, and a
-`TERMS_TIMEOUT_MS` timeout (default 5000).
+`x-esign-prefill-secret` when `ESIGN_PREFILL_SECRET` is set, and a
+`ESIGN_PREFILL_TIMEOUT_MS` timeout (default 5000).
 
 | Mint | Request body | Answer |
 |------|--------------|--------|
@@ -411,16 +411,18 @@ The service's own outbound call, made per mint when `TERMS_URL` is set:
 A non-2xx, a timeout, a non-JSON answer or one without a prefill object -
 and, for an envelope, an out-of-contract prefill or a recipient that is
 missing or malformed - answers `502 Could not compute the signing terms`,
-never a fallback to what the client sent. Without `TERMS_URL` the client's values (for an envelope,
-its signer too) are minted as sent; `ESIGN_ENV=production` refuses that
-unless `ESIGN_ALLOW_CLIENT_PREFILL=true`.
+never a fallback to what the client sent. Without `ESIGN_PREFILL_URL` the client's values (for an envelope,
+its signer too) are minted as sent; the boot banner reports this as
+`prefill  client-supplied`, and `ESIGN_STRICT=true` refuses to start.
 
 ### Webhook Security
 
 1. Provider extracts its signature header and secret
 2. Shared HMAC-SHA256 validation over the **raw** request body
    (timing-safe comparison)
-3. Missing key: **rejected (fail-closed)** unless `ALLOW_INSECURE_DEV=true`;
+3. Missing key: **accepted**, since there is no signature to check - the
+   boot banner reports `webhook  not verified`. A key that IS configured is
+   always enforced;
    with envelopes on and the DocuSign provider, the boot guard refuses to
    start without `DOCUSIGN_HMAC_KEY` at all
 

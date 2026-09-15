@@ -155,7 +155,7 @@ describe('this process', () => {
       `DATABASE_URL=postgresql://test:test@localhost:${PORTS.testDb}/esign_test `,
     );
     expect(backend.command).toContain(
-      `CORS_ALLOWED_ORIGINS=http://localhost:${PORTS.vite.proxy},http://localhost:${PORTS.vite.webform},http://localhost:${PORTS.vite.publicurl} `,
+      `ESIGN_CORS_ALLOWED_ORIGINS=http://localhost:${PORTS.vite.proxy},http://localhost:${PORTS.vite.webform},http://localhost:${PORTS.vite.publicurl} `,
     );
     expect(backend.url).toBe(`http://localhost:${PORTS.api}/health`);
 

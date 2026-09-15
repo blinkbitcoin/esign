@@ -4,7 +4,7 @@ import { createESignApolloClient } from '@blinkbitcoin/esign-react';
 
 import { GRAPHQL_URL } from './config';
 
-// No login flow exists yet; the backend's dev passthrough (JWT_SECRET
+// No login flow exists yet; the backend's dev passthrough (ESIGN_SESSION_SECRET
 // unset) treats this fixed token as the userId.
 export const getAuthToken = (): string => 'mock-jwt-token';
 

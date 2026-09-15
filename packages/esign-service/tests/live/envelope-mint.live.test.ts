@@ -38,16 +38,18 @@ if (missing.length > 0) {
 }
 
 // The service as a live deployment would run it, minus what this test does
-// not exercise: no database (the mint needs none), the dev passthrough for
-// the session (the bearer token is the user id), the template(s) given
+// not exercise. The two `undefined`s are the point: no database (the mint
+// needs none) and no prefill callback, so the caller's own prefill is what
+// gets minted - which is what the locked-value assertions below check. No
+// session source either, so the bearer token is the user id the specs send.
 const liveEnv = (overrides: Env = {}): Env => ({
   ...process.env,
   DATABASE_URL: undefined,
-  TERMS_URL: undefined,
-  ESIGN_ENV: undefined,
+  ESIGN_PREFILL_URL: undefined,
+  ESIGN_SESSION_SECRET: undefined,
+  ESIGN_SESSION_JWKS_URL: undefined,
   ESIGN_PROVIDER: 'docusign',
   ESIGN_MINT_MODE: 'envelope',
-  ALLOW_INSECURE_DEV: 'true',
   ...overrides,
 });
 
@@ -156,7 +158,7 @@ describe.runIf(missing.length === 0)('the envelope mint (live, demo account)', (
     }
   });
 
-  it('lets TERMS_URL name the signer and the locked value, whatever the caller sent', async () => {
+  it('lets ESIGN_PREFILL_URL name the signer and the locked value, whatever the caller sent', async () => {
     const stamp = Date.now();
     const host = {
       recipient: { name: 'Host Named', email: `live-host-${stamp}@example.com` },
@@ -164,7 +166,7 @@ describe.runIf(missing.length === 0)('the envelope mint (live, demo account)', (
     };
     // The host's terms endpoint, stubbed: DocuSign is real, the host is not
     const terms = vi.fn(async () => new Response(JSON.stringify(host)));
-    const app = createESignApp(liveEnv({ TERMS_URL: 'https://terms.example.com/esign' }), {
+    const app = createESignApp(liveEnv({ ESIGN_PREFILL_URL: 'https://terms.example.com/esign' }), {
       fetch: terms as unknown as typeof globalThis.fetch,
     });
 

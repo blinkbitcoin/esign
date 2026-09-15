@@ -1,20 +1,17 @@
 // The boot guard: what refuses to start, and what it says when it does.
+//
+// The list is deliberately short. It refuses what is broken - credentials a
+// mint cannot do without, a provider name nothing answers to, a runtime
+// asked for something it cannot do - and nothing else. What a deployment
+// does not verify is reported by the banner (posture.test.ts), and becomes
+// a refusal only under ESIGN_STRICT.
 
-import { vi } from 'vitest';
+import { configErrors, getAllowedOrigins, isStrict, validateConfig } from '../src/config';
+import { silentLogger } from './support/app';
 
-import {
-  configErrors,
-  getAllowedOrigins,
-  isInsecureDevAllowed,
-  isJwtRequired,
-  isWebhookSignatureRequired,
-  validateConfig,
-} from '../src/config';
-
-// The smallest environment that boots: the dev passthrough, the mock
-// provider, no database (mint only). Tests add what they are about.
+// The smallest environment that boots: the mock provider, nothing else.
+// Tests add what they are about.
 const devEnv = (extra: Record<string, string | undefined> = {}) => ({
-  ALLOW_INSECURE_DEV: 'true',
   ESIGN_PROVIDER: 'mock',
   ...extra,
 });
@@ -32,134 +29,64 @@ const docusignEnv = (extra: Record<string, string | undefined> = {}) => ({
   ...extra,
 });
 
-describe('isInsecureDevAllowed', () => {
+describe('isStrict', () => {
+  // A typo must neither arm the gate nor silently disarm it
   it('is true only for the exact string "true"', () => {
-    expect(isInsecureDevAllowed({ ALLOW_INSECURE_DEV: 'true' })).toBe(true);
-    expect(isInsecureDevAllowed({ ALLOW_INSECURE_DEV: 'TRUE' })).toBe(false);
-    expect(isInsecureDevAllowed({ ALLOW_INSECURE_DEV: '1' })).toBe(false);
-    expect(isInsecureDevAllowed({})).toBe(false);
+    expect(isStrict({ ESIGN_STRICT: 'true' })).toBe(true);
+    expect(isStrict({ ESIGN_STRICT: 'TRUE' })).toBe(false);
+    expect(isStrict({ ESIGN_STRICT: '1' })).toBe(false);
+    expect(isStrict({ ESIGN_STRICT: 'false' })).toBe(false);
+    expect(isStrict({})).toBe(false);
   });
 });
 
-describe('isJwtRequired / isWebhookSignatureRequired', () => {
-  it('require secrets unless insecure-dev is allowed', () => {
-    expect(isJwtRequired({})).toBe(true);
-    expect(isWebhookSignatureRequired({})).toBe(true);
-    expect(isJwtRequired({ ALLOW_INSECURE_DEV: 'true' })).toBe(false);
-    expect(isWebhookSignatureRequired({ ALLOW_INSECURE_DEV: 'true' })).toBe(false);
-  });
-});
-
-describe('configErrors - the session source', () => {
-  it('refuses an environment that verifies nothing', () => {
-    expect(configErrors({ ESIGN_PROVIDER: 'mock' })).toEqual([
-      expect.stringMatching(/no session verification is configured/),
-    ]);
+// The change this whole refactor is about: a deployment that verifies
+// nothing is a deployment, not a misconfiguration. The banner says what it
+// does not verify (posture.test.ts); the guard says nothing.
+describe('configErrors - what is NOT a refusal', () => {
+  it('accepts an environment with no session source at all', () => {
+    expect(configErrors({ ESIGN_PROVIDER: 'mock' })).toEqual([]);
   });
 
-  it('accepts a JWKS url, a shared secret, the JWT_SECRET alias, or the dev switch', () => {
-    expect(configErrors({ ESIGN_PROVIDER: 'mock', SESSION_JWKS_URL: 'https://id/jwks' })).toEqual(
+  it('accepts a deployment with no prefill callback', () => {
+    expect(configErrors(devEnv())).toEqual([]);
+  });
+
+  it('accepts a plaintext prefill callback on a public host', () => {
+    expect(configErrors(devEnv({ ESIGN_PREFILL_URL: 'http://api.example.com/prefill' }))).toEqual(
       []
     );
-    expect(configErrors({ ESIGN_PROVIDER: 'mock', SESSION_HS256_SECRET: 's' })).toEqual([]);
-    expect(configErrors({ ESIGN_PROVIDER: 'mock', JWT_SECRET: 's' })).toEqual([]);
+  });
+
+  it('accepts envelope orchestration with no webhook key', () => {
+    expect(configErrors(devEnv({ DATABASE_URL: 'postgres://u@h/db' }))).toEqual([]);
+  });
+
+  it('accepts the mock provider and the DocuSign sandbox alike', () => {
     expect(configErrors(devEnv())).toEqual([]);
+    expect(configErrors(docusignEnv())).toEqual([]);
   });
 });
 
-describe('configErrors - the terms callback', () => {
-  it('accepts an absolute http(s) TERMS_URL', () => {
-    expect(configErrors(devEnv({ TERMS_URL: 'https://host.example.com/terms' }))).toEqual([]);
-    expect(configErrors(devEnv({ TERMS_URL: 'http://localhost:4100/terms' }))).toEqual([]);
-  });
-
-  it('refuses a relative or non-http TERMS_URL', () => {
-    expect(configErrors(devEnv({ TERMS_URL: '/terms' }))).toEqual([
-      expect.stringMatching(/absolute http\(s\) URL/),
-    ]);
-    expect(configErrors(devEnv({ TERMS_URL: 'ftp://host/terms' }))).toEqual([
-      expect.stringMatching(/absolute http\(s\) URL/),
-    ]);
-  });
-
-  it('refuses production without TERMS_URL: client values would be minted as sent', () => {
-    const errors = configErrors(
-      docusignEnv({ ESIGN_ENV: 'production', ESIGN_ALLOW_DEMO: 'true', JWT_SECRET: 's' })
+describe('configErrors - the prefill callback', () => {
+  it('accepts an absolute http(s) ESIGN_PREFILL_URL', () => {
+    expect(configErrors(devEnv({ ESIGN_PREFILL_URL: 'https://host.example.com/prefill' }))).toEqual(
+      []
     );
-    expect(errors).toEqual([expect.stringMatching(/would be minted as sent/)]);
+    expect(configErrors(devEnv({ ESIGN_PREFILL_URL: 'http://localhost:4100/prefill' }))).toEqual(
+      []
+    );
   });
 
-  it('allows production without TERMS_URL when the operator says so explicitly', () => {
-    expect(
-      configErrors(
-        docusignEnv({
-          ESIGN_ENV: 'production',
-          ESIGN_ALLOW_DEMO: 'true',
-          JWT_SECRET: 's',
-          ESIGN_ALLOW_CLIENT_PREFILL: 'true',
-        })
-      )
-    ).toEqual([]);
-  });
-
-  it('does not ask for TERMS_URL outside production', () => {
-    expect(configErrors(devEnv())).toEqual([]);
-  });
-});
-
-describe('configErrors - the terms callback must be encrypted in production', () => {
-  // createTermsPrefill forwards the caller's session bearer and
-  // TERMS_SHARED_SECRET to this URL, so a plaintext public hop leaks both.
-  const prodEnv = (extra: Record<string, string | undefined> = {}) =>
-    docusignEnv({
-      ESIGN_ENV: 'production',
-      ESIGN_ALLOW_DEMO: 'true',
-      JWT_SECRET: 's',
-      ...extra,
-    });
-
-  it('refuses a plaintext public terms callback, naming the variable', () => {
-    const errors = configErrors(prodEnv({ TERMS_URL: 'http://terms.example.com/terms' }));
-
-    expect(errors).toEqual([
-      expect.stringContaining('plaintext TERMS_URL (http://terms.example.com/terms)'),
+  // A URL the service cannot POST to is broken however the deployment is
+  // labelled - the one prefill rule that survives
+  it('refuses a relative or non-http ESIGN_PREFILL_URL', () => {
+    expect(configErrors(devEnv({ ESIGN_PREFILL_URL: '/prefill' }))).toEqual([
+      expect.stringMatching(/must be an absolute http\(s\) URL/),
     ]);
-    expect(errors[0]).toContain('TERMS_ALLOW_INSECURE=true');
-  });
-
-  it('accepts https', () => {
-    expect(configErrors(prodEnv({ TERMS_URL: 'https://terms.example.com/terms' }))).toEqual([]);
-  });
-
-  it.each([
-    'http://localhost:9000/terms',
-    'http://127.0.0.1:9000/terms',
-    'http://[::1]:9000/terms',
-    'http://terms.default.svc/terms',
-    'http://terms.default.svc.cluster.local/terms',
-    'http://terms.default.svc.cluster.local./terms',
-    'http://terms.eu-west-1.internal/terms',
-    'http://TERMS.default.SVC/terms',
-  ])('accepts the private hop %s', (url) => {
-    expect(configErrors(prodEnv({ TERMS_URL: url }))).toEqual([]);
-  });
-
-  it('accepts a plaintext public host only when the operator opts in', () => {
-    expect(
-      configErrors(
-        prodEnv({ TERMS_URL: 'http://terms.example.com/terms', TERMS_ALLOW_INSECURE: 'true' })
-      )
-    ).toEqual([]);
-    // Anything but the exact string is not the opt-in
-    expect(
-      configErrors(
-        prodEnv({ TERMS_URL: 'http://terms.example.com/terms', TERMS_ALLOW_INSECURE: '1' })
-      )
-    ).toEqual([expect.stringContaining('plaintext TERMS_URL')]);
-  });
-
-  it('does not apply outside production', () => {
-    expect(configErrors(devEnv({ TERMS_URL: 'http://terms.example.com/terms' }))).toEqual([]);
+    expect(configErrors(devEnv({ ESIGN_PREFILL_URL: 'ftp://host/prefill' }))).toEqual([
+      expect.stringMatching(/must be an absolute http\(s\) URL/),
+    ]);
   });
 });
 
@@ -169,35 +96,15 @@ describe('configErrors - the provider', () => {
   });
 
   it('accepts DocuSign with every hosted-form setting present', () => {
-    expect(configErrors(docusignEnv({ ALLOW_INSECURE_DEV: 'true' }))).toEqual([]);
+    expect(configErrors(docusignEnv())).toEqual([]);
   });
 
   it('refuses DocuSign without the settings a mint needs', () => {
     const errors = configErrors({
-      ALLOW_INSECURE_DEV: 'true',
       ESIGN_PROVIDER: 'docusign',
       DOCUSIGN_INTEGRATION_KEY: 'ik',
     });
     expect(errors).toEqual([expect.stringMatching(/DOCUSIGN_WEBFORM_ID/)]);
-  });
-
-  it('refuses production on the mock provider', () => {
-    const errors = configErrors(
-      devEnv({ ESIGN_ENV: 'production', ESIGN_ALLOW_CLIENT_PREFILL: 'true' })
-    );
-    expect(errors).toEqual([expect.stringMatching(/mock provider is a demo provider/)]);
-  });
-
-  it('refuses production on DocuSign demo hosts', () => {
-    const errors = configErrors(
-      docusignEnv({
-        ALLOW_INSECURE_DEV: 'true',
-        ESIGN_ENV: 'production',
-        ESIGN_ALLOW_CLIENT_PREFILL: 'true',
-        DOCUSIGN_BASE_URL: 'https://demo.docusign.net/restapi',
-      })
-    );
-    expect(errors).toEqual([expect.stringMatching(/demo host/)]);
   });
 
   it('refuses an unknown ESIGN_PROVIDER instead of silently falling back', () => {
@@ -207,33 +114,66 @@ describe('configErrors - the provider', () => {
   });
 });
 
-describe('configErrors - the envelope webhook', () => {
-  it('requires DOCUSIGN_HMAC_KEY once envelopes are on', () => {
-    const errors = configErrors(
-      docusignEnv({ JWT_SECRET: 's', DATABASE_URL: 'postgres://u@h/db' })
-    );
-    expect(errors).toEqual([expect.stringMatching(/DOCUSIGN_HMAC_KEY/)]);
+// The webhook key is no longer a refusal - an unverified webhook is a
+// choice the banner reports. Under ESIGN_STRICT it becomes one again.
+describe('configErrors - ESIGN_STRICT', () => {
+  const verified = {
+    ESIGN_SESSION_SECRET: 's',
+    ESIGN_PREFILL_URL: 'https://api.example.com/prefill',
+    DOCUSIGN_BASE_URL: 'https://na4.docusign.net/restapi',
+    DOCUSIGN_OAUTH_URL: 'https://account.docusign.com',
+    DOCUSIGN_WEBFORMS_BASE_URL: 'https://apps.docusign.com/api/webforms/v1.1',
+  };
+
+  it('refuses every unverified check, naming the variable that fixes it', () => {
+    const errors = configErrors(devEnv({ ESIGN_STRICT: 'true' }));
+    expect(errors).toEqual([
+      expect.stringMatching(/provider is mock.*ESIGN_PROVIDER/),
+      expect.stringMatching(/session is not verified.*ESIGN_SESSION_JWKS_URL/),
+      expect.stringMatching(/prefill is client-supplied.*ESIGN_PREFILL_URL/),
+    ]);
   });
 
-  it('does not require it without a database (mint only)', () => {
-    expect(configErrors(docusignEnv({ JWT_SECRET: 's' }))).toEqual([]);
+  it('is satisfied when every check is verified', () => {
+    expect(configErrors(docusignEnv({ ...verified, ESIGN_STRICT: 'true' }))).toEqual([]);
   });
 
-  it('does not require it for the mock provider', () => {
-    expect(configErrors(devEnv({ JWT_SECRET: 's', DATABASE_URL: 'postgres://u@h/db' }))).toEqual(
-      []
-    );
-  });
-
-  it('is satisfied by the key, or by the insecure-dev switch', () => {
+  it('demands the webhook key once envelopes are on', () => {
     expect(
       configErrors(
-        docusignEnv({ JWT_SECRET: 's', DATABASE_URL: 'postgres://u@h/db', DOCUSIGN_HMAC_KEY: 'k' })
+        docusignEnv({ ...verified, ESIGN_STRICT: 'true', DATABASE_URL: 'postgres://u@h/db' })
+      )
+    ).toEqual([expect.stringMatching(/webhook is not verified.*DOCUSIGN_HMAC_KEY/)]);
+  });
+
+  it('is satisfied once the webhook key is set', () => {
+    expect(
+      configErrors(
+        docusignEnv({
+          ...verified,
+          ESIGN_STRICT: 'true',
+          DATABASE_URL: 'postgres://u@h/db',
+          DOCUSIGN_HMAC_KEY: 'k',
+        })
       )
     ).toEqual([]);
+  });
+
+  it('refuses a sandbox provider', () => {
     expect(
-      configErrors(docusignEnv({ ALLOW_INSECURE_DEV: 'true', DATABASE_URL: 'postgres://u@h/db' }))
-    ).toEqual([]);
+      configErrors(
+        docusignEnv({
+          ESIGN_SESSION_SECRET: 's',
+          ESIGN_PREFILL_URL: 'https://api.example.com/prefill',
+          ESIGN_STRICT: 'true',
+        })
+      )
+    ).toEqual([expect.stringMatching(/provider is docusign.*demo host/)]);
+  });
+
+  it('demands nothing unless it is exactly "true"', () => {
+    expect(configErrors(devEnv({ ESIGN_STRICT: '1' }))).toEqual([]);
+    expect(configErrors(devEnv({ ESIGN_STRICT: 'TRUE' }))).toEqual([]);
   });
 });
 
@@ -252,7 +192,6 @@ describe('configErrors - runtime vs capability', () => {
   it('refuses a PEM file path on the edge runtime (no filesystem)', () => {
     const errors = configErrors(
       docusignEnv({
-        ALLOW_INSECURE_DEV: 'true',
         DOCUSIGN_PRIVATE_KEY: undefined,
         DOCUSIGN_PRIVATE_KEY_FILE: '/run/secrets/docusign.pem',
       }),
@@ -267,7 +206,6 @@ describe('configErrors - the mint mode', () => {
   // Web Form (dummy ids in the real shape - nothing here is a real template)
   const envelopeEnv = (extra: Record<string, string | undefined> = {}) =>
     docusignEnv({
-      ALLOW_INSECURE_DEV: 'true',
       ESIGN_MINT_MODE: 'envelope',
       DOCUSIGN_WEBFORM_ID: undefined,
       DOCUSIGN_TEMPLATE_ID: 'membership,subscription,joinder',
@@ -294,28 +232,14 @@ describe('configErrors - the mint mode', () => {
     ]);
   });
 
-  it('still refuses production on DocuSign demo hosts', () => {
-    const errors = configErrors(
-      envelopeEnv({
-        ESIGN_ENV: 'production',
-        ESIGN_ALLOW_CLIENT_PREFILL: 'true',
-        DOCUSIGN_BASE_URL: 'https://demo.docusign.net/restapi',
-      })
-    );
-    expect(errors).toEqual([expect.stringMatching(/demo host/)]);
-  });
-
   // A production-shaped staging deployment on the DocuSign demo account: the
   // image's own posture, with the one bypass it documents
   it('accepts the demo account in production when demo settings are allowed', () => {
     expect(
       configErrors(
         envelopeEnv({
-          ALLOW_INSECURE_DEV: undefined,
-          SESSION_HS256_SECRET: 's',
+          ESIGN_SESSION_SECRET: 's',
           ESIGN_ENV: 'production',
-          ESIGN_ALLOW_DEMO: 'true',
-          ESIGN_ALLOW_CLIENT_PREFILL: 'true',
         })
       )
     ).toEqual([]);
@@ -324,36 +248,19 @@ describe('configErrors - the mint mode', () => {
   // The host decides the signer and the locked values from its own data, as
   // it decides a Web Form's
   it('accepts a terms callback for envelopes', () => {
-    expect(configErrors(envelopeEnv({ TERMS_URL: 'https://api.example.com/terms' }))).toEqual([]);
+    expect(
+      configErrors(envelopeEnv({ ESIGN_PREFILL_URL: 'https://api.example.com/terms' }))
+    ).toEqual([]);
   });
 
-  it('refuses production envelopes minting the client signer and prefill without the opt-in', () => {
-    expect(
-      configErrors(
-        envelopeEnv({
-          ALLOW_INSECURE_DEV: undefined,
-          SESSION_HS256_SECRET: 's',
-          ESIGN_ENV: 'production',
-          ESIGN_ALLOW_DEMO: 'true',
-        })
-      )
-    ).toEqual([
-      expect.stringMatching(
-        /without TERMS_URL: the client's own signer and prefill would be minted as sent/
-      ),
-    ]);
-  });
-
-  it('refuses the mock provider in production for envelopes too', () => {
-    expect(
-      configErrors(
-        devEnv({
-          ESIGN_MINT_MODE: 'envelope',
-          ESIGN_ENV: 'production',
-          ESIGN_ALLOW_CLIENT_PREFILL: 'true',
-        })
-      )
-    ).toEqual([expect.stringMatching(/mock provider is a demo provider/)]);
+  // The envelope mint carries a signer as well as a prefill, so an envelope
+  // deployment with no callback lets the caller name both. Reported, not
+  // refused - and refused again under ESIGN_STRICT.
+  it('accepts envelopes with no prefill callback, and refuses them under ESIGN_STRICT', () => {
+    expect(configErrors(envelopeEnv({ ESIGN_SESSION_SECRET: 's' }))).toEqual([]);
+    expect(configErrors(envelopeEnv({ ESIGN_SESSION_SECRET: 's', ESIGN_STRICT: 'true' }))).toEqual(
+      expect.arrayContaining([expect.stringMatching(/prefill is client-supplied/)])
+    );
   });
 
   it('refuses a mode it does not know', () => {
@@ -381,42 +288,44 @@ describe('configErrors - the mint mode', () => {
 });
 
 describe('validateConfig', () => {
-  afterEach(() => vi.restoreAllMocks());
-
   it('returns the capabilities that are on', () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    expect(validateConfig(devEnv())).toEqual(['mint']);
-    expect(validateConfig(devEnv({ DATABASE_URL: 'postgres://u@h/db' }))).toEqual([
-      'mint',
-      'envelopes',
-    ]);
+    expect(validateConfig(devEnv(), { logger: silentLogger() })).toEqual(['mint']);
+    expect(
+      validateConfig(devEnv({ DATABASE_URL: 'postgres://u@h/db' }), { logger: silentLogger() })
+    ).toEqual(['mint', 'envelopes']);
   });
 
-  it('warns when the insecure-dev switch is on', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    validateConfig(devEnv());
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('ALLOW_INSECURE_DEV=true'));
+  // The whole point: an environment the old guard refused now starts, and
+  // says what it does not verify instead of dying
+  it('starts with nothing configured and prints what it does not verify', () => {
+    const logger = silentLogger();
+    expect(() => validateConfig({ ESIGN_PROVIDER: 'mock' }, { logger })).not.toThrow();
+    const banner = logger.log.mock.calls[0]?.[0] as string;
+    expect(banner).toContain('session       not verified');
+    expect(banner).toContain('prefill       client-supplied');
   });
 
-  it('does not warn for a properly configured deployment', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    validateConfig(docusignEnv({ JWT_SECRET: 's' }));
-    expect(warn).not.toHaveBeenCalled();
+  it('prints the banner on every successful construction', () => {
+    const logger = silentLogger();
+    validateConfig(docusignEnv({ ESIGN_SESSION_SECRET: 's' }), { logger });
+    expect(logger.log).toHaveBeenCalledTimes(1);
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 
-  it('lists every problem at once, with the capabilities that are on', () => {
+  it('still refuses what is actually broken, listing every problem at once', () => {
+    const logger = silentLogger();
     expect(() =>
-      validateConfig({ ESIGN_PROVIDER: 'docusign', DATABASE_URL: 'postgres://u@h/db' })
+      validateConfig({ ESIGN_PROVIDER: 'docusign', DATABASE_URL: 'postgres://u@h/db' }, { logger })
     ).toThrow(/capabilities: mint, envelopes/);
     expect(() =>
-      validateConfig({ ESIGN_PROVIDER: 'docusign', DATABASE_URL: 'postgres://u@h/db' })
-    ).toThrow(/no session verification.*DOCUSIGN_WEBFORM_ID.*DOCUSIGN_HMAC_KEY/s);
+      validateConfig({ ESIGN_PROVIDER: 'docusign', DATABASE_URL: 'postgres://u@h/db' }, { logger })
+    ).toThrow(/DOCUSIGN_WEBFORM_ID/);
+    // Nothing is printed by a deployment that does not start
+    expect(logger.log).not.toHaveBeenCalled();
   });
 
   it('reads process.env by default', () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    // tests/setup.ts sets ALLOW_INSECURE_DEV=true for the whole suite
-    expect(validateConfig()).toEqual(['mint']);
+    expect(validateConfig(undefined, { logger: silentLogger() })).toEqual(['mint']);
   });
 });
 
@@ -426,8 +335,8 @@ describe('getAllowedOrigins', () => {
   });
 
   it('splits, trims, and drops blanks', () => {
-    expect(getAllowedOrigins({ CORS_ALLOWED_ORIGINS: 'https://a.com, https://b.com ,, ' })).toEqual(
-      ['https://a.com', 'https://b.com']
-    );
+    expect(
+      getAllowedOrigins({ ESIGN_CORS_ALLOWED_ORIGINS: 'https://a.com, https://b.com ,, ' })
+    ).toEqual(['https://a.com', 'https://b.com']);
   });
 });

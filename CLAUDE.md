@@ -121,13 +121,16 @@ npm run migrate:test         # Same against the .env.test database
   always on, `DATABASE_URL` adds envelope orchestration. `GET /health` reports
   which; the envelope half is behind a dynamic import so a mint-only
   deployment never loads Apollo or `pg`.
-- Security is fail-closed by default: `validateConfig` (`src/config.ts`, pure)
-  refuses to boot without a session source (`SESSION_JWKS_URL` or
-  `SESSION_HS256_SECRET`, `JWT_SECRET` an alias), without the settings a mint
-  needs, and without `DOCUSIGN_HMAC_KEY` when envelopes are on - unless
-  `ALLOW_INSECURE_DEV=true` is explicitly set. This is NOT gated on `NODE_ENV`
-  (`ESIGN_ENV=production` is the production switch). Missing DocuSign provider config also throws
-  at boot. The webhook handler enforces a terminal-state machine (no
+- The boot guard (`validateConfig`, `src/config.ts`, pure) refuses only what
+  it can know is broken: missing DocuSign settings, an unknown
+  `ESIGN_PROVIDER` or `ESIGN_MINT_MODE`, an `ESIGN_PREFILL_URL` it could not
+  POST to, `DATABASE_URL` on the edge runtime. What a deployment does not
+  *verify* - the session, the prefill authority, the webhook signature, a
+  sandbox provider - is REPORTED at boot by the banner (`src/posture.ts`),
+  because whether any of it matters depends on the architecture around the
+  service, which this process cannot see. `ESIGN_STRICT=true` is the one
+  opt-in that turns every reported gap back into a refusal. Nothing is gated
+  on `NODE_ENV`. The webhook handler enforces a terminal-state machine (no
   transitions out of completed/voided/declined) to block replay-downgrades.
 
 ## Library specifics

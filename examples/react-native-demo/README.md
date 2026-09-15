@@ -50,4 +50,4 @@ make e2e-android   # Maestro, Android (adb reverse handles Metro + backend ports
 ```
 
 The demo sends a fixed dev bearer token; the backend's dev passthrough
-(`JWT_SECRET` unset) treats it as the userId — no login flow required.
+(`ESIGN_SESSION_SECRET` unset) treats it as the userId — no login flow required.

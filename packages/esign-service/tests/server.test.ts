@@ -14,7 +14,7 @@ import {
   startServer,
   sweepWindows,
 } from '../src/server';
-import { DEV_ENV } from './support/app';
+import { DEV_ENV, silentLogger } from './support/app';
 
 describe('rateLimitsFromEnv', () => {
   it('defaults to what the Express limiters allowed', () => {
@@ -24,17 +24,20 @@ describe('rateLimitsFromEnv', () => {
   it('reads RATE_LIMIT_*_PER_MIN', () => {
     expect(
       rateLimitsFromEnv({
-        RATE_LIMIT_WEBFORM_PER_MIN: '5',
-        RATE_LIMIT_ENVELOPE_PER_MIN: '8',
-        RATE_LIMIT_WEBHOOK_PER_MIN: '6',
-        RATE_LIMIT_GRAPHQL_PER_MIN: '7',
+        ESIGN_RATE_LIMIT_WEBFORM_PER_MIN: '5',
+        ESIGN_RATE_LIMIT_ENVELOPE_PER_MIN: '8',
+        ESIGN_RATE_LIMIT_WEBHOOK_PER_MIN: '6',
+        ESIGN_RATE_LIMIT_GRAPHQL_PER_MIN: '7',
       })
     ).toEqual({ webform: 5, envelope: 8, webhook: 6, graphql: 7 });
   });
 
   it('ignores a value that is not a number or is negative', () => {
     expect(
-      rateLimitsFromEnv({ RATE_LIMIT_WEBFORM_PER_MIN: 'lots', RATE_LIMIT_WEBHOOK_PER_MIN: '-1' })
+      rateLimitsFromEnv({
+        ESIGN_RATE_LIMIT_WEBFORM_PER_MIN: 'lots',
+        ESIGN_RATE_LIMIT_WEBHOOK_PER_MIN: '-1',
+      })
     ).toEqual(DEFAULT_RATE_LIMITS);
   });
 });
@@ -209,21 +212,24 @@ describe('startServer', () => {
     expect(await response.json()).toMatchObject({ status: 'ok', capabilities: ['mint'] });
   });
 
-  it('logs where it is listening and which provider it runs', async () => {
+  it('prints the posture banner and where it is listening', async () => {
     server = await start();
 
-    expect(logs).toHaveBeenCalledWith(expect.stringContaining(`${server.url}/health`));
-    expect(logs).toHaveBeenCalledWith(expect.stringContaining('E-signature provider: mock'));
+    // The banner, from validateConfig inside createESignApp
+    expect(logs).toHaveBeenCalledWith(expect.stringContaining('provider      mock'));
+    expect(logs).toHaveBeenCalledWith(expect.stringContaining('session       not verified'));
+    // And the one line the server itself adds
+    expect(logs).toHaveBeenCalledWith(expect.stringContaining(`ready at ${server.url}`));
   });
 
-  it('defaults the logged provider to mock when ESIGN_PROVIDER is unset', async () => {
+  it('names the mock in the banner when ESIGN_PROVIDER is unset', async () => {
     server = await start({ ESIGN_PROVIDER: undefined });
 
-    expect(logs).toHaveBeenCalledWith(expect.stringContaining('E-signature provider: mock'));
+    expect(logs).toHaveBeenCalledWith(expect.stringContaining('provider      mock'));
   });
 
   it('answers 429 once a route is over its limit, and marks every answer', async () => {
-    server = await start({ RATE_LIMIT_WEBFORM_PER_MIN: '2' });
+    server = await start({ ESIGN_RATE_LIMIT_WEBFORM_PER_MIN: '2' });
     const mint = () =>
       fetch(`${server?.url}/webform/instance`, {
         method: 'POST',
@@ -244,7 +250,7 @@ describe('startServer', () => {
   });
 
   it('gives the 429 the same security headers as every other JSON answer', async () => {
-    server = await start({ RATE_LIMIT_WEBFORM_PER_MIN: '1' });
+    server = await start({ ESIGN_RATE_LIMIT_WEBFORM_PER_MIN: '1' });
     const mint = () =>
       fetch(`${server?.url}/webform/instance`, {
         method: 'POST',
@@ -274,8 +280,8 @@ describe('startServer', () => {
 
   it('gives the 429 the same CORS answer as every other JSON answer', async () => {
     server = await start({
-      RATE_LIMIT_WEBFORM_PER_MIN: '1',
-      CORS_ALLOWED_ORIGINS: 'https://app.example.com',
+      ESIGN_RATE_LIMIT_WEBFORM_PER_MIN: '1',
+      ESIGN_CORS_ALLOWED_ORIGINS: 'https://app.example.com',
     });
     const mint = () =>
       fetch(`${server?.url}/webform/instance`, {
@@ -303,8 +309,8 @@ describe('startServer', () => {
     expect(response.headers.get('ratelimit')).toBeNull();
   });
 
-  it('keys the limit on the forwarded client when TRUST_PROXY is set', async () => {
-    server = await start({ TRUST_PROXY: 'true', RATE_LIMIT_GRAPHQL_PER_MIN: '1' });
+  it('keys the limit on the forwarded client when ESIGN_TRUST_PROXY is set', async () => {
+    server = await start({ ESIGN_TRUST_PROXY: 'true', ESIGN_RATE_LIMIT_GRAPHQL_PER_MIN: '1' });
     const call = (client: string) =>
       fetch(`${server?.url}/graphql`, {
         method: 'POST',
@@ -319,8 +325,8 @@ describe('startServer', () => {
     expect((await call('203.0.113.2')).status).not.toBe(429);
   });
 
-  it('ignores the forwarded header without TRUST_PROXY', async () => {
-    server = await start({ RATE_LIMIT_GRAPHQL_PER_MIN: '1' });
+  it('ignores the forwarded header without ESIGN_TRUST_PROXY', async () => {
+    server = await start({ ESIGN_RATE_LIMIT_GRAPHQL_PER_MIN: '1' });
     const call = (client: string) =>
       fetch(`${server?.url}/graphql`, {
         method: 'POST',
@@ -336,7 +342,7 @@ describe('startServer', () => {
   it('falls back to an unknown client when the platform reports no address', async () => {
     server = await start(
       {
-        RATE_LIMIT_GRAPHQL_PER_MIN: '1',
+        ESIGN_RATE_LIMIT_GRAPHQL_PER_MIN: '1',
       },
       { clientAddress: () => undefined }
     );
@@ -369,9 +375,78 @@ describe('startServer', () => {
     });
   });
 
-  it('refuses to listen when the configuration is wrong', async () => {
-    await expect(startServer({ ESIGN_PROVIDER: 'mock', PORT: '0' })).rejects.toThrow(
-      /Refusing to start/
-    );
+  // The vanilla deploy again, through the real listen path
+  it('listens with nothing configured beyond the provider', async () => {
+    server = await start({ ESIGN_PROVIDER: 'mock' });
+    expect(server.url).toMatch(/^http:\/\//);
+  });
+
+  describe('the preflight', () => {
+    const JWKS = 'https://id.example.com/jwks';
+    const keySet = async () =>
+      new Response(JSON.stringify({ keys: [{ kid: 'k', alg: 'RS256' }] }), { status: 200 });
+
+    it('reports a reachable key set in the banner', async () => {
+      server = await start({ ESIGN_SESSION_JWKS_URL: JWKS }, { fetch: vi.fn(keySet) });
+
+      expect(logs).toHaveBeenCalledWith(expect.stringContaining('1 key from id.example.com'));
+    });
+
+    // The typo case: reported, and the service still starts
+    it('reports an unreachable key set and listens anyway', async () => {
+      server = await start(
+        { ESIGN_SESSION_JWKS_URL: JWKS },
+        {
+          fetch: vi.fn(async () => {
+            throw new Error('ENOTFOUND');
+          }),
+        }
+      );
+
+      expect(logs).toHaveBeenCalledWith(expect.stringContaining('! id.example.com unreachable'));
+      expect(server.url).toMatch(/^http:\/\//);
+    });
+
+    it('probes nothing when no URL is configured', async () => {
+      const doFetch = vi.fn(keySet);
+      server = await start({}, { fetch: doFetch });
+
+      expect(doFetch).not.toHaveBeenCalled();
+    });
+
+    // A strict deployment must not accept traffic it cannot authenticate
+    it('refuses to listen on a failed probe under ESIGN_STRICT', async () => {
+      await expect(
+        start(
+          {
+            ESIGN_STRICT: 'true',
+            ESIGN_PROVIDER: 'docusign',
+            DOCUSIGN_INTEGRATION_KEY: 'ik',
+            DOCUSIGN_ACCOUNT_ID: 'acct',
+            DOCUSIGN_USER_ID: 'user',
+            DOCUSIGN_PRIVATE_KEY: 'pem',
+            DOCUSIGN_WEBFORM_ID: 'form',
+            DOCUSIGN_RETURN_URL: 'https://api.example.com/signing/return',
+            DOCUSIGN_BASE_URL: 'https://na4.docusign.net/restapi',
+            DOCUSIGN_OAUTH_URL: 'https://account.docusign.com',
+            DOCUSIGN_WEBFORMS_BASE_URL: 'https://apps.docusign.com/api/webforms/v1.1',
+            ESIGN_SESSION_JWKS_URL: JWKS,
+            ESIGN_PREFILL_URL: 'https://api.example.com/prefill',
+          },
+          {
+            logger: silentLogger(),
+            fetch: vi.fn(async () => {
+              throw new Error('ENOTFOUND');
+            }),
+          }
+        )
+      ).rejects.toThrow(/Refusing to listen.*session.*ENOTFOUND/s);
+    });
+  });
+
+  it('refuses to listen when the configuration is actually broken', async () => {
+    await expect(
+      startServer({ ESIGN_PROVIDER: 'docusign', PORT: '0' }, { logger: silentLogger() })
+    ).rejects.toThrow(/Refusing to start/);
   });
 });
