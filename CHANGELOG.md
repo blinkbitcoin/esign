@@ -5,6 +5,24 @@ from Conventional Commit PR titles; see [docs/releasing.md](docs/releasing.md).
 The two entries below were written by hand from the v0.1.0 and v0.2.0 GitHub
 Releases in the same format release-please prepends to.
 
+## [0.6.0](https://github.com/blinkbitcoin/esign/compare/v0.5.0...v0.6.0) (2026-09-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **service:** TERMS_URL, TERMS_SHARED_SECRET and TERMS_TIMEOUT_MS are ESIGN_PREFILL_URL, ESIGN_PREFILL_SECRET and ESIGN_PREFILL_TIMEOUT_MS, and the callback header is x-esign-prefill-secret (was x-esign-terms-secret). SESSION_JWKS_URL, SESSION_ISSUER, SESSION_AUDIENCE, SESSION_USER_CLAIM, MOCK_PAGES, MOCK_PAGES_ORIGIN, TRUST_PROXY, RATE_LIMIT_*_PER_MIN and CORS_ALLOWED_ORIGINS gain the ESIGN_ prefix. SESSION_HS256_SECRET is ESIGN_SESSION_SECRET and the JWT_SECRET alias is removed with no replacement. The exported terms names are the prefill names: createTermsPrefill is createPrefillHook, createEnvelopeTerms is createEnvelopePrefillHook, termsConfigFromEnv is prefillConfigFromEnv, TermsError is PrefillError, TermsConfig/TermsDeps/EnvelopeTermsDeps are PrefillConfig/PrefillDeps/ EnvelopePrefillDeps, EnvelopeAppTermsInput is EnvelopeAppPrefillInput, and src/terms.ts is src/prefill.ts. docs/integration/locked-terms{,-envelopes}.md are locked-prefill{,-envelopes}.md.
+
+### Features
+
+* **service:** envelope mint, direct signing from templates with no Web Form ([#96](https://github.com/blinkbitcoin/esign/issues/96)) ([5165023](https://github.com/blinkbitcoin/esign/commit/51650238734d876d03479ea807bcfebfd9e30c96))
+* **service:** report the deployment posture instead of refusing it, and one naming convention ([#106](https://github.com/blinkbitcoin/esign/issues/106)) ([ba9ba6f](https://github.com/blinkbitcoin/esign/commit/ba9ba6fd1b3d402e33b53c7fae2c706eeb123211))
+
+
+### Bug Fixes
+
+* **node:** derive the mock pages origin from ESIGN_PORT_BASE ([#104](https://github.com/blinkbitcoin/esign/issues/104)) ([acd2af8](https://github.com/blinkbitcoin/esign/commit/acd2af8857721b88800fd3e9046a8c0fe466bbc5))
+* **node:** stop CodeQL flagging the JWT grant, by fixing the aud claim it misread ([#108](https://github.com/blinkbitcoin/esign/issues/108)) ([a8551cf](https://github.com/blinkbitcoin/esign/commit/a8551cf334c595bded1b1295d9d83c0511e0f8c4))
+
 ## [0.5.0](https://github.com/blinkbitcoin/esign/compare/v0.4.0...v0.5.0) (2026-09-11)
 
 
