@@ -158,6 +158,29 @@ describe('defaultRegistry', () => {
     expect(custom.url).toMatch(/^http:\/\/svc:9\//);
   });
 
+  // A worktree moves the whole stack with one variable, so the pages the
+  // mock mints have to move with it.
+  it('mock: the default pages origin follows ESIGN_PORT_BASE', async () => {
+    const minted = await defaultRegistry({ ESIGN_PORT_BASE: '4300' }).mock()
+      .createHostedFormInstance!('u', {});
+    expect(minted.url).toMatch(
+      /^http:\/\/localhost:4300\/signing\/mock-webform\//,
+    );
+  });
+
+  // PORT is the HOST's own port - the mint-only demo binds base + 4 - while
+  // the pages are served by the service at base + 0. Reading PORT here would
+  // point every minted page at whichever host happened to mint it.
+  it("mock: the default pages origin ignores the host's own PORT", async () => {
+    const minted = await defaultRegistry({
+      ESIGN_PORT_BASE: '4300',
+      PORT: '4304',
+    }).mock().createHostedFormInstance!('u', {});
+    expect(minted.url).toMatch(
+      /^http:\/\/localhost:4300\/signing\/mock-webform\//,
+    );
+  });
+
   it('mock: mirrors the DocuSign webhook policy (unsigned → rejected; allowMissingKey opens it)', () => {
     const strict = defaultRegistry(
       { DOCUSIGN_HMAC_KEY: 'k' },

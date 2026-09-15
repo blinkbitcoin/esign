@@ -216,8 +216,16 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   `ports.mjs claim`); the main clone and CI stay on 4100; an explicit
   `ESIGN_PORT_BASE` wins. `make ports` shows the block and its holders,
   `make ports-free` stops this worktree's leftovers. Never write a port
-  literal outside those defaults; `scripts/lib/ports.test.mjs` checks each
-  service's declared offset against the table.
+  literal outside those defaults, and never freeze a whole origin: derive it
+  from the base, the way every `PORT_BASE_DEFAULT + OFFSET` reader does. A
+  frozen `http://localhost:4100` carries the right number and still ignores
+  the worktree. `scripts/lib/ports.test.mjs` checks each service's declared
+  offset against the table AND that every port-resolving file names
+  `ESIGN_PORT_BASE` in code, not just in a comment. Test runs pin the base
+  themselves (`examples/react-native-demo/jest.config.js`,
+  `packages/esign-service/vitest.setup.ts`) so a claimed block never fails a
+  suite that asserts the default; the RN demo has to do it in the jest
+  config because babel inlines the variable at transform time.
 - `graphql` is pinned to 16.x repo-wide (Apollo Server 5's peer range) - do
   not bump it to 17 until Apollo Server supports it
 

@@ -1,3 +1,16 @@
+// A worktree claims its own port block into .env.local and direnv exports
+// ESIGN_PORT_BASE from it, so a developer's shell carries a base that is not
+// the documented 4100 these tests assert. That is machine state, not a
+// property of the code under test. It has to be cleared HERE, not in
+// jest.setup.ts: babel.config.js inlines ESIGN_PORT_BASE into the demo's
+// modules at transform time (the RN bundle has no process.env at runtime),
+// so by the time a setup file runs the value is already baked in. This file
+// is evaluated by the jest CLI before any worker transforms anything.
+// Empty, not deleted: every reader in the repo treats an empty value as
+// unset. A test that exercises the derivation passes the base explicitly
+// (resolveBackendPort takes it as an argument).
+process.env.ESIGN_PORT_BASE = '';
+
 module.exports = {
   // Tests are silent: fails a test on any console output (jest.setup.ts)
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],

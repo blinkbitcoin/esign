@@ -4,6 +4,7 @@
 // Every host in this repo selects its provider this way; a host with its own
 // adapter adds an entry.
 
+import { serviceOrigin } from './port';
 import { assertProductionConfig } from './production';
 import {
   type ESignProvider,
@@ -67,8 +68,9 @@ export interface DefaultRegistryOptions {
   // Connect HMAC key from DOCUSIGN_HMAC_KEY, signatures required.
   webhook?: Partial<DocuSignWebhookOptions>;
   // Where the mock's signing pages are served (the esign service does).
-  // Default: MOCK_PAGES_ORIGIN, else http://localhost:4100 (the
-  // service's default port; a dev-only fallback).
+  // Default: MOCK_PAGES_ORIGIN, else the service's origin for this worktree
+  // (ESIGN_PORT_BASE + the service's offset - see ./port; a dev-only
+  // fallback).
   mockBaseUrl?: () => string;
   docusign?: {
     // The settings that must be present when the DocuSign entry is selected
@@ -121,7 +123,7 @@ export const defaultRegistry = (
       return createMockProvider({
         baseUrl:
           options.mockBaseUrl ??
-          (() => env.MOCK_PAGES_ORIGIN || 'http://localhost:4100'),
+          (() => env.MOCK_PAGES_ORIGIN || serviceOrigin(env)),
         // A getter: the mirror is built on first use, so a selected mock
         // never reads the credentials
         webhook: docusignAdapter(configFromEnv),
