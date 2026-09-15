@@ -19,6 +19,25 @@ retries="${ANDROID_SDK_RETRIES:-2}"
 sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 [ -n "$sdk_root" ] || { echo "neither ANDROID_HOME nor ANDROID_SDK_ROOT is set" >&2; exit 1; }
 
+# sdkmanager is not on PATH on the GitHub runners - it ships inside the SDK
+# itself, and which directory holds it depends on how the SDK was laid down
+# (cmdline-tools/latest on the hosted images, a versioned sibling or the
+# retired tools/bin elsewhere). Resolve it here: a missing binary is a broken
+# setup, not a bad download, so it must fail loudly instead of being retried.
+sdkmanager=""
+for candidate in "$sdk_root"/cmdline-tools/latest/bin/sdkmanager \
+                 "$sdk_root"/cmdline-tools/*/bin/sdkmanager \
+                 "$sdk_root"/tools/bin/sdkmanager; do
+  if [ -x "$candidate" ]; then
+    sdkmanager="$candidate"
+    break
+  fi
+done
+if [ -z "$sdkmanager" ]; then
+  echo "no sdkmanager under $sdk_root (looked in cmdline-tools/*/bin and tools/bin)" >&2
+  exit 1
+fi
+
 attempt=0
 while :; do
   # --channel=0 (stable) is what the action asks for, so the revision resolved
@@ -26,7 +45,7 @@ while :; do
   # license fails instead of waiting for a prompt that will never come; stdout
   # is dropped (progress bars only) and stderr kept - that is where sdkmanager
   # reports the archive it could not read.
-  if sdkmanager --install "$@" --channel=0 </dev/null >/dev/null; then
+  if "$sdkmanager" --install "$@" --channel=0 </dev/null >/dev/null; then
     echo "Installed: $*"
     exit 0
   fi
