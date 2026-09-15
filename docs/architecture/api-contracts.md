@@ -339,7 +339,7 @@ interface GraphQLContext {
 |---------------|----------|
 | `ESIGN_SESSION_JWKS_URL` set | Token verified against the remote key set (RS/ES only); `ESIGN_SESSION_USER_CLAIM` (default `sub`) → `userId`; anything unverifiable → `userId: null` |
 | `ESIGN_SESSION_SECRET` set | Same, verified as HS256 against the shared secret |
-| `ALLOW_INSECURE_DEV=true`, no source | Bearer token used as opaque `userId` (dev passthrough, warns once) |
+| no session source configured | Bearer token used as opaque `userId`; reported at boot as `session not verified` |
 | No source at all | The service **refuses to boot** - it never runs unauthenticated |
 
 `exp` is required in every token; `ESIGN_SESSION_ISSUER` / `ESIGN_SESSION_AUDIENCE` are
@@ -412,15 +412,17 @@ A non-2xx, a timeout, a non-JSON answer or one without a prefill object -
 and, for an envelope, an out-of-contract prefill or a recipient that is
 missing or malformed - answers `502 Could not compute the signing terms`,
 never a fallback to what the client sent. Without `ESIGN_PREFILL_URL` the client's values (for an envelope,
-its signer too) are minted as sent; `ESIGN_ENV=production` refuses that
-unless `ESIGN_ALLOW_CLIENT_PREFILL=true`.
+its signer too) are minted as sent; the boot banner reports this as
+`prefill  client-supplied`, and `ESIGN_STRICT=true` refuses to start.
 
 ### Webhook Security
 
 1. Provider extracts its signature header and secret
 2. Shared HMAC-SHA256 validation over the **raw** request body
    (timing-safe comparison)
-3. Missing key: **rejected (fail-closed)** unless `ALLOW_INSECURE_DEV=true`;
+3. Missing key: **accepted**, since there is no signature to check - the
+   boot banner reports `webhook  not verified`. A key that IS configured is
+   always enforced;
    with envelopes on and the DocuSign provider, the boot guard refuses to
    start without `DOCUSIGN_HMAC_KEY` at all
 

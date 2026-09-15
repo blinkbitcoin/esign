@@ -27,7 +27,7 @@
   the service resolves it in `src/session.ts` via `jose` - a remote key set
   (`ESIGN_SESSION_JWKS_URL`, RS/ES only) or a shared secret
   (`ESIGN_SESSION_SECRET`); the dev passthrough
-  exists only under `ALLOW_INSECURE_DEV=true`
+  exists only when no session source is configured
 - **Operations:** `createEnvelope`, `getSigningUrl` mutations
   (`packages/esign-core/src/operations.ts` ↔ `packages/esign-service/src/schema.ts`)
 

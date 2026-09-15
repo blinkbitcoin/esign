@@ -95,7 +95,7 @@ DOCUSIGN_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----
 - Config is **fail-fast**: `make backend` refuses to start and names every
   missing variable. With `ESIGN_PROVIDER=docusign`, `DOCUSIGN_HMAC_KEY` is
   also required at boot (webhook signature verification) unless
-  `ALLOW_INSECURE_DEV=true` - see [../architecture/security.md](../architecture/security.md).
+  no session source is configured - see [../architecture/security.md](../architecture/security.md).
 
 Then run as usual: `make db-up migrate backend` plus `make ios` /
 `make android` (RN demo) or `make dev` in `examples/react-demo` (web).

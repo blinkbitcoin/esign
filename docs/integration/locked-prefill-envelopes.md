@@ -100,8 +100,8 @@ the host did not name could lock a term the host never computed or unlock one
 the template locked. The prefill must satisfy the envelope contract (empty
 leaves the template its own values) and the `recipient` is required - who
 signs is the host's to decide, like every value it locks. Without `ESIGN_PREFILL_URL` the
-caller's signer and prefill are minted as sent, and production needs
-`ESIGN_ALLOW_CLIENT_PREFILL=true`. With `DATABASE_URL` set the mint
+caller's signer and prefill are minted as sent - reported at boot as
+`prefill  client-supplied`, and refused by `ESIGN_STRICT=true`. With `DATABASE_URL` set the mint
 creates through the envelope service, so the envelope is stored and audited
 like one the GraphQL `createEnvelope` made (which still takes no prefill),
 and `envelopeId` is the stored id.

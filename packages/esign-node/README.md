@@ -284,9 +284,10 @@ app.use(createHostedFormRouter({
 
 `hostedFormProviderFromEnv` selects the provider (DocuSign unless
 `ESIGN_PROVIDER` says otherwise) and refuses to boot when a setting a mint
-needs is missing, when the selected provider cannot mint hosted forms, or
-when `ESIGN_ENV=production` still points at demo settings
-(`ESIGN_ALLOW_DEMO=true` overrides). The `prefill` hook receives the
+needs is missing, or when the selected provider cannot mint hosted forms.
+Whether those settings point at a sandbox is described by `demoSettings`, not
+refused: a staging deployment on the sandbox is correct and this package
+cannot tell it from a production one. The `prefill` hook receives the
 caller's *validated* prefill and returns the prefill that is actually
 minted, so client values stay input and never decide a read-only field. To
 reject the request instead (the caller's own input is out of range, say),
@@ -405,8 +406,6 @@ import { createDocuSignProvider, docuSignConfigFromEnv } from '@blinkbitcoin/esi
 | Variable | Setting | Notes |
 |---|---|---|
 | `ESIGN_PROVIDER` | provider | the registry entry to select (`docusign`, `mock`); the hosted-form<br>and envelope presets (`hostedFormProviderFromEnv`,<br>`envelopeProviderFromEnv`) default to `docusign` |
-| `ESIGN_ENV` | boot guard | `production` refuses a demo provider and demo DocuSign hosts, at<br>selection time; `NODE_ENV` is never the gate |
-| `ESIGN_ALLOW_DEMO` | boot guard | `true` allows demo settings under `ESIGN_ENV=production` (a staging<br>deployment on the sandbox) |
 | `DOCUSIGN_INTEGRATION_KEY`, `DOCUSIGN_USER_ID`, `DOCUSIGN_ACCOUNT_ID`,<br>`DOCUSIGN_PRIVATE_KEY` | JWT grant | consent granted once per integration key |
 | `DOCUSIGN_PRIVATE_KEY_BASE64`, `DOCUSIGN_PRIVATE_KEY_FILE` | JWT grant | the same PEM base64-encoded, or a file (a mounted secret); used in<br>that order after `DOCUSIGN_PRIVATE_KEY`, literal `\n` normalised |
 | `DOCUSIGN_WEBFORM_ID` | Web Forms | the form to mint instances of |

@@ -1,7 +1,58 @@
 # Upgrading
 
-What changes for you when the 2026-09 stack (PRs #72, #73, #74) lands, by
-audience. Short version: **the public API is additive; nothing you import
+## The posture flags are gone, and the service's variables are renamed
+
+Two changes in one breaking release, because they touch the same files.
+
+**App developers: nothing to do.** No client package changed.
+
+**The five posture flags are removed.** They asked one question - how much
+does this deployment matter - five times, and each guarded something the
+service cannot actually judge from inside its own process. It now reports
+what it does and does not verify at boot, and starts:
+
+| Before | After |
+|---|---|
+| `ALLOW_INSECURE_DEV=true` | nothing - this is the default. The banner<br>reports the unverified session. |
+| `ESIGN_ENV=production` | `ESIGN_STRICT=true` for the refusals;<br>`ESIGN_GRAPHQL_INTROSPECTION=true` for<br>introspection |
+| `ESIGN_ALLOW_DEMO=true` | nothing - demo settings are reported, not<br>refused |
+| `ESIGN_ALLOW_CLIENT_PREFILL=true` | nothing - set `ESIGN_PREFILL_URL` if your<br>backend should compute the field values |
+| `TERMS_ALLOW_INSECURE=true` | nothing - the plaintext rule is gone. Use<br>`https` unless the hop is private. |
+| `productionErrors`,<br>`assertProductionConfig`,<br>`ProductionConfigError` | `demoSettings(config)`, which describes<br>and never throws |
+
+**A production deployment should set `ESIGN_STRICT=true`.** That is the whole
+migration for anyone who was relying on the old fail-closed behaviour: one
+variable in place of five, and the boot error names what to fix.
+
+**The image no longer sets `ESIGN_ENV=production`.** A container that relied
+on that for introspection-off or the demo refusals must now say so.
+
+**The service's own variables are `ESIGN_*`.** One convention, and the
+endpoint that decides field values is named after what it returns - the API,
+the types and the docs all already called those values a prefill:
+
+| Before | After |
+|---|---|
+| `TERMS_URL`, `TERMS_SHARED_SECRET`,<br>`TERMS_TIMEOUT_MS` | `ESIGN_PREFILL_URL`,<br>`ESIGN_PREFILL_SECRET`,<br>`ESIGN_PREFILL_TIMEOUT_MS` |
+| `x-esign-terms-secret` header | `x-esign-prefill-secret` |
+| `SESSION_JWKS_URL`,<br>`SESSION_HS256_SECRET`, `JWT_SECRET` | `ESIGN_SESSION_JWKS_URL`,<br>`ESIGN_SESSION_SECRET` (no alias) |
+| `SESSION_ISSUER`, `SESSION_AUDIENCE`,<br>`SESSION_USER_CLAIM` | the same with an `ESIGN_` prefix |
+| `MOCK_PAGES`, `MOCK_PAGES_ORIGIN`,<br>`TRUST_PROXY`, `RATE_LIMIT_*_PER_MIN`,<br>`CORS_ALLOWED_ORIGINS` | the same with an `ESIGN_` prefix |
+| `createTermsPrefill`,<br>`createEnvelopeTerms`, `TermsError`,<br>`termsConfigFromEnv` | `createPrefillHook`,<br>`createEnvelopePrefillHook`,<br>`PrefillError`, `prefillConfigFromEnv` |
+| `docs/integration/locked-terms*.md` | `locked-prefill*.md` |
+
+`DOCUSIGN_*`, `DATABASE_URL`, `PORT` and `OTEL_*` are unchanged - they name
+other systems.
+
+**New, and worth using:** `node dist/node.js check-session "$TOKEN"` and
+`check-prefill` report your configuration line by line, so a wrong issuer or
+a wrong callback path is a named line instead of a 401 or a 502.
+
+---
+
+## The 2026-09 stack (PRs #72, #73, #74)
+
+What changed for you then, by audience. Short version: **the public API is additive; nothing you import
 today stops working.** The release is a minor version (no commit carries a
 breaking-change marker), and the changelog lists the additions.
 

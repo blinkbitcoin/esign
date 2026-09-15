@@ -66,8 +66,9 @@ and the verification checklist - is the runbook,
 1. **Say who the caller is.** Expose a JWKS endpoint (`ESIGN_SESSION_JWKS_URL`) or
    share an HS256 secret (`ESIGN_SESSION_SECRET`). The verified claim
    (`ESIGN_SESSION_USER_CLAIM`, default `sub`) becomes the user id the instance is
-   locked to — DocuSign's `clientUserId`. Without either, the service
-   refuses to boot unless `ALLOW_INSECURE_DEV=true`.
+   locked to — DocuSign's `clientUserId`. Without either, the bearer token is
+   taken as the user id and the boot banner says `session not verified`;
+   `ESIGN_STRICT=true` refuses to start instead.
 2. **Say what is being signed** — only when the locked terms come from your
    data. Expose `ESIGN_PREFILL_URL`: the service POSTs `{ userId, input }` with the
    caller's bearer token forwarded, and your `{ prefill }` wins over the

@@ -73,7 +73,7 @@ packages/esign-service/src/
 ├── services.ts       # createServices(provider): createEnvelopeService over the store
 ├── store.ts          # Knex implementation of the package's EnvelopeStore port
 ├── db.ts             # Knex instance (fail-fast on missing DATABASE_URL)
-├── env.ts            # The Env type + ALLOW_INSECURE_DEV (nothing depends on it)
+├── env.ts            # The Env type + ESIGN_STRICT (nothing depends on it)
 ├── proxy.ts          # ESIGN_TRUST_PROXY: whether x-forwarded-for names the client
 ├── loadEnvelopes.ts  # The one place that names ./envelopes (Node targets only)
 ├── providers/        # Hexagonal provider layer
@@ -200,7 +200,7 @@ the same verification the mint uses, applied to the GraphQL context:
   (default `sub`) becomes the context `userId`; anything unverifiable is
   simply unauthenticated
 - **Neither set**: fail closed at boot - the service refuses to start unless
-  `ALLOW_INSECURE_DEV=true` (then the bearer token is taken as the user id).
+  neither, in which case the bearer token is taken as the user id.
   This is not gated on `NODE_ENV`. See [security.md](security.md).
 
 ## Webhook Processing
@@ -212,7 +212,7 @@ the same verification the mint uses, applied to the GraphQL context:
 - Signature verification delegated to `provider.verifyWebhook()` before any
   processing (DocuSign: HMAC-SHA256 of the raw body, `X-DocuSign-Signature-1`
   header, keyed by `DOCUSIGN_HMAC_KEY`)
-- Missing HMAC key: **rejected (fail-closed)** unless `ALLOW_INSECURE_DEV=true`
+- Missing HMAC key: **accepted** - nothing to check, reported at boot
   says unsigned webhooks are acceptable; with envelopes on and the DocuSign
   provider selected, the boot guard refuses to start without the key at all
 - Raw body is used for verification (`await request.text()`) - re-serializing
@@ -319,7 +319,7 @@ npm run test:e2e
 | ID protection | Internal UUIDs only; provider envelope IDs never exposed |
 | User scoping | All envelope queries filtered by userId (no info leak on miss) |
 | Audit logging | All actions tracked; metadata sanitized against a PII allow-list |
-| Fail-fast config | `configErrors` (`src/config.ts`) aborts startup on any problem: no session source, an unknown `ESIGN_MINT_MODE`, bad provider config (the Web Form's settings, or under `ESIGN_MINT_MODE=envelope` the template's), demo settings under `ESIGN_ENV=production`, a bad/plaintext `ESIGN_PREFILL_URL`, a missing `DOCUSIGN_HMAC_KEY` with envelopes + docusign, `DATABASE_URL` on edge |
+| Fail-fast config | `configErrors` (`src/config.ts`) aborts startup on what is broken: an unknown `ESIGN_MINT_MODE` or `ESIGN_PROVIDER`, bad provider config (the Web Form's settings, or under `ESIGN_MINT_MODE=envelope` the template's), an `ESIGN_PREFILL_URL` that is not an absolute http(s) URL, `DATABASE_URL` on edge. Everything a deployment does not verify is reported by the banner (`src/posture.ts`) and refused only under `ESIGN_STRICT=true` |
 
 ## Environment Variables
 

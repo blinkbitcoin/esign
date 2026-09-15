@@ -112,8 +112,9 @@ to be a code change here.
 **Our steps** (this repository's contract):
 
 6. **Point the three host settings at production.** They default to the
-   demo environment, so an unset variable is a demo host and the boot
-   guard refuses it under `ESIGN_ENV=production`:
+   demo environment, so an unset variable is a demo host - which the boot
+   banner reports as `provider  docusign - ... is a demo host`, and
+   `ESIGN_STRICT=true` refuses to start over:
 
    | Variable | Production value |
    |---|---|
@@ -241,10 +242,11 @@ The host does not mint. It exposes, instead:
   is who signs; without `ESIGN_PREFILL_URL` the caller names the signer. A non-2xx, a
   timeout or a reply without a prefill object is a `502` to the app - it
   never falls back to minting what the client sent. Because that request
-  carries the session token and the shared secret, production requires
-  `https` unless the host is private (loopback, `*.svc`,
-  `*.svc.cluster.local`, `*.internal`) or `TERMS_ALLOW_INSECURE=true` is
-  set; the boot guard refuses otherwise (section 4).
+  carries the session token and the shared secret, **use `https`** unless the
+  hop is private (loopback, `*.svc`, `*.svc.cluster.local`, `*.internal`).
+  The service does not refuse a plaintext URL - it cannot tell a private
+  network from a public one by its hostname, and guessing wrong either blocks
+  a legitimate deployment or gives false assurance.
 
 Rotation in both tiers is a restart: the DocuSign config is read once at
 boot, so replacing the key material means rolling the deployment.
@@ -324,15 +326,14 @@ comments. In production the ones that matter:
 <!-- END GENERATED -->
 
 **Tier A** takes the same table **minus everything only the service
-reads**: `SESSION_*`, `TERMS_*`, `ESIGN_ALLOW_CLIENT_PREFILL`,
+reads**: `ESIGN_SESSION_*`, `ESIGN_PREFILL_*`, `ESIGN_STRICT`,
 `ESIGN_MINT_MODE` (the host picks `createHostedFormRouter` or
-`createEnvelopeRouter` itself),
-`DATABASE_URL`, `DOCUSIGN_HMAC_KEY`, `ESIGN_CORS_ALLOWED_ORIGINS`,
-`ALLOW_INSECURE_DEV`, `OTEL_*` and the container-only row. The host API
-already has a session, computes its own terms in the `prefill` hook, and
+`createEnvelopeRouter` itself), `DATABASE_URL`, `DOCUSIGN_HMAC_KEY`,
+`ESIGN_CORS_ALLOWED_ORIGINS`, `OTEL_*` and the container-only rows. The host
+API already has a session, computes its own terms in the `prefill` hook, and
 brings its own CORS, telemetry, port, proxy and limits. What is left is
-`ESIGN_PROVIDER`, `ESIGN_ENV`, `ESIGN_ALLOW_DEMO` and the `DOCUSIGN_*`
-settings, applied to the host API's own deployment.
+`ESIGN_PROVIDER` and the `DOCUSIGN_*` settings, applied to the host API's own
+deployment.
 
 ### The private key, per platform
 
@@ -348,43 +349,87 @@ The PEM has three sources, tried in this order:
 | Vercel, Cloudflare,<br>other PaaS | `DOCUSIGN_PRIVATE_KEY_BASE64` | one-line env value; there is no file to<br>mount, and `_FILE` is refused on edge |
 | Anything with<br>multi-line secrets | `DOCUSIGN_PRIVATE_KEY` | the PEM verbatim |
 
-### The boot guard
+### What refuses to start, and what is only reported
 
-`validateConfig` runs from the environment alone and lists **every**
-problem at once, with the capabilities that were on, then refuses to
-start - a container fails to boot, a function fails at first import. It
-refuses:
+`validateConfig` runs from the environment alone and lists **every** problem
+at once, with the capabilities that were on, then refuses to start - a
+container fails to boot, a function fails at first import. It refuses what it
+can know is broken:
 
-- no session source (`ESIGN_SESSION_JWKS_URL` / `ESIGN_SESSION_SECRET`) unless
-  `ALLOW_INSECURE_DEV=true`;
 - an unknown `ESIGN_PROVIDER`, or a provider missing what a mint needs
   (`DOCUSIGN_WEBFORM_ID` and `DOCUSIGN_RETURN_URL`; under
   `ESIGN_MINT_MODE=envelope`, `DOCUSIGN_TEMPLATE_ID` - with at least one
   id - and `DOCUSIGN_RETURN_URL` instead);
 - an `ESIGN_MINT_MODE` other than `webform` or `envelope` (unset or blank
   is `webform`);
-- under `ESIGN_ENV=production`: the mock provider, and any DocuSign host
-  still pointing at the sandbox (`demo.docusign.net`, the `-d` hosts) -
-  `ESIGN_ALLOW_DEMO=true` is the one bypass, for a production-shaped
-  staging deployment;
-- under `ESIGN_ENV=production`: no `ESIGN_PREFILL_URL`, unless
-  `ESIGN_ALLOW_CLIENT_PREFILL=true` says the client's own prefill may be
-  minted as sent (under `ESIGN_MINT_MODE=envelope`, the client's own signer
-  and prefill);
-- a `ESIGN_PREFILL_URL` that is not an absolute http(s) URL;
-- under `ESIGN_ENV=production`: a plaintext (`http:`) `ESIGN_PREFILL_URL`. That
-  callback carries the caller's own session token and
-  `ESIGN_PREFILL_SECRET`, so cleartext hands both to anyone on the path.
-  A hop that cannot leave the cluster is the exception and is accepted as
-  is: loopback, `*.svc`, `*.svc.cluster.local`, `*.internal`. For a private
-  host the guard cannot recognise by name, `TERMS_ALLOW_INSECURE=true` is
-  the explicit opt-in;
-- envelopes on with DocuSign and no `DOCUSIGN_HMAC_KEY`;
+- an `ESIGN_PREFILL_URL` that is not an absolute http(s) URL - one it could
+  not POST to at all;
 - `DATABASE_URL` on the Cloudflare runtime.
 
-`ESIGN_ENV=production` does one more thing that is not a refusal: GraphQL
-introspection is off, so a deployment with envelopes on does not publish
-its schema.
+Everything else about a deployment's posture is **reported, not refused**,
+because it depends on things this process cannot see - what sits in front of
+the service, and whether the template's fields carry the deal:
+
+```
+  capabilities  mint, envelopes
+  mint mode     webform
+  provider      docusign
+  session       verified (ESIGN_SESSION_JWKS_URL)
+  prefill       from ESIGN_PREFILL_URL
+  webhook       verified (DOCUSIGN_HMAC_KEY)
+```
+
+The Node target then probes the URLs it was given before it listens and adds
+what it found - how many keys the key set offers, or why it could not be
+read. A typo'd host is a line here instead of a 401 on every request.
+
+**A production deployment should set `ESIGN_STRICT=true`.** It turns every
+line the banner would report as unverified into a refusal to start, naming
+the variable that fixes it, and makes a failed probe a refusal to listen.
+That is the whole of the old fail-closed posture behind one variable:
+
+```
+Refusing to start (capabilities: mint): ESIGN_STRICT=true: session is not
+verified - the bearer token is the user id - set ESIGN_SESSION_JWKS_URL or
+ESIGN_SESSION_SECRET; ESIGN_STRICT=true: prefill is client-supplied
+(ESIGN_PREFILL_URL unset) - set ESIGN_PREFILL_URL so your backend computes
+the field values
+```
+
+GraphQL introspection is off unless `ESIGN_GRAPHQL_INTROSPECTION=true`, so a
+deployment with envelopes on does not publish its schema by accident.
+
+### Confirming the configuration
+
+Two commands answer "did I get this right" without a deploy. Both exit
+non-zero on the first thing wrong, so CI can use them too:
+
+```bash
+node dist/node.js check-session "$TOKEN"   # a real token, line by line
+node dist/node.js check-prefill            # POSTs a sample to your callback
+```
+
+```
+  ✓ source     hs256
+  ✓ token      HS256, kid abc123
+  ✓ signature  verified
+  ✓ expiry     expires in 60m
+  ✗ issuer     token says "https://id.example.com/", configured "https://id.example.com"
+  ✓ audience   not enforced (ESIGN_SESSION_AUDIENCE unset)
+  ✓ user id    sub = user_8812
+```
+
+They do not short-circuit: `jwtVerify` stops at the first failure, so one
+deploy used to teach you about one problem. Every line is checked
+independently, and the signature line means the signature alone - a wrong
+issuer does not report as a signature failure.
+
+| Symptom | Usually |
+|---|---|
+| every request 401s, banner says<br>`session verified` | the issuer or audience - run `check-session`<br>with a real token; a trailing slash on `iss`<br>is the common one |
+| every mint 502s | the prefill callback - run `check-prefill` |
+| banner says<br>`! <host> unreachable` | the URL resolves from your machine but not<br>from the container's network |
+| webhooks arrive but change nothing | `DOCUSIGN_HMAC_KEY` does not match the one<br>in DocuSign Admin -> Connect |
 
 `NODE_ENV` gates none of this: every Node image sets it, so it says
 nothing about the e-signature configuration.

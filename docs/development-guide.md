@@ -91,10 +91,10 @@ PORT=4100                      # ESIGN_PORT_BASE + 0 (docs/architecture/backend.
 
 # Required when envelopes are on (DATABASE_URL) and the provider signs
 # DOCUSIGN_HMAC_KEY=your-webhook-hmac-key
-
-# The explicit opt-in to running without either (local dev only)
-ALLOW_INSECURE_DEV=true
 ```
+
+With neither set the bearer token is taken as the user id, which is what
+local dev and the E2E suites run on. The boot banner says so.
 
 `packages/esign-service/.env.example` is the complete, commented list.
 
@@ -107,8 +107,8 @@ cd packages/esign-service
 npm run dev
 # Server runs at http://localhost:4100
 # GraphQL Playground at http://localhost:4100/graphql - only when DATABASE_URL
-#   is set (it turns envelope orchestration on) and ESIGN_ENV is not
-#   'production' (which disables introspection)
+#   is set (it turns envelope orchestration on) and
+#   ESIGN_GRAPHQL_INTROSPECTION=true (.env.test sets it; off by default)
 ```
 
 ### Start Mobile (Metro)
