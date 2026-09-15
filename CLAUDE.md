@@ -231,7 +231,11 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   its tarballs unchanged. Docker is the one build of the service image
   (smoked with the mock provider); Publish ships it to GHCR as
   `ghcr.io/blinkbitcoin/esign-service:<version>` + `:latest` / `:next`.
-  Docs-only PRs stop after Checks; `main` skips docs-only pushes.
+  A docs-only change stops after Checks - on the PR and on the merge that
+  follows it, since both ask the same classifier
+  (`scripts/lib/docs-only.mjs`, table-tested); a docs push to main therefore
+  ships no prerelease. Never add a second path list to a workflow trigger:
+  one drifted from the classifier's and cost two full matrix runs.
 - iOS E2E runs by default (public repo: GitHub-hosted macOS is free). Pause it
   with repo variable `E2E_IOS=false`; PR label `e2e:ios` forces it for one PR
   while paused; `E2E_IOS_RUNNER` overrides `runs-on`.

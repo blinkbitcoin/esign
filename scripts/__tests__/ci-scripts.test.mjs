@@ -11,12 +11,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 
-// Drives scripts/ci/changed-class.sh and scripts/ci/docs-freshness.sh against
+// Drives scripts/ci/changed-class.mjs and scripts/ci/docs-freshness.sh against
 // throwaway git repos, reproducing exactly the env contracts their callers in
 // .github/workflows/checks.yml set up (see the `changes` and `docs` jobs).
+// What counts as documentation is scripts/lib/docs-only.test.mjs's table;
+// these tests cover the other half - reading the right commit range.
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const CHANGED_CLASS_SH = join(REPO_ROOT, 'scripts/ci/changed-class.sh');
+const CHANGED_CLASS = join(REPO_ROOT, 'scripts/ci/changed-class.mjs');
 const DOCS_FRESHNESS_SH = join(REPO_ROOT, 'scripts/ci/docs-freshness.sh');
 const MANIFEST_HELPERS = [
   'scripts/ci/manifest-structural.mjs',
@@ -82,7 +84,8 @@ function createFixtureRepo() {
 // spawnSync, not execFileSync: stderr is part of what these tests assert
 // (a green run must be quiet), so it is captured on success too.
 function runScript(scriptPath, repoDir, env, extraArgs = []) {
-  const result = spawnSync('bash', [scriptPath, ...extraArgs], {
+  const runner = scriptPath.endsWith('.mjs') ? process.execPath : 'bash';
+  const result = spawnSync(runner, [scriptPath, ...extraArgs], {
     cwd: repoDir,
     env: { ...gitEnv(repoDir), ...env },
     encoding: 'utf8',
@@ -94,22 +97,31 @@ function runScript(scriptPath, repoDir, env, extraArgs = []) {
   };
 }
 
-describe('changed-class.sh', () => {
+// The classifier's output is read by ci.yml as a job output, so assert the
+// exact bytes it writes to $GITHUB_OUTPUT, not just an exit code.
+function classify(dir, env) {
+  const outFile = join(dir, 'github-output');
+  writeFileSync(outFile, '');
+  const result = runScript(CHANGED_CLASS, dir, {
+    ...env,
+    GITHUB_OUTPUT: outFile,
+  });
+  return { ...result, output: readFileSync(outFile, 'utf8') };
+}
+
+describe('changed-class.mjs', () => {
   it('reports docs-only=true for a pull_request diff that only touches docs', () => {
     const { dir, initialSha } = createFixtureRepo();
     writeFile(dir, 'docs/index.md', '# Docs\n\nUpdated.\n');
     commit(dir, 'docs: update index');
 
-    const outFile = join(dir, 'github-output');
-    writeFileSync(outFile, '');
-    const result = runScript(CHANGED_CLASS_SH, dir, {
+    const result = classify(dir, {
       EVENT_NAME: 'pull_request',
       BASE_SHA: initialSha,
-      GITHUB_OUTPUT: outFile,
     });
 
     expect(result.status).toBe(0);
-    expect(readFileSync(outFile, 'utf8')).toBe('docs-only=true\n');
+    expect(result.output).toBe('docs-only=true\n');
   });
 
   it('reports docs-only=false for a pull_request diff that also touches code', () => {
@@ -118,47 +130,107 @@ describe('changed-class.sh', () => {
     writeFile(dir, 'packages/esign-core/src/index.ts', 'export const x = 2;\n');
     commit(dir, 'feat(core): change x and update docs');
 
-    const outFile = join(dir, 'github-output');
-    writeFileSync(outFile, '');
-    const result = runScript(CHANGED_CLASS_SH, dir, {
+    const result = classify(dir, {
       EVENT_NAME: 'pull_request',
       BASE_SHA: initialSha,
-      GITHUB_OUTPUT: outFile,
     });
 
     expect(result.status).toBe(0);
-    expect(readFileSync(outFile, 'utf8')).toBe('docs-only=false\n');
+    expect(result.output).toBe('docs-only=false\n');
   });
 
-  it('reports docs-only=false for a push event without classifying (no BASE_SHA needed)', () => {
+  // A push is classified exactly like the PR it came from. This is the case
+  // ci.yml used to hand to a paths-ignore list that did not know about
+  // LICENSE, so the merge of a docs-only PR ran the whole matrix.
+  it('classifies a push against the commit it replaced', () => {
+    const { dir, initialSha } = createFixtureRepo();
+    writeFile(dir, 'docs/index.md', '# Docs\n\nUpdated.\n');
+    commit(dir, 'docs: update index');
+
+    const result = classify(dir, { EVENT_NAME: 'push', BEFORE: initialSha });
+
+    expect(result.status).toBe(0);
+    expect(result.output).toBe('docs-only=true\n');
+  });
+
+  it('classifies a push of the per-package LICENSE copies as docs-only', () => {
+    const { dir, initialSha } = createFixtureRepo();
+    for (const pkg of ['esign-core', 'esign-node', 'esign-react']) {
+      writeFile(dir, `packages/${pkg}/LICENSE`, 'Copyright (c) 2026 Blink\n');
+    }
+    writeFile(dir, 'LICENSE', 'Copyright (c) 2026 Blink\n');
+    commit(dir, 'chore: drop the legal-entity name from the copyright line');
+
+    const result = classify(dir, { EVENT_NAME: 'push', BEFORE: initialSha });
+
+    expect(result.status).toBe(0);
+    expect(result.output).toBe('docs-only=true\n');
+  });
+
+  it('reports docs-only=false for a push that touches code', () => {
+    const { dir, initialSha } = createFixtureRepo();
+    writeFile(dir, 'packages/esign-core/src/index.ts', 'export const x = 2;\n');
+    commit(dir, 'feat(core): change x');
+
+    const result = classify(dir, { EVENT_NAME: 'push', BEFORE: initialSha });
+
+    expect(result.status).toBe(0);
+    expect(result.output).toBe('docs-only=false\n');
+  });
+
+  // Fail open: an unreadable or absent base must never be read as "docs-only".
+  it('reports docs-only=false for the first push of a branch (all-zero base)', () => {
     const { dir } = createFixtureRepo();
     writeFile(dir, 'docs/index.md', '# Docs\n\nUpdated.\n');
     commit(dir, 'docs: update index');
 
-    const outFile = join(dir, 'github-output');
-    writeFileSync(outFile, '');
-    const result = runScript(CHANGED_CLASS_SH, dir, {
+    const result = classify(dir, {
       EVENT_NAME: 'push',
-      GITHUB_OUTPUT: outFile,
+      BEFORE: '0'.repeat(40),
     });
 
     expect(result.status).toBe(0);
-    expect(readFileSync(outFile, 'utf8')).toBe('docs-only=false\n');
+    expect(result.output).toBe('docs-only=false\n');
   });
+
+  it('reports docs-only=false when the base commit is unreachable', () => {
+    const { dir } = createFixtureRepo();
+    writeFile(dir, 'docs/index.md', '# Docs\n\nUpdated.\n');
+    commit(dir, 'docs: update index');
+
+    const result = classify(dir, {
+      EVENT_NAME: 'push',
+      BEFORE: 'f'.repeat(40),
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.output).toBe('docs-only=false\n');
+  });
+
+  it.each(['release', 'workflow_dispatch'])(
+    'reports docs-only=false for %s - everything runs',
+    eventName => {
+      const { dir } = createFixtureRepo();
+      writeFile(dir, 'docs/index.md', '# Docs\n\nUpdated.\n');
+      commit(dir, 'docs: update index');
+
+      const result = classify(dir, { EVENT_NAME: eventName });
+
+      expect(result.status).toBe(0);
+      expect(result.output).toBe('docs-only=false\n');
+    },
+  );
 
   it('reports docs-only=false for an empty diff', () => {
     const { dir, initialSha } = createFixtureRepo();
 
-    const outFile = join(dir, 'github-output');
-    writeFileSync(outFile, '');
-    const result = runScript(CHANGED_CLASS_SH, dir, {
+    const result = classify(dir, {
       EVENT_NAME: 'pull_request',
       BASE_SHA: initialSha,
-      GITHUB_OUTPUT: outFile,
     });
 
     expect(result.status).toBe(0);
-    expect(readFileSync(outFile, 'utf8')).toBe('docs-only=false\n');
+    expect(result.output).toBe('docs-only=false\n');
   });
 });
 
