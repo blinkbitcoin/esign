@@ -760,6 +760,13 @@ jobs:
           name: android-apk
           path: examples/react-native-demo/android/app/build/outputs/apk/debug
 
+      # The emulator-runner action installs this package itself and has no
+      # retry, so a download that lands corrupt kills the job before Maestro
+      # runs. Installing it here first (the action then finds it current and
+      # skips it) buys two retries; see the script.
+      - name: Install the Android emulator package (retrying a bad download)
+        run: bash scripts/ci/android-sdk-install.sh emulator
+
       # The system image is ~1.2GB and the emulator-runner action re-downloads
       # it on every run (~95s, twice when the AVD snapshot also misses).
       # sdkmanager treats an already-installed current revision as a no-op.
