@@ -52,7 +52,7 @@ describe('postureLines', () => {
       expect(lineFor({ ...bare, ESIGN_SESSION_SECRET: 's' }, 'session')).toEqual({
         check: 'session',
         verified: true,
-        detail: 'verified (shared secret)',
+        detail: 'verified (ESIGN_SESSION_SECRET)',
       });
     });
   });

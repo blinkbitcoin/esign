@@ -43,7 +43,7 @@ const sessionLine = (env: Env): Line => {
     case 'jwks':
       return { check: 'session', verified: true, detail: `verified (${ESIGN_SESSION_JWKS_URL})` };
     case 'hs256':
-      return { check: 'session', verified: true, detail: 'verified (shared secret)' };
+      return { check: 'session', verified: true, detail: `verified (${ESIGN_SESSION_SECRET})` };
     default:
       return {
         check: 'session',
