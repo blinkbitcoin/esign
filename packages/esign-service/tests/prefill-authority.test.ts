@@ -44,7 +44,7 @@ const appRecording = (reply: unknown) => {
     fetch: hostAnswering(reply) as unknown as typeof globalThis.fetch,
     provider: { createEnvelope } as never,
   });
-  // ALLOW_INSECURE_DEV prints its boot warning on the first request an app
+  // the app prints its boot banner on the first request an app
   // serves, not while testApp builds it
   const mint = (body: unknown) =>
     silently(() => post(app, '/envelope/instance', body, mintHeaders));

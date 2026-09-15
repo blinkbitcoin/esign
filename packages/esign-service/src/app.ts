@@ -17,9 +17,10 @@
 // The host's two obligations are the two hooks:
 //   - session verification (JWKS or a shared secret) turns the caller's
 //     bearer token into the user id the mint locks the instance to
-//   - ESIGN_PREFILL_URL computes what is actually minted (for an envelope, who signs
-//     it too), so a client value can never become a locked one unless the
-//     deployment opts in with ESIGN_ALLOW_CLIENT_PREFILL
+//   - ESIGN_PREFILL_URL computes what is actually minted (for an envelope, who
+//     signs it too), so a client value never becomes a locked one. Unset, the
+//     client's own prefill is minted - reported at boot, refused by
+//     ESIGN_STRICT
 
 import { bearerToken, consoleLogger, type Logger } from '@blinkbitcoin/esign-node';
 

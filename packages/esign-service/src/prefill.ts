@@ -21,7 +21,8 @@
 //
 // Without ESIGN_PREFILL_URL the service mints the client's prefill as sent - fine for
 // a mock/dev host and refused under ESIGN_ENV=production unless
-// ESIGN_ALLOW_CLIENT_PREFILL=true says so explicitly (config.ts).
+// the boot banner reports it as client-supplied and ESIGN_STRICT refuses it
+// (config.ts).
 
 import {
   type EnvelopeAppPrefillInput,

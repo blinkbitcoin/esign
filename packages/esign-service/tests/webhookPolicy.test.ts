@@ -1,6 +1,6 @@
 // The service's webhook policy as wired into the DocuSign adapter: the key
 // is read from DOCUSIGN_HMAC_KEY on every call, and an unsigned webhook is
-// accepted only when ALLOW_INSECURE_DEV=true and no key is configured.
+// accepted only when no key is configured - there is nothing to check.
 
 import crypto from 'crypto';
 import { vi } from 'vitest';
@@ -16,7 +16,6 @@ const sign = (body: string, key: string): string =>
 describe('DocuSignProvider.verifyWebhook policy', () => {
   const body = '{"data":{"envelopeId":"e","envelopeSummary":{"status":"completed"}}}';
   const originalKey = process.env.DOCUSIGN_HMAC_KEY;
-  const originalDev = process.env.ALLOW_INSECURE_DEV;
   let errorSpy: ReturnType<typeof vi.spyOn>;
   let warnSpy: ReturnType<typeof vi.spyOn>;
 
@@ -30,8 +29,6 @@ describe('DocuSignProvider.verifyWebhook policy', () => {
     warnSpy.mockRestore();
     if (originalKey === undefined) delete process.env.DOCUSIGN_HMAC_KEY;
     else process.env.DOCUSIGN_HMAC_KEY = originalKey;
-    if (originalDev === undefined) delete process.env.ALLOW_INSECURE_DEV;
-    else process.env.ALLOW_INSECURE_DEV = originalDev;
   });
 
   it('reads the key per call: a key set after boot is enforced', () => {

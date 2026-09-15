@@ -84,9 +84,9 @@ export interface GraphQLResult<T> {
 // A GraphQL operation through the app under test: the real /graphql route,
 // over the app's own executor, provider and store. Never a second Apollo
 // server built beside it - a suite that composed its own would be proving
-// the domain, not the service's wiring. Under ALLOW_INSECURE_DEV (what the
-// E2E .env.test sets) the bearer token IS the user id, which is how a caller
-// is chosen here.
+// the domain, not the service's wiring. With no session source configured -
+// what these suites and the E2E .env.test run on - the bearer token IS the
+// user id, which is how a caller is chosen here.
 export const graphql = async <T = Record<string, unknown>>(
   app: App,
   query: string,

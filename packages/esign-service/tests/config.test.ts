@@ -96,7 +96,7 @@ describe('configErrors - the provider', () => {
   });
 
   it('accepts DocuSign with every hosted-form setting present', () => {
-    expect(configErrors(docusignEnv({ ALLOW_INSECURE_DEV: 'true' }))).toEqual([]);
+    expect(configErrors(docusignEnv())).toEqual([]);
   });
 
   it('refuses DocuSign without the settings a mint needs', () => {
@@ -240,8 +240,6 @@ describe('configErrors - the mint mode', () => {
         envelopeEnv({
           ESIGN_SESSION_SECRET: 's',
           ESIGN_ENV: 'production',
-          ESIGN_ALLOW_DEMO: 'true',
-          ESIGN_ALLOW_CLIENT_PREFILL: 'true',
         })
       )
     ).toEqual([]);
