@@ -6,6 +6,16 @@
 
 import { afterEach, beforeEach, vi } from 'vitest';
 
+// A worktree claims its own port block into .env.local and direnv exports
+// ESIGN_PORT_BASE from it, so a developer's shell carries a base that is not
+// the documented 4100 these tests assert. That is machine state, not a
+// property of the code under test: drop it so a run means the same thing in
+// a worktree, the main clone and CI. A test that exercises the derivation
+// sets the variable itself, after this. Empty rather than deleted: every
+// reader in the repo already treats an empty value as unset, and `delete`
+// does not take on the sandboxed process.env Jest hands a test file.
+process.env.ESIGN_PORT_BASE = '';
+
 type ConsoleMethod = 'error' | 'warn' | 'log';
 const METHODS: ConsoleMethod[] = ['error', 'warn', 'log'];
 

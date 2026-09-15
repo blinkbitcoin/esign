@@ -8,9 +8,16 @@ const packages = path.resolve(import.meta.dirname, '../../packages');
 // The demo's port: ESIGN_WEB_PORT, else the repo's ESIGN_PORT_BASE + 1
 // (table: scripts/lib/ports.mjs) - never Vite's 5173, so worktrees and
 // repos never clash; strict so a taken port fails instead of drifting
-const webPort =
-  Number(process.env.ESIGN_WEB_PORT) ||
-  Number(process.env.ESIGN_PORT_BASE || 4100) + 1;
+const portBase = Number(process.env.ESIGN_PORT_BASE || 4100);
+
+const webPort = Number(process.env.ESIGN_WEB_PORT) || portBase + 1;
+
+// The backend this demo calls (ESIGN_PORT_BASE + the service's offset, 0).
+// Vite exposes process.env.VITE_* to import.meta.env, so defaulting it here
+// is what makes `npm run web` reach THIS worktree's backend: the E2E configs
+// and live-web.sh pass their own origin, but an interactive run passed
+// nothing and src/config.ts fell back to a frozen :4100.
+process.env.VITE_API_ORIGIN ||= `http://localhost:${portBase}`;
 
 export default defineConfig(({ command }) => {
   if (command === 'build') {

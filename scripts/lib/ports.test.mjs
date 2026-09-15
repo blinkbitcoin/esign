@@ -138,8 +138,12 @@ describe('envLines', () => {
 });
 
 // The services cannot import this module (a browser tsconfig, a Docker
-// image, a React Native bundle), so each declares its own offset as a
-// literal. These checks keep those literals on the table.
+// image, a React Native bundle), so each declares the base and its own
+// offset as literals and derives its port from ESIGN_PORT_BASE. These
+// checks keep those literals on the table - and, below, keep the
+// derivation: a file that freezes a whole origin instead of deriving it
+// looks correct here while ignoring the base entirely, which is how the
+// mock pages and the web demo ended up nailed to :4100 in every worktree.
 describe('the consumers', () => {
   const { base, api, mint, handler, testDb, devDb } = resolvePorts({});
 
@@ -164,8 +168,10 @@ describe('the consumers', () => {
     ],
     ['examples/react-native-demo/src/config.ts', `PORT_BASE_DEFAULT = ${base}`],
     ['examples/react-demo/src/config.ts', `http://localhost:${api}`],
+    ['examples/react-demo/vite.config.ts', `ESIGN_PORT_BASE || ${base}`],
     ['examples/react-demo/e2e/ports.ts', `BASE_DEFAULT = ${base}`],
-    ['packages/esign-node/src/registry.ts', `http://localhost:${api}`],
+    ['packages/esign-node/src/port.ts', `PORT_BASE_DEFAULT = ${base}`],
+    ['packages/esign-node/src/port.ts', `API_OFFSET = ${SERVICES.api.offset}`],
     ['packages/esign-service/Dockerfile', `EXPOSE ${api}`],
     ['packages/esign-service/Dockerfile', `\${PORT:-${api}}`],
     ['scripts/ci/docker-smoke.sh', `CONTAINER_PORT="\${2:-${api}}"`],
@@ -204,6 +210,46 @@ describe('the consumers', () => {
     ],
   ])('%s carries %s', (file, literal) => {
     expect(read(file)).toContain(literal);
+  });
+
+  // A test run must not inherit the developer's port block: these suites
+  // assert the documented default, so a worktree's base would fail them for
+  // a reason that has nothing to do with the code. Pinned here so removing
+  // the line fails with this message instead of two puzzling port
+  // assertions. The RN demo clears it in jest.config.js rather than a setup
+  // file because babel inlines the variable at transform time.
+  it.each([
+    ['examples/react-native-demo/jest.config.js', BASE_VAR],
+    ['packages/esign-service/vitest.setup.ts', BASE_VAR],
+  ])('%s pins the port base for the test run', file => {
+    expect(read(file)).toContain(`process.env.${BASE_VAR} = ''`);
+  });
+
+  // The check that the pins above cannot make: a file may carry the right
+  // port literal and still ignore ESIGN_PORT_BASE, which is a frozen origin
+  // and therefore wrong in every worktree but the default one. Every file
+  // that resolves a port at runtime has to name the base variable.
+  // examples/react-demo/src/config.ts is the one exception and stays out of
+  // this list: it is browser code and can only see import.meta.env.VITE_*,
+  // so vite.config.ts derives VITE_API_ORIGIN from the base on its behalf.
+  it.each([
+    'packages/esign-service/src/port.ts',
+    'packages/esign-node/src/port.ts',
+    'examples/mint-only-demo/src/index.ts',
+    'examples/serverless-handler-demo/src/index.ts',
+    'examples/react-native-demo/src/config.ts',
+    'examples/react-demo/vite.config.ts',
+    'examples/react-demo/e2e/ports.ts',
+  ])('%s derives its port from the base, not a frozen literal', file => {
+    // Comment lines only: a file that merely EXPLAINS the base while
+    // freezing its origin would otherwise pass on its own prose. Trailing
+    // comments are left alone on purpose - stripping from the first `//`
+    // would also eat `http://localhost:${...}`, the very line being checked.
+    const code = read(file)
+      .split('\n')
+      .filter(line => !/^\s*(\/\/|\/?\*)/.test(line))
+      .join('\n');
+    expect(code).toContain(BASE_VAR);
   });
 
   it('the Playwright module maps the web modes onto the web offsets', () => {
