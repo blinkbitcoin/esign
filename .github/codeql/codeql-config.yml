@@ -1,21 +1,36 @@
 # CodeQL configuration for .github/workflows/codeql.yml.
 #
 # Queries: the default security suite plus the maintainability/reliability
-# queries (what GitHub's separate "Code quality" product runs), and the
-# pack's alert-suppression query, which is what makes an inline
-#   // codeql[<rule-id>]
-# comment (alone on its line, covering the next line) suppress one finding
-# at one place. Without that query the marker is ignored - which is why the
-# JWT-grant false positive in packages/esign-node/src/providers/docusign/auth.ts
-# came back as alerts 1, 10 and 15 despite the marker from #58.
+# queries (what GitHub's separate "Code quality" product runs).
 #
-# A suppression travels with the code (an API dismissal is keyed on the
-# alert's fingerprint and re-opens after every file move) and silences one
-# site, not the query: a real weak password hash elsewhere still fails.
+# There is no suppression mechanism here, and that is deliberate.
+#
+# An inline `// codeql[<rule-id>]` marker IS honoured by the CodeQL CLI, which
+# then writes `suppressions: [{state: accepted}]` onto the result in the
+# SARIF - and GitHub code scanning ignores that property, so the alert stays
+# open. This was verified on analysis 1779039789: the uploaded SARIF carried
+# the suppression and alert 18 was open with dismissed_reason: null.
+#
+# So the marker was tried twice and never worked. #58 added one; #81 added
+# the pack's AlertSuppression query on the theory that the marker had failed
+# only because no query read it, which was half right - the CLI then read it,
+# GitHub still did not. The same JWT-grant false positive came back as alerts
+# 1, 10, 15 and 18. An API dismissal does close an alert, but is keyed to its
+# fingerprint, so every file move re-opened it.
+#
+# What to do with a false positive, in order:
+#   1. Make it not fire. It is a claim about the code, so there is usually a
+#      clearer way to write the code that is also correct on its own terms.
+#      js/insufficient-password-hash read the 'auth' in `oauthBaseUrl` as a
+#      credential; building the JWT `aud` claim with `new URL(x).host` instead
+#      of a string replace ended it, and fixed a real bug in the same line.
+#   2. If it truly cannot be made to stop, dismiss the alert in the security
+#      tab and write the reason next to the code - knowing a file move
+#      re-opens it, so leave a comment the next person will find.
+# Never exclude the query repo-wide: #81 tried that first and reverted it
+# inside the same PR, because it would also hide a real finding of the same
+# kind added later.
 name: esign
 
 queries:
   - uses: security-and-quality
-
-packs:
-  - codeql/javascript-queries:AlertSuppression.ql

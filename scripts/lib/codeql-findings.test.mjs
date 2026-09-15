@@ -25,6 +25,8 @@ const sarif = {
           45,
           'Password  from\n a call.',
           {
+            // The CLI honoured an inline marker here. GitHub ignores this
+            // property, so the finding still counts as open - see the module.
             suppressions: [{ kind: 'inSource' }],
           },
         ),
@@ -36,25 +38,22 @@ const sarif = {
 };
 
 describe('findings', () => {
-  it('reads rule, location, message and the in-source suppression from every run', () => {
+  it('reads rule, location and message from every run', () => {
     expect(findings(sarif)).toEqual([
       {
         ruleId: 'js/insufficient-password-hash',
         location: 'src/auth.ts:45',
         message: 'Password from a call.',
-        suppressed: true,
       },
       {
         ruleId: 'js/unused-local-variable',
         location: 'src/x.ts:3',
         message: 'Unused variable y.',
-        suppressed: false,
       },
       {
         ruleId: 'js/no-location',
         location: '<no location>',
         message: 'nowhere',
-        suppressed: false,
       },
     ]);
   });
@@ -76,29 +75,28 @@ describe('findings', () => {
           },
         ],
       }),
-    ).toEqual([
-      { ruleId: '<no rule>', location: 'a.ts', message: '', suppressed: false },
-    ]);
+    ).toEqual([{ ruleId: '<no rule>', location: 'a.ts', message: '' }]);
   });
 });
 
 describe('summarize', () => {
-  it('lists every finding, marks the suppressed ones and counts both', () => {
-    const { open, suppressed, lines } = summarize(sarif);
-    expect(open).toBe(2);
-    expect(suppressed).toBe(1);
+  // The regression this file exists for: a suppressed finding used to be
+  // reported as handled and excluded from the count, so the gate exited 0
+  // while the alert was open on GitHub.
+  it('counts a finding the CLI suppressed as open like any other', () => {
+    const { open, lines } = summarize(sarif);
+    expect(open).toBe(3);
     expect(lines).toEqual([
-      'suppressed  js/insufficient-password-hash  src/auth.ts:45  Password from a call.',
-      'open        js/unused-local-variable  src/x.ts:3  Unused variable y.',
-      'open        js/no-location  <no location>  nowhere',
-      'codeql: 2 open, 1 suppressed by an inline marker',
+      'js/insufficient-password-hash  src/auth.ts:45  Password from a call.',
+      'js/unused-local-variable  src/x.ts:3  Unused variable y.',
+      'js/no-location  <no location>  nowhere',
+      'codeql: 3 open',
     ]);
   });
 
   it('says so when there is nothing', () => {
     expect(summarize({ runs: [] })).toEqual({
       open: 0,
-      suppressed: 0,
       lines: ['codeql: no findings'],
     });
   });
