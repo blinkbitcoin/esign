@@ -61,7 +61,10 @@
       "javascript": { "globals": [] },
       "linter": {
         "rules": {
-          "correctness": { "noUnusedVariables": "error" },
+          "correctness": {
+            "noUnusedImports": "error",
+            "noUnusedVariables": "error"
+          },
           "style": { "useConst": "error" },
           "suspicious": {
             "noConsole": "off",
