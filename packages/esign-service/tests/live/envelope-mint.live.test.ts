@@ -144,8 +144,13 @@ describe.runIf(missing.length === 0)('the envelope mint (live, demo account)', (
     const signers = await signersOf(envelopeId);
     expect(signers).toHaveLength(1);
     const references = textTabs(signers[0], REFERENCE);
-    expect(references).toHaveLength(2);
-    expect(new Set(references.map((tab) => tab.documentId)).size).toBe(2);
+    // Every document carries the value, locked - that is the promise. Not a
+    // count: the fixture's tabs are anchored on the PDF's own text, and the
+    // two documents here are the same fixture twice, so each composite's
+    // anchor matches in both of them. DocuSign then lays two identical tabs
+    // on the same spot of each document (it does so with no prefill at all,
+    // so nothing here duplicates a value).
+    expect(new Set(references.map((tab) => tab.documentId))).toEqual(new Set(['1', '2']));
     for (const tab of references) {
       expect(tab).toMatchObject({ value: `MULTI-${stamp}`, locked: 'true' });
     }
