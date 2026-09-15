@@ -28,21 +28,17 @@ export const createJwtAssertion = (
   const payload = {
     iss: config.integrationKey,
     sub: config.userId,
-    aud: config.oauthBaseUrl.replace('https://', ''),
+    // The host alone: DocuSign matches `aud` against the host the grant is
+    // presented to, so a trailing slash or an http:// prefix must not reach it
+    aud: new URL(config.oauthBaseUrl).host,
     iat: issuedAt,
     exp: issuedAt + 3600,
     scope: DOCUSIGN_SCOPES,
   };
   const signingInput = `${base64Url(JSON.stringify(header))}.${base64Url(JSON.stringify(payload))}`;
 
-  // JWT-grant signature (RS256), not a password hash: the payload carries the
-  // OAuth host as the `aud` claim, which is why CodeQL's
-  // js/insufficient-password-hash flags it. The marker below suppresses that
-  // one finding on the next line (honoured because .github/codeql/codeql-config.yml
-  // runs the pack's AlertSuppression query); it travels with the code, unlike
-  // an alert dismissal, and leaves the query on for everything else.
+  // The grant assertion's RS256 signature over header.payload
   const sign = createSign('RSA-SHA256');
-  // codeql[js/insufficient-password-hash]
   sign.update(signingInput);
   const signature = base64Url(sign.sign(config.privateKey as string));
   return `${signingInput}.${signature}`;
