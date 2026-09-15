@@ -177,14 +177,16 @@ describe('the consumers', () => {
     ['scripts/ci/docker-smoke.sh', `CONTAINER_PORT="\${2:-${api}}"`],
     ['examples/mint-only-demo/Dockerfile', `EXPOSE ${mint}`],
     ['examples/mint-only-demo/Dockerfile', `\${PORT:-${mint}}`],
+    // The container port, so the DEFAULT base - the image bakes in EXPOSE 4104
+    // and does not move with a worktree's block. Deriving it from the claimed
+    // base pointed the smoke at a port nothing listened on.
     [
       'Makefile',
-      'docker-smoke.sh esign-mint-only-demo $(shell node scripts/e2e/ports.mjs mint)',
+      'docker-smoke.sh esign-mint-only-demo $(shell ESIGN_PORT_BASE= node scripts/e2e/ports.mjs mint)',
     ],
-    [
-      '.github/workflows/e2e.yml',
-      `docker-smoke.sh esign-mint-only-demo ${mint}`,
-    ],
+    // The workflow calls the target rather than repeating the number; the
+    // parity gate (scripts/ci/make-parity.mjs) keeps it that way.
+    ['.github/workflows/e2e.yml', 'run: make docker-smoke-mint-only'],
     ['packages/esign-service/.env.example', `PORT=${api}`],
     ['packages/esign-service/deploy/docker-compose.yml', `PORT: ${api}`],
     [

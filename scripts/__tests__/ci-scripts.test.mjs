@@ -20,6 +20,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const CHANGED_CLASS = join(REPO_ROOT, 'scripts/ci/changed-class.mjs');
 const DOCS_FRESHNESS_SH = join(REPO_ROOT, 'scripts/ci/docs-freshness.sh');
+const MAKE_PARITY = join(REPO_ROOT, 'scripts/ci/make-parity.mjs');
 const MANIFEST_HELPERS = [
   'scripts/ci/manifest-structural.mjs',
   'scripts/lib/manifest-structural.mjs',
@@ -430,5 +431,97 @@ describe('docs-freshness.sh', () => {
     expect(result.status).toBe(0);
     expect(result.summary).toContain('## Documentation Status');
     expect(result.summary).toContain('packages/esign-core/src/index.ts');
+  });
+});
+
+// The gate's contract is its EXIT CODE - `make check-parity` is what CI runs,
+// and a guard that reports "ok" while finding nothing is worse than no guard.
+// scripts/lib/make-parity.test.mjs covers the rule; this covers the wiring:
+// that it reads the Makefile and every workflow from the working directory.
+describe('make-parity.mjs', () => {
+  const fixture = (makefile, workflows) => {
+    const dir = makeTempDir('make-parity-');
+    writeFileSync(join(dir, 'Makefile'), makefile);
+    mkdirSync(join(dir, '.github', 'workflows'), { recursive: true });
+    for (const [name, body] of Object.entries(workflows)) {
+      writeFileSync(join(dir, '.github', 'workflows', name), body);
+    }
+    return dir;
+  };
+
+  const run = dir => {
+    const result = spawnSync(process.execPath, [MAKE_PARITY], {
+      cwd: dir,
+      encoding: 'utf8',
+    });
+    return { status: result.status, stdout: result.stdout ?? '' };
+  };
+
+  const MAKEFILE = [
+    'e2e-server-demos: ## demos',
+    '\tbash scripts/e2e/server-demos-smoke.sh',
+    '',
+    'docker-smoke: docker-build ## both modes',
+    '\tbash scripts/ci/docker-smoke.sh esign-service',
+  ].join('\n');
+
+  it('exits 0 and says what it scanned when every step calls a target', () => {
+    const dir = fixture(MAKEFILE, {
+      'ci.yml': [
+        'jobs:',
+        '  a:',
+        '    steps:',
+        '      - run: make e2e-server-demos',
+      ].join('\n'),
+    });
+    const { status, stdout } = run(dir);
+    expect(status).toBe(0);
+    expect(stdout).toContain('make parity: ok');
+  });
+
+  it('exits 1 and names the file, line and target for a duplicate', () => {
+    const dir = fixture(MAKEFILE, {
+      'e2e.yml': [
+        'jobs:',
+        '  a:',
+        '    steps:',
+        '      - run: bash scripts/e2e/server-demos-smoke.sh',
+      ].join('\n'),
+    });
+    const { status, stdout } = run(dir);
+    expect(status).toBe(1);
+    expect(stdout).toContain('.github/workflows/e2e.yml:4');
+    expect(stdout).toContain('make e2e-server-demos');
+  });
+
+  it('reads every workflow, not just the first', () => {
+    const dir = fixture(MAKEFILE, {
+      'a.yml': ['jobs:', '  a:', '    steps:', '      - run: make build'].join(
+        '\n',
+      ),
+      'z.yml': [
+        'jobs:',
+        '  z:',
+        '    steps:',
+        '      - run: bash scripts/e2e/server-demos-smoke.sh',
+      ].join('\n'),
+    });
+    const { status, stdout } = run(dir);
+    expect(status).toBe(1);
+    expect(stdout).toContain('z.yml');
+  });
+
+  // A target that also runs prerequisites is not "the" target for one of its
+  // commands - the rule's reason, asserted end to end.
+  it('does not flag a command belonging to a target with prerequisites', () => {
+    const dir = fixture(MAKEFILE, {
+      'e2e.yml': [
+        'jobs:',
+        '  a:',
+        '    steps:',
+        '      - run: bash scripts/ci/docker-smoke.sh esign-service',
+      ].join('\n'),
+    });
+    expect(run(dir).status).toBe(0);
   });
 });

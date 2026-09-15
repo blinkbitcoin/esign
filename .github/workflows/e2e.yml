@@ -178,7 +178,7 @@ jobs:
         run: npm ci --prefer-offline --no-audit
 
       - name: Boot both examples and call their routes
-        run: bash scripts/e2e/server-demos-smoke.sh
+        run: make e2e-server-demos
 
   # The one build of the deliverable. Web bundles the demo against the dist
   # uploaded here (what a web consumer installs), and Publish ships the
@@ -224,7 +224,7 @@ jobs:
         run: node scripts/release/resolve-version.mjs # tag = version on release; -pre.<run>.<sha> otherwise
 
       - name: Build packages (core first - the platform packages need its dist)
-        run: npm run build
+        run: make build
 
       # Here, not in Docker: the Worker dry-run bundles the deploy/cloudflare
       # template, whose entry re-exports @blinkbitcoin/esign-service/cloudflare,
@@ -234,16 +234,15 @@ jobs:
       # graph. wrangler comes from npx (pinned major, see the script);
       # kubeconform is not installed on this runner and is skipped.
       - name: Validate the deploy templates
-        run: bash scripts/ci/deploy-check.sh
+        run: make deploy-check
 
-      - name: Package shape (publint + arethetypeswrong)
-        run: npm run check:packages
+      - name: Package shape (publint + arethetypeswrong) + pack/install smoke
+        run: make check-packages
 
-      - name: Pack + install smoke (webform Apollo-free boundary)
-        run: bash scripts/pack-smoke.sh
-
+      # The five workspaces that ship are the Makefile's list, not a YAML
+      # string: PACK_DEST is the only thing CI changes.
       - name: Pack the publishable tarballs
-        run: mkdir -p "$RUNNER_TEMP/tarballs" && npm pack -w packages/esign-core -w packages/esign-node -w packages/esign-react-native -w packages/esign-react -w packages/esign-service --pack-destination "$RUNNER_TEMP/tarballs"
+        run: make pack PACK_DEST="$RUNNER_TEMP/tarballs"
 
       - name: Publish dist for the Web job
         uses: actions/upload-artifact@v7
@@ -297,7 +296,7 @@ jobs:
       - name: Build the service image
         env:
           VERSION: ${{ steps.ver.outputs.version }}
-        run: bash scripts/ci/docker-build.sh esign-service "$RUNNER_TEMP/esign-service.tar.gz"
+        run: make docker-build ARCHIVE="$RUNNER_TEMP/esign-service.tar.gz"
 
       # The image is one deployable with two capability sets, so it is
       # smoked twice: without DATABASE_URL (the mint alone - the envelope
@@ -330,13 +329,10 @@ jobs:
       # (`make docker-build-mint-only && make docker-smoke-mint-only`
       # locally). It is a demo, not a deliverable: no version stamp, no
       # archive, no artifact upload, nothing for Publish to ship.
-      - name: Build the mint-only demo image
-        env:
-          DOCKERFILE: examples/mint-only-demo/Dockerfile
-        run: bash scripts/ci/docker-build.sh esign-mint-only-demo
-
-      - name: Boot the mint-only demo image with the mock provider and hit /health
-        run: bash scripts/ci/docker-smoke.sh esign-mint-only-demo 4104
+      # One step: the target builds then smokes, and its port comes from the
+      # ports table rather than the 4104 literal this used to carry.
+      - name: Build and smoke the mint-only demo image
+        run: make docker-smoke-mint-only
 
   web:
     name: Web
@@ -682,7 +678,7 @@ jobs:
         if: steps.android-apk.outputs.cache-hit != 'true'
         env:
           ANDROID_ABI: x86_64
-        run: bash scripts/e2e/android-build.sh
+        run: make android-build
 
       # retention-days: 1 - only the emulator job of this run needs it.
       - name: Publish APK for the emulator job

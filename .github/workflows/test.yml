@@ -38,7 +38,7 @@ jobs:
       # packages, the three server examples, and the tooling scripts' library
       # (scripts/lib), current-level floors on the client demo apps.
       - name: Unit tests with coverage
-        run: npm run test:coverage
+        run: make coverage
 
       # Badge + combined HTML report (packages + server examples + tooling). The `Badges` job in
       # ci.yml publishes the badge per branch to gh-pages once E2E is done (it
@@ -46,7 +46,7 @@ jobs:
       # private, unlike GitHub Pages, which would expose the source embedded
       # in it.
       - name: Render coverage badge + HTML report
-        run: npm run coverage:badge
+        run: make coverage-badge
 
       - name: Upload coverage badge
         uses: actions/upload-artifact@v7
