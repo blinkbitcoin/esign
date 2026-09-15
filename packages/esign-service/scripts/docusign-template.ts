@@ -6,9 +6,10 @@
 // `reference` + `notes` an envelope prefill can write to.
 // Idempotent: an existing template with the same name is reused, and its
 // Text tabs are reconciled with the definition - a fixture created before a
-// tab existed gets it added, in place. Without that the account silently
-// keeps the old shape and every envelope prefill writing to the new tab is
-// dropped by DocuSign with a 200.
+// tab existed gets it added, one left on the wrong `required` gets it
+// corrected, both in place. Without that the account silently keeps the old
+// shape: a prefill for a tab that is not there is dropped by DocuSign with a
+// 200, and a required tab nobody filled blocks the signing ceremony.
 //   make docusign-template            prints DOCUSIGN_TEMPLATE_ID=<id>
 //   make docusign-template WRITE=1    also sets it in .env (left alone when
 //                                     the line already lists several ids)
@@ -18,9 +19,11 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createDocuSignClient } from '@blinkbitcoin/esign-node';
 import { getConfig } from '../src/providers/docusign/config';
+import type { AccountTextTab } from '../src/providers/docusign/template';
 import {
   FIXTURE_SIGNER_ROLE,
   missingTextTabs,
+  outdatedTextTabs,
   TEMPLATE_NAME,
   templateDefinition,
   withTemplateId,
@@ -63,21 +66,36 @@ const reconcileTextTabs = async (templateId: string, token: string): Promise<voi
       `template ${templateId} has no \`${FIXTURE_SIGNER_ROLE}\` role: delete it in DocuSign and run this again`
     );
   }
-  const { textTabs = [] } = await request<{ textTabs?: { tabLabel: string }[] }>(
-    `${recipients}/${signer.recipientId}/tabs`,
-    { token }
-  );
-  const missing = missingTextTabs(textTabs.map((tab) => tab.tabLabel));
-  if (missing.length === 0) {
-    console.log(`text tabs up to date: ${textTabs.map((tab) => tab.tabLabel).join(', ')}`);
-    return;
+  const tabsUrl = `${recipients}/${signer.recipientId}/tabs`;
+  const { textTabs = [] } = await request<{ textTabs?: AccountTextTab[] }>(tabsUrl, { token });
+
+  const missing = missingTextTabs(textTabs);
+  if (missing.length > 0) {
+    await request(tabsUrl, {
+      token,
+      method: 'POST',
+      body: JSON.stringify({ textTabs: missing }),
+    });
+    console.log(`text tabs added: ${missing.map((tab) => tab.tabLabel).join(', ')}`);
   }
-  await request(`${recipients}/${signer.recipientId}/tabs`, {
-    token,
-    method: 'POST',
-    body: JSON.stringify({ textTabs: missing }),
-  });
-  console.log(`text tabs added: ${missing.map((tab) => tab.tabLabel).join(', ')}`);
+
+  const outdated = outdatedTextTabs(textTabs);
+  if (outdated.length > 0) {
+    await request(tabsUrl, {
+      token,
+      method: 'PUT',
+      body: JSON.stringify({
+        textTabs: outdated.map(({ tabId, required }) => ({ tabId, required })),
+      }),
+    });
+    console.log(
+      `text tabs corrected: ${outdated.map((tab) => `${tab.tabLabel} required=${tab.required}`).join(', ')}`
+    );
+  }
+
+  if (missing.length === 0 && outdated.length === 0) {
+    console.log(`text tabs up to date: ${textTabs.map((tab) => tab.tabLabel).join(', ')}`);
+  }
 };
 
 const main = async (): Promise<void> => {

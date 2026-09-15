@@ -30,19 +30,46 @@ const anchored = (anchorString: string, tabLabel: string, xOffset: string, yOffs
 });
 
 // The two Text tabs as the template API wants them, anchored on the PDF's
-// own labels
+// own labels. Optional on purpose: a Text tab is required by default, and a
+// required tab nobody prefilled stops the signer from finishing the ceremony
+// - the proxy demo signs this fixture with no prefill at all.
+const FIXTURE_TAB_REQUIRED = 'false';
+
 export const FIXTURE_TEXT_TAB_DEFINITIONS = [
   { ...anchored('Reference', FIXTURE_TEXT_TABS[0], '120', '-2'), width: '300' },
   { ...anchored('Notes', FIXTURE_TEXT_TABS[1], '120', '-2'), width: '300' },
-];
+].map((tab) => ({ ...tab, required: FIXTURE_TAB_REQUIRED }));
 
-// What an existing fixture in the account is missing, given the Text tab
-// labels it carries: a template created before a tab was added to the
-// definition keeps the account on the old shape, and the envelope prefill
-// then writes to a tab that is not there (DocuSign answers 200 and drops the
-// value). `make docusign-template` adds these back.
-export const missingTextTabs = (present: readonly string[]): typeof FIXTURE_TEXT_TAB_DEFINITIONS =>
-  FIXTURE_TEXT_TAB_DEFINITIONS.filter((tab) => !present.includes(tab.tabLabel));
+// One Text tab as the account has it
+export interface AccountTextTab {
+  tabLabel: string;
+  tabId?: string;
+  required?: string;
+}
+
+// What an existing fixture in the account is missing, given the Text tabs it
+// carries: a template created before a tab was added to the definition keeps
+// the account on the old shape, and the envelope prefill then writes to a tab
+// that is not there (DocuSign answers 200 and drops the value).
+export const missingTextTabs = (
+  present: readonly AccountTextTab[]
+): typeof FIXTURE_TEXT_TAB_DEFINITIONS =>
+  FIXTURE_TEXT_TAB_DEFINITIONS.filter(
+    (tab) => !present.some((existing) => existing.tabLabel === tab.tabLabel)
+  );
+
+// The fixture's own tabs that the account still has on the wrong setting:
+// only `required` is reconciled, and only on tabs the definition names - a
+// position an operator moved in the web editor is theirs to keep.
+export const outdatedTextTabs = (
+  present: readonly AccountTextTab[]
+): { tabId: string; tabLabel: string; required: string }[] =>
+  present.flatMap((existing) => {
+    const defined = FIXTURE_TEXT_TAB_DEFINITIONS.find((tab) => tab.tabLabel === existing.tabLabel);
+    return defined && existing.tabId && existing.required !== defined.required
+      ? [{ tabId: existing.tabId, tabLabel: existing.tabLabel, required: defined.required }]
+      : [];
+  });
 
 export const templateDefinition = (documentBase64: string) => ({
   name: TEMPLATE_NAME,
