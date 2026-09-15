@@ -14,6 +14,7 @@ import { instrumentProvider } from '../tracing';
 import type { WebFormPrefill } from '../types';
 import {
   createProvider as createDocuSignProvider,
+  demoSettings as docuSignDemoSettings,
   validateConfig as validateDocuSignConfig,
 } from './docusign';
 import { createMock } from './mock';
@@ -54,6 +55,29 @@ export const selectProvider = (env: Env = process.env): ProviderSelection => {
 
   const provider = providerFromEnv(env, registry);
   return mockPrefill ? { provider, mockPrefill } : { provider };
+};
+
+// What the selected provider is, and which of its settings are demo
+// settings - the two things the boot banner reports about the provider.
+//
+// It lives here, with the registry, because only a provider's own adapter
+// knows what a sandbox looks like for it. posture.ts asks this and stays
+// provider-agnostic, as every layer outside providers/ must.
+export interface ProviderDescription {
+  // The registry name this environment selects
+  name: string;
+  // Demo settings in use, one message each; empty on a real configuration
+  demo: string[];
+}
+
+export const describeProvider = (env: Env = process.env): ProviderDescription => {
+  const name = env.ESIGN_PROVIDER ?? 'mock';
+  if (name === 'docusign') {
+    return { name, demo: docuSignDemoSettings(env) };
+  }
+  // Any other name is the mock: an unknown ESIGN_PROVIDER is a boot error
+  // (config.ts), so by the time a banner is printed this is the mock.
+  return { name: 'mock', demo: ['the mock provider is a demo provider'] };
 };
 
 // The adapter alone, for callers that do not serve pages

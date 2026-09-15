@@ -32,4 +32,4 @@ export {
   sleep,
   withRetry,
 } from '@blinkbitcoin/esign-node';
-export { validateConfig } from './config';
+export { demoSettings, validateConfig } from './config';

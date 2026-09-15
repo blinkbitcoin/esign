@@ -5,8 +5,10 @@ import {
   type DocuSignConfig,
   type DocuSignConfigKey,
   docuSignConfigFromEnv,
+  docuSignDemoHostsInUse,
   JWT_CREDENTIALS,
   missingDocuSignConfig,
+  demoSettings as nodeDemoSettings,
 } from '@blinkbitcoin/esign-node';
 import { hasEnvelopes } from '../../capabilities';
 import type { Env } from '../../env';
@@ -43,3 +45,11 @@ export const validateConfig = (env: Env = process.env): void => {
     );
   }
 };
+
+// The demo settings this DocuSign configuration still uses, as the boot
+// banner reports them. Empty once every host points at production.
+export const demoSettings = (env: Env = process.env): string[] =>
+  nodeDemoSettings({
+    provider: 'docusign',
+    demoHosts: docuSignDemoHostsInUse(getConfig(env)),
+  });
