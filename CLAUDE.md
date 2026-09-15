@@ -253,11 +253,16 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   are variables, so a failed grant logs a usable consent URL).
   `docs/operations/live-e2e-ci.md`.
 - CodeQL (`codeql.yml`, informational) reads `.github/codeql/codeql-config.yml`,
-  which runs the suite plus the pack's AlertSuppression query. A false
-  positive is suppressed in place with `// codeql[<rule-id>]` alone on the
-  line above the flagged line - never by dismissing the alert (fingerprint-
-  keyed, re-opens on every file move) and never by excluding the query.
-  `make codeql` runs the same analysis locally, markers included.
+  which runs the suite. There is no suppression mechanism, deliberately: an
+  inline `// codeql[<rule-id>]` marker is honoured by the CLI and **ignored
+  by GitHub**, so the alert stays open (tried in #58 and #81; the same
+  finding came back as alerts 1, 10, 15 and 18). A false positive is fixed
+  by making the query not fire - it is a claim about the code, and there is
+  usually a way to write the code that is clearer anyway. Failing that,
+  dismiss the alert and leave the reason in the code, knowing a file move
+  re-opens it. Never exclude the query: it stays on for real findings.
+  `make codeql` runs the same analysis locally and counts every finding as
+  open, because that is what GitHub will do.
 - Native E2E builds are cached on the inputs `scripts/native-deps-hash.sh`
   sees plus `android/**` / `ios/**`; bump the cache key's `v` suffix when an
   input the script cannot see changes.

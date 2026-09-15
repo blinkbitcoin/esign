@@ -115,14 +115,15 @@ Underlying npm scripts (`npm test`, `npm run typecheck`, `npm run lint`,
   `examples/*/src/`. `ESignature` is provider-agnostic - adding a provider is a
   new `SigningSource`, the component never changes
 - `graphql` stays on 16.x repo-wide (Apollo Server 5 peer range)
-- A CodeQL false positive is suppressed where it sits: a
-  `// codeql[<rule-id>]` comment alone on the line above the flagged line
-  (`.github/codeql/codeql-config.yml` runs the pack's AlertSuppression
-  query, without which the marker is ignored). Never dismiss it in the
-  UI/API (fingerprint-keyed: the same finding re-opened three times across
-  file moves) and never exclude the query (it stays on for real findings).
-  `make codeql` runs the same analysis locally and shows the marker as
-  suppressed before the push
+- A CodeQL false positive is fixed by making the query not fire. An inline
+  `// codeql[<rule-id>]` marker does NOT work: the CLI honours it, GitHub
+  ignores the `suppressions` it writes, and the alert stays open (#58, #81;
+  the same finding came back as alerts 1, 10, 15 and 18). A dismissal is
+  fingerprint-keyed and re-opens on every file move. Excluding the query is
+  refused - it stays on for real findings. The rule is a claim about the
+  code, so the fix is usually code that is clearer on its own terms.
+  `make codeql` runs the same analysis locally and counts every finding as
+  open, the way GitHub will
 - The git hooks (lefthook) run format, lint, commitlint and typecheck; CI is
   the authoritative gate and every workflow must be green before merge
 

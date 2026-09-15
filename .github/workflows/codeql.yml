@@ -42,8 +42,8 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
-          # The query suite and the alert-suppression query (what makes an
-          # inline `codeql[rule-id]` marker count) live in the config file.
+          # The query suite lives in the config file, with the note on why
+          # there is no suppression mechanism next to it.
           config-file: ./.github/codeql/codeql-config.yml
 
       - name: Analyze

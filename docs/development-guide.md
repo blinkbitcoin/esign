@@ -521,9 +521,10 @@ human would run it - so a CI failure can be reproduced without pushing:
 make check-code check-ci codegen-check diagrams-check docs-check
 
 # GitHub's CodeQL analysis, locally (never in a workflow: GitHub runs it there).
-# Same language, same config (suite + the alert-suppression query), so a finding
-# and an inline `// codeql[<rule-id>]` marker show up here before the push;
-# the CLI comes from the flake on first use (nix shell .#codeql, one large fetch)
+# Same language and config, so a finding shows up here before the push. Every
+# finding counts as open, because GitHub ignores the SARIF suppression an
+# inline marker produces - see .github/codeql/codeql-config.yml.
+# The CLI comes from the flake on first use (nix shell .#codeql, one large fetch)
 make codeql
 
 # Unit

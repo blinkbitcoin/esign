@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
-# GitHub's CodeQL analysis on this machine: the same language, config
-# (query suite + the alert-suppression query that makes an inline
-# `// codeql[<rule-id>]` marker count) and therefore the same findings as
-# .github/workflows/codeql.yml - before a push, and with the markers shown
-# as suppressed or not. LOCAL ONLY: CI runs CodeQL on GitHub; nothing calls
-# this from a workflow.
+# GitHub's CodeQL analysis on this machine: the same language, the same
+# config and therefore the same findings as .github/workflows/codeql.yml,
+# before a push. LOCAL ONLY: CI runs CodeQL on GitHub; nothing calls this
+# from a workflow.
+#
+# Every finding is reported open. An inline `// codeql[<rule-id>]` marker
+# does suppress a result for the CLI, and GitHub ignores that - so treating
+# one as handled here would make this gate green on an alert that is red on
+# GitHub, which is exactly what it used to do.
 #   make codeql
 # The CLI comes from the flake (`nix shell .#codeql`, fetched once) unless a
 # `codeql` is already on PATH (Homebrew, gh codeql). Output: .codeql/ (the
 # database and results.sarif, gitignored). The first run downloads and
-# compiles the query pack (minutes); later runs reuse it. Exit 1 when an
-# unsuppressed finding remains, so it works as a local gate.
+# compiles the query pack (minutes); later runs reuse it. Exit 1 on any
+# finding, so it works as a local gate.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -29,8 +32,8 @@ echo "== codeql $(codeql version --format=terse), config $CONFIG"
 
 # The same queries the workflow runs, read from its config: the suite
 # (`uses: security-and-quality` is the action's shorthand for the pack's
-# javascript-security-and-quality.qls; the CLI wants the path) and every
-# extra pack (the AlertSuppression query that makes the markers count).
+# javascript-security-and-quality.qls; the CLI wants the path) and any extra
+# pack the config lists under `packs:` (there are none today).
 SUITE=$(sed -n 's/^ *- uses: *//p' "$CONFIG" | head -1)
 [ -n "$SUITE" ] || { echo "::error::no 'uses:' suite in $CONFIG"; exit 1; }
 QUERIES=("codeql/javascript-queries:codeql-suites/javascript-$SUITE.qls")

@@ -1,9 +1,14 @@
 // The findings of a CodeQL SARIF run, as make codeql prints them: one line
-// per result with its rule id, location and message, marked when an inline
-// `// codeql[<rule-id>]` comment suppresses it (the AlertSuppression query
-// in .github/codeql/codeql-config.yml records that as a `suppressions`
-// entry on the result), plus the open / suppressed counts a local gate
-// needs.
+// per result with its rule id, location and message, plus the count a local
+// gate needs.
+//
+// Every finding counts as open, including one an inline `// codeql[<rule-id>]`
+// marker suppressed. The CodeQL CLI honours such a marker and records it as a
+// `suppressions` entry on the result - and GitHub code scanning ignores that
+// property, so the alert is open there regardless. Reading it here is what
+// made this gate report green on a finding that was red on GitHub, and is why
+// the same false positive survived #58 and #81 (see
+// .github/codeql/codeql-config.yml). A finding is either fixed or it is open.
 
 const location = result => {
   const physical = result.locations?.[0]?.physicalLocation;
@@ -19,23 +24,15 @@ export const findings = sarif =>
       ruleId: result.ruleId ?? '<no rule>',
       location: location(result),
       message: (result.message?.text ?? '').replace(/\s+/g, ' ').trim(),
-      suppressed: (result.suppressions ?? []).length > 0,
     })),
   );
 
-/** The report lines and the counts for a run. */
+/** The report lines and the count for a run. */
 export const summarize = sarif => {
   const all = findings(sarif);
-  const open = all.filter(f => !f.suppressed).length;
-  const suppressed = all.length - open;
-  const lines = all.map(
-    f =>
-      `${f.suppressed ? 'suppressed' : 'open      '}  ${f.ruleId}  ${f.location}  ${f.message}`,
-  );
+  const lines = all.map(f => `${f.ruleId}  ${f.location}  ${f.message}`);
   lines.push(
-    all.length === 0
-      ? 'codeql: no findings'
-      : `codeql: ${open} open, ${suppressed} suppressed by an inline marker`,
+    all.length === 0 ? 'codeql: no findings' : `codeql: ${all.length} open`,
   );
-  return { open, suppressed, lines };
+  return { open: all.length, lines };
 };

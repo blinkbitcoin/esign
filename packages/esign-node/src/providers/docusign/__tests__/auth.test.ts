@@ -29,6 +29,20 @@ describe('createJwtAssertion', () => {
     });
   });
 
+  // `aud` is the OAuth host, not a URL: DocuSign matches it against the host
+  // the grant is presented to. Whatever shape DOCUSIGN_OAUTH_URL is written
+  // in, only the host may reach the claim.
+  it.each([
+    ['https://account-d.docusign.com', 'account-d.docusign.com'],
+    ['https://account-d.docusign.com/', 'account-d.docusign.com'],
+    ['https://account.docusign.com', 'account.docusign.com'],
+    ['http://localhost:4100', 'localhost:4100'],
+  ])('sends the host alone as aud (%s)', (oauthBaseUrl, expected) => {
+    expect(
+      verifyJwt(createJwtAssertion(testConfig({ oauthBaseUrl }))).aud,
+    ).toBe(expected);
+  });
+
   it('defaults to the current time', () => {
     const before = Math.floor(Date.now() / 1000);
     const payload = verifyJwt(createJwtAssertion(testConfig()));
