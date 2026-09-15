@@ -38,16 +38,18 @@ if (missing.length > 0) {
 }
 
 // The service as a live deployment would run it, minus what this test does
-// not exercise: no database (the mint needs none), the dev passthrough for
-// the session (the bearer token is the user id), the template(s) given
+// not exercise. The two `undefined`s are the point: no database (the mint
+// needs none) and no prefill callback, so the caller's own prefill is what
+// gets minted - which is what the locked-value assertions below check. No
+// session source either, so the bearer token is the user id the specs send.
 const liveEnv = (overrides: Env = {}): Env => ({
   ...process.env,
   DATABASE_URL: undefined,
   ESIGN_PREFILL_URL: undefined,
-  ESIGN_ENV: undefined,
+  ESIGN_SESSION_SECRET: undefined,
+  ESIGN_SESSION_JWKS_URL: undefined,
   ESIGN_PROVIDER: 'docusign',
   ESIGN_MINT_MODE: 'envelope',
-  ALLOW_INSECURE_DEV: 'true',
   ...overrides,
 });
 

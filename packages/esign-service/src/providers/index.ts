@@ -26,6 +26,10 @@ import type { ESignProvider } from './port';
 export type MockPrefillLookup = (instanceId: string) => WebFormPrefill | undefined;
 
 export interface ProviderSelection {
+  // The registry entry that actually ran. Set by the entry itself, not
+  // re-derived from the environment, so a caller can check that what was
+  // built is what the boot banner named (tests/providers-agree.test.ts).
+  name: string;
   // The adapter to mint and verify webhooks with, wrapped in tracing spans
   provider: ESignProvider;
   // Present when the mock was selected: the very handle's prefill lookup, so
@@ -41,20 +45,23 @@ export interface ProviderSelection {
 // name warns and falls back to the mock.
 export const selectProvider = (env: Env = process.env): ProviderSelection => {
   let mockPrefill: MockPrefillLookup | undefined;
+  let name = '';
   const registry: ProviderRegistry = {
     mock: () => {
+      name = 'mock';
       const handle = createMock(env);
       mockPrefill = (instanceId) => handle.getWebFormPrefill(instanceId);
       return instrumentProvider(handle, 'mock');
     },
     docusign: () => {
+      name = 'docusign';
       validateDocuSignConfig(env);
       return instrumentProvider(createDocuSignProvider(env), 'docusign');
     },
   };
 
   const provider = providerFromEnv(env, registry);
-  return mockPrefill ? { provider, mockPrefill } : { provider };
+  return mockPrefill ? { name, provider, mockPrefill } : { name, provider };
 };
 
 // What the selected provider is, and which of its settings are demo
