@@ -381,6 +381,69 @@ describe('startServer', () => {
     expect(server.url).toMatch(/^http:\/\//);
   });
 
+  describe('the preflight', () => {
+    const JWKS = 'https://id.example.com/jwks';
+    const keySet = async () =>
+      new Response(JSON.stringify({ keys: [{ kid: 'k', alg: 'RS256' }] }), { status: 200 });
+
+    it('reports a reachable key set in the banner', async () => {
+      server = await start({ ESIGN_SESSION_JWKS_URL: JWKS }, { fetch: vi.fn(keySet) });
+
+      expect(logs).toHaveBeenCalledWith(expect.stringContaining('1 key from id.example.com'));
+    });
+
+    // The typo case: reported, and the service still starts
+    it('reports an unreachable key set and listens anyway', async () => {
+      server = await start(
+        { ESIGN_SESSION_JWKS_URL: JWKS },
+        {
+          fetch: vi.fn(async () => {
+            throw new Error('ENOTFOUND');
+          }),
+        }
+      );
+
+      expect(logs).toHaveBeenCalledWith(expect.stringContaining('! id.example.com unreachable'));
+      expect(server.url).toMatch(/^http:\/\//);
+    });
+
+    it('probes nothing when no URL is configured', async () => {
+      const doFetch = vi.fn(keySet);
+      server = await start({}, { fetch: doFetch });
+
+      expect(doFetch).not.toHaveBeenCalled();
+    });
+
+    // A strict deployment must not accept traffic it cannot authenticate
+    it('refuses to listen on a failed probe under ESIGN_STRICT', async () => {
+      await expect(
+        start(
+          {
+            ESIGN_STRICT: 'true',
+            ESIGN_PROVIDER: 'docusign',
+            DOCUSIGN_INTEGRATION_KEY: 'ik',
+            DOCUSIGN_ACCOUNT_ID: 'acct',
+            DOCUSIGN_USER_ID: 'user',
+            DOCUSIGN_PRIVATE_KEY: 'pem',
+            DOCUSIGN_WEBFORM_ID: 'form',
+            DOCUSIGN_RETURN_URL: 'https://api.example.com/signing/return',
+            DOCUSIGN_BASE_URL: 'https://na4.docusign.net/restapi',
+            DOCUSIGN_OAUTH_URL: 'https://account.docusign.com',
+            DOCUSIGN_WEBFORMS_BASE_URL: 'https://apps.docusign.com/api/webforms/v1.1',
+            ESIGN_SESSION_JWKS_URL: JWKS,
+            ESIGN_PREFILL_URL: 'https://api.example.com/prefill',
+          },
+          {
+            logger: silentLogger(),
+            fetch: vi.fn(async () => {
+              throw new Error('ENOTFOUND');
+            }),
+          }
+        )
+      ).rejects.toThrow(/Refusing to listen.*session.*ENOTFOUND/s);
+    });
+  });
+
   it('refuses to listen when the configuration is actually broken', async () => {
     await expect(
       startServer({ ESIGN_PROVIDER: 'docusign', PORT: '0' }, { logger: silentLogger() })

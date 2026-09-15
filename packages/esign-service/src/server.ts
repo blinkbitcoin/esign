@@ -24,9 +24,10 @@ import {
   withDefaults,
 } from './app';
 import { getAllowedOrigins } from './config';
-import type { Env } from './env';
+import { type Env, ESIGN_STRICT, isStrict } from './env';
 import { loadEnvelopes } from './loadEnvelopes';
 import { resolvePort } from './port';
+import { formatProbes, preflight } from './preflight';
 import { forwardedClientIp, trustsProxy } from './proxy';
 
 export { ESIGN_TRUST_PROXY } from './proxy';
@@ -187,6 +188,8 @@ export interface RunningServer {
 export interface StartServerDeps extends ESignAppDeps {
   // The socket address, when the platform reports one (the Node bridge does)
   clientAddress?: (bindings: unknown) => string | undefined;
+  // How the preflight reaches the configured URLs (default: global fetch)
+  fetch?: typeof globalThis.fetch;
 }
 
 const socketAddress = (bindings: unknown): string | undefined =>
@@ -201,6 +204,20 @@ export const startServer = async (
   // accepts a connection. This target can serve envelopes, so it is the one
   // that knows how to reach the Node-only module.
   const app = createESignApp(env, { loadEnvelopes, ...deps });
+  const logger = deps.logger ?? consoleLogger;
+
+  // Do the URLs this deployment was given actually answer? Only this target
+  // asks: a function has no startup phase to spend on it (preflight.ts).
+  const probes = await preflight(env, { fetch: deps.fetch });
+  if (probes.length > 0) {
+    logger.log(formatProbes(probes));
+  }
+  const failed = probes.filter((probe) => !probe.ok);
+  if (failed.length > 0 && isStrict(env)) {
+    throw new Error(
+      `Refusing to listen (${ESIGN_STRICT}=true): ${failed.map((probe) => `${probe.check}: ${probe.detail}`).join('; ')}`
+    );
+  }
 
   const limiter = createRateLimiter(rateLimitsFromEnv(env));
   const trustProxy = trustsProxy(env);
@@ -258,7 +275,7 @@ export const startServer = async (
   // The posture banner is already out (validateConfig, inside createESignApp
   // above): it named the capabilities, the mint mode and every check. All
   // that is left to say is where to reach it.
-  (deps.logger ?? consoleLogger).log(`esign-service ready at ${url}`);
+  logger.log(`esign-service ready at ${url}`);
 
   return {
     url,
