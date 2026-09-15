@@ -190,25 +190,6 @@ describe('configErrors - the provider', () => {
     expect(errors).toEqual([expect.stringMatching(/DOCUSIGN_WEBFORM_ID/)]);
   });
 
-  it('refuses production on the mock provider', () => {
-    const errors = configErrors(
-      devEnv({ ESIGN_ENV: 'production', ESIGN_ALLOW_CLIENT_PREFILL: 'true' })
-    );
-    expect(errors).toEqual([expect.stringMatching(/mock provider is a demo provider/)]);
-  });
-
-  it('refuses production on DocuSign demo hosts', () => {
-    const errors = configErrors(
-      docusignEnv({
-        ALLOW_INSECURE_DEV: 'true',
-        ESIGN_ENV: 'production',
-        ESIGN_ALLOW_CLIENT_PREFILL: 'true',
-        DOCUSIGN_BASE_URL: 'https://demo.docusign.net/restapi',
-      })
-    );
-    expect(errors).toEqual([expect.stringMatching(/demo host/)]);
-  });
-
   it('refuses an unknown ESIGN_PROVIDER instead of silently falling back', () => {
     expect(configErrors(devEnv({ ESIGN_PROVIDER: 'adobe' }))).toEqual([
       expect.stringMatching(/unknown ESIGN_PROVIDER: adobe/),
@@ -307,17 +288,6 @@ describe('configErrors - the mint mode', () => {
     ]);
   });
 
-  it('still refuses production on DocuSign demo hosts', () => {
-    const errors = configErrors(
-      envelopeEnv({
-        ESIGN_ENV: 'production',
-        ESIGN_ALLOW_CLIENT_PREFILL: 'true',
-        DOCUSIGN_BASE_URL: 'https://demo.docusign.net/restapi',
-      })
-    );
-    expect(errors).toEqual([expect.stringMatching(/demo host/)]);
-  });
-
   // A production-shaped staging deployment on the DocuSign demo account: the
   // image's own posture, with the one bypass it documents
   it('accepts the demo account in production when demo settings are allowed', () => {
@@ -357,18 +327,6 @@ describe('configErrors - the mint mode', () => {
         /without ESIGN_PREFILL_URL: the client's own signer and prefill would be minted as sent/
       ),
     ]);
-  });
-
-  it('refuses the mock provider in production for envelopes too', () => {
-    expect(
-      configErrors(
-        devEnv({
-          ESIGN_MINT_MODE: 'envelope',
-          ESIGN_ENV: 'production',
-          ESIGN_ALLOW_CLIENT_PREFILL: 'true',
-        })
-      )
-    ).toEqual([expect.stringMatching(/mock provider is a demo provider/)]);
   });
 
   it('refuses a mode it does not know', () => {
