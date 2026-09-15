@@ -15,6 +15,10 @@ export const TEMPLATE_NAME = 'esign proxy live template (demo fixture)';
 // optional one (an editable prefill)
 export const FIXTURE_TEXT_TABS = ['reference', 'notes'] as const;
 
+// The role the fixture's one recipient carries (the default
+// DOCUSIGN_SIGNER_ROLE): what an envelope from this template fills
+export const FIXTURE_SIGNER_ROLE = 'signer';
+
 // One tab anchored on a label the PDF prints, placed to its right
 const anchored = (anchorString: string, tabLabel: string, xOffset: string, yOffset: string) => ({
   documentId: '1',
@@ -24,6 +28,21 @@ const anchored = (anchorString: string, tabLabel: string, xOffset: string, yOffs
   anchorYOffset: yOffset,
   tabLabel,
 });
+
+// The two Text tabs as the template API wants them, anchored on the PDF's
+// own labels
+export const FIXTURE_TEXT_TAB_DEFINITIONS = [
+  { ...anchored('Reference', FIXTURE_TEXT_TABS[0], '120', '-2'), width: '300' },
+  { ...anchored('Notes', FIXTURE_TEXT_TABS[1], '120', '-2'), width: '300' },
+];
+
+// What an existing fixture in the account is missing, given the Text tab
+// labels it carries: a template created before a tab was added to the
+// definition keeps the account on the old shape, and the envelope prefill
+// then writes to a tab that is not there (DocuSign answers 200 and drops the
+// value). `make docusign-template` adds these back.
+export const missingTextTabs = (present: readonly string[]): typeof FIXTURE_TEXT_TAB_DEFINITIONS =>
+  FIXTURE_TEXT_TAB_DEFINITIONS.filter((tab) => !present.includes(tab.tabLabel));
 
 export const templateDefinition = (documentBase64: string) => ({
   name: TEMPLATE_NAME,
@@ -43,16 +62,13 @@ export const templateDefinition = (documentBase64: string) => ({
   recipients: {
     signers: [
       {
-        roleName: 'signer',
+        roleName: FIXTURE_SIGNER_ROLE,
         recipientId: '1',
         routingOrder: '1',
         tabs: {
           signHereTabs: [anchored('Signature:', 'signature', '70', '-8')],
           dateSignedTabs: [anchored('Date signed:', 'date_signed', '80', '-2')],
-          textTabs: [
-            { ...anchored('Reference', 'reference', '120', '-2'), width: '300' },
-            { ...anchored('Notes', 'notes', '120', '-2'), width: '300' },
-          ],
+          textTabs: FIXTURE_TEXT_TAB_DEFINITIONS,
         },
       },
     ],

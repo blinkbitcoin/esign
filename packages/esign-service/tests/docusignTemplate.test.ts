@@ -3,6 +3,7 @@
 
 import {
   FIXTURE_TEXT_TABS,
+  missingTextTabs,
   TEMPLATE_NAME,
   templateDefinition,
   withTemplateId,
@@ -37,6 +38,37 @@ describe('templateDefinition', () => {
     expect(labels).toEqual([...FIXTURE_TEXT_TABS]);
     for (const tab of signer.tabs.textTabs) {
       expect(tab).toMatchObject({ documentId: '1', anchorUnits: 'pixels' });
+      expect(tab.anchorString).toBeTruthy();
+    }
+  });
+});
+
+// A fixture created before a tab was added keeps the old shape: DocuSign
+// answers a prefill for the absent tab with a 200 and drops the value, so
+// the live suite fails on an empty document instead of a configuration error
+describe('missingTextTabs', () => {
+  it('is empty when the account carries every tab of the definition', () => {
+    expect(missingTextTabs([...FIXTURE_TEXT_TABS])).toEqual([]);
+    expect(missingTextTabs([...FIXTURE_TEXT_TABS, 'a tab an operator added'])).toEqual([]);
+  });
+
+  it('names every tab an older fixture lacks, definition order kept', () => {
+    expect(missingTextTabs([]).map((tab) => tab.tabLabel)).toEqual([...FIXTURE_TEXT_TABS]);
+    expect(missingTextTabs(['signature', 'date_signed']).map((tab) => tab.tabLabel)).toEqual([
+      ...FIXTURE_TEXT_TABS,
+    ]);
+  });
+
+  it('names only the missing one when some are there', () => {
+    const [first, second] = FIXTURE_TEXT_TABS;
+    expect(missingTextTabs([first]).map((tab) => tab.tabLabel)).toEqual([second]);
+    expect(missingTextTabs([second]).map((tab) => tab.tabLabel)).toEqual([first]);
+  });
+
+  // What goes back to DocuSign must be a tab definition, not just a label
+  it('hands back anchored tab definitions, ready to POST', () => {
+    for (const tab of missingTextTabs([])) {
+      expect(tab).toMatchObject({ documentId: '1', anchorUnits: 'pixels', width: '300' });
       expect(tab.anchorString).toBeTruthy();
     }
   });

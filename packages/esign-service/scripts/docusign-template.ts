@@ -4,9 +4,11 @@
 // the capability test form PDF, one recipient role named `signer`, Sign Here
 // and Date Signed tabs anchored on the PDF text, and the Text tabs
 // `reference` + `notes` an envelope prefill can write to.
-// Idempotent: an existing template with the same name is reused as it is,
-// so a definition change (a new tab) reaches the account only after the old
-// fixture is deleted there, or under a new TEMPLATE_NAME.
+// Idempotent: an existing template with the same name is reused, and its
+// Text tabs are reconciled with the definition - a fixture created before a
+// tab existed gets it added, in place. Without that the account silently
+// keeps the old shape and every envelope prefill writing to the new tab is
+// dropped by DocuSign with a 200.
 //   make docusign-template            prints DOCUSIGN_TEMPLATE_ID=<id>
 //   make docusign-template WRITE=1    also sets it in .env (left alone when
 //                                     the line already lists several ids)
@@ -17,6 +19,8 @@ import { resolve } from 'node:path';
 import { createDocuSignClient } from '@blinkbitcoin/esign-node';
 import { getConfig } from '../src/providers/docusign/config';
 import {
+  FIXTURE_SIGNER_ROLE,
+  missingTextTabs,
   TEMPLATE_NAME,
   templateDefinition,
   withTemplateId,
@@ -45,6 +49,37 @@ const request = async <T>(url: string, init: RequestInit & { token: string }): P
   return (await response.json()) as T;
 };
 
+// The definition's Text tabs, added to the `signer` role of a fixture that
+// predates them. Tabs already there are left alone: the operator may have
+// moved one in the web editor, and an anchored tab is only ever added once.
+const reconcileTextTabs = async (templateId: string, token: string): Promise<void> => {
+  const recipients = `${templatesUrl()}/${templateId}/recipients`;
+  const { signers = [] } = await request<{
+    signers?: { roleName: string; recipientId: string }[];
+  }>(recipients, { token });
+  const signer = signers.find((role) => role.roleName === FIXTURE_SIGNER_ROLE);
+  if (!signer) {
+    throw new Error(
+      `template ${templateId} has no \`${FIXTURE_SIGNER_ROLE}\` role: delete it in DocuSign and run this again`
+    );
+  }
+  const { textTabs = [] } = await request<{ textTabs?: { tabLabel: string }[] }>(
+    `${recipients}/${signer.recipientId}/tabs`,
+    { token }
+  );
+  const missing = missingTextTabs(textTabs.map((tab) => tab.tabLabel));
+  if (missing.length === 0) {
+    console.log(`text tabs up to date: ${textTabs.map((tab) => tab.tabLabel).join(', ')}`);
+    return;
+  }
+  await request(`${recipients}/${signer.recipientId}/tabs`, {
+    token,
+    method: 'POST',
+    body: JSON.stringify({ textTabs: missing }),
+  });
+  console.log(`text tabs added: ${missing.map((tab) => tab.tabLabel).join(', ')}`);
+};
+
 const main = async (): Promise<void> => {
   const token = await createDocuSignClient(getConfig()).getAccessToken();
   const existing = await request<{ envelopeTemplates?: { templateId: string; name: string }[] }>(
@@ -54,6 +89,7 @@ const main = async (): Promise<void> => {
   let templateId = existing.envelopeTemplates?.find((t) => t.name === TEMPLATE_NAME)?.templateId;
   if (templateId) {
     console.log(`template exists: ${templateId}`);
+    await reconcileTextTabs(templateId, token);
   } else {
     const created = await request<{ templateId: string }>(templatesUrl(), {
       token,
