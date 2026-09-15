@@ -26,15 +26,21 @@ const wrapTo = (text: string, width: number): string[] =>
     return [...lines, word];
   }, []);
 
-// One table cell: flattened, pipes escaped, broken with <br> to the house width
-const cell = (text: string): string =>
-  wrapTo(
-    text
-      .replace(/\s*\n\s*/g, ' ')
-      .replace(/\|/g, '\\|')
-      .trim(),
-    CELL_WIDTH
-  ).join('<br>');
+// A value as one table cell's text: newlines flattened to spaces, and the two
+// characters that would break the table escaped.
+//
+// Both in one pass. Escaping `|` and then `\` would double the backslash this
+// step just added; escaping `\` and then `|` is correct but only by ordering,
+// and an escaper whose correctness depends on the order of two replaces is one
+// refactor away from being wrong again.
+export const escapeCell = (text: string): string =>
+  text
+    .replace(/\s*\n\s*/g, ' ')
+    .replace(/([\\|])/g, '\\$1')
+    .trim();
+
+// One table cell, broken with <br> to the house width
+const cell = (text: string): string => wrapTo(escapeCell(text), CELL_WIDTH).join('<br>');
 
 // Comment every line of `text` for an env file, wrapping prose but leaving
 // anything already indented (a command to run) exactly as written.

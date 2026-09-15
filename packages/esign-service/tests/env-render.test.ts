@@ -6,7 +6,30 @@
 // @ts-expect-error - a plain .mjs helper, no types
 import { MAX_LINE, overlongTableLines } from '../../../scripts/lib/table-lines.mjs';
 import { REGISTRY } from '../src/env/registry';
-import { renderDocTable, renderEnvExample, renderForTarget } from '../src/env/render';
+import { escapeCell, renderDocTable, renderEnvExample, renderForTarget } from '../src/env/render';
+
+describe('escapeCell', () => {
+  it('escapes a pipe so a value cannot break the table', () => {
+    expect(escapeCell('a|b')).toBe('a\\|b');
+  });
+
+  // The escaper used to escape | and not \, so a backslash already in the
+  // value doubled up against the escape it was about to add: 'a\\|b' became
+  // 'a\\\\|b' - a literal backslash and then a RAW pipe, breaking the table it
+  // was escaping for.
+  it('escapes a backslash before it can escape the escape', () => {
+    expect(escapeCell('a\\|b')).toBe('a\\\\\\|b');
+    expect(escapeCell('C:\\path')).toBe('C:\\\\path');
+  });
+
+  it('flattens a newline and its indentation to one space', () => {
+    expect(escapeCell('a\n   b')).toBe('a b');
+  });
+
+  it('trims', () => {
+    expect(escapeCell('  a  ')).toBe('a');
+  });
+});
 
 describe('renderEnvExample', () => {
   const example = renderEnvExample();
