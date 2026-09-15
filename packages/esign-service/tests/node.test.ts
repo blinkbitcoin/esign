@@ -7,6 +7,7 @@ import { vi } from 'vitest';
 const startServer = vi.fn(async () => ({ url: 'http://localhost:4000', stop: vi.fn() }));
 const initTelemetry = vi.fn();
 const migrated = vi.fn();
+const checked = vi.fn(async () => ({ output: 'the report', code: 0 }));
 
 // Loading a real .env would make the run depend on the developer's machine
 vi.mock('dotenv/config', () => ({}));
@@ -16,6 +17,9 @@ vi.mock('../src/migrate', () => {
   migrated();
   return {};
 });
+vi.mock('../src/check', () => ({
+  runCheckCommand: (command: string, argv: readonly string[]) => checked(command, argv),
+}));
 
 // The entry point runs at import, and its work is a floating promise
 const runEntryPoint = async (...args: string[]): Promise<void> => {
@@ -32,6 +36,7 @@ describe('the process entry point', () => {
     startServer.mockClear();
     initTelemetry.mockClear();
     migrated.mockClear();
+    checked.mockClear();
   });
 
   afterEach(() => {
@@ -53,6 +58,36 @@ describe('the process entry point', () => {
 
     expect(migrated).toHaveBeenCalled();
     expect(startServer).not.toHaveBeenCalled();
+  });
+
+  // The two diagnostics an operator runs instead of guessing. The entry
+  // point only prints what the command returns and adopts its exit code.
+  it('runs the session check and prints its report', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await runEntryPoint('check-session', 'a.b.c');
+
+    expect(checked).toHaveBeenCalledWith('check-session', ['a.b.c']);
+    expect(log).toHaveBeenCalledWith('the report');
+    expect(startServer).not.toHaveBeenCalled();
+  });
+
+  it('runs the prefill check', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await runEntryPoint('check-prefill');
+
+    expect(checked).toHaveBeenCalledWith('check-prefill', []);
+  });
+
+  it('adopts the exit code the check reports', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    checked.mockResolvedValueOnce({ output: 'nope', code: 1 });
+
+    await runEntryPoint('check-session', 'a.b.c');
+
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
   });
 
   it('reports a failure to start and exits non-zero', async () => {

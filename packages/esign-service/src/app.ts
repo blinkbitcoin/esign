@@ -21,7 +21,7 @@
 //     it too), so a client value can never become a locked one unless the
 //     deployment opts in with ESIGN_ALLOW_CLIENT_PREFILL
 
-import { bearerToken, type Logger } from '@blinkbitcoin/esign-node';
+import { bearerToken, consoleLogger, type Logger } from '@blinkbitcoin/esign-node';
 
 import { type Capability, ENVELOPES, mockPagesEnabled } from './capabilities';
 import { getAllowedOrigins, type Runtime, validateConfig } from './config';
@@ -127,7 +127,7 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
     ? { provider: deps.provider, mockPrefill: deps.mockPrefill }
     : selectProvider(env);
   const provider = selected.provider;
-  const verify = sessionVerifierFromEnv(env);
+  const verify = sessionVerifierFromEnv(env, deps.logger ?? consoleLogger);
   const origins = getAllowedOrigins(env);
   const terms = prefillConfigFromEnv(env);
   const mockPages = mockPagesEnabled(env);

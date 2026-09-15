@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // The process entry point: what the image runs, and what `npx esign-service`
 // runs. `node dist/node.js` serves; `node dist/node.js migrate` applies the
-// migrations and exits.
+// migrations and exits; `check-session <token>` and `check-prefill` report
+// the configuration line by line and exit non-zero on the first thing wrong,
+// so a misconfiguration can be found without deploying.
 //
 // The importable Node surface (startServer and the rate-limit pieces) is
 // ./server - the `@blinkbitcoin/esign-service/node` subpath resolves there.
@@ -23,6 +25,13 @@ const command = process.argv[2];
 const run = async (): Promise<void> => {
   if (command === 'migrate') {
     await import('./migrate.js');
+    return;
+  }
+  if (command === 'check-session' || command === 'check-prefill') {
+    const { runCheckCommand } = await import('./check.js');
+    const { output, code } = await runCheckCommand(command, process.argv.slice(3), process.env);
+    console.log(output);
+    process.exitCode = code;
     return;
   }
   const { startServer } = await import('./server.js');
