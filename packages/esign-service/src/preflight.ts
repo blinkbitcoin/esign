@@ -1,11 +1,18 @@
-// Do the URLs this deployment was given actually answer?
+// Does the key set this deployment was given actually answer?
 //
 // Setting ESIGN_SESSION_JWKS_URL correctly and setting it plausibly are
 // different things, and nothing used to tell them apart: createRemoteJWKSet
 // is lazy, so a typo'd host booted clean and then 401'd every request with no
-// reason given. ESIGN_PREFILL_URL was worse - a wrong path booted fine and
-// turned every mint into a 502. Both are the kind of mistake that is obvious
-// the moment anything says it out loud, and invisible otherwise.
+// reason given. That is the kind of mistake that is obvious the moment
+// anything says it out loud, and invisible otherwise.
+//
+// ESIGN_PREFILL_URL is deliberately NOT probed. It is an endpoint on someone
+// else's service that expects a POST, and sending it an unexpected request on
+// every boot is a side effect the operator did not ask for - a naive handler
+// that reads the body without guarding crashes on a bodyless HEAD, which is
+// exactly what happened to this repo's own demo stub the first time this ran.
+// `node dist/node.js check-prefill` verifies that endpoint instead: an
+// explicit command, sending the real POST the mint would send.
 //
 // Why this is not in config.ts: validateConfig is synchronous and runs at
 // FIRST IMPORT on the Vercel and Cloudflare targets. Network I/O cannot go
@@ -19,7 +26,6 @@
 
 import type { Env } from './env';
 import type { Check } from './posture';
-import { ESIGN_PREFILL_URL } from './prefill';
 import { ESIGN_SESSION_JWKS_URL } from './session';
 
 export interface Probe {
@@ -87,36 +93,12 @@ const probeKeySet = async (url: string, doFetch: typeof globalThis.fetch): Promi
   };
 };
 
-// The prefill callback is a POST endpoint, so a HEAD is only asking "is
-// anything listening here". A 404 means the path is wrong; a 405 means
-// something is there and does not take HEAD, which is exactly right. Whether
-// the contract is right is checked separately, with a real POST.
-const probePrefill = async (url: string, doFetch: typeof globalThis.fetch): Promise<Probe> => {
-  const host = hostOf(url);
-  try {
-    const response = await doFetch(url, {
-      method: 'HEAD',
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    return response.status === 404
-      ? { check: 'prefill', ok: false, detail: `${host} answered 404 - check the path` }
-      : { check: 'prefill', ok: true, detail: `${host} answers (${response.status})` };
-  } catch (error) {
-    return { check: 'prefill', ok: false, detail: `${host} unreachable: ${because(error)}` };
-  }
-};
-
-// Probe every URL this deployment configured, and only those: an unset
-// variable is not a failed probe, it is a deployment that made a choice the
-// banner already reported.
+// Probe what this deployment configured, and only that: an unset variable is
+// not a failed probe, it is a deployment that made a choice the banner
+// already reported.
 export const preflight = async (env: Env, deps: PreflightDeps = {}): Promise<Probe[]> => {
-  const doFetch = deps.fetch ?? globalThis.fetch;
   const jwks = env[ESIGN_SESSION_JWKS_URL];
-  const prefill = env[ESIGN_PREFILL_URL];
-  return Promise.all([
-    ...(jwks ? [probeKeySet(jwks, doFetch)] : []),
-    ...(prefill ? [probePrefill(prefill, doFetch)] : []),
-  ]);
+  return jwks ? [await probeKeySet(jwks, deps.fetch ?? globalThis.fetch)] : [];
 };
 
 // The probes as banner rows, in the same shape posture.ts uses, so they read

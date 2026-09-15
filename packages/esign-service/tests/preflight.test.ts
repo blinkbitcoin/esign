@@ -105,60 +105,52 @@ describe('preflight', () => {
     });
   });
 
-  describe('the prefill callback', () => {
-    // A POST-only endpoint SHOULD refuse a HEAD: this probe asks whether
-    // anything is listening, not whether the contract is right
-    it('treats a 405 as answering', async () => {
-      expect(
-        await preflight(prefillEnv, {
-          fetch: vi.fn(async () => new Response(null, { status: 405 })),
-        })
-      ).toEqual([{ check: 'prefill', ok: true, detail: 'api.example.com answers (405)' }]);
+  // A fetch implementation is not obliged to throw an Error, and a probe
+  // that crashed on the way to reporting a failure would be the worst outcome
+  it('reports something thrown that is not an Error', async () => {
+    const [probe] = await preflight(jwksEnv, {
+      fetch: vi.fn(async () => {
+        throw 'socket hang up';
+      }),
     });
-
-    it('treats a 200 as answering', async () => {
-      const [probe] = await preflight(prefillEnv, {
-        fetch: vi.fn(async () => new Response(null, { status: 200 })),
-      });
-      expect(probe.ok).toBe(true);
-    });
-
-    // The wrong-path case, which used to surface as a 502 on every mint
-    it('reports a 404 as a wrong path', async () => {
-      const [probe] = await preflight(prefillEnv, {
-        fetch: vi.fn(async () => new Response(null, { status: 404 })),
-      });
-      expect(probe).toEqual({
-        check: 'prefill',
-        ok: false,
-        detail: 'api.example.com answered 404 - check the path',
-      });
-    });
-
-    it('reports a host that refuses the connection', async () => {
-      const [probe] = await preflight(prefillEnv, { fetch: throwing('ECONNREFUSED') });
-      expect(probe).toMatchObject({ check: 'prefill', ok: false });
-      expect(probe.detail).toContain('ECONNREFUSED');
-    });
-
-    // A fetch implementation is not obliged to throw an Error; a probe that
-    // crashed on the way to reporting a failure would be the worst outcome
-    it('reports something thrown that is not an Error', async () => {
-      const [probe] = await preflight(prefillEnv, {
-        fetch: vi.fn(async () => {
-          throw 'socket hang up';
-        }),
-      });
-      expect(probe.detail).toContain('socket hang up');
-    });
+    expect(probe.detail).toContain('socket hang up');
   });
 
-  it('probes both when both are configured, key set first', async () => {
+  // The Node target passes no fetch, so the global one is the real path
+  it('falls back to the global fetch when none is injected', async () => {
+    const global = vi.fn(async () => new Response(JSON.stringify({ keys: [key()] })));
+    vi.stubGlobal('fetch', global);
+    try {
+      const [probe] = await preflight(jwksEnv);
+      expect(global).toHaveBeenCalled();
+      expect(probe.ok).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  // Deliberately not probed: it is someone else's POST endpoint, and an
+  // unexpected request on every boot is a side effect the operator did not
+  // ask for. A bodyless HEAD crashed this repo's own demo stub the first
+  // time this ran. `check-prefill` verifies it explicitly instead.
+  it('never touches the prefill callback', async () => {
+    const doFetch = vi.fn(async () => new Response(null, { status: 200 }));
+
+    expect(
+      await preflight(
+        { ESIGN_PROVIDER: 'mock', ESIGN_PREFILL_URL: PREFILL_URL },
+        { fetch: doFetch }
+      )
+    ).toEqual([]);
+    expect(doFetch).not.toHaveBeenCalled();
+  });
+
+  it('probes only the key set when both are configured', async () => {
     const probes = await preflight(
       { ...jwksEnv, ...prefillEnv },
       { fetch: answering({ keys: [key()] }) }
     );
-    expect(probes.map((probe) => probe.check)).toEqual(['session', 'prefill']);
+    expect(probes.map((probe) => probe.check)).toEqual(['session']);
   });
 });
 

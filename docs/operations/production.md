@@ -379,9 +379,11 @@ the service, and whether the template's fields carry the deal:
   webhook       verified (DOCUSIGN_HMAC_KEY)
 ```
 
-The Node target then probes the URLs it was given before it listens and adds
-what it found - how many keys the key set offers, or why it could not be
+The Node target then fetches `ESIGN_SESSION_JWKS_URL` before it listens and
+adds what it found - how many keys the set offers, or why it could not be
 read. A typo'd host is a line here instead of a 401 on every request.
+`ESIGN_PREFILL_URL` is not probed: it belongs to someone else's service and
+expects a POST, so `check-prefill` below asks it properly, when you ask.
 
 **A production deployment should set `ESIGN_STRICT=true`.** It turns every
 line the banner would report as unverified into a refusal to start, naming

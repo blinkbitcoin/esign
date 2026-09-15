@@ -46,8 +46,12 @@ at boot, on every target:
   webhook       n/a (mint only)
 ```
 
-The Node target also probes the URLs it was given before it listens, and adds
-what it found — how many keys a key set offers, or why it could not be read.
+The Node target also fetches `ESIGN_SESSION_JWKS_URL` before it listens and
+adds what it found — how many keys the set offers, or why it could not be
+read. `ESIGN_PREFILL_URL` is deliberately not probed: it is an endpoint on
+someone else's service expecting a POST, and an unexpected request on every
+boot is a side effect the operator did not ask for. `check-prefill` verifies
+that one on demand, with the real POST.
 
 ### `ESIGN_STRICT=true`
 

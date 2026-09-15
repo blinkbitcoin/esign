@@ -107,9 +107,10 @@ PORT="$TERMS_PORT" node -e '
     req.on("data", chunk => { body += chunk; });
     req.on("end", () => {
       const { userId, input } = JSON.parse(body || "{}");
+      const sent = input || {};
       res.setHeader("content-type", "application/json");
       res.end(JSON.stringify({
-        prefill: { total_subscription_usd: "1000.00", locked_for: userId, ...(input.full_name ? { full_name: input.full_name } : {}) },
+        prefill: { total_subscription_usd: "1000.00", locked_for: userId, ...(sent.full_name ? { full_name: sent.full_name } : {}) },
       }));
     });
   }).listen(Number(process.env.PORT));
