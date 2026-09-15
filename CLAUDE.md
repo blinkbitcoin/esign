@@ -206,7 +206,15 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   workspace's coverage config; `make coverage` (`scripts/ci/coverage-empty.mjs`)
   fails on any such row.
 - Shell that CI or the Makefile runs lives in `scripts/{ci,e2e,release}/`,
-  never inline in a workflow; `make check-ci` runs actionlint + shellcheck
+  never inline in a workflow; `make check-ci` runs actionlint (shared with CI
+  via `scripts/ci/actionlint.sh`, one pinned version) + shellcheck + the
+  dependency audit + the make/workflow parity gate
+- **The Makefile is the one definition of what CI runs.** A workflow step
+  never repeats a command a make target already runs - it calls the target,
+  so the two cannot drift (they had: a frozen `4104` in the workflow against
+  a derived port in the Makefile, and a coverage gate CI never ran).
+  `scripts/ci/make-parity.mjs` fails `check-ci` on any exact duplicate;
+  a deliberate exception goes in its `ALLOWED` map with the reason
 - **Ports**: every service listens on `ESIGN_PORT_BASE` (default 4100) +
   its offset, the two Postgres containers included (+12 test, +13 dev) -
   table `scripts/lib/ports.mjs`, shell via `scripts/e2e/ports-env.sh`,

@@ -191,12 +191,7 @@ jobs:
         run: npm run coverage:badge -- --status failing
 
       - name: Render Unit + E2E status badges
-        env:
-          UNIT: ${{ needs.unit.result }}
-          E2E: ${{ needs.e2e.result }}
-        run: |
-          node scripts/status-badge.mjs unit Unit "$UNIT"
-          node scripts/status-badge.mjs e2e E2E "$E2E"
+        run: make badges UNIT="${{ needs.unit.result }}" E2E="${{ needs.e2e.result }}"
 
       - name: Publish to gh-pages
         env:
@@ -331,7 +326,7 @@ jobs:
       - name: Install the published packages and assert the consumer contract
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash scripts/release/registry-smoke.sh "${{ needs.publish.outputs.version }}"
+        run: make registry-smoke V="${{ needs.publish.outputs.version }}"
 
       - name: Pull the published service image and smoke it
         env:

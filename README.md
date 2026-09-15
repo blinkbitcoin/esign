@@ -275,7 +275,10 @@ make web                                # or the web demo (Vite)
 verifies the API contracts against a demo account (it skips itself when no
 credentials are set).
 
-`make help` lists all targets (thin wrappers over the npm workspace scripts):
+`make help` lists **all** targets; the table below is the everyday subset. Every
+CI job that can run on a laptop has one, and the workflows call it rather than
+the script underneath - `make check-ci` fails if those two ever disagree
+(see [Running CI Locally](docs/development-guide.md#running-ci-locally)):
 
 | Target | Purpose |
 |--------|---------|
@@ -287,7 +290,10 @@ credentials are set).
 | `make e2e-backend`<br>`make e2e-web` | Backend / browser E2E: test DB up → migrate → tests → teardown (`e2e-web`<br>builds the libraries first and bundles the demo against their dist) |
 | `make e2e-ios`<br>`make e2e-android` | Maestro E2E against a running stack |
 | `make e2e-ios-local`<br>`make e2e-android-local` | The whole mobile stack in one command (DB, backend, .app or APK,<br>Metro, Maestro, teardown); iOS boots a simulator, Android needs a<br>running emulator. The steps: `e2e-backend-up`, `ios-build` /<br>`android-build`, `e2e-metro-up`, `e2e-ios` / `e2e-android` |
-| `make check-ci` | Lint the CI itself: actionlint on the workflows, shellcheck on `scripts/**` |
+| `make check-ci` | Lint the CI itself: actionlint on the workflows, shellcheck on<br>`scripts/**`, the dependency audit, and `check-parity` - the<br>workflows must call the make targets, not repeat their commands |
+| `make check-packages` | Package shape of the built packages: publint +<br>arethetypeswrong + the pack/install smoke |
+| `make docker-smoke` | Build the service image and boot it in both modes (mint<br>only, then with Postgres), as CI's Docker job does |
+| `make e2e-server-demos` | Boot the mint-only and serverless examples on the mock<br>provider and call their routes |
 | `make ports`<br>`make ports-free` | This worktree's port block (every service, both databases, Metro)<br>and who holds each port; stop what this worktree left on them |
 | `make test-live` | Opt-in live DocuSign API verification (skips without credentials) |
 | `make e2e-live`<br>`make e2e-ios-live` | Live journeys against real DocuSign (needs `make docusign-env`): the<br>locked Web Form submitted and signed inside the web component + a<br>proxy-mode signature; the same Web Form journey in the React Native<br>demo's WebView (booted simulator) |

@@ -33,6 +33,17 @@ coverage: ## Run test suites with coverage (100% enforced on packages + backend 
 coverage-badge: ## Render the README coverage badge from the last `make coverage` run (packages + backend + scripts/lib)
 	npm run coverage:badge
 
+# CI passes the real job results; locally they default to success so
+# `make badges` renders the same three SVGs a green run publishes.
+UNIT ?= success
+E2E ?= success
+# Deliberately NOT dependent on coverage-badge: the Badges job downloads the
+# coverage SVG from the Unit job rather than re-rendering it, and there is no
+# coverage/ to render from there. Locally, run `make coverage-badge` too.
+badges: ## Render the Unit/E2E stage badges into coverage/badge/ (UNIT=/E2E= override the results)
+	node scripts/status-badge.mjs unit Unit "$(UNIT)"
+	node scripts/status-badge.mjs e2e E2E "$(E2E)"
+
 typecheck: ## TypeScript across all workspaces
 	npm run typecheck
 
@@ -50,8 +61,36 @@ check-code: lint typecheck format-check ## Lint + typecheck + format check
 shellcheck: ## shellcheck every repo shell script (scripts/**)
 	shellcheck -x scripts/*.sh scripts/*/*.sh
 
-check-ci: shellcheck ## Lint the CI itself: actionlint (workflows) + shellcheck (scripts)
-	actionlint
+# The binary directly, not `npx` or `npm run`: audit-ci shells out to `npm
+# audit`, and a parent npm exports its own npm_config_* into the child - a
+# developer with allow-scripts configured globally gets EALLOWSCRIPTS from
+# the inner call. audit-ci is a devDependency, so the path always exists.
+audit: ## Dependency audit (known upstream issues allowlisted in audit-ci.jsonc)
+	./node_modules/.bin/audit-ci --config audit-ci.jsonc
+
+check-parity: ## Fail if a workflow step runs a command a make target already runs
+	node scripts/ci/make-parity.mjs
+
+check-ci: shellcheck audit check-parity ## Lint the CI itself: actionlint + shellcheck + audit + make/workflow parity
+	bash scripts/ci/actionlint.sh
+
+check-packages: ## Package shape of the built packages: publint + arethetypeswrong + the pack/install smoke
+	npm run check:packages
+	bash scripts/pack-smoke.sh
+
+# PACK_DEST is where CI points at $RUNNER_TEMP; the five workspaces here are
+# the authoritative list of what ships, so it lives in one place rather than
+# inline in a workflow.
+PACK_DEST ?= dist-tarballs
+pack: ## Pack the publishable tarballs into PACK_DEST (default dist-tarballs/)
+	mkdir -p "$(PACK_DEST)"
+	npm pack -w packages/esign-core -w packages/esign-node -w packages/esign-react-native -w packages/esign-react -w packages/esign-service --pack-destination "$(PACK_DEST)"
+
+changed-class: ## Classify this branch against origin/main the way CI's Changes job does
+	EVENT_NAME=pull_request BASE_SHA=$$(git merge-base origin/main HEAD) node scripts/ci/changed-class.mjs
+
+commitlint: ## Conventional Commits on this branch's commits (origin/main..HEAD)
+	npx commitlint --from origin/main --to HEAD --verbose
 
 codegen-check: ## Fail if schema.graphql / generated client code are stale (what CI runs)
 	bash scripts/ci/codegen-check.sh
@@ -229,8 +268,14 @@ live-android: ## The RN demo on the attached Android device against real DocuSig
 
 # ---------- Container ----------
 
-docker-build: ## Build the service image (packages/esign-service/Dockerfile, from the repo root)
-	bash scripts/ci/docker-build.sh esign-service
+# ARCHIVE saves the built image as a gzipped tar; CI passes $RUNNER_TEMP/... so
+# the Publish job can load and push exactly what the Docker job smoked.
+docker-build: ## Build the service image (packages/esign-service/Dockerfile); ARCHIVE=<path> also saves it
+	bash scripts/ci/docker-build.sh esign-service $(ARCHIVE)
+
+image-smoke: ## Smoke an already-pulled image reference: make image-smoke REF=ghcr.io/owner/esign-service:X.Y.Z
+	@test -n "$(REF)" || { echo "REF is required: make image-smoke REF=<image:tag>"; exit 1; }
+	bash scripts/ci/docker-smoke.sh "$(REF)"
 
 docker-smoke: docker-build ## Boot the image in both modes (mint only, then with Postgres) and assert its capabilities
 	bash scripts/ci/docker-smoke.sh esign-service
@@ -244,8 +289,14 @@ deploy-check: ## Validate the deploy templates (compose + the Worker bundle; k8s
 docker-build-mint-only: ## Build the mint-only demo image (examples/mint-only-demo/Dockerfile, from the repo root) - a demo, not published
 	DOCKERFILE=examples/mint-only-demo/Dockerfile bash scripts/ci/docker-build.sh esign-mint-only-demo
 
+# The argument is the port INSIDE the container, and the image bakes in the
+# default base (examples/mint-only-demo/Dockerfile: EXPOSE 4104), so it does
+# NOT follow this worktree's block - deriving it from the claimed base pointed
+# the smoke at a port nothing was listening on. Still from the table, just the
+# default base: an empty ESIGN_PORT_BASE is how ports.mjs is told to use it.
+# (The HOST side is SMOKE_PORT, which does move with the worktree.)
 docker-smoke-mint-only: docker-build-mint-only ## Boot the mint-only demo image with the mock provider and hit /health
-	bash scripts/ci/docker-smoke.sh esign-mint-only-demo $(shell node scripts/e2e/ports.mjs mint)
+	bash scripts/ci/docker-smoke.sh esign-mint-only-demo $(shell ESIGN_PORT_BASE= node scripts/e2e/ports.mjs mint)
 
 # ---------- Housekeeping ----------
 
@@ -262,6 +313,6 @@ help: ## List available targets
 		awk 'BEGIN {FS = ":.*##"} {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: install hooks pods release release-rc version registry-smoke unit coverage coverage-badge typecheck lint format format-check check-code \
-	shellcheck check-ci codegen-check test build codegen diagrams-check docs-check codeql start ios android backend web ports ports-free db-up db-down migrate \
+	shellcheck audit badges check-parity check-ci check-packages pack changed-class commitlint image-smoke codegen-check test build codegen diagrams-check docs-check codeql start ios android backend web ports ports-free db-up db-down migrate \
 	diagrams test-db-up test-db-down e2e-backend e2e-web e2e-web-webform e2e-web-publicurl e2e-web-webform-live \
 	e2e-server-demos e2e-backend-up e2e-backend-down e2e-metro-up e2e-metro-down ios-build android-build e2e-ios e2e-android e2e-ios-local e2e-android-local test-live docusign-env docusign-template docusign-check e2e-live e2e-ios-live live-web live-ios live-android docker-build docker-smoke docker-build-mint-only docker-smoke-mint-only deploy-check clean reset help

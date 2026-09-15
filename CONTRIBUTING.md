@@ -22,9 +22,9 @@ environment variables, and troubleshooting:
   `failing` badge replaces it when the coverage run fails. The same run
   uploads a combined HTML report as the `coverage-report` artifact (click
   the badge, open the latest run). `make coverage-badge` renders both
-  locally into `coverage/badge/` and `coverage/report/`. The Unit and E2E
-  badges next to it are rendered the same way from the pipeline's job
-  results (`scripts/status-badge.mjs`).
+  locally into `coverage/badge/` and `coverage/report/`, and `make badges`
+  renders the Unit and E2E ones beside it (`UNIT=`/`E2E=` stand in for the
+  pipeline's job results, which is all CI passes them).
 - Git hooks (see [below](#git-hooks)) format, lint, and check the commit
   message locally.
 - CI (`ci.yml`) is one pipeline for every branch: static checks, unit

@@ -253,20 +253,20 @@ V8 instrumentation.
 ### Backend E2E Tests
 
 ```bash
-# Start test database
-docker-compose -f docker-compose.test.yml up -d
+make e2e-backend        # database up -> migrate -> E2E -> teardown
+```
 
-# Wait for database
-docker-compose -f docker-compose.test.yml exec -T postgres-test pg_isready -U test -d esign_test
+Use the target rather than raw compose: it goes through
+`scripts/e2e/test-db.sh`, which honours `ESIGN_PORT_BASE`. A bare
+`docker-compose -f docker-compose.test.yml up -d` binds this repo's default
+port, which is the wrong one in any worktree that claimed its own block
+(`make ports`). The steps, if you need them one at a time:
 
-# Run migrations
-npm run migrate:test
-
-# Run E2E tests
-npm run test:e2e
-
-# Cleanup
-docker-compose -f docker-compose.test.yml down
+```bash
+make test-db-up
+bash scripts/e2e/test-db.sh run npm run migrate:test -w packages/esign-service
+bash scripts/e2e/test-db.sh run npm run test:e2e -w packages/esign-service
+make test-db-down
 ```
 
 ### Mobile E2E Tests (Maestro)
@@ -465,7 +465,7 @@ diagram: [CI / Release Pipeline](diagrams/README.md#ci--release-pipeline).
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | `ci.yml` | Push to main, PRs, release tag (dispatched by `release.yml`, or a hand-cut GitHub Release), manual | The one pipeline every branch runs, staged so a failure never spends the next stage's minutes: `Checks` (calls `checks.yml`) → `Unit` (calls `test.yml`) → `E2E` (calls `e2e.yml`; its `Build Packages` job is the one build of the packages), then `Badges` (coverage + Unit / E2E pass-fail badges for the branch to `gh-pages/badges/<branch>/`, after E2E so it never delays it), and on main pushes / releases / dispatch `Publish` (ships the tarballs `Build Packages` made and `Web` tested to GitHub Packages and the service image `Docker` built and smoked to GHCR as `ghcr.io/blinkbitcoin/esign-service:<version>` + `:latest` / `:next`, nothing is rebuilt: release → stable `latest`, version = the tag; main → prerelease `next`) + `Verify` (installs the published packages from GitHub Packages into a clean project and asserts the consumer contract; pulls the published image and smokes it). Workflow badge, if needed: `ci.yml/badge.svg?branch=<branch>` |
-| `checks.yml` | `workflow_call` only | First stage, all static: `Changes` (classifies the change - PR or push alike: when every changed file is<br>docs/, `*.md`, a `LICENSE` or a template, Unit, E2E and Badges are skipped and<br>main ships no prerelease; the rule is `scripts/lib/docs-only.mjs`), `Code` (audit-ci, actionlint, diagram freshness, `make check-code` = lint + typecheck + format), `Commits` (Conventional Commits on the PR's commits and title; PRs only), `Docs` (warns when architecture-relevant files change without a docs/ update; fails for a diagram source without its SVG) |
+| `checks.yml` | `workflow_call` only | First stage, all static: `Changes` (classifies the change - PR or push alike: when every changed file is<br>docs/, `*.md`, a `LICENSE` or a template, Unit, E2E and Badges are skipped and<br>main ships no prerelease; the rule is `scripts/lib/docs-only.mjs`), `Code` (`make audit`, actionlint via<br>`scripts/ci/actionlint.sh`, `make shellcheck`, `make check-parity` = the<br>workflows call the make targets, diagram freshness, `make check-code` = lint +<br>typecheck + format), `Commits` (Conventional Commits on the PR's commits and title; PRs only), `Docs` (warns when architecture-relevant files change without a docs/ update; fails for a diagram source without its SVG) |
 | `test.yml` | `workflow_call` only | Unit tests + coverage thresholds; uploads the coverage badge (1 day, consumed by `Badges`) and the combined HTML coverage report (`coverage-report` artifact, 30 days) |
 | `e2e.yml` | `workflow_call` only | `build-packages` (version stamp, build, publint + arethetypeswrong, pack smoke; uploads the dist for `web` and the tarballs for `Publish`), `docker` (the service image from `packages/esign-service/Dockerfile`, same version stamp, smoked **twice** - once without `DATABASE_URL` (the mint alone; the envelope webhook must be absent) and once against the E2E Postgres (mint + envelopes) - `make docker-smoke` locally - and uploaded for `Publish`; also builds and smokes the mint-only demo's image, `examples/mint-only-demo/Dockerfile` - `make docker-build-mint-only && make docker-smoke-mint-only` locally - proving that shape deploys too, but it is a demo: no version stamp, no artifact upload), `server-demos` (boots the mint-only and serverless examples with the mock provider and calls their routes, including the mint-only demo's REST mint and `/health` - `make e2e-server-demos`), `live` (opt-in live DocuSign: JWT grant, real mint, Playwright on the real form; [operations/live-e2e-ci.md](operations/live-e2e-ci.md)) plus the E2E suites as jobs: `backend`, `web` (Playwright, bundles the demo against that dist - what a web consumer installs), `build-android` → `android` (emulator), and `build-ios` → `ios` (simulator), which runs by default - `E2E_IOS=false` pauses it (see below). Outputs the stamped `version` / `disttag` for `Publish` |
 | `release.yml` | Push to main; CI completed on main | `Release PR / Tag` (push): keeps the `chore(release): X.Y.Z` PR current (version from the Conventional Commits since the last tag, `CHANGELOG.md` entry); when that PR merges, tags `vX.Y.Z`, creates the GitHub Release and dispatches `ci.yml` at the tag with `release_tag` (a release the workflow token creates never fires the `release:` trigger). `Re-run blocked releases` (CI completed green): re-runs the failed Publish of any release run for that commit (releases wait for / refuse a red main run). See [releasing.md](releasing.md) |
@@ -517,8 +517,11 @@ stack) and `scripts/release/` (publish), exposed through `make` wherever a
 human would run it - so a CI failure can be reproduced without pushing:
 
 ```bash
-# The whole Checks stage (static only)
+# The whole Checks stage (static only). check-ci is the superset: actionlint,
+# shellcheck, the dependency audit, and the make/workflow parity gate.
 make check-code check-ci codegen-check diagrams-check docs-check
+make changed-class      # will this branch skip the matrix? (CI's Changes job)
+make commitlint         # Conventional Commits on origin/main..HEAD
 
 # GitHub's CodeQL analysis, locally (never in a workflow: GitHub runs it there).
 # Same language, same config (suite + the alert-suppression query), so a finding
@@ -530,7 +533,12 @@ make codeql
 make coverage
 
 # E2E
-make build && npm run check:packages && bash scripts/pack-smoke.sh   # Build Packages
+make build check-packages   # Build Packages (publint + attw + the pack/install smoke)
+make pack               # the publishable tarballs, into dist-tarballs/
+make deploy-check       # the deploy templates (compose, Worker bundle, k8s)
+make docker-smoke       # Docker: build the service image and boot it in both modes
+make docker-smoke-mint-only   # the mint-only demo image
+make e2e-server-demos   # Server demos
 make e2e-backend        # Backend
 make e2e-web            # Web (Playwright; builds the libraries, then bundles + previews the demo)
 make e2e-android        # Android: emulator running, APK built, Metro + backend up (see `make help`)
@@ -541,4 +549,20 @@ make e2e-ios-local      # the whole iOS stack in one command (or e2e-android-loc
 make version            # what a push to main would publish; make version TAG=vX.Y.Z for a release
 make release            # merge the open release PR (release-please) - the whole stable release step
 make release-rc V=X.Y.Z-rc.1   # hand-cut a prerelease-suffixed tag (ships under next)
+make registry-smoke V=X.Y.Z    # Verify: install what was published and assert the contract
+make image-smoke REF=ghcr.io/blinkbitcoin/esign-service:X.Y.Z   # the same for the image
+
+# Badges
+make coverage-badge     # the coverage SVG, from the last `make coverage`
+make badges             # the Unit/E2E stage SVGs (UNIT=/E2E= to see a red one)
 ```
+
+Two jobs have no local twin on purpose: **Publish** needs a registry token, and
+**Badges** pushes to `gh-pages`. Everything they compute before that point does
+run locally - `make pack` builds the tarballs Publish uploads, `make badges`
+renders the SVGs it publishes, `make docker-build ARCHIVE=<path>` saves the
+image it pushes - so only the credentialed step is unreproducible.
+
+`make check-ci` fails if a workflow step runs a command a make target already
+runs (`scripts/ci/make-parity.mjs`). That is what keeps this list true: CI and
+the Makefile cannot drift into two definitions of the same job.

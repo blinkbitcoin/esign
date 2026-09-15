@@ -82,16 +82,22 @@ jobs:
         continue-on-error: ${{ github.event_name == 'pull_request' }}
         env:
           NPM_CONFIG_FETCH_TIMEOUT: '270000'
-        run: npx audit-ci --config audit-ci.jsonc
+        run: make audit
 
       - name: Lint GitHub Actions workflows (actionlint)
-        run: |
-          docker run --rm -v "$PWD":/repo --workdir /repo rhysd/actionlint:latest -color
+        run: bash scripts/ci/actionlint.sh
 
       # The workflows call scripts/** instead of carrying inline shell, so the
       # scripts need the lint actionlint gave the inline blocks.
       - name: Lint repo shell scripts (shellcheck)
         run: make shellcheck
+
+      # The Makefile is the one definition of what CI runs: this fails if a
+      # step above or in any other workflow repeats a command a target
+      # already runs. Without it the convention is a convention, which is how
+      # the two drifted in the first place.
+      - name: Check the workflows call the make targets (parity)
+        run: make check-parity
 
       - name: Check generated diagrams are current
         run: make diagrams-check
