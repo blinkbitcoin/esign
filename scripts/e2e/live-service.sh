@@ -41,6 +41,10 @@ live_env() {
       "${DOCUSIGN_TEMPLATE_ID:?}" "${DOCUSIGN_WEBFORM_ID:?}"
     export ESIGN_PROVIDER=docusign ALLOW_INSECURE_DEV=true
     export DATABASE_URL="${DATABASE_URL:-$ESIGN_DEV_DATABASE_URL}"
+    # The API live tests run before live_service_up, so they need the return
+    # URL here - the .env path always carries one (docusign-env.sh), and the
+    # service process gets the same default injected below
+    export DOCUSIGN_RETURN_URL="${DOCUSIGN_RETURN_URL:-http://localhost:$LIVE_PORT/signing/return}"
     export DOCUSIGN_HMAC_KEY="${DOCUSIGN_HMAC_KEY:-live-e2e-hmac}"
     export DOCUSIGN_WEBFORMS_BASE_URL="${DOCUSIGN_WEBFORMS_BASE_URL:-https://apps-d.docusign.com/api/webforms/v1.1}"
     unset JWT_SECRET # the bearer token is the user id (what the specs send)

@@ -135,7 +135,8 @@ Packages, image to GHCR) + Verify on `main`. Docs-only PRs stop after Checks. Th
 suite runs by default (GitHub-hosted macOS is free on a public repo); repo
 variable `E2E_IOS=false` pauses it and PR label `e2e:ios` forces it for one PR
 while paused. Live DocuSign E2E is opt-in (`E2E_LIVE=true` / label
-`e2e:live`, secrets in the `docusign-demo` environment;
+`e2e:live`, config in the `docusign-demo` environment - the RSA key its
+only secret;
 `docs/operations/live-e2e-ci.md`). Native E2E builds are cached on the inputs
 `scripts/native-deps-hash.sh` sees; bump the key's `v` suffix when an input it
 cannot see changes.

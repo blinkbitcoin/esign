@@ -131,6 +131,46 @@ describe('scripts/e2e/live-service.sh', () => {
     );
   });
 
+  // The CI path (docs/operations/live-e2e-ci.md) has no .env, and the API
+  // live tests run before live_service_up: everything the service needs has
+  // to be in the environment by the end of live_env
+  it('live_env defaults the return URL on LIVE_PORT when the values come from the environment', () => {
+    const { status, stdout } = source(
+      'live_env && echo "return=$DOCUSIGN_RETURN_URL test=$LIVE_TEST"',
+      {
+        LIVE_ENV_FILE: join(tempDir(), 'absent.env'),
+        LIVE_PORT: '4306',
+        DOCUSIGN_INTEGRATION_KEY: 'key',
+        DOCUSIGN_USER_ID: 'user',
+        DOCUSIGN_ACCOUNT_ID: 'account',
+        DOCUSIGN_PRIVATE_KEY: 'pem',
+        DOCUSIGN_TEMPLATE_ID: 'template',
+        DOCUSIGN_WEBFORM_ID: 'form',
+      },
+    );
+    expect(status).toBe(0);
+    expect(stdout).toContain(
+      'return=http://localhost:4306/signing/return test=test:live:env',
+    );
+  });
+
+  it('live_env keeps a return URL the caller set', () => {
+    const { stdout } = source(
+      'live_env && echo "return=$DOCUSIGN_RETURN_URL"',
+      {
+        LIVE_ENV_FILE: join(tempDir(), 'absent.env'),
+        DOCUSIGN_RETURN_URL: 'https://esign.example.com/signing/return',
+        DOCUSIGN_INTEGRATION_KEY: 'key',
+        DOCUSIGN_USER_ID: 'user',
+        DOCUSIGN_ACCOUNT_ID: 'account',
+        DOCUSIGN_PRIVATE_KEY: 'pem',
+        DOCUSIGN_TEMPLATE_ID: 'template',
+        DOCUSIGN_WEBFORM_ID: 'form',
+      },
+    );
+    expect(stdout).toContain('return=https://esign.example.com/signing/return');
+  });
+
   it('live_public_url warns and leaves PUBLIC_BASE_URL empty without a funnel', () => {
     const { status, stdout } = source(
       'live_public_url && echo "url=[$PUBLIC_BASE_URL]"',

@@ -236,8 +236,10 @@ rm -rf node_modules package-lock.json && npm install  # Full reinstall (root loc
   with repo variable `E2E_IOS=false`; PR label `e2e:ios` forces it for one PR
   while paused; `E2E_IOS_RUNNER` overrides `runs-on`.
 - Live DocuSign E2E is opt-in: repo variable `E2E_LIVE=true` (main, releases,
-  dispatch) or PR label `e2e:live` (same-repo PRs); secrets live in the
-  `docusign-demo` environment. `docs/operations/live-e2e-ci.md`.
+  dispatch) or PR label `e2e:live` (same-repo PRs); the config lives in the
+  `docusign-demo` environment, the RSA key its only secret (the identifiers
+  are variables, so a failed grant logs a usable consent URL).
+  `docs/operations/live-e2e-ci.md`.
 - CodeQL (`codeql.yml`, informational) reads `.github/codeql/codeql-config.yml`,
   which runs the suite plus the pack's AlertSuppression query. A false
   positive is suppressed in place with `// codeql[<rule-id>]` alone on the
