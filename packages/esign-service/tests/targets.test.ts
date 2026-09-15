@@ -4,7 +4,6 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { vi } from 'vitest';
 
 import worker, { workerApp } from '../src/cloudflare';
 import { DEV_ENV, silently } from './support/app';
