@@ -15,10 +15,11 @@ compatibility_date = "2026-09-01"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
-ESIGN_ENV = "production"
+# Refuse to start over anything this deployment does not verify
+ESIGN_STRICT = "true"
 ESIGN_PROVIDER = "docusign"
 ESIGN_SESSION_JWKS_URL = "https://id.example.com/.well-known/jwks.json"
-ESIGN_PREFILL_URL = "https://api.example.com/internal/esign/terms"
+ESIGN_PREFILL_URL = "https://api.example.com/internal/esign/prefill"
 DOCUSIGN_WEBFORM_ID = "change-me"
 # Or mint envelopes instead (POST /envelope/instance, one envelope from the
 # template; several ids, comma-separated, in that order) - no Web Form:

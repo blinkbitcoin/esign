@@ -1,5 +1,5 @@
 // The DocuSign adapter for the service: the package's adapter over the
-// service's configuration and webhook policy (ALLOW_INSECURE_DEV allows
+// service's configuration and webhook policy (an absent HMAC key allows
 // unsigned webhooks; DOCUSIGN_HMAC_KEY is read per call so rotation and
 // tests see the current environment).
 //

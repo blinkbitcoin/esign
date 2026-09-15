@@ -115,7 +115,7 @@ PORT="$TERMS_PORT" node -e '
   }).listen(Number(process.env.PORT));
 ' > "$LOG_DIR/terms-stub.log" 2>&1 &
 PIDS+=($!)
-DATABASE_URL='' ESIGN_PROVIDER=mock ALLOW_INSECURE_DEV=true PORT="$SERVICE_PORT" \
+DATABASE_URL='' ESIGN_PROVIDER=mock PORT="$SERVICE_PORT" \
   ESIGN_PREFILL_URL="http://127.0.0.1:$TERMS_PORT/terms" \
   npm run dev -w packages/esign-service > "$LOG_DIR/esign-service.log" 2>&1 &
 PIDS+=($!)

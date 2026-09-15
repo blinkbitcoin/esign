@@ -110,7 +110,6 @@ describe('capabilities', () => {
     await silently(() =>
       expect(() =>
         createESignApp({
-          ALLOW_INSECURE_DEV: 'true',
           ESIGN_PROVIDER: 'mock',
           DATABASE_URL: 'postgres://u@h/db',
         })
@@ -121,7 +120,7 @@ describe('capabilities', () => {
   it('refuses envelope orchestration on the edge runtime', () => {
     expect(() =>
       createESignApp(
-        { ALLOW_INSECURE_DEV: 'true', ESIGN_PROVIDER: 'mock', DATABASE_URL: 'postgres://u@h/db' },
+        { ESIGN_PROVIDER: 'mock', DATABASE_URL: 'postgres://u@h/db' },
         { runtime: 'edge' }
       )
     ).toThrow(/cannot open a Postgres connection/);
@@ -146,7 +145,7 @@ describe('the mint', () => {
   });
 
   it('verifies the session rather than trusting the token, when a secret is configured', async () => {
-    const app = testApp({ ALLOW_INSECURE_DEV: undefined, ESIGN_SESSION_SECRET: 'a-secret' });
+    const app = testApp({ ESIGN_SESSION_SECRET: 'a-secret' });
 
     const response = await post(app, '/webform/instance', { prefill: {} }, mintHeaders);
     expect(response.status).toBe(401);

@@ -39,7 +39,7 @@ live_env() {
   elif [ -n "${DOCUSIGN_INTEGRATION_KEY:-}" ]; then
     : "${DOCUSIGN_USER_ID:?}" "${DOCUSIGN_ACCOUNT_ID:?}" "${DOCUSIGN_PRIVATE_KEY:?}" \
       "${DOCUSIGN_TEMPLATE_ID:?}" "${DOCUSIGN_WEBFORM_ID:?}"
-    export ESIGN_PROVIDER=docusign ALLOW_INSECURE_DEV=true
+    export ESIGN_PROVIDER=docusign
     export DATABASE_URL="${DATABASE_URL:-$ESIGN_DEV_DATABASE_URL}"
     # The API live tests run before live_service_up, so they need the return
     # URL here - the .env path always carries one (docusign-env.sh), and the
@@ -47,7 +47,10 @@ live_env() {
     export DOCUSIGN_RETURN_URL="${DOCUSIGN_RETURN_URL:-http://localhost:$LIVE_PORT/signing/return}"
     export DOCUSIGN_HMAC_KEY="${DOCUSIGN_HMAC_KEY:-live-e2e-hmac}"
     export DOCUSIGN_WEBFORMS_BASE_URL="${DOCUSIGN_WEBFORMS_BASE_URL:-https://apps-d.docusign.com/api/webforms/v1.1}"
-    unset ESIGN_SESSION_SECRET # the bearer token is the user id (what the specs send)
+    # No session source: the bearer token is the user id, which is what the
+    # specs send. Unset both, so a developer's exported secret cannot start
+    # verifying tokens nothing here signs.
+    unset ESIGN_SESSION_SECRET ESIGN_SESSION_JWKS_URL
     LIVE_TEST="test:live:env"
   else
     echo "::error::no $env_file (make docusign-env) and no DOCUSIGN_* in the environment"; exit 1

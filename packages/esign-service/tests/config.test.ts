@@ -101,7 +101,6 @@ describe('configErrors - the provider', () => {
 
   it('refuses DocuSign without the settings a mint needs', () => {
     const errors = configErrors({
-      ALLOW_INSECURE_DEV: 'true',
       ESIGN_PROVIDER: 'docusign',
       DOCUSIGN_INTEGRATION_KEY: 'ik',
     });
@@ -193,7 +192,6 @@ describe('configErrors - runtime vs capability', () => {
   it('refuses a PEM file path on the edge runtime (no filesystem)', () => {
     const errors = configErrors(
       docusignEnv({
-        ALLOW_INSECURE_DEV: 'true',
         DOCUSIGN_PRIVATE_KEY: undefined,
         DOCUSIGN_PRIVATE_KEY_FILE: '/run/secrets/docusign.pem',
       }),
@@ -208,7 +206,6 @@ describe('configErrors - the mint mode', () => {
   // Web Form (dummy ids in the real shape - nothing here is a real template)
   const envelopeEnv = (extra: Record<string, string | undefined> = {}) =>
     docusignEnv({
-      ALLOW_INSECURE_DEV: 'true',
       ESIGN_MINT_MODE: 'envelope',
       DOCUSIGN_WEBFORM_ID: undefined,
       DOCUSIGN_TEMPLATE_ID: 'membership,subscription,joinder',
@@ -241,7 +238,6 @@ describe('configErrors - the mint mode', () => {
     expect(
       configErrors(
         envelopeEnv({
-          ALLOW_INSECURE_DEV: undefined,
           ESIGN_SESSION_SECRET: 's',
           ESIGN_ENV: 'production',
           ESIGN_ALLOW_DEMO: 'true',
