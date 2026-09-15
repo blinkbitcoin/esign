@@ -13,6 +13,7 @@
 // every target.
 
 import type { AddressInfo } from 'node:net';
+import { consoleLogger } from '@blinkbitcoin/esign-node';
 import { serve } from '@hono/node-server';
 
 import {
@@ -254,9 +255,10 @@ export const startServer = async (
   };
   process.once('SIGTERM', drain);
 
-  console.log(`🚀 esign-service ready at ${url} (capabilities: ${app.capabilities.join(', ')})`);
-  console.log(`🏥 Health check at ${url}/health`);
-  console.log(`📝 E-signature provider: ${env.ESIGN_PROVIDER || 'mock'}`);
+  // The posture banner is already out (validateConfig, inside createESignApp
+  // above): it named the capabilities, the mint mode and every check. All
+  // that is left to say is where to reach it.
+  (deps.logger ?? consoleLogger).log(`esign-service ready at ${url}`);
 
   return {
     url,

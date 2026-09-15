@@ -48,13 +48,15 @@ describe('DocuSignProvider.verifyWebhook policy', () => {
     ).toBe(true);
   });
 
-  it('allows an unsigned webhook without a key only in insecure-dev mode', () => {
+  // No key configured means there is no signature to check - which the boot
+  // banner reported as an unverified webhook. A key that IS configured is
+  // always enforced, whatever else the environment says.
+  it('allows an unsigned webhook only when no key is configured', () => {
     delete process.env.DOCUSIGN_HMAC_KEY;
-    process.env.ALLOW_INSECURE_DEV = 'true';
     expect(DocuSignProvider.verifyWebhook({}, body)).toBe(true);
     expect(warnSpy).toHaveBeenCalled();
 
-    process.env.ALLOW_INSECURE_DEV = 'false';
+    process.env.DOCUSIGN_HMAC_KEY = 'k1';
     expect(DocuSignProvider.verifyWebhook({}, body, '10.0.0.1')).toBe(false);
     expect(errorSpy).toHaveBeenCalledWith(
       'Security event:',

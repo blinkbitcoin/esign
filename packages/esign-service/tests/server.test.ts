@@ -14,7 +14,7 @@ import {
   startServer,
   sweepWindows,
 } from '../src/server';
-import { DEV_ENV } from './support/app';
+import { DEV_ENV, silentLogger } from './support/app';
 
 describe('rateLimitsFromEnv', () => {
   it('defaults to what the Express limiters allowed', () => {
@@ -212,17 +212,20 @@ describe('startServer', () => {
     expect(await response.json()).toMatchObject({ status: 'ok', capabilities: ['mint'] });
   });
 
-  it('logs where it is listening and which provider it runs', async () => {
+  it('prints the posture banner and where it is listening', async () => {
     server = await start();
 
-    expect(logs).toHaveBeenCalledWith(expect.stringContaining(`${server.url}/health`));
-    expect(logs).toHaveBeenCalledWith(expect.stringContaining('E-signature provider: mock'));
+    // The banner, from validateConfig inside createESignApp
+    expect(logs).toHaveBeenCalledWith(expect.stringContaining('provider      mock'));
+    expect(logs).toHaveBeenCalledWith(expect.stringContaining('session       not verified'));
+    // And the one line the server itself adds
+    expect(logs).toHaveBeenCalledWith(expect.stringContaining(`ready at ${server.url}`));
   });
 
-  it('defaults the logged provider to mock when ESIGN_PROVIDER is unset', async () => {
+  it('names the mock in the banner when ESIGN_PROVIDER is unset', async () => {
     server = await start({ ESIGN_PROVIDER: undefined });
 
-    expect(logs).toHaveBeenCalledWith(expect.stringContaining('E-signature provider: mock'));
+    expect(logs).toHaveBeenCalledWith(expect.stringContaining('provider      mock'));
   });
 
   it('answers 429 once a route is over its limit, and marks every answer', async () => {
@@ -372,9 +375,15 @@ describe('startServer', () => {
     });
   });
 
-  it('refuses to listen when the configuration is wrong', async () => {
-    await expect(startServer({ ESIGN_PROVIDER: 'mock', PORT: '0' })).rejects.toThrow(
-      /Refusing to start/
-    );
+  // The vanilla deploy again, through the real listen path
+  it('listens with nothing configured beyond the provider', async () => {
+    server = await start({ ESIGN_PROVIDER: 'mock' });
+    expect(server.url).toMatch(/^http:\/\//);
+  });
+
+  it('refuses to listen when the configuration is actually broken', async () => {
+    await expect(
+      startServer({ ESIGN_PROVIDER: 'docusign', PORT: '0' }, { logger: silentLogger() })
+    ).rejects.toThrow(/Refusing to start/);
   });
 });

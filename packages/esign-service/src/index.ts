@@ -17,7 +17,9 @@ export {
 export type { Runtime, ValidateConfigOptions } from './config';
 export { configErrors, getAllowedOrigins, validateConfig } from './config';
 export type { Env } from './env';
-export { isInsecureDevAllowed } from './env';
+export { ESIGN_STRICT, isStrict } from './env';
+export type { Check, Line } from './posture';
+export { formatBanner, postureLines } from './posture';
 export type { PrefillConfig } from './prefill';
 export { createPrefillHook, PrefillError, prefillConfigFromEnv } from './prefill';
 export type { SessionSource, SessionVerifier } from './session';

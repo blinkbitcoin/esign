@@ -21,10 +21,15 @@
 //     it too), so a client value can never become a locked one unless the
 //     deployment opts in with ESIGN_ALLOW_CLIENT_PREFILL
 
-import { bearerToken } from '@blinkbitcoin/esign-node';
+import { bearerToken, type Logger } from '@blinkbitcoin/esign-node';
 
 import { type Capability, ENVELOPES, mockPagesEnabled } from './capabilities';
-import { ESIGN_ENV, getAllowedOrigins, type Runtime, validateConfig } from './config';
+import { getAllowedOrigins, type Runtime, validateConfig } from './config';
+
+// Apollo's schema discovery. Off unless asked for: a deployment that wants
+// it says so, rather than it following from how the environment is labelled.
+export const ESIGN_GRAPHQL_INTROSPECTION = 'ESIGN_GRAPHQL_INTROSPECTION';
+
 import type { Env } from './env';
 import type { LoadEnvelopes } from './envelopes';
 import { isPrefillFailure, mintModeFromEnv } from './mint';
@@ -52,6 +57,9 @@ export const SECURITY_HEADERS: Record<string, string> = {
 };
 
 export interface ESignAppDeps {
+  // Where the boot banner goes (default: the console). Injected so tests
+  // stay silent and so a host can route it into its own logging.
+  logger?: Logger;
   // The provider to mint with (default: ESIGN_PROVIDER over this service's
   // registry)
   provider?: ESignProvider;
@@ -113,7 +121,7 @@ export const withDefaults = (response: Response, headers: Record<string, string>
 export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}): ESignApp => {
   // Fail closed before anything is constructed: one message, every problem,
   // and the capabilities that were on.
-  const capabilities = validateConfig(env, { runtime: deps.runtime });
+  const capabilities = validateConfig(env, { runtime: deps.runtime, logger: deps.logger });
 
   const selected = deps.provider
     ? { provider: deps.provider, mockPrefill: deps.mockPrefill }
@@ -143,7 +151,7 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
       env,
       provider,
       authenticate,
-      introspection: env[ESIGN_ENV] !== 'production',
+      introspection: env[ESIGN_GRAPHQL_INTROSPECTION] === 'true',
       trustProxy: trustsProxy(env),
     })
   );

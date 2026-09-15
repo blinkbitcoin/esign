@@ -17,7 +17,16 @@ vi.mock('../src/store', async () => {
 
 import { createESignApp } from '../src/app';
 import { createStore } from '../src/store';
-import { asJson, get, options, post, silently, testApp, testFullApp } from './support/app';
+import {
+  asJson,
+  get,
+  options,
+  post,
+  silentLogger,
+  silently,
+  testApp,
+  testFullApp,
+} from './support/app';
 import { memoryStore as store } from './support/store';
 
 const mintHeaders = { authorization: 'Bearer user-1' };
@@ -82,8 +91,17 @@ describe('capabilities', () => {
     expect(await asJson(response)).toEqual({ error: 'Not found' });
   });
 
-  it('refuses to construct when the configuration is wrong', () => {
-    expect(() => createESignApp({ ESIGN_PROVIDER: 'mock' })).toThrow(/Refusing to start/);
+  // The vanilla deploy: nothing but a provider, and it starts
+  it('constructs with nothing configured beyond the provider', () => {
+    expect(() =>
+      createESignApp({ ESIGN_PROVIDER: 'mock' }, { logger: silentLogger() })
+    ).not.toThrow();
+  });
+
+  it('refuses to construct when the configuration is actually broken', () => {
+    expect(() =>
+      createESignApp({ ESIGN_PROVIDER: 'docusign' }, { logger: silentLogger() })
+    ).toThrow(/Refusing to start/);
   });
 
   it('refuses a database it was not built to serve (no envelope module)', async () => {
@@ -714,27 +732,25 @@ describe('the GraphQL API', () => {
     expect(response.headers.get('content-type')).toContain('text/html');
   });
 
-  it('allows introspection outside production', async () => {
+  // Off by default, and asked for by name: introspection no longer follows
+  // from how the deployment labels itself
+  it('disables introspection by default', async () => {
     const response = await post(app, '/graphql', {
       query: '{ __schema { queryType { name } } }',
     });
 
-    expect(await asJson<{ errors?: unknown }>(response)).not.toHaveProperty('errors');
+    expect(await asJson<{ errors?: unknown }>(response)).toHaveProperty('errors');
   });
 
-  it('disables introspection when ESIGN_ENV=production', async () => {
-    const production = testFullApp({
-      ESIGN_ENV: 'production',
-      ESIGN_ALLOW_DEMO: 'true',
-      ESIGN_ALLOW_CLIENT_PREFILL: 'true',
-    });
+  it('allows introspection when ESIGN_GRAPHQL_INTROSPECTION=true', async () => {
+    const introspectable = testFullApp({ ESIGN_GRAPHQL_INTROSPECTION: 'true' });
 
-    const response = await post(production, '/graphql', {
+    const response = await post(introspectable, '/graphql', {
       query: '{ __schema { queryType { name } } }',
     });
 
-    expect(await asJson<{ errors?: unknown }>(response)).toHaveProperty('errors');
-    await production.stop();
+    expect(await asJson<{ errors?: unknown }>(response)).not.toHaveProperty('errors');
+    await introspectable.stop();
   });
 
   it('surfaces a failure to build the capability on the first request that needs it', async () => {

@@ -1,15 +1,12 @@
 // Session verification: the one place a caller's bearer token becomes a user
-// id. JWKS (RS/ES via a remote key set), HS256 (a shared secret), or the
-// explicit dev passthrough - selected by the environment alone.
+// id. JWKS (RS/ES via a remote key set), HS256 (a shared secret), or neither
+// - in which case the token is taken at face value. Selected by the
+// environment alone.
 
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { vi } from 'vitest';
 
-import {
-  resetDevPassthroughWarning,
-  sessionSourceFromEnv,
-  sessionVerifierFromEnv,
-} from '../src/session';
+import { sessionSourceFromEnv, sessionVerifierFromEnv } from '../src/session';
 
 const HS256_SECRET = 'a-shared-session-secret-of-some-length';
 const secretKey = () => new TextEncoder().encode(HS256_SECRET);
@@ -46,21 +43,18 @@ describe('sessionSourceFromEnv', () => {
     ).toBe('jwks');
   });
 
-  it('is the dev passthrough only with the explicit switch', () => {
-    expect(sessionSourceFromEnv({ ALLOW_INSECURE_DEV: 'true' })).toBe('insecure');
-    expect(sessionSourceFromEnv({ ALLOW_INSECURE_DEV: 'TRUE' })).toBeNull();
-    expect(sessionSourceFromEnv({})).toBeNull();
+  // Total: an unconfigured environment describes a source too, so no caller
+  // has to handle "no source"
+  it('is unverified when neither is configured', () => {
+    expect(sessionSourceFromEnv({})).toBe('unverified');
   });
 });
 
 describe('sessionVerifierFromEnv', () => {
-  afterEach(() => {
-    resetDevPassthroughWarning();
-    vi.restoreAllMocks();
-  });
+  afterEach(() => vi.restoreAllMocks());
 
-  it('refuses to build a verifier without a session source', () => {
-    expect(() => sessionVerifierFromEnv({})).toThrow(/no session verification/i);
+  it('builds a verifier for every environment, configured or not', () => {
+    expect(() => sessionVerifierFromEnv({})).not.toThrow();
   });
 
   describe('HS256', () => {
@@ -209,23 +203,21 @@ describe('sessionVerifierFromEnv', () => {
     });
   });
 
-  describe('dev passthrough', () => {
-    it('treats the bearer token as the user id and warns once', async () => {
+  describe('unverified', () => {
+    // Silently: the boot banner said this once already, so a per-request
+    // warning would only be noise a deployment cannot act on
+    it('treats the bearer token as the user id, without logging', async () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const verify = sessionVerifierFromEnv({ ALLOW_INSECURE_DEV: 'true' });
+      const verify = sessionVerifierFromEnv({});
 
       await expect(verify('local-dev-user')).resolves.toBe('local-dev-user');
       await expect(verify('another-user')).resolves.toBe('another-user');
 
-      expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('ALLOW_INSECURE_DEV'));
+      expect(warn).not.toHaveBeenCalled();
     });
 
     it('still refuses an empty token', async () => {
-      vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const verify = sessionVerifierFromEnv({ ALLOW_INSECURE_DEV: 'true' });
-
-      await expect(verify('')).resolves.toBeNull();
+      await expect(sessionVerifierFromEnv({})('')).resolves.toBeNull();
     });
   });
 });
