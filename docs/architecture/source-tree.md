@@ -215,7 +215,7 @@ esign/
 │   │   │   ├── release/resolve-version.mjs  # thin CLI over scripts/lib/resolve-version.mjs
 │   │   │   └── ci/manifest-structural.mjs   # thin CLI over scripts/lib/manifest-structural.mjs (docs-freshness.sh)
 │   │   ├── lib/*.mjs              # extracted, unit-tested logic behind the CLI entry scripts (semver, resolve-version, badge)
-│   │   └── __tests__/*.test.mjs   # shell-script tests (changed-class.sh, docs-freshness.sh) - shell out, not V8-covered
+│   │   └── __tests__/*.test.mjs   # entry-point tests (changed-class.mjs, docs-freshness.sh) - shell out, not V8-covered
 │   ├── package.json               # Workspace root: orchestration scripts
 │   ├── .envrc                     # direnv: .env loading + use flake + workspace bins
 │   ├── flake.nix / flake.lock     # Nix dev shell: node 24, jdk 17, ruby 3.3, watchman

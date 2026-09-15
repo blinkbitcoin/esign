@@ -14,9 +14,12 @@ name: CI
 # ships it to GHCR (ghcr.io/<owner>/esign-service:<version>, :latest / :next)
 # and Verify pulls and smokes what was published.
 #
-# A docs-only PR (docs/, *.md, LICENSE, templates - classified by the Changes
-# job in checks.yml) stops after Checks; main already skips docs-only pushes
-# via paths-ignore below, so PR and main follow the same rule.
+# A docs-only change stops after Checks - on a PR and on the merge that
+# follows it, because both ask the same classifier (the Changes job in
+# checks.yml, over scripts/lib/docs-only.mjs). Unit, E2E, Badges and Publish
+# all skip, so a documentation push to main ships no prerelease; a skipped
+# job still counts as passing for required checks. The lint, format and docs
+# checks DO run - they are what a documentation change can break.
 #
 # Checks, Unit and E2E are reusable workflows called as jobs; the Badges job
 # at the end publishes the coverage + status badges per branch to gh-pages.
@@ -75,7 +78,8 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore: ['docs/**', '**.md'] # docs-only pushes ship nothing new
+    # No paths-ignore: a second list here drifted from the classifier's and
+    # let a docs-only merge run the whole matrix. The Changes job decides.
   pull_request:
     types: [opened, synchronize, reopened, labeled] # labeled: the `e2e:ios` override
   release:
@@ -137,8 +141,11 @@ jobs:
   # the whole pipeline). Runs after E2E so it never delays it; a stage that
   # never ran because an earlier one failed renders as "skipped". Always
   # runs so a red badge replaces a stale green one; skipped for fork PRs (no
-  # write token) and release runs (not a branch - a hand-cut `release:` event
-  # or a workflow_dispatch at a tag with `release_tag` set). gh-pages is the
+  # write token), release runs (not a branch - a hand-cut `release:` event
+  # or a workflow_dispatch at a tag with `release_tag` set), and docs-only
+  # changes, where Unit and E2E were skipped on purpose: rendering those as
+  # "skipped" would paint over the branch's real result with a documentation
+  # edit. gh-pages is the
   # one branch the org ruleset exempts from the PR-approval requirement, so
   # the default GITHUB_TOKEN can push there; pull-request.yml removes a PR's
   # directory when it closes.
@@ -148,6 +155,7 @@ jobs:
     if: |
       always() &&
       needs.checks.result != 'cancelled' && needs.unit.result != 'cancelled' && needs.e2e.result != 'cancelled' &&
+      needs.checks.outputs.docs-only != 'true' &&
       github.event_name != 'release' && inputs.release_tag == '' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
