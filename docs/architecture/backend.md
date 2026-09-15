@@ -323,23 +323,19 @@ npm run test:e2e
 
 ## Environment Variables
 
-| Variable | Purpose |
-|----------|---------|
-| `DATABASE_URL` | PostgreSQL connection string. **Optional**: its presence turns envelope orchestration on |
-| `ESIGN_SESSION_JWKS_URL` | Remote key set (RS/ES) for session verification |
-| `ESIGN_SESSION_SECRET` | Shared secret instead of a key set |
-| `ESIGN_SESSION_ISSUER` / `ESIGN_SESSION_AUDIENCE` / `ESIGN_SESSION_USER_CLAIM` | Enforced when set; claim default `sub` |
-| `ESIGN_PREFILL_URL`, `ESIGN_PREFILL_SECRET`, `ESIGN_PREFILL_TIMEOUT_MS`, `TERMS_ALLOW_INSECURE` | The host callback that computes the locked prefill (and, for an envelope mint, may name the signer) |
-| `ESIGN_ENV` / `ESIGN_ALLOW_DEMO` | `production` refuses demo settings and disables introspection; `true` is the one bypass |
-| `ESIGN_ALLOW_CLIENT_PREFILL` | Mint the client's own prefill (and an envelope's signer) in production |
-| `ESIGN_PROVIDER` | Provider selection: `mock` (default) / `docusign` |
-| `ESIGN_MINT_MODE` | What the mint answers with: `webform` (default, `POST /webform/instance`) / `envelope` (`POST /envelope/instance`, one envelope from `DOCUSIGN_TEMPLATE_ID`); anything else refuses to start |
-| `ESIGN_MOCK_PAGES` | `false` turns the mock provider's signing pages off |
-| `DOCUSIGN_*` | DocuSign credentials (required when provider=docusign) |
-| `DOCUSIGN_HMAC_KEY` | Webhook HMAC key (required when envelopes are on and the provider signs) |
-| `ESIGN_CORS_ALLOWED_ORIGINS` | Browser origins allowed to call the API |
-| `ALLOW_INSECURE_DEV` | The explicit opt-in to no verification (never in production) |
-| `PORT`, `ESIGN_TRUST_PROXY`, `RATE_LIMIT_*_PER_MIN` | Container only (port default `ESIGN_PORT_BASE` + 0 = 4100) |
+<!-- BEGIN GENERATED env backend - edit packages/esign-service/src/env/registry.ts -->
+| Variable | Why | When | How to obtain |
+|---|---|---|---|
+| `ESIGN_MINT_MODE` | Which of the two mints this deployment answers with. They are different<br>products: a Web Form asks the signer questions first, an envelope puts<br>them straight into the documents. | default: 'webform' | — |
+| `ESIGN_PROVIDER` | Which e-signature provider mints. The mock needs no credentials and<br>signs nothing that holds. | default: 'mock' - which the boot banner reports as a demo provider | — |
+| `ESIGN_PREFILL_URL` | Decides who computes the values a signer cannot change. Unset, the<br>client's own prefill is minted as sent - which is fine for a fixed<br>consent form and wrong for anything whose fields carry the deal. | default: unset - the client's prefill is minted as sent | An endpoint on your own backend that you write. It receives { userId,<br>input }        (an envelope mint also sends recipient) and answers {<br>prefill: { ... } }     (and, for an envelope, an optional recipient)<br>Confirm it answers correctly with: node dist/node.js check-prefill |
+| `ESIGN_GRAPHQL_INTROSPECTION` | Apollo's schema discovery. Off by default so a deployment does not<br>publish its schema without saying so. | default: unset - introspection is off | — |
+| `ESIGN_PORT_BASE` | The base every service in this repo derives its port from, so parallel<br>worktrees do not collide. | default: 4100 | — |
+| `ESIGN_MOCK_PAGES` | Whether the mock provider serves its own signing pages. A deployment<br>that only wants the mint surface turns them off. | default: on for the mock provider | — |
+| `ESIGN_MOCK_PAGES_ORIGIN` | Where the mock's signing URLs point, when it is not this service's own<br>origin. | default: this service's own origin | — |
+| `OTEL_TRACES_EXPORTER` | Prints spans to stdout instead of shipping them, for debugging without a<br>collector. | default: unset | — |
+| `NODE_ENV` | Node's own switch (dependency resolution, framework defaults). It<br>decides nothing about this service's posture - ESIGN_STRICT does. | default: 'production' in the image | — |
+<!-- END GENERATED -->
 
 Full reference (every variable, incl. optional overrides and OTEL): the
 service README's
