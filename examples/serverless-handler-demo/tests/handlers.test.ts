@@ -34,7 +34,7 @@ describe('providerFromEnv', () => {
   it('is the mock provider onto the pages origin when ESIGN_PROVIDER=mock', async () => {
     const provider = providerFromEnv({
       ESIGN_PROVIDER: 'mock',
-      MOCK_PAGES_ORIGIN: 'http://p:4000',
+      ESIGN_MOCK_PAGES_ORIGIN: 'http://p:4000',
     });
     const { url } = await provider.createWebFormInstance!('u', {});
     expect(url).toMatch(/^http:\/\/p:4000\/signing\/mock-webform\//);
@@ -69,7 +69,7 @@ describe('createHandlers (mock provider)', () => {
   const handlers = createHandlers(
     {
       ESIGN_PROVIDER: 'mock',
-      MOCK_PAGES_ORIGIN: 'http://p:4000',
+      ESIGN_MOCK_PAGES_ORIGIN: 'http://p:4000',
     },
     { logger: silent },
   );

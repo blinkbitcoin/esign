@@ -1,4 +1,4 @@
-// What TERMS_URL is sold as: with the callback configured, the host decides
+// What ESIGN_PREFILL_URL is sold as: with the callback configured, the host decides
 // who signs and which values the signer cannot change. The boot guard
 // (`src/config.ts`) accepts a production deployment on that basis alone, and
 // deploy/k8s/secret.yaml tells operators "without it the caller names the
@@ -14,10 +14,10 @@
 import { vi } from 'vitest';
 
 import type { Env } from '../src/env';
-import { createEnvelopeTerms } from '../src/terms';
+import { createEnvelopePrefillHook } from '../src/prefill';
 import { asJson, post, silently, testApp } from './support/app';
 
-const TERMS_URL = 'https://host.example.com/terms';
+const ESIGN_PREFILL_URL = 'https://host.example.com/terms';
 const mintHeaders = { authorization: 'Bearer user-1' };
 
 // The signer the caller asks for, and the one the host verified
@@ -40,7 +40,7 @@ const appRecording = (reply: unknown) => {
     envelopeId: 'env-1',
     signingUrl: 'https://sign.example.com/env-1',
   }));
-  const app = testApp({ ESIGN_MINT_MODE: 'envelope', TERMS_URL } as Env, {
+  const app = testApp({ ESIGN_MINT_MODE: 'envelope', ESIGN_PREFILL_URL } as Env, {
     fetch: hostAnswering(reply) as unknown as typeof globalThis.fetch,
     provider: { createEnvelope } as never,
   });
@@ -56,8 +56,8 @@ const signerOf = (createEnvelope: ReturnType<typeof vi.fn>) => createEnvelope.mo
 const prefillOf = (createEnvelope: ReturnType<typeof vi.fn>) =>
   createEnvelope.mock.calls[0]?.[3] as Record<string, unknown> | undefined;
 
-describe('TERMS_URL is the authority on what the signer cannot change', () => {
-  // Finding 1. `createEnvelopeTerms` merges `{ ...client, ...host }`, so a tab
+describe('ESIGN_PREFILL_URL is the authority on what the signer cannot change', () => {
+  // Finding 1. `createEnvelopePrefillHook` merges `{ ...client, ...host }`, so a tab
   // label the host's reply does not name keeps the caller's entry - including
   // its `locked` flag, which `textTabsFrom` forwards to DocuSign as an
   // overlay on the template tab's own property.
@@ -93,8 +93,8 @@ describe('TERMS_URL is the authority on what the signer cannot change', () => {
   // The same at the unit the merge lives in: no entry the host did not name
   // may carry a lock the host did not set.
   it('carries no lock the host did not set', async () => {
-    const terms = createEnvelopeTerms(
-      { url: TERMS_URL, timeoutMs: 1000 },
+    const terms = createEnvelopePrefillHook(
+      { url: ESIGN_PREFILL_URL, timeoutMs: 1000 },
       { fetch: hostAnswering({ recipient: hostSigner, prefill: hostTerms }) as never }
     );
 

@@ -10,8 +10,8 @@ const request = (forwardedFor?: string) =>
 
 describe('trustsProxy', () => {
   it('is true only for the exact string "true"', () => {
-    expect(trustsProxy({ TRUST_PROXY: 'true' })).toBe(true);
-    expect(trustsProxy({ TRUST_PROXY: 'yes' })).toBe(false);
+    expect(trustsProxy({ ESIGN_TRUST_PROXY: 'true' })).toBe(true);
+    expect(trustsProxy({ ESIGN_TRUST_PROXY: 'yes' })).toBe(false);
     expect(trustsProxy({})).toBe(false);
   });
 });

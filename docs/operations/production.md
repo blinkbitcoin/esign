@@ -9,7 +9,7 @@ and, where a deployment also runs envelopes, the service around it.
 Two shapes, both supported, same environment contract:
 
 - **Tier A - in-process.** The host's own Node API mints. Nothing extra is
-  deployed; the recipe is [locked-terms.md](../integration/locked-terms.md)
+  deployed; the recipe is [locked-prefill.md](../integration/locked-prefill.md)
   and the runnable example is
   [`examples/mint-only-demo`](../../examples/mint-only-demo/README.md).
 - **Tier B - the service.** `@blinkbitcoin/esign-service` runs as a
@@ -51,8 +51,8 @@ and the DocuSign credentials never leave the API's own secret store.
 ```mermaid
 flowchart LR
   App[Mobile / web app] -->|session token| SVC[esign-service]
-  SVC -->|verify token via SESSION_JWKS_URL| IDP[Your identity provider]
-  SVC -->|POST TERMS_URL| API[Your API]
+  SVC -->|verify token via ESIGN_SESSION_JWKS_URL| IDP[Your identity provider]
+  SVC -->|POST ESIGN_PREFILL_URL| API[Your API]
   API -->|locked prefill| SVC
   SVC -->|mint| DS[DocuSign Web Forms]
   DS -->|instance URL| SVC
@@ -65,7 +65,7 @@ flowchart LR
 
 The service holds the DocuSign credentials; the host keeps the two things
 only it knows - who the caller is (a JWKS endpoint or a shared HS256
-secret) and what is being signed (`TERMS_URL`). The mint is always on;
+secret) and what is being signed (`ESIGN_PREFILL_URL`). The mint is always on;
 setting `DATABASE_URL` adds the envelope half (GraphQL API, provider
 webhook, Postgres store).
 
@@ -145,7 +145,7 @@ to be a code change here.
    choice) with Read only + Required - never a read-only Number or Date
    field - and nothing locked may be hidden by a rule. The full list, with
    the reasons, is [docusign-lessons.md](../integration/docusign-lessons.md)
-   and [locked-terms.md](../integration/locked-terms.md) section 1.
+   and [locked-prefill.md](../integration/locked-prefill.md) section 1.
 
 9. **New keypair for production.** Generate it where the production secret
    store lives, upload the public half on the production integration key,
@@ -197,7 +197,7 @@ investSigningUrl: async (_parent, args, context) => {
 `createWebFormInstance` (`@blinkbitcoin/esign-node/docusign`) is the same
 call one level lower, for a host that wants the DocuSign config in hand
 rather than the provider registry -
-[locked-terms.md](../integration/locked-terms.md) section 2 spells that
+[locked-prefill.md](../integration/locked-prefill.md) section 2 spells that
 spelling out. The whole runnable shape, including the return-URL bridge,
 is [`examples/mint-only-demo`](../../examples/mint-only-demo/README.md)
 (`src/mint.ts`, `src/schema.ts`).
@@ -227,18 +227,18 @@ What the host still owns, in every spelling:
 
 The host does not mint. It exposes, instead:
 
-- a **JWKS endpoint** (`SESSION_JWKS_URL`) or a shared HS256 secret
-  (`SESSION_HS256_SECRET`, alias `JWT_SECRET`) so the service can turn the
+- a **JWKS endpoint** (`ESIGN_SESSION_JWKS_URL`) or a shared HS256 secret
+  (`ESIGN_SESSION_SECRET`) so the service can turn the
   app's bearer token into a user id - the id DocuSign sees as
   `clientUserId`;
-- a **terms endpoint** (`TERMS_URL`): the service POSTs
+- a **terms endpoint** (`ESIGN_PREFILL_URL`): the service POSTs
   `{ userId, input }` with the caller's bearer token forwarded (plus
-  `x-esign-terms-secret` when `TERMS_SHARED_SECRET` is set) and the reply's
+  `x-esign-prefill-secret` when `ESIGN_PREFILL_SECRET` is set) and the reply's
   `{ prefill }` wins over the client's values key by key. Under
   `ESIGN_MINT_MODE=envelope` the POST also carries the client's
   `recipient`, and the reply `{ prefill, recipient }` is minted whole: nothing
   of the client's reaches the document, and the `recipient` is required and
-  is who signs; without `TERMS_URL` the caller names the signer. A non-2xx, a
+  is who signs; without `ESIGN_PREFILL_URL` the caller names the signer. A non-2xx, a
   timeout or a reply without a prefill object is a `502` to the app - it
   never falls back to minting what the client sent. Because that request
   carries the session token and the shared secret, production requires
@@ -289,13 +289,13 @@ comments. In production the ones that matter:
 | `ESIGN_MINT_MODE` | `webform` (default) or `envelope`: which mint the<br>deployment serves (`/webform/instance` or<br>`/envelope/instance`) |
 | `ESIGN_ENV` | `production` (the image already sets it) |
 | `ESIGN_ALLOW_DEMO` | unset; `true` only for staging on the sandbox |
-| `ESIGN_ALLOW_CLIENT_PREFILL` | unset when `TERMS_URL` is set |
-| `SESSION_JWKS_URL` | the host's key set; or `SESSION_HS256_SECRET` |
-| `SESSION_ISSUER`,<br>`SESSION_AUDIENCE` | enforced when set - set them |
-| `SESSION_USER_CLAIM` | the claim carrying the user id (default `sub`) |
-| `TERMS_URL` | the host endpoint computing the locked prefill (and<br>an envelope's signer) - **https**, or a private host<br>(see below) |
-| `TERMS_SHARED_SECRET`,<br>`TERMS_TIMEOUT_MS` | sent as `x-esign-terms-secret`; default 5000 ms |
-| `TERMS_ALLOW_INSECURE` | unset; `true` only for a plaintext `TERMS_URL` on a<br>private host this guard does not recognise |
+| `ESIGN_ALLOW_CLIENT_PREFILL` | unset when `ESIGN_PREFILL_URL` is set |
+| `ESIGN_SESSION_JWKS_URL` | the host's key set; or `ESIGN_SESSION_SECRET` |
+| `ESIGN_SESSION_ISSUER`,<br>`ESIGN_SESSION_AUDIENCE` | enforced when set - set them |
+| `ESIGN_SESSION_USER_CLAIM` | the claim carrying the user id (default `sub`) |
+| `ESIGN_PREFILL_URL` | the host endpoint computing the locked prefill (and<br>an envelope's signer) - **https**, or a private host<br>(see below) |
+| `ESIGN_PREFILL_SECRET`,<br>`ESIGN_PREFILL_TIMEOUT_MS` | sent as `x-esign-prefill-secret`; default 5000 ms |
+| `TERMS_ALLOW_INSECURE` | unset; `true` only for a plaintext `ESIGN_PREFILL_URL` on a<br>private host this guard does not recognise |
 | `DATABASE_URL` | only when envelopes are wanted |
 | `DOCUSIGN_INTEGRATION_KEY`,<br>`DOCUSIGN_ACCOUNT_ID`,<br>`DOCUSIGN_USER_ID` | the production GUIDs from section 2 |
 | `DOCUSIGN_WEBFORM_ID`,<br>`DOCUSIGN_RETURN_URL` | the production form (not read under<br>`ESIGN_MINT_MODE=envelope`); the deployed bridge URL |
@@ -303,16 +303,16 @@ comments. In production the ones that matter:
 | `DOCUSIGN_HMAC_KEY` | required when envelopes are on |
 | `DOCUSIGN_TEMPLATE_ID` | envelope (proxy) mode and `ESIGN_MINT_MODE=envelope`;<br>several ids, comma-separated, go out as one envelope<br>in that order |
 | `DOCUSIGN_SIGNER_ROLE` | the template role the signer fills, when it is not<br>named `signer` |
-| `CORS_ALLOWED_ORIGINS` | the app origins; empty = same-origin only |
+| `ESIGN_CORS_ALLOWED_ORIGINS` | the app origins; empty = same-origin only |
 | `ALLOW_INSECURE_DEV` | never set in production |
 | `OTEL_*` | standard OpenTelemetry; tracing off unless set |
-| `PORT`, `TRUST_PROXY`,<br>`RATE_LIMIT_*_PER_MIN` | container only (defaults 4100; per min 60 on either<br>mint, 120 webhook, 100 GraphQL) |
+| `PORT`, `ESIGN_TRUST_PROXY`,<br>`RATE_LIMIT_*_PER_MIN` | container only (defaults 4100; per min 60 on either<br>mint, 120 webhook, 100 GraphQL) |
 
 **Tier A** takes the same table **minus everything only the service
 reads**: `SESSION_*`, `TERMS_*`, `ESIGN_ALLOW_CLIENT_PREFILL`,
 `ESIGN_MINT_MODE` (the host picks `createHostedFormRouter` or
 `createEnvelopeRouter` itself),
-`DATABASE_URL`, `DOCUSIGN_HMAC_KEY`, `CORS_ALLOWED_ORIGINS`,
+`DATABASE_URL`, `DOCUSIGN_HMAC_KEY`, `ESIGN_CORS_ALLOWED_ORIGINS`,
 `ALLOW_INSECURE_DEV`, `OTEL_*` and the container-only row. The host API
 already has a session, computes its own terms in the `prefill` hook, and
 brings its own CORS, telemetry, port, proxy and limits. What is left is
@@ -340,7 +340,7 @@ problem at once, with the capabilities that were on, then refuses to
 start - a container fails to boot, a function fails at first import. It
 refuses:
 
-- no session source (`SESSION_JWKS_URL` / `SESSION_HS256_SECRET`) unless
+- no session source (`ESIGN_SESSION_JWKS_URL` / `ESIGN_SESSION_SECRET`) unless
   `ALLOW_INSECURE_DEV=true`;
 - an unknown `ESIGN_PROVIDER`, or a provider missing what a mint needs
   (`DOCUSIGN_WEBFORM_ID` and `DOCUSIGN_RETURN_URL`; under
@@ -352,14 +352,14 @@ refuses:
   still pointing at the sandbox (`demo.docusign.net`, the `-d` hosts) -
   `ESIGN_ALLOW_DEMO=true` is the one bypass, for a production-shaped
   staging deployment;
-- under `ESIGN_ENV=production`: no `TERMS_URL`, unless
+- under `ESIGN_ENV=production`: no `ESIGN_PREFILL_URL`, unless
   `ESIGN_ALLOW_CLIENT_PREFILL=true` says the client's own prefill may be
   minted as sent (under `ESIGN_MINT_MODE=envelope`, the client's own signer
   and prefill);
-- a `TERMS_URL` that is not an absolute http(s) URL;
-- under `ESIGN_ENV=production`: a plaintext (`http:`) `TERMS_URL`. That
+- a `ESIGN_PREFILL_URL` that is not an absolute http(s) URL;
+- under `ESIGN_ENV=production`: a plaintext (`http:`) `ESIGN_PREFILL_URL`. That
   callback carries the caller's own session token and
-  `TERMS_SHARED_SECRET`, so cleartext hands both to anyone on the path.
+  `ESIGN_PREFILL_SECRET`, so cleartext hands both to anyone on the path.
   A hop that cannot leave the cluster is the exception and is accepted as
   is: loopback, `*.svc`, `*.svc.cluster.local`, `*.internal`. For a private
   host the guard cannot recognise by name, `TERMS_ALLOW_INSECURE=true` is
@@ -432,7 +432,7 @@ form link, is the case where DocuSign's own origin is the right value.)
 A deployment under `ESIGN_MINT_MODE=envelope` has no `/webform/instance`:
 `POST /envelope/instance` takes `{ recipient: { name, email }, prefill }`
 and answers `{ url, envelopeId }`, so the app mints with its own call - one
-that sends the signer, unless the host's `TERMS_URL` names it - and opens
+that sends the signer, unless the host's `ESIGN_PREFILL_URL` names it - and opens
 the `url` as it opens a minted instance.
 
 Web is the same code from `@blinkbitcoin/esign-react/docusign` - the web
@@ -464,7 +464,7 @@ account, form and hosts.
 
       An expired or wrong-issuer token must answer `401`.
 - [ ] The **terms callback** actually decided the values: the minted form
-      shows what `TERMS_URL` returned, not what the curl sent.
+      shows what `ESIGN_PREFILL_URL` returned, not what the curl sent.
 - [ ] The **bridge round-trip**: finishing the form redirects to
       `DOCUSIGN_RETURN_URL` and the app's `onComplete` fires with an
       `envelopeId`.
@@ -490,7 +490,7 @@ it is the record of what remains unverified.
 | `AUTHORIZATION_INSUFFICIENT_SCOPE` | consent granted without the<br>`webforms_*` scopes | re-grant with the full scope<br>string from section 2 |
 | The mint fails on the form | the production form is not active,<br>or its id is a demo id | activate it; set the production<br>`DOCUSIGN_WEBFORM_ID` |
 | `401` from the mint | the host rejected the token: wrong<br>issuer, audience, claim or expiry | check `SESSION_*` against the<br>token the app actually sends |
-| `502 Could not compute the signing<br>terms` | `TERMS_URL` timed out, answered<br>non-2xx, or without a prefill<br>(envelope mint: an out-of-contract<br>prefill or a malformed recipient) | fix the host endpoint; raise<br>`TERMS_TIMEOUT_MS` if it is slow |
+| `502 Could not compute the signing<br>terms` | `ESIGN_PREFILL_URL` timed out, answered<br>non-2xx, or without a prefill<br>(envelope mint: an out-of-contract<br>prefill or a malformed recipient) | fix the host endpoint; raise<br>`ESIGN_PREFILL_TIMEOUT_MS` if it is slow |
 | `502 Could not create signing session` | DocuSign refused the mint (config,<br>consent, form) | the service log names the error<br>code; check the rows above |
 | The bridge never fires | `DOCUSIGN_RETURN_URL` is not the<br>deployed bridge route, or is<br>unreachable from the signer | point it at the deployment's<br>`/signing/return` |
 | Refuses to boot naming a demo host | `ESIGN_ENV=production` with a<br>sandbox host or the mock provider | set the production hosts<br>(section 2) |

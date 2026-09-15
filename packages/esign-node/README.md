@@ -37,7 +37,7 @@ everything else about Web Forms (form UI, validation, document, signing) does
 not. Details: [docs/integration/webforms.md](../../docs/integration/webforms.md);
 the end-to-end recipe for a GraphQL API + app, including the builder checklist
 and the return-URL bridge route every Web Forms host must serve:
-[docs/integration/locked-terms.md](../../docs/integration/locked-terms.md).
+[docs/integration/locked-prefill.md](../../docs/integration/locked-prefill.md).
 Authentication of the caller is the host's own (this package never sees the
 session token); the `SESSION_*` variables of this repo's service are not part
 of it.
@@ -96,7 +96,7 @@ const envelopes = createEnvelopeService({ provider, store });
 
 // In your API, with the authenticated user (prefill: the host's values for the
 // template's Text tabs, locked where the signer must not change them - optional,
-// and never something a client sends; see docs/integration/locked-terms-envelopes.md):
+// and never something a client sends; see docs/integration/locked-prefill-envelopes.md):
 const { envelopeId, signingUrl } = await envelopes.createEnvelope(userId, {
   contractType,
   recipient,
@@ -230,7 +230,7 @@ package's signing-page CSP (`signingPageCsp(nonce)`: `default-src 'none'`,
 inline script and style allowed by a fresh `signingPageNonce()` only,
 `frame-ancestors *` so the app's WebView/iframe may embed it). An Express
 host that writes the route itself sets the same header from the same two
-functions ([locked-terms.md](../../docs/integration/locked-terms.md#2-the-backend-side-node-a-graphql-mutation-or-a-rest-endpoint)).
+functions ([locked-prefill.md](../../docs/integration/locked-prefill.md#2-the-backend-side-node-a-graphql-mutation-or-a-rest-endpoint)).
 
 ## The HTTP surface (`@blinkbitcoin/esign-node/express`)
 
@@ -415,7 +415,7 @@ import { createDocuSignProvider, docuSignConfigFromEnv } from '@blinkbitcoin/esi
 | `DOCUSIGN_RETURN_URL` | both | default `returnUrl` for instances / signing views |
 | `DOCUSIGN_BASE_URL`, `DOCUSIGN_OAUTH_URL`, `DOCUSIGN_WEBFORMS_BASE_URL` | hosts | default to the developer (demo) environment |
 | `DOCUSIGN_HMAC_KEY` | webhooks | the Connect HMAC key; without it signed webhooks cannot be verified |
-| `MOCK_PAGES_ORIGIN` | mock | where the mock provider's signing pages are served (default<br>`http://localhost:4100`) |
+| `ESIGN_MOCK_PAGES_ORIGIN` | mock | where the mock provider's signing pages are served (default<br>`http://localhost:4100`) |
 
 Going live - the production DocuSign hosts, the go-live steps, what the
 boot guard refuses and the verification checklist:

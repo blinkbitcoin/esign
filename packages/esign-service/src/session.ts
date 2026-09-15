@@ -4,9 +4,9 @@
 // provider's HMAC signature instead.
 //
 // One source, chosen by the environment alone:
-//   SESSION_JWKS_URL      - RS/ES tokens against a remote, cached key set;
-//                           optional SESSION_ISSUER / SESSION_AUDIENCE
-//   SESSION_HS256_SECRET  - a shared secret (JWT_SECRET is an accepted alias)
+//   ESIGN_SESSION_JWKS_URL - RS/ES tokens against a remote, cached key set;
+//                           optional ESIGN_SESSION_ISSUER / ESIGN_SESSION_AUDIENCE
+//   ESIGN_SESSION_SECRET  - a shared secret, HS256
 //   ALLOW_INSECURE_DEV    - no verification: the bearer token IS the user id.
 //                           Local dev and the CI smoke only.
 // With none of them configured there is no verifier, and validateConfig
@@ -25,18 +25,14 @@ import { type Env, isInsecureDevAllowed } from './env';
 // nothing (missing, malformed, expired, wrong key, wrong issuer/audience)
 export type SessionVerifier = (token: string) => Promise<string | null>;
 
-export const SESSION_JWKS_URL = 'SESSION_JWKS_URL';
-export const SESSION_HS256_SECRET = 'SESSION_HS256_SECRET';
+export const ESIGN_SESSION_JWKS_URL = 'ESIGN_SESSION_JWKS_URL';
+export const ESIGN_SESSION_SECRET = 'ESIGN_SESSION_SECRET';
 
-// The name this service shipped with, kept as an alias of
-// SESSION_HS256_SECRET (documented; no deprecation warning)
-export const JWT_SECRET = 'JWT_SECRET';
+export const ESIGN_SESSION_ISSUER = 'ESIGN_SESSION_ISSUER';
+export const ESIGN_SESSION_AUDIENCE = 'ESIGN_SESSION_AUDIENCE';
+export const ESIGN_SESSION_USER_CLAIM = 'ESIGN_SESSION_USER_CLAIM';
 
-export const SESSION_ISSUER = 'SESSION_ISSUER';
-export const SESSION_AUDIENCE = 'SESSION_AUDIENCE';
-export const SESSION_USER_CLAIM = 'SESSION_USER_CLAIM';
-
-// The claim carrying the user id unless SESSION_USER_CLAIM says otherwise
+// The claim carrying the user id unless ESIGN_SESSION_USER_CLAIM says otherwise
 export const DEFAULT_USER_CLAIM = 'sub';
 
 // Which of the three sources this environment configures, in precedence
@@ -44,10 +40,10 @@ export const DEFAULT_USER_CLAIM = 'sub';
 export type SessionSource = 'jwks' | 'hs256' | 'insecure';
 
 export const sessionSourceFromEnv = (env: Env): SessionSource | null => {
-  if (env[SESSION_JWKS_URL]) {
+  if (env[ESIGN_SESSION_JWKS_URL]) {
     return 'jwks';
   }
-  if (env[SESSION_HS256_SECRET] || env[JWT_SECRET]) {
+  if (env[ESIGN_SESSION_SECRET]) {
     return 'hs256';
   }
   return isInsecureDevAllowed(env) ? 'insecure' : null;
@@ -77,9 +73,9 @@ const verifyWith = (
   env: Env,
   algorithms: string[]
 ): SessionVerifier => {
-  const claim = env[SESSION_USER_CLAIM] || DEFAULT_USER_CLAIM;
-  const issuer = env[SESSION_ISSUER];
-  const audience = env[SESSION_AUDIENCE];
+  const claim = env[ESIGN_SESSION_USER_CLAIM] || DEFAULT_USER_CLAIM;
+  const issuer = env[ESIGN_SESSION_ISSUER];
+  const audience = env[ESIGN_SESSION_AUDIENCE];
   return async (token) => {
     if (!token) {
       return null;
@@ -111,11 +107,11 @@ export const sessionVerifierFromEnv = (env: Env): SessionVerifier => {
     case 'jwks': {
       // createRemoteJWKSet caches the fetched keys (and coalesces refreshes),
       // so building it once per app is the cache.
-      const jwks = createRemoteJWKSet(new URL(env[SESSION_JWKS_URL] as string));
+      const jwks = createRemoteJWKSet(new URL(env[ESIGN_SESSION_JWKS_URL] as string));
       return verifyWith(jwks, env, JWKS_ALGORITHMS);
     }
     case 'hs256': {
-      const secret = (env[SESSION_HS256_SECRET] || env[JWT_SECRET]) as string;
+      const secret = env[ESIGN_SESSION_SECRET] as string;
       return verifyWith(new TextEncoder().encode(secret), env, ['HS256']);
     }
     case 'insecure':
@@ -130,7 +126,7 @@ export const sessionVerifierFromEnv = (env: Env): SessionVerifier => {
       };
     default:
       throw new Error(
-        `no session verification configured: set ${SESSION_JWKS_URL} or ${SESSION_HS256_SECRET} (or ALLOW_INSECURE_DEV=true for local dev)`
+        `no session verification configured: set ${ESIGN_SESSION_JWKS_URL} or ${ESIGN_SESSION_SECRET} (or ALLOW_INSECURE_DEV=true for local dev)`
       );
   }
 };

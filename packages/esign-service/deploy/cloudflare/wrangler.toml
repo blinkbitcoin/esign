@@ -5,8 +5,8 @@
 # names a container reads from its env file.
 #
 # Secrets (wrangler secret put <NAME>), never vars:
-#   SESSION_HS256_SECRET (or nothing, when SESSION_JWKS_URL is used)
-#   TERMS_SHARED_SECRET
+#   ESIGN_SESSION_SECRET (or nothing, when ESIGN_SESSION_JWKS_URL is used)
+#   ESIGN_PREFILL_SECRET
 #   DOCUSIGN_PRIVATE_KEY_BASE64   (_FILE paths are container-only)
 #   DOCUSIGN_INTEGRATION_KEY, DOCUSIGN_ACCOUNT_ID, DOCUSIGN_USER_ID
 name = "esign-service"
@@ -17,8 +17,8 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ESIGN_ENV = "production"
 ESIGN_PROVIDER = "docusign"
-SESSION_JWKS_URL = "https://id.example.com/.well-known/jwks.json"
-TERMS_URL = "https://api.example.com/internal/esign/terms"
+ESIGN_SESSION_JWKS_URL = "https://id.example.com/.well-known/jwks.json"
+ESIGN_PREFILL_URL = "https://api.example.com/internal/esign/terms"
 DOCUSIGN_WEBFORM_ID = "change-me"
 # Or mint envelopes instead (POST /envelope/instance, one envelope from the
 # template; several ids, comma-separated, in that order) - no Web Form:

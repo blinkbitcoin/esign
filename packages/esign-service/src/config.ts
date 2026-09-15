@@ -27,8 +27,8 @@ import {
   mintModeFromEnv,
   requestedMintMode,
 } from './mint';
-import { SESSION_HS256_SECRET, SESSION_JWKS_URL, sessionSourceFromEnv } from './session';
-import { TERMS_URL } from './terms';
+import { ESIGN_PREFILL_URL } from './prefill';
+import { ESIGN_SESSION_JWKS_URL, ESIGN_SESSION_SECRET, sessionSourceFromEnv } from './session';
 
 export { ALLOW_INSECURE_DEV, type Env, isInsecureDevAllowed } from './env';
 
@@ -65,7 +65,7 @@ const isProductionEnv = (env: Env): boolean => env[ESIGN_ENV] === 'production';
 const sessionErrors = (env: Env): string[] =>
   sessionSourceFromEnv(env) === null
     ? [
-        `no session verification is configured: set ${SESSION_JWKS_URL} or ${SESSION_HS256_SECRET} (JWT_SECRET is an accepted alias), or ALLOW_INSECURE_DEV=true for local dev`,
+        `no session verification is configured: set ${ESIGN_SESSION_JWKS_URL} or ${ESIGN_SESSION_SECRET}, or ALLOW_INSECURE_DEV=true for local dev`,
       ]
     : [];
 
@@ -92,22 +92,22 @@ const isPrivateHost = (hostname: string): boolean => {
   );
 };
 
-// TERMS_URL must be a URL this service can actually POST to, and a
+// ESIGN_PREFILL_URL must be a URL this service can actually POST to, and a
 // production deployment without one is minting whatever the client sent -
 // allowed, but only when the operator says so in as many words.
 //
-// In production the callback also has to be encrypted: createTermsPrefill
-// forwards the caller's own session bearer AND TERMS_SHARED_SECRET to that
+// In production the callback also has to be encrypted: createPrefillHook
+// forwards the caller's own session bearer AND ESIGN_PREFILL_SECRET to that
 // URL, so a plaintext hop hands both to anyone on the path. A private hop
 // (loopback, `*.svc`, `*.svc.cluster.local`, `*.internal`) is the legitimate
 // exception, and TERMS_ALLOW_INSECURE=true is the explicit escape for the
 // private host this guard cannot recognise by name.
 const termsErrors = (env: Env, mode: MintMode): string[] => {
-  const url = env[TERMS_URL];
+  const url = env[ESIGN_PREFILL_URL];
   if (!url) {
     return isProductionEnv(env) && env[ESIGN_ALLOW_CLIENT_PREFILL] !== 'true'
       ? [
-          `${ESIGN_ENV}=production without ${TERMS_URL}: ${mode.clientTerms} would be minted as sent. Set ${TERMS_URL}, or ${ESIGN_ALLOW_CLIENT_PREFILL}=true to accept client-supplied terms`,
+          `${ESIGN_ENV}=production without ${ESIGN_PREFILL_URL}: ${mode.clientPrefill} would be minted as sent. Set ${ESIGN_PREFILL_URL}, or ${ESIGN_ALLOW_CLIENT_PREFILL}=true to accept client-supplied terms`,
         ]
       : [];
   }
@@ -119,14 +119,14 @@ const termsErrors = (env: Env, mode: MintMode): string[] => {
     }
   })();
   if (!parsed || (parsed.protocol !== 'http:' && parsed.protocol !== 'https:')) {
-    return [`${TERMS_URL} must be an absolute http(s) URL (got ${url})`];
+    return [`${ESIGN_PREFILL_URL} must be an absolute http(s) URL (got ${url})`];
   }
   return parsed.protocol === 'http:' &&
     isProductionEnv(env) &&
     !isPrivateHost(parsed.hostname) &&
     env[TERMS_ALLOW_INSECURE] !== 'true'
     ? [
-        `${ESIGN_ENV}=production with a plaintext ${TERMS_URL} (${url}): the caller's session token and TERMS_SHARED_SECRET would travel in cleartext. Use https, a private host (loopback, *.svc, *.svc.cluster.local, *.internal), or ${TERMS_ALLOW_INSECURE}=true`,
+        `${ESIGN_ENV}=production with a plaintext ${ESIGN_PREFILL_URL} (${url}): the caller's session token and ESIGN_PREFILL_SECRET would travel in cleartext. Use https, a private host (loopback, *.svc, *.svc.cluster.local, *.internal), or ${TERMS_ALLOW_INSECURE}=true`,
       ]
     : [];
 };
@@ -225,10 +225,10 @@ export const validateConfig = (
   return capabilities;
 };
 
-// Allowed CORS origins from CORS_ALLOWED_ORIGINS (comma-separated).
+// Allowed CORS origins from ESIGN_CORS_ALLOWED_ORIGINS (comma-separated).
 // Empty => same-origin only (no cross-origin browser access).
 export const getAllowedOrigins = (env: Env = process.env): string[] =>
-  (env.CORS_ALLOWED_ORIGINS ?? '')
+  (env.ESIGN_CORS_ALLOWED_ORIGINS ?? '')
     .split(',')
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0);

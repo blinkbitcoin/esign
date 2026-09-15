@@ -59,7 +59,7 @@ which arrives as `client_id=***` when the integration key is a secret.
   minute. Each run mints two or three Web Forms instances on the demo account
   and creates four envelopes from the fixture template (the client's one,
   and the envelope mint's three: a locked value read back, two templates as
-  one session, `TERMS_URL` deciding); instances expire on their own, and the
+  one session, `ESIGN_PREFILL_URL` deciding); instances expire on their own, and the
   envelopes stay `sent` and unsigned.
 
 ## What you get

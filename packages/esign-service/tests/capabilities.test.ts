@@ -59,6 +59,6 @@ describe('mockPagesEnabled', () => {
   });
 
   it('can be turned off explicitly', () => {
-    expect(mockPagesEnabled({ ESIGN_PROVIDER: 'mock', MOCK_PAGES: 'false' })).toBe(false);
+    expect(mockPagesEnabled({ ESIGN_PROVIDER: 'mock', ESIGN_MOCK_PAGES: 'false' })).toBe(false);
   });
 });

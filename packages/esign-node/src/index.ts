@@ -27,7 +27,7 @@ export type { ESignGraphQLOptions, GraphQLContext } from './graphql';
 export { createESignGraphQL, typeDefs } from './graphql';
 export type {
   EnvelopeAppOptions,
-  EnvelopeAppTermsInput,
+  EnvelopeAppPrefillInput,
   EnvelopeHandlerOptions,
   EnvelopeInstanceHandlerOptions,
   EnvelopeInstanceResult,

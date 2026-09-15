@@ -35,7 +35,7 @@ Web Forms scopes, the packages built (`npm run build`) for Playwright.
 | 401 `AUTHORIZATION_INSUFFICIENT_SCOPE` on Web Forms | consent/grant without `webforms_*` scopes | re-consent with the full `DOCUSIGN_SCOPES` list |
 | 400 `REQUIRED_QUERY_PARAMETER_MISSING 'state'` on GET form | the form GET needs `?state=active` | done in the check script |
 | `REQUIRED_TAB_INCOMPLETE` in `envelope.live.test.ts` | the configured template is not built for the proxy flow (required tabs) | `e2e-live` runs only `webforms.live.test.ts`; `make test-live` runs both |
-| 401 `Unauthorized` minting through the service | `JWT_SECRET` set, so the bearer is verified as a JWT; the spec sends the dev passthrough token | no `JWT_SECRET` in the live `.env` (docusign-env omits it) |
+| 401 `Unauthorized` minting through the service | `ESIGN_SESSION_SECRET` set, so the bearer is verified as a JWT; the spec sends the dev passthrough token | no `ESIGN_SESSION_SECRET` in the live `.env` (docusign-env omits it) |
 | service `EADDRINUSE` on :4106, spec hits stale settings | an earlier run's `tsx` child outlived the `npm` wrapper | the runner refuses a taken port and kills the real listener on exit |
 | walker stuck on page A, later "prefill X should be displayed" | required editable fields empty (Signer_name, Signer_email, country) - the form refuses Next | prefill every required editable field (runner defaults do) |
 | `toBeVisible` on inputs times out at 80% | the Summary page has no inputs | walker stops on a page without inputs |

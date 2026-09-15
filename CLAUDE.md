@@ -122,8 +122,8 @@ npm run migrate:test         # Same against the .env.test database
   which; the envelope half is behind a dynamic import so a mint-only
   deployment never loads Apollo or `pg`.
 - Security is fail-closed by default: `validateConfig` (`src/config.ts`, pure)
-  refuses to boot without a session source (`SESSION_JWKS_URL` or
-  `SESSION_HS256_SECRET`, `JWT_SECRET` an alias), without the settings a mint
+  refuses to boot without a session source (`ESIGN_SESSION_JWKS_URL` or
+  `ESIGN_SESSION_SECRET`), without the settings a mint
   needs, and without `DOCUSIGN_HMAC_KEY` when envelopes are on - unless
   `ALLOW_INSECURE_DEV=true` is explicitly set. This is NOT gated on `NODE_ENV`
   (`ESIGN_ENV=production` is the production switch). Missing DocuSign provider config also throws

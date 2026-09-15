@@ -1,6 +1,6 @@
 # Locked terms on a template envelope: the recipe, API side
 
-The envelope counterpart of [locked-terms.md](locked-terms.md): the signer
+The envelope counterpart of [locked-prefill.md](locked-prefill.md): the signer
 opens the agreement itself (mode 3's envelope mint - `ESIGN_MINT_MODE=envelope`
 on the service, or the envelope preset in your own API - no database needed),
 with the host's values already on the document and locked where the signer
@@ -45,7 +45,7 @@ your backend                                DocuSign
 
 The service's own GraphQL mutation deliberately has no `prefill` input:
 terms the signer cannot change are the host's to compute, never the
-client's to send (the same reason the mint resolves them from `TERMS_URL`).
+client's to send (the same reason the mint resolves them from `ESIGN_PREFILL_URL`).
 So the prefill enters where the host process calls the envelope service,
 in-process:
 
@@ -92,14 +92,14 @@ checks the prefill with `parseEnvelopePrefill`, creates one envelope from
 answers `{ url, envelopeId }` (the Web Forms mint answers
 `{ url, instanceId }`). So the app needs its own minting call, one that
 sends the recipient unless the host names it; opening the URL is the same
-as for a Web Forms instance. With `TERMS_URL` set the service asks the host
+as for a Web Forms instance. With `ESIGN_PREFILL_URL` set the service asks the host
 first: it POSTs `{ userId, input, recipient }` and mints exactly the host's
 `{ prefill, recipient }`. Unlike the Web Forms mint, nothing of the caller's
 is kept: on an envelope the lock travels with each value, so a caller entry
 the host did not name could lock a term the host never computed or unlock one
 the template locked. The prefill must satisfy the envelope contract (empty
 leaves the template its own values) and the `recipient` is required - who
-signs is the host's to decide, like every value it locks. Without `TERMS_URL` the
+signs is the host's to decide, like every value it locks. Without `ESIGN_PREFILL_URL` the
 caller's signer and prefill are minted as sent, and production needs
 `ESIGN_ALLOW_CLIENT_PREFILL=true`. With `DATABASE_URL` set the mint
 creates through the envelope service, so the envelope is stored and audited
@@ -113,7 +113,7 @@ and `envelopeId` is the stored id.
   endpoint mints with `reference` locked, and the envelope's tabs read back
   from DocuSign carry the value and the lock; two ids of the same fixture go
   out as one envelope, one signing session, the value on both documents; a
-  stubbed `TERMS_URL` names the signer and the locked value over what the
+  stubbed `ESIGN_PREFILL_URL` names the signer and the locked value over what the
   caller sent. CI runs it on every `main` push and on a PR labelled
   `e2e:live` ([operations/live-e2e-ci.md](../operations/live-e2e-ci.md)).
 - Then the same against the production account

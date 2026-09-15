@@ -130,12 +130,12 @@ describe('providerFromEnv', () => {
 });
 
 describe('defaultRegistry', () => {
-  it('mock: mints onto MOCK_PAGES_ORIGIN with no DocuSign settings at all', async () => {
+  it('mock: mints onto ESIGN_MOCK_PAGES_ORIGIN with no DocuSign settings at all', async () => {
     const provider = providerFromEnv(
-      { ESIGN_PROVIDER: 'mock', MOCK_PAGES_ORIGIN: 'http://pages:4000' },
+      { ESIGN_PROVIDER: 'mock', ESIGN_MOCK_PAGES_ORIGIN: 'http://pages:4000' },
       defaultRegistry({
         ESIGN_PROVIDER: 'mock',
-        MOCK_PAGES_ORIGIN: 'http://pages:4000',
+        ESIGN_MOCK_PAGES_ORIGIN: 'http://pages:4000',
       }),
     );
     const { url, instanceId } = await provider.createHostedFormInstance!('u', {
@@ -350,7 +350,7 @@ describe('hostedFormProviderFromEnv', () => {
   it('selects the mock when ESIGN_PROVIDER says so, and mints with it', async () => {
     const provider = hostedFormProviderFromEnv({
       ESIGN_PROVIDER: 'mock',
-      MOCK_PAGES_ORIGIN: 'http://pages:4000',
+      ESIGN_MOCK_PAGES_ORIGIN: 'http://pages:4000',
     });
     const { url } = await hostedFormMint(provider)!('u', { units: 1 });
     expect(url).toMatch(/^http:\/\/pages:4000\/signing\/mock-webform\//);
@@ -433,7 +433,7 @@ describe('envelopeProviderFromEnv', () => {
   it('selects the mock when ESIGN_PROVIDER says so, and creates envelopes with it', async () => {
     const provider = envelopeProviderFromEnv({
       ESIGN_PROVIDER: 'mock',
-      MOCK_PAGES_ORIGIN: 'http://pages:4000',
+      ESIGN_MOCK_PAGES_ORIGIN: 'http://pages:4000',
     });
     const { signingUrl } = await provider.createEnvelope('u', 'agreement', {
       name: 'Test Signer',

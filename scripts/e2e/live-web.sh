@@ -17,7 +17,7 @@ trap 'exit 130' INT TERM # the EXIT trap tears down once
 live_public_url
 # The demo calls the service from the browser (CORS); DocuSign redirects the
 # signing frame to the return URL, public when a funnel is up
-live_service_up CORS_ALLOWED_ORIGINS="http://localhost:$ESIGN_WEB_PORT" \
+live_service_up ESIGN_CORS_ALLOWED_ORIGINS="http://localhost:$ESIGN_WEB_PORT" \
   DOCUSIGN_RETURN_URL="${PUBLIC_BASE_URL:-http://localhost:$LIVE_PORT}/signing/return"
 
 MODE="${VITE_ESIGN_MODE:-proxy}"

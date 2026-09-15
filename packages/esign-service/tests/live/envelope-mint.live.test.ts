@@ -43,7 +43,7 @@ if (missing.length > 0) {
 const liveEnv = (overrides: Env = {}): Env => ({
   ...process.env,
   DATABASE_URL: undefined,
-  TERMS_URL: undefined,
+  ESIGN_PREFILL_URL: undefined,
   ESIGN_ENV: undefined,
   ESIGN_PROVIDER: 'docusign',
   ESIGN_MINT_MODE: 'envelope',
@@ -156,7 +156,7 @@ describe.runIf(missing.length === 0)('the envelope mint (live, demo account)', (
     }
   });
 
-  it('lets TERMS_URL name the signer and the locked value, whatever the caller sent', async () => {
+  it('lets ESIGN_PREFILL_URL name the signer and the locked value, whatever the caller sent', async () => {
     const stamp = Date.now();
     const host = {
       recipient: { name: 'Host Named', email: `live-host-${stamp}@example.com` },
@@ -164,7 +164,7 @@ describe.runIf(missing.length === 0)('the envelope mint (live, demo account)', (
     };
     // The host's terms endpoint, stubbed: DocuSign is real, the host is not
     const terms = vi.fn(async () => new Response(JSON.stringify(host)));
-    const app = createESignApp(liveEnv({ TERMS_URL: 'https://terms.example.com/esign' }), {
+    const app = createESignApp(liveEnv({ ESIGN_PREFILL_URL: 'https://terms.example.com/esign' }), {
       fetch: terms as unknown as typeof globalThis.fetch,
     });
 

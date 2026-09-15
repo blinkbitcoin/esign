@@ -33,7 +33,7 @@ spec:
               value: "4100"
             # Behind the Service and an ingress: key the rate limits on the
             # forwarded client, not on the proxy
-            - name: TRUST_PROXY
+            - name: ESIGN_TRUST_PROXY
               value: "true"
             - name: DOCUSIGN_PRIVATE_KEY_FILE
               value: /run/secrets/docusign.pem

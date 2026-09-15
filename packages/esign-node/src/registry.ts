@@ -69,7 +69,7 @@ export interface DefaultRegistryOptions {
   // Connect HMAC key from DOCUSIGN_HMAC_KEY, signatures required.
   webhook?: Partial<DocuSignWebhookOptions>;
   // Where the mock's signing pages are served (the esign service does).
-  // Default: MOCK_PAGES_ORIGIN, else the service's origin for this worktree
+  // Default: ESIGN_MOCK_PAGES_ORIGIN, else the service's origin for this worktree
   // (ESIGN_PORT_BASE + the service's offset - see ./port; a dev-only
   // fallback).
   mockBaseUrl?: () => string;
@@ -124,7 +124,7 @@ export const defaultRegistry = (
       return createMockProvider({
         baseUrl:
           options.mockBaseUrl ??
-          (() => env.MOCK_PAGES_ORIGIN || serviceOrigin(env)),
+          (() => env.ESIGN_MOCK_PAGES_ORIGIN || serviceOrigin(env)),
         // A getter: the mirror is built on first use, so a selected mock
         // never reads the credentials
         webhook: docusignAdapter(configFromEnv),

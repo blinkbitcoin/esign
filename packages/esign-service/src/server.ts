@@ -6,9 +6,9 @@
 // provide is either in the Fetch core (the security headers, CORS, the
 // routes) or right here, because it is container-only:
 //   - in-memory rate limits per route (a function relies on its platform's)
-//   - TRUST_PROXY, so the limiter keys on the real client, not the proxy
+//   - ESIGN_TRUST_PROXY, so the limiter keys on the real client, not the proxy
 //   - a SIGTERM drain
-// PORT, the rate limits, TRUST_PROXY and DOCUSIGN_PRIVATE_KEY_FILE are the
+// PORT, the rate limits, ESIGN_TRUST_PROXY and DOCUSIGN_PRIVATE_KEY_FILE are the
 // only container-only variables: every other name means the same thing on
 // every target.
 
@@ -28,7 +28,7 @@ import { loadEnvelopes } from './loadEnvelopes';
 import { resolvePort } from './port';
 import { forwardedClientIp, trustsProxy } from './proxy';
 
-export { TRUST_PROXY } from './proxy';
+export { ESIGN_TRUST_PROXY } from './proxy';
 
 // The rate-limit window. Limits are per client, per route, per minute.
 export const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -57,10 +57,10 @@ const limitFromEnv = (value: string | undefined, fallback: number): number => {
 // RATE_LIMIT_*_PER_MIN, one per rate-limited route. 0 switches a route's
 // limit off (a deployment behind its own gateway).
 export const rateLimitsFromEnv = (env: Env): RateLimits => ({
-  webform: limitFromEnv(env.RATE_LIMIT_WEBFORM_PER_MIN, DEFAULT_RATE_LIMITS.webform),
-  envelope: limitFromEnv(env.RATE_LIMIT_ENVELOPE_PER_MIN, DEFAULT_RATE_LIMITS.envelope),
-  webhook: limitFromEnv(env.RATE_LIMIT_WEBHOOK_PER_MIN, DEFAULT_RATE_LIMITS.webhook),
-  graphql: limitFromEnv(env.RATE_LIMIT_GRAPHQL_PER_MIN, DEFAULT_RATE_LIMITS.graphql),
+  webform: limitFromEnv(env.ESIGN_RATE_LIMIT_WEBFORM_PER_MIN, DEFAULT_RATE_LIMITS.webform),
+  envelope: limitFromEnv(env.ESIGN_RATE_LIMIT_ENVELOPE_PER_MIN, DEFAULT_RATE_LIMITS.envelope),
+  webhook: limitFromEnv(env.ESIGN_RATE_LIMIT_WEBHOOK_PER_MIN, DEFAULT_RATE_LIMITS.webhook),
+  graphql: limitFromEnv(env.ESIGN_RATE_LIMIT_GRAPHQL_PER_MIN, DEFAULT_RATE_LIMITS.graphql),
 });
 
 // The rate-limited routes. Everything else (the health check, the signing

@@ -38,7 +38,7 @@
       ESIGN_ENV = "production";
       PORT = "4100";
       # Behind a reverse proxy, so the rate limits key on the real client
-      TRUST_PROXY = "true";
+      ESIGN_TRUST_PROXY = "true";
       DOCUSIGN_PRIVATE_KEY_FILE = "/run/secrets/docusign.pem";
     };
 

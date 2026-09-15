@@ -26,18 +26,23 @@ const signHs256 = async (
 };
 
 describe('sessionSourceFromEnv', () => {
-  it('is jwks when SESSION_JWKS_URL is set', () => {
-    expect(sessionSourceFromEnv({ SESSION_JWKS_URL: 'https://id.example.com/jwks' })).toBe('jwks');
+  it('is jwks when ESIGN_SESSION_JWKS_URL is set', () => {
+    expect(sessionSourceFromEnv({ ESIGN_SESSION_JWKS_URL: 'https://id.example.com/jwks' })).toBe(
+      'jwks'
+    );
   });
 
-  it('is hs256 for SESSION_HS256_SECRET and for the JWT_SECRET alias', () => {
-    expect(sessionSourceFromEnv({ SESSION_HS256_SECRET: 's' })).toBe('hs256');
-    expect(sessionSourceFromEnv({ JWT_SECRET: 's' })).toBe('hs256');
+  it('is hs256 for ESIGN_SESSION_SECRET', () => {
+    expect(sessionSourceFromEnv({ ESIGN_SESSION_SECRET: 's' })).toBe('hs256');
+    expect(sessionSourceFromEnv({ ESIGN_SESSION_SECRET: 's' })).toBe('hs256');
   });
 
   it('prefers JWKS when both are configured', () => {
     expect(
-      sessionSourceFromEnv({ SESSION_JWKS_URL: 'https://id.example.com/jwks', JWT_SECRET: 's' })
+      sessionSourceFromEnv({
+        ESIGN_SESSION_JWKS_URL: 'https://id.example.com/jwks',
+        ESIGN_SESSION_SECRET: 's',
+      })
     ).toBe('jwks');
   });
 
@@ -59,15 +64,10 @@ describe('sessionVerifierFromEnv', () => {
   });
 
   describe('HS256', () => {
-    const verifier = () => sessionVerifierFromEnv({ SESSION_HS256_SECRET: HS256_SECRET });
+    const verifier = () => sessionVerifierFromEnv({ ESIGN_SESSION_SECRET: HS256_SECRET });
 
     it('returns the sub of a valid token', async () => {
       await expect(verifier()(await signHs256({ sub: 'user-123' }))).resolves.toBe('user-123');
-    });
-
-    it('accepts the JWT_SECRET alias for the same secret', async () => {
-      const aliased = sessionVerifierFromEnv({ JWT_SECRET: HS256_SECRET });
-      await expect(aliased(await signHs256({ sub: 'user-123' }))).resolves.toBe('user-123');
     });
 
     it('rejects an expired token', async () => {
@@ -100,21 +100,21 @@ describe('sessionVerifierFromEnv', () => {
       await expect(verifier()(await signHs256({ sub: 42 }))).resolves.toBeNull();
     });
 
-    it('reads the user id from SESSION_USER_CLAIM when set', async () => {
+    it('reads the user id from ESIGN_SESSION_USER_CLAIM when set', async () => {
       const claimed = sessionVerifierFromEnv({
-        SESSION_HS256_SECRET: HS256_SECRET,
-        SESSION_USER_CLAIM: 'uid',
+        ESIGN_SESSION_SECRET: HS256_SECRET,
+        ESIGN_SESSION_USER_CLAIM: 'uid',
       });
       await expect(claimed(await signHs256({ sub: 'ignored', uid: 'user-9' }))).resolves.toBe(
         'user-9'
       );
     });
 
-    it('enforces SESSION_ISSUER and SESSION_AUDIENCE', async () => {
+    it('enforces ESIGN_SESSION_ISSUER and ESIGN_SESSION_AUDIENCE', async () => {
       const strict = sessionVerifierFromEnv({
-        SESSION_HS256_SECRET: HS256_SECRET,
-        SESSION_ISSUER: 'https://id.example.com',
-        SESSION_AUDIENCE: 'esign',
+        ESIGN_SESSION_SECRET: HS256_SECRET,
+        ESIGN_SESSION_ISSUER: 'https://id.example.com',
+        ESIGN_SESSION_AUDIENCE: 'esign',
       });
       const good = await signHs256({
         sub: 'user-123',
@@ -162,14 +162,14 @@ describe('sessionVerifierFromEnv', () => {
 
     it('returns the sub of a token signed by a key in the set', async () => {
       const { sign } = await withKeys();
-      const verify = sessionVerifierFromEnv({ SESSION_JWKS_URL: JWKS_URL });
+      const verify = sessionVerifierFromEnv({ ESIGN_SESSION_JWKS_URL: JWKS_URL });
 
       await expect(verify(await sign({ sub: 'user-123' }))).resolves.toBe('user-123');
     });
 
     it('caches the key set across calls (one fetch for two tokens)', async () => {
       const { sign, fetchStub } = await withKeys();
-      const verify = sessionVerifierFromEnv({ SESSION_JWKS_URL: JWKS_URL });
+      const verify = sessionVerifierFromEnv({ ESIGN_SESSION_JWKS_URL: JWKS_URL });
 
       await verify(await sign({ sub: 'user-1' }));
       await verify(await sign({ sub: 'user-2' }));
@@ -193,7 +193,7 @@ describe('sessionVerifierFromEnv', () => {
         'fetch',
         vi.fn(async () => new Response(JSON.stringify({ keys: [otherJwk] })))
       );
-      const otherVerify = sessionVerifierFromEnv({ SESSION_JWKS_URL: JWKS_URL });
+      const otherVerify = sessionVerifierFromEnv({ ESIGN_SESSION_JWKS_URL: JWKS_URL });
 
       await expect(otherVerify(token)).resolves.toBeNull();
     });
@@ -203,7 +203,7 @@ describe('sessionVerifierFromEnv', () => {
         'fetch',
         vi.fn(async () => new Response('nope', { status: 500 }))
       );
-      const verify = sessionVerifierFromEnv({ SESSION_JWKS_URL: JWKS_URL });
+      const verify = sessionVerifierFromEnv({ ESIGN_SESSION_JWKS_URL: JWKS_URL });
 
       await expect(verify('a.b.c')).resolves.toBeNull();
     });

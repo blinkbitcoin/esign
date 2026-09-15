@@ -63,19 +63,19 @@ and the verification checklist - is the runbook,
 
 ### The host's two obligations
 
-1. **Say who the caller is.** Expose a JWKS endpoint (`SESSION_JWKS_URL`) or
-   share an HS256 secret (`SESSION_HS256_SECRET`). The verified claim
-   (`SESSION_USER_CLAIM`, default `sub`) becomes the user id the instance is
+1. **Say who the caller is.** Expose a JWKS endpoint (`ESIGN_SESSION_JWKS_URL`) or
+   share an HS256 secret (`ESIGN_SESSION_SECRET`). The verified claim
+   (`ESIGN_SESSION_USER_CLAIM`, default `sub`) becomes the user id the instance is
    locked to — DocuSign's `clientUserId`. Without either, the service
    refuses to boot unless `ALLOW_INSECURE_DEV=true`.
 2. **Say what is being signed** — only when the locked terms come from your
-   data. Expose `TERMS_URL`: the service POSTs `{ userId, input }` with the
+   data. Expose `ESIGN_PREFILL_URL`: the service POSTs `{ userId, input }` with the
    caller's bearer token forwarded, and your `{ prefill }` wins over the
    client's values key by key. Client input is intent, never a locked value.
    An envelope mint (`ESIGN_MINT_MODE=envelope`) also sends the client's
    `recipient`, and mints exactly your `{ prefill, recipient }`: nothing of
    the client's reaches the document, since on an envelope the lock travels
-   with each value, and your `recipient` is who signs. Without `TERMS_URL`
+   with each value, and your `recipient` is who signs. Without `ESIGN_PREFILL_URL`
    any authenticated caller names the signer.
 
 ## Environment
@@ -86,24 +86,24 @@ list with comments.
 | Variable | Meaning |
 |---|---|
 | `DATABASE_URL` | Postgres; its presence turns envelope orchestration on |
-| `SESSION_JWKS_URL` | Remote key set (RS/ES) for session verification |
-| `SESSION_ISSUER`,<br>`SESSION_AUDIENCE` | Enforced when set |
-| `SESSION_USER_CLAIM` | The claim carrying the user id (default `sub`) |
-| `SESSION_HS256_SECRET` | Shared secret instead of a key set (`JWT_SECRET` is<br>an accepted alias) |
-| `TERMS_URL` | Where the host computes the prefill actually minted<br>(and, under `ESIGN_MINT_MODE=envelope`, who signs) |
-| `TERMS_SHARED_SECRET` | Sent as `x-esign-terms-secret` when set |
-| `TERMS_TIMEOUT_MS` | Default 5000; a timeout or non-2xx answers `502` |
-| `TERMS_ALLOW_INSECURE` | `true` to allow a plaintext `TERMS_URL` in production.<br>The callback carries the caller's session token and<br>`TERMS_SHARED_SECRET`, so `http:` is refused unless the<br>host is private (loopback, `*.svc`,<br>`*.svc.cluster.local`, `*.internal`) |
+| `ESIGN_SESSION_JWKS_URL` | Remote key set (RS/ES) for session verification |
+| `ESIGN_SESSION_ISSUER`,<br>`ESIGN_SESSION_AUDIENCE` | Enforced when set |
+| `ESIGN_SESSION_USER_CLAIM` | The claim carrying the user id (default `sub`) |
+| `ESIGN_SESSION_SECRET` | Shared secret instead of a key set |
+| `ESIGN_PREFILL_URL` | Where the host computes the prefill actually minted<br>(and, under `ESIGN_MINT_MODE=envelope`, who signs) |
+| `ESIGN_PREFILL_SECRET` | Sent as `x-esign-prefill-secret` when set |
+| `ESIGN_PREFILL_TIMEOUT_MS` | Default 5000; a timeout or non-2xx answers `502` |
+| `TERMS_ALLOW_INSECURE` | `true` to allow a plaintext `ESIGN_PREFILL_URL` in production.<br>The callback carries the caller's session token and<br>`ESIGN_PREFILL_SECRET`, so `http:` is refused unless the<br>host is private (loopback, `*.svc`,<br>`*.svc.cluster.local`, `*.internal`) |
 | `ESIGN_ALLOW_CLIENT_PREFILL` | `true` to mint the client's own prefill in production<br>(and, under `ESIGN_MINT_MODE=envelope`, its signer) |
 | `ESIGN_PROVIDER` | `mock` (default) or `docusign` |
-| `ESIGN_MINT_MODE` | `webform` (default): `POST /webform/instance` mints a<br>Web Forms instance. `envelope`: `POST /envelope/instance`<br>takes `{ recipient, prefill }`, creates one envelope from<br>`DOCUSIGN_TEMPLATE_ID` (several ids, one envelope, in that<br>order) and answers `{ url, envelopeId }`, so the signer<br>opens the documents themselves. Neither needs a database;<br>with `DATABASE_URL` an envelope is also stored and<br>audited, as the GraphQL API's are. `TERMS_URL` applies<br>to both. Any other value refuses to start |
-| `MOCK_PAGES` | `false` turns the mock provider's signing pages off |
+| `ESIGN_MINT_MODE` | `webform` (default): `POST /webform/instance` mints a<br>Web Forms instance. `envelope`: `POST /envelope/instance`<br>takes `{ recipient, prefill }`, creates one envelope from<br>`DOCUSIGN_TEMPLATE_ID` (several ids, one envelope, in that<br>order) and answers `{ url, envelopeId }`, so the signer<br>opens the documents themselves. Neither needs a database;<br>with `DATABASE_URL` an envelope is also stored and<br>audited, as the GraphQL API's are. `ESIGN_PREFILL_URL` applies<br>to both. Any other value refuses to start |
+| `ESIGN_MOCK_PAGES` | `false` turns the mock provider's signing pages off |
 | `DOCUSIGN_*` | Provider settings (`.env.docusign.example`) |
 | `ESIGN_ENV` | `production` refuses demo settings and disables<br>introspection (`ESIGN_ALLOW_DEMO=true` overrides).<br>**The image sets it**, so a container refuses the mock<br>provider and demo DocuSign hosts unless you opt out |
-| `CORS_ALLOWED_ORIGINS` | Browser origins allowed to call the API |
+| `ESIGN_CORS_ALLOWED_ORIGINS` | Browser origins allowed to call the API |
 | `ALLOW_INSECURE_DEV` | The explicit opt-in to no verification (never in<br>production) |
 | `OTEL_*` | Standard OpenTelemetry variables; tracing is off<br>unless set |
-| `TRUST_PROXY` | `true` when a proxy you trust rewrites<br>`x-forwarded-for`: it then names the client for the<br>rate limits and for the webhook's security log.<br>Without it the header is ignored everywhere |
+| `ESIGN_TRUST_PROXY` | `true` when a proxy you trust rewrites<br>`x-forwarded-for`: it then names the client for the<br>rate limits and for the webhook's security log.<br>Without it the header is ignored everywhere |
 | `PORT`,<br>`RATE_LIMIT_*_PER_MIN`,<br>`DOCUSIGN_PRIVATE_KEY_FILE` | **Container only.** A function relies on its<br>platform for the port and the limits;<br>`DOCUSIGN_PRIVATE_KEY_BASE64` works everywhere |
 
 ## Quick Start
@@ -124,7 +124,7 @@ make dev            # service at http://localhost:4100 (PORT, default ESIGN_PORT
 
 | Import | What you get |
 |---|---|
-| `@blinkbitcoin/esign-service` | `createESignApp(env, deps) → { fetch, capabilities, stop }`<br>and the pure pieces (`validateConfig`, `sessionVerifierFromEnv`,<br>`termsConfigFromEnv`) |
+| `@blinkbitcoin/esign-service` | `createESignApp(env, deps) → { fetch, capabilities, stop }`<br>and the pure pieces (`validateConfig`, `sessionVerifierFromEnv`,<br>`prefillConfigFromEnv`) |
 | `.../node` | `startServer(env) → { url, stop }` over `@hono/node-server`,<br>with the rate limits and the SIGTERM drain |
 | `.../vercel` | `export { GET, POST, OPTIONS }` for a route handler |
 | `.../cloudflare` | `export default { fetch(request, env) }` for a Worker |
@@ -190,9 +190,9 @@ it in E2E / Build Packages, where the dist already exists.
 | `src/capabilities.ts` | What the environment turns on |
 | `src/config.ts` | The boot guard (`validateConfig`, pure) |
 | `src/session.ts` | Session verification (JWKS or HS256, via `jose`) |
-| `src/terms.ts` | The `TERMS_URL` callback and its merge rule |
+| `src/terms.ts` | The `ESIGN_PREFILL_URL` callback and its merge rule |
 | `src/envelopes.ts` | The envelope capability: Fetch webhook + GraphQL<br>(Node-only; reached through the loader an entry passes) |
-| `src/proxy.ts` | `TRUST_PROXY`: who may be believed about the client |
+| `src/proxy.ts` | `ESIGN_TRUST_PROXY`: who may be believed about the client |
 | `src/server.ts` / `src/node.ts` | `startServer` (rate limits, drain) / the process entry point |
 | `src/vercel.ts` / `src/cloudflare.ts` | The two function targets |
 | `src/typeDefs.ts` → `schema.graphql` | GraphQL SDL → emitted schema artifact |

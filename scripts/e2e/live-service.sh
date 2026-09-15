@@ -47,7 +47,7 @@ live_env() {
     export DOCUSIGN_RETURN_URL="${DOCUSIGN_RETURN_URL:-http://localhost:$LIVE_PORT/signing/return}"
     export DOCUSIGN_HMAC_KEY="${DOCUSIGN_HMAC_KEY:-live-e2e-hmac}"
     export DOCUSIGN_WEBFORMS_BASE_URL="${DOCUSIGN_WEBFORMS_BASE_URL:-https://apps-d.docusign.com/api/webforms/v1.1}"
-    unset JWT_SECRET # the bearer token is the user id (what the specs send)
+    unset ESIGN_SESSION_SECRET # the bearer token is the user id (what the specs send)
     LIVE_TEST="test:live:env"
   else
     echo "::error::no $env_file (make docusign-env) and no DOCUSIGN_* in the environment"; exit 1
@@ -68,7 +68,7 @@ live_env() {
 }
 
 # shellcheck disable=SC2120  # the extra env is optional (ios-live.sh passes none)
-live_service_up() { # [extra env for the service, e.g. CORS_ALLOWED_ORIGINS=... DOCUSIGN_RETURN_URL=...]
+live_service_up() { # [extra env for the service, e.g. ESIGN_CORS_ALLOWED_ORIGINS=... DOCUSIGN_RETURN_URL=...]
   # The journeys persist envelopes: the E2E Postgres (tmpfs, ESIGN_TEST_DB_PORT)
   echo "== test database"
   make test-db-up > /dev/null

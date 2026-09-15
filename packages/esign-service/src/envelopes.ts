@@ -50,7 +50,7 @@ export interface EnvelopeCapabilityOptions {
   // Apollo's schema discovery: on outside production, exactly as before
   introspection: boolean;
   // Believe x-forwarded-for when logging the webhook's caller (the same
-  // TRUST_PROXY the rate limits key on)
+  // ESIGN_TRUST_PROXY the rate limits key on)
   trustProxy: boolean;
   // The store to run on (default: a Knex store over `env`'s DATABASE_URL).
   // Tests hand in an in-memory one; nothing else overrides it.

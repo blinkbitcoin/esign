@@ -39,7 +39,7 @@
 - **Capabilities by env:** the mint is always on; `DATABASE_URL` adds the GraphQL API, the webhook and the store. `GET /health` reports which
 - **Role:** The reference host for mode 3 (and the Web Forms mint endpoint); the backend every E2E suite runs against; ships as a container image (`ghcr.io/blinkbitcoin/esign-service`) and as a package with deploy templates in `deploy/`
 - **API:** mint at `POST /webform/instance` (or `POST /envelope/instance` under `ESIGN_MINT_MODE=envelope`), bridge at `GET /signing/return`, health at `GET /health`; with envelopes, GraphQL at `/graphql` and the webhook at `/webhook/esign`
-- **The host's two obligations:** expose JWKS or share an HS256 secret (session verification), and expose `TERMS_URL` when the locked terms (or an envelope mint's signer) come from host data
+- **The host's two obligations:** expose JWKS or share an HS256 secret (session verification), and expose `ESIGN_PREFILL_URL` when the locked terms (or an envelope mint's signer) come from host data
 
 #### Tooling (`scripts/`)
 - **Type:** `tooling` npm workspace: ci/, e2e/, release/ shell + node; `lib/*.mjs` Vitest-covered at 100%
@@ -55,8 +55,8 @@ Organized by namespace - pick by what you're doing:
 | Doc | Covers |
 |-----|--------|
 | [consuming.md](integration/consuming.md) | Registry setup (GitHub Packages) + the minimal Web Forms-only install |
-| [locked-terms.md](integration/locked-terms.md) | **The recipe for locked terms (mode 2), backend + app:** the form rules, the one mutation, the bridge route, the app source, what to verify |
-| [locked-terms-envelopes.md](integration/locked-terms-envelopes.md) | The same on a template envelope (mode 3): Text tabs, the `prefill` on `createEnvelope`, locked values, several documents as one envelope |
+| [locked-prefill.md](integration/locked-prefill.md) | **The recipe for locked terms (mode 2), backend + app:** the form rules, the one mutation, the bridge route, the app source, what to verify |
+| [locked-prefill-envelopes.md](integration/locked-prefill-envelopes.md) | The same on a template envelope (mode 3): Text tabs, the `prefill` on `createEnvelope`, locked values, several documents as one envelope |
 | [docusign-lessons.md](integration/docusign-lessons.md) | **The rules behind it:** every lesson from the live DocuSign runs on one page - the Text-only rule for read-only fields, why the mint is server-side, completion without DocuSign.js, account gotchas |
 | [webforms.md](integration/webforms.md) | Modes 1-2 (public URL + Web Forms instances): mock and live runs, event model, embedding options |
 | [docusign-proxy.md](integration/docusign-proxy.md) | Mode 3 (proxy envelopes): real-DocuSign setup, return-URL bridge, webhooks, live smoke-test checklist |
@@ -140,7 +140,7 @@ make e2e-ios                # or: make e2e-android
 ### "I build the app" (app developer / integrator)
 1. [Consuming the Packages](integration/consuming.md) - registry setup + minimal Web Forms-only install
 2. Pick a mode: [integration/webforms.md](integration/webforms.md) (Web Forms / public URL) or [integration/docusign-proxy.md](integration/docusign-proxy.md) (proxy envelope mode, webhooks)
-3. [locked-terms.md](integration/locked-terms.md) for mode 2 end to end, and [error-codes.md](integration/error-codes.md) for what `onError` can hand you
+3. [locked-prefill.md](integration/locked-prefill.md) for mode 2 end to end, and [error-codes.md](integration/error-codes.md) for what `onError` can hand you
 
 ### "I own the backend API" (backend developer)
 1. [The mint-only preset](../packages/esign-node/README.md#mint-only-the-whole-surface-in-three-lines) - the routes inside your own Node API, session check and `prefill` hook

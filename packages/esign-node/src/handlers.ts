@@ -822,7 +822,7 @@ export const createHostedFormApp = (
 
 // What the Fetch envelope preset's terms hook is told: the caller, the signer
 // and prefill that caller sent (validated), and the Fetch Request behind them
-export interface EnvelopeAppTermsInput extends EnvelopeTermsInput {
+export interface EnvelopeAppPrefillInput extends EnvelopeTermsInput {
   request: Request;
 }
 
@@ -836,7 +836,7 @@ export type EnvelopeAppOptions = EnvelopeMintTarget &
     // its own data: it receives the caller's validated request and returns
     // the one the envelope is created with. Client values are input, never
     // trusted for the signer or for a locked value.
-    terms?: EnvelopeTermsHook<EnvelopeAppTermsInput>;
+    terms?: EnvelopeTermsHook<EnvelopeAppPrefillInput>;
   };
 
 // The envelope mint as a whole Fetch surface: createMintApp over its kind

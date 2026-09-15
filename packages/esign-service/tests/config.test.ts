@@ -57,78 +57,82 @@ describe('configErrors - the session source', () => {
     ]);
   });
 
-  it('accepts a JWKS url, a shared secret, the JWT_SECRET alias, or the dev switch', () => {
-    expect(configErrors({ ESIGN_PROVIDER: 'mock', SESSION_JWKS_URL: 'https://id/jwks' })).toEqual(
-      []
-    );
-    expect(configErrors({ ESIGN_PROVIDER: 'mock', SESSION_HS256_SECRET: 's' })).toEqual([]);
-    expect(configErrors({ ESIGN_PROVIDER: 'mock', JWT_SECRET: 's' })).toEqual([]);
+  it('accepts a JWKS url, a shared secret, or the dev switch', () => {
+    expect(
+      configErrors({ ESIGN_PROVIDER: 'mock', ESIGN_SESSION_JWKS_URL: 'https://id/jwks' })
+    ).toEqual([]);
+    expect(configErrors({ ESIGN_PROVIDER: 'mock', ESIGN_SESSION_SECRET: 's' })).toEqual([]);
+    expect(configErrors({ ESIGN_PROVIDER: 'mock', ESIGN_SESSION_SECRET: 's' })).toEqual([]);
     expect(configErrors(devEnv())).toEqual([]);
   });
 });
 
 describe('configErrors - the terms callback', () => {
-  it('accepts an absolute http(s) TERMS_URL', () => {
-    expect(configErrors(devEnv({ TERMS_URL: 'https://host.example.com/terms' }))).toEqual([]);
-    expect(configErrors(devEnv({ TERMS_URL: 'http://localhost:4100/terms' }))).toEqual([]);
+  it('accepts an absolute http(s) ESIGN_PREFILL_URL', () => {
+    expect(configErrors(devEnv({ ESIGN_PREFILL_URL: 'https://host.example.com/terms' }))).toEqual(
+      []
+    );
+    expect(configErrors(devEnv({ ESIGN_PREFILL_URL: 'http://localhost:4100/terms' }))).toEqual([]);
   });
 
-  it('refuses a relative or non-http TERMS_URL', () => {
-    expect(configErrors(devEnv({ TERMS_URL: '/terms' }))).toEqual([
+  it('refuses a relative or non-http ESIGN_PREFILL_URL', () => {
+    expect(configErrors(devEnv({ ESIGN_PREFILL_URL: '/terms' }))).toEqual([
       expect.stringMatching(/absolute http\(s\) URL/),
     ]);
-    expect(configErrors(devEnv({ TERMS_URL: 'ftp://host/terms' }))).toEqual([
+    expect(configErrors(devEnv({ ESIGN_PREFILL_URL: 'ftp://host/terms' }))).toEqual([
       expect.stringMatching(/absolute http\(s\) URL/),
     ]);
   });
 
-  it('refuses production without TERMS_URL: client values would be minted as sent', () => {
+  it('refuses production without ESIGN_PREFILL_URL: client values would be minted as sent', () => {
     const errors = configErrors(
-      docusignEnv({ ESIGN_ENV: 'production', ESIGN_ALLOW_DEMO: 'true', JWT_SECRET: 's' })
+      docusignEnv({ ESIGN_ENV: 'production', ESIGN_ALLOW_DEMO: 'true', ESIGN_SESSION_SECRET: 's' })
     );
     expect(errors).toEqual([expect.stringMatching(/would be minted as sent/)]);
   });
 
-  it('allows production without TERMS_URL when the operator says so explicitly', () => {
+  it('allows production without ESIGN_PREFILL_URL when the operator says so explicitly', () => {
     expect(
       configErrors(
         docusignEnv({
           ESIGN_ENV: 'production',
           ESIGN_ALLOW_DEMO: 'true',
-          JWT_SECRET: 's',
+          ESIGN_SESSION_SECRET: 's',
           ESIGN_ALLOW_CLIENT_PREFILL: 'true',
         })
       )
     ).toEqual([]);
   });
 
-  it('does not ask for TERMS_URL outside production', () => {
+  it('does not ask for ESIGN_PREFILL_URL outside production', () => {
     expect(configErrors(devEnv())).toEqual([]);
   });
 });
 
 describe('configErrors - the terms callback must be encrypted in production', () => {
-  // createTermsPrefill forwards the caller's session bearer and
-  // TERMS_SHARED_SECRET to this URL, so a plaintext public hop leaks both.
+  // createPrefillHook forwards the caller's session bearer and
+  // ESIGN_PREFILL_SECRET to this URL, so a plaintext public hop leaks both.
   const prodEnv = (extra: Record<string, string | undefined> = {}) =>
     docusignEnv({
       ESIGN_ENV: 'production',
       ESIGN_ALLOW_DEMO: 'true',
-      JWT_SECRET: 's',
+      ESIGN_SESSION_SECRET: 's',
       ...extra,
     });
 
   it('refuses a plaintext public terms callback, naming the variable', () => {
-    const errors = configErrors(prodEnv({ TERMS_URL: 'http://terms.example.com/terms' }));
+    const errors = configErrors(prodEnv({ ESIGN_PREFILL_URL: 'http://terms.example.com/terms' }));
 
     expect(errors).toEqual([
-      expect.stringContaining('plaintext TERMS_URL (http://terms.example.com/terms)'),
+      expect.stringContaining('plaintext ESIGN_PREFILL_URL (http://terms.example.com/terms)'),
     ]);
     expect(errors[0]).toContain('TERMS_ALLOW_INSECURE=true');
   });
 
   it('accepts https', () => {
-    expect(configErrors(prodEnv({ TERMS_URL: 'https://terms.example.com/terms' }))).toEqual([]);
+    expect(configErrors(prodEnv({ ESIGN_PREFILL_URL: 'https://terms.example.com/terms' }))).toEqual(
+      []
+    );
   });
 
   it.each([
@@ -137,29 +141,34 @@ describe('configErrors - the terms callback must be encrypted in production', ()
     'http://[::1]:9000/terms',
     'http://terms.default.svc/terms',
     'http://terms.default.svc.cluster.local/terms',
-    'http://terms.default.svc.cluster.local./terms',
+    'http://terms.default.svc.cluster.local./prefill',
     'http://terms.eu-west-1.internal/terms',
     'http://TERMS.default.SVC/terms',
   ])('accepts the private hop %s', (url) => {
-    expect(configErrors(prodEnv({ TERMS_URL: url }))).toEqual([]);
+    expect(configErrors(prodEnv({ ESIGN_PREFILL_URL: url }))).toEqual([]);
   });
 
   it('accepts a plaintext public host only when the operator opts in', () => {
     expect(
       configErrors(
-        prodEnv({ TERMS_URL: 'http://terms.example.com/terms', TERMS_ALLOW_INSECURE: 'true' })
+        prodEnv({
+          ESIGN_PREFILL_URL: 'http://terms.example.com/terms',
+          TERMS_ALLOW_INSECURE: 'true',
+        })
       )
     ).toEqual([]);
     // Anything but the exact string is not the opt-in
     expect(
       configErrors(
-        prodEnv({ TERMS_URL: 'http://terms.example.com/terms', TERMS_ALLOW_INSECURE: '1' })
+        prodEnv({ ESIGN_PREFILL_URL: 'http://terms.example.com/terms', TERMS_ALLOW_INSECURE: '1' })
       )
-    ).toEqual([expect.stringContaining('plaintext TERMS_URL')]);
+    ).toEqual([expect.stringContaining('plaintext ESIGN_PREFILL_URL')]);
   });
 
   it('does not apply outside production', () => {
-    expect(configErrors(devEnv({ TERMS_URL: 'http://terms.example.com/terms' }))).toEqual([]);
+    expect(configErrors(devEnv({ ESIGN_PREFILL_URL: 'http://terms.example.com/terms' }))).toEqual(
+      []
+    );
   });
 });
 
@@ -210,25 +219,29 @@ describe('configErrors - the provider', () => {
 describe('configErrors - the envelope webhook', () => {
   it('requires DOCUSIGN_HMAC_KEY once envelopes are on', () => {
     const errors = configErrors(
-      docusignEnv({ JWT_SECRET: 's', DATABASE_URL: 'postgres://u@h/db' })
+      docusignEnv({ ESIGN_SESSION_SECRET: 's', DATABASE_URL: 'postgres://u@h/db' })
     );
     expect(errors).toEqual([expect.stringMatching(/DOCUSIGN_HMAC_KEY/)]);
   });
 
   it('does not require it without a database (mint only)', () => {
-    expect(configErrors(docusignEnv({ JWT_SECRET: 's' }))).toEqual([]);
+    expect(configErrors(docusignEnv({ ESIGN_SESSION_SECRET: 's' }))).toEqual([]);
   });
 
   it('does not require it for the mock provider', () => {
-    expect(configErrors(devEnv({ JWT_SECRET: 's', DATABASE_URL: 'postgres://u@h/db' }))).toEqual(
-      []
-    );
+    expect(
+      configErrors(devEnv({ ESIGN_SESSION_SECRET: 's', DATABASE_URL: 'postgres://u@h/db' }))
+    ).toEqual([]);
   });
 
   it('is satisfied by the key, or by the insecure-dev switch', () => {
     expect(
       configErrors(
-        docusignEnv({ JWT_SECRET: 's', DATABASE_URL: 'postgres://u@h/db', DOCUSIGN_HMAC_KEY: 'k' })
+        docusignEnv({
+          ESIGN_SESSION_SECRET: 's',
+          DATABASE_URL: 'postgres://u@h/db',
+          DOCUSIGN_HMAC_KEY: 'k',
+        })
       )
     ).toEqual([]);
     expect(
@@ -312,7 +325,7 @@ describe('configErrors - the mint mode', () => {
       configErrors(
         envelopeEnv({
           ALLOW_INSECURE_DEV: undefined,
-          SESSION_HS256_SECRET: 's',
+          ESIGN_SESSION_SECRET: 's',
           ESIGN_ENV: 'production',
           ESIGN_ALLOW_DEMO: 'true',
           ESIGN_ALLOW_CLIENT_PREFILL: 'true',
@@ -324,7 +337,9 @@ describe('configErrors - the mint mode', () => {
   // The host decides the signer and the locked values from its own data, as
   // it decides a Web Form's
   it('accepts a terms callback for envelopes', () => {
-    expect(configErrors(envelopeEnv({ TERMS_URL: 'https://api.example.com/terms' }))).toEqual([]);
+    expect(
+      configErrors(envelopeEnv({ ESIGN_PREFILL_URL: 'https://api.example.com/terms' }))
+    ).toEqual([]);
   });
 
   it('refuses production envelopes minting the client signer and prefill without the opt-in', () => {
@@ -332,14 +347,14 @@ describe('configErrors - the mint mode', () => {
       configErrors(
         envelopeEnv({
           ALLOW_INSECURE_DEV: undefined,
-          SESSION_HS256_SECRET: 's',
+          ESIGN_SESSION_SECRET: 's',
           ESIGN_ENV: 'production',
           ESIGN_ALLOW_DEMO: 'true',
         })
       )
     ).toEqual([
       expect.stringMatching(
-        /without TERMS_URL: the client's own signer and prefill would be minted as sent/
+        /without ESIGN_PREFILL_URL: the client's own signer and prefill would be minted as sent/
       ),
     ]);
   });
@@ -400,7 +415,7 @@ describe('validateConfig', () => {
 
   it('does not warn for a properly configured deployment', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    validateConfig(docusignEnv({ JWT_SECRET: 's' }));
+    validateConfig(docusignEnv({ ESIGN_SESSION_SECRET: 's' }));
     expect(warn).not.toHaveBeenCalled();
   });
 
@@ -426,8 +441,8 @@ describe('getAllowedOrigins', () => {
   });
 
   it('splits, trims, and drops blanks', () => {
-    expect(getAllowedOrigins({ CORS_ALLOWED_ORIGINS: 'https://a.com, https://b.com ,, ' })).toEqual(
-      ['https://a.com', 'https://b.com']
-    );
+    expect(
+      getAllowedOrigins({ ESIGN_CORS_ALLOWED_ORIGINS: 'https://a.com, https://b.com ,, ' })
+    ).toEqual(['https://a.com', 'https://b.com']);
   });
 });

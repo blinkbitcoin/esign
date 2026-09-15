@@ -46,7 +46,7 @@ app opens url in <ESignature source={createWebFormsSource({ mint: ... })}>
 - `src/index.ts` - `SIGTERM`/`SIGINT` stop the server and exit, so a
   container orchestrator's shutdown is clean.
 - The app side of this shape (the source that calls the mutation, what
-  `onComplete` delivers): [locked-terms.md](../../docs/integration/locked-terms.md).
+  `onComplete` delivers): [locked-prefill.md](../../docs/integration/locked-prefill.md).
 
 ## Run
 
@@ -102,7 +102,7 @@ the whole service.
 
 This example is an illustration, not a deployment. For the production shape
 of the same mint - session verification from JWKS or a shared secret, locked
-terms through a `TERMS_URL` callback, a boot guard, rate limits and a
+terms through a `ESIGN_PREFILL_URL` callback, a boot guard, rate limits and a
 container, Kubernetes, Vercel or Cloudflare template - deploy the service
 package: its capabilities follow the environment, so it serves this same
 mint alone when `DATABASE_URL` is unset.

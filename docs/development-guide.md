@@ -86,8 +86,8 @@ PORT=4100                      # ESIGN_PORT_BASE + 0 (docs/architecture/backend.
 # DOCUSIGN_TEMPLATE_ID=your-template-id
 
 # Session verification - one of these, or the service refuses to boot
-# SESSION_JWKS_URL=https://id.example.com/.well-known/jwks.json
-# SESSION_HS256_SECRET=change-me   # JWT_SECRET is an accepted alias
+# ESIGN_SESSION_JWKS_URL=https://id.example.com/.well-known/jwks.json
+# ESIGN_SESSION_SECRET=change-me
 
 # Required when envelopes are on (DATABASE_URL) and the provider signs
 # DOCUSIGN_HMAC_KEY=your-webhook-hmac-key
@@ -400,7 +400,7 @@ npm run migrate
 | `DATABASE_URL` | No | PostgreSQL connection string. Its presence turns **envelope orchestration** on (GraphQL, the webhook, the Knex store); without it the deployment serves the mint alone |
 | `ESIGN_PROVIDER` | No | Provider selection: `mock` (default) or `docusign` |
 | `ESIGN_MINT_MODE` | No | What the mint answers with: `webform` (default; `POST /webform/instance`) or `envelope` (`POST /envelope/instance` takes `{ recipient, prefill }`, creates one envelope from `DOCUSIGN_TEMPLATE_ID` and answers `{ url, envelopeId }`; neither needs a database, and with `DATABASE_URL` an envelope is also stored and audited, as the GraphQL API's are). Any other value refuses to start |
-| `MOCK_PAGES` | No | `false` turns the mock provider's signing pages off |
+| `ESIGN_MOCK_PAGES` | No | `false` turns the mock provider's signing pages off |
 | `DOCUSIGN_ACCOUNT_ID` | docusign | DocuSign account ID |
 | `DOCUSIGN_INTEGRATION_KEY` | docusign | DocuSign integration key |
 | `DOCUSIGN_USER_ID` | docusign | DocuSign user ID (GUID) |
@@ -413,22 +413,22 @@ npm run migrate
 | `DOCUSIGN_OAUTH_URL` | no | OAuth host for the JWT grant (defaults to demo) |
 | `DOCUSIGN_RETURN_URL` | no | Where DocuSign redirects after signing (defaults to the built-in return-URL bridge) |
 | `OTEL_*` | no | Standard OpenTelemetry vars; tracing is off unless set (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, `OTEL_TRACES_EXPORTER=console` for stdout) |
-| `ESIGN_ENV` | no | `production` declares this deployment production: demo provider settings and demo DocuSign hosts are refused at boot, GraphQL introspection is off, and a missing `TERMS_URL` needs `ESIGN_ALLOW_CLIENT_PREFILL`. **`NODE_ENV` gates nothing** |
+| `ESIGN_ENV` | no | `production` declares this deployment production: demo provider settings and demo DocuSign hosts are refused at boot, GraphQL introspection is off, and a missing `ESIGN_PREFILL_URL` needs `ESIGN_ALLOW_CLIENT_PREFILL`. **`NODE_ENV` gates nothing** |
 | `ESIGN_ALLOW_DEMO` | no | `true` is the one bypass of that refusal (a production-shaped staging deployment) |
-| `SESSION_JWKS_URL` | one of the two | Remote key set (RS/ES) for session verification |
-| `SESSION_HS256_SECRET` | one of the two | Shared secret instead (`JWT_SECRET` is an accepted alias). With neither, the service **refuses to boot** unless `ALLOW_INSECURE_DEV=true` |
-| `SESSION_ISSUER`, `SESSION_AUDIENCE` | no | Enforced when set |
-| `SESSION_USER_CLAIM` | no | The claim carrying the user id (default `sub`) |
-| `TERMS_URL` | prod | Where the host computes the prefill actually minted (and, under `ESIGN_MINT_MODE=envelope`, may name the signer). Required under `ESIGN_ENV=production` unless `ESIGN_ALLOW_CLIENT_PREFILL=true` |
-| `TERMS_SHARED_SECRET`, `TERMS_TIMEOUT_MS` | no | Sent as `x-esign-terms-secret`; default 5000 ms |
-| `TERMS_ALLOW_INSECURE` | no | `true` to allow a plaintext `TERMS_URL` in production (only for a private host the guard cannot recognise) |
+| `ESIGN_SESSION_JWKS_URL` | one of the two | Remote key set (RS/ES) for session verification |
+| `ESIGN_SESSION_SECRET` | one of the two | Shared secret instead. With neither, the service **refuses to boot** unless `ALLOW_INSECURE_DEV=true` |
+| `ESIGN_SESSION_ISSUER`, `ESIGN_SESSION_AUDIENCE` | no | Enforced when set |
+| `ESIGN_SESSION_USER_CLAIM` | no | The claim carrying the user id (default `sub`) |
+| `ESIGN_PREFILL_URL` | prod | Where the host computes the prefill actually minted (and, under `ESIGN_MINT_MODE=envelope`, may name the signer). Required under `ESIGN_ENV=production` unless `ESIGN_ALLOW_CLIENT_PREFILL=true` |
+| `ESIGN_PREFILL_SECRET`, `ESIGN_PREFILL_TIMEOUT_MS` | no | Sent as `x-esign-prefill-secret`; default 5000 ms |
+| `TERMS_ALLOW_INSECURE` | no | `true` to allow a plaintext `ESIGN_PREFILL_URL` in production (only for a private host the guard cannot recognise) |
 | `ESIGN_ALLOW_CLIENT_PREFILL` | no | `true` to mint the client's own prefill (and, under `ESIGN_MINT_MODE=envelope`, its signer) in production |
 | `ALLOW_INSECURE_DEV` | no | Explicit opt-in to run without session verification and without webhook signatures (never in prod) |
-| `CORS_ALLOWED_ORIGINS` | no | Comma-separated CORS allow-list |
+| `ESIGN_CORS_ALLOWED_ORIGINS` | no | Comma-separated CORS allow-list |
 | `DOCUSIGN_HMAC_KEY` | envelopes + docusign | Webhook HMAC validation secret. Missing: webhooks are rejected (fail-closed) unless `ALLOW_INSECURE_DEV=true`; with envelopes on and the DocuSign provider the boot guard refuses to start without it |
 | `PORT` | No | Server port (default: `ESIGN_PORT_BASE` + 0 = 4100). **Container only** |
-| `TRUST_PROXY` | No | `true` to take the client from `x-forwarded-for` (rate limits, webhook security log). **Container only** |
-| `RATE_LIMIT_WEBFORM_PER_MIN`, `RATE_LIMIT_ENVELOPE_PER_MIN`, `RATE_LIMIT_WEBHOOK_PER_MIN`, `RATE_LIMIT_GRAPHQL_PER_MIN` | No | Per-route limits (60 / 60 / 120 / 100); `0` switches a route's limit off. **Container only** |
+| `ESIGN_TRUST_PROXY` | No | `true` to take the client from `x-forwarded-for` (rate limits, webhook security log). **Container only** |
+| `ESIGN_RATE_LIMIT_WEBFORM_PER_MIN`, `ESIGN_RATE_LIMIT_ENVELOPE_PER_MIN`, `ESIGN_RATE_LIMIT_WEBHOOK_PER_MIN`, `ESIGN_RATE_LIMIT_GRAPHQL_PER_MIN` | No | Per-route limits (60 / 60 / 120 / 100); `0` switches a route's limit off. **Container only** |
 | `ESIGN_PORT_BASE` | No | The block's base port (default 4100); every service is base + offset (`scripts/lib/ports.mjs`). A linked worktree claims its own block into `.env.local` on first use (`.envrc` / `make`); set it only to pick a block by hand. `make ports` shows the block and its holders, `make ports-free` clears this worktree's leftovers |
 | `ESIGN_TEST_DB_PORT` / `ESIGN_DEV_DB_PORT` | No | The E2E Postgres (base + 12, default 4112) and the dev Postgres (base + 13, default 4113); the compose files read them, `scripts/e2e/test-db.sh` / `dev-db.sh` export the matching `DATABASE_URL` |
 

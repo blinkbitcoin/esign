@@ -24,17 +24,20 @@ describe('rateLimitsFromEnv', () => {
   it('reads RATE_LIMIT_*_PER_MIN', () => {
     expect(
       rateLimitsFromEnv({
-        RATE_LIMIT_WEBFORM_PER_MIN: '5',
-        RATE_LIMIT_ENVELOPE_PER_MIN: '8',
-        RATE_LIMIT_WEBHOOK_PER_MIN: '6',
-        RATE_LIMIT_GRAPHQL_PER_MIN: '7',
+        ESIGN_RATE_LIMIT_WEBFORM_PER_MIN: '5',
+        ESIGN_RATE_LIMIT_ENVELOPE_PER_MIN: '8',
+        ESIGN_RATE_LIMIT_WEBHOOK_PER_MIN: '6',
+        ESIGN_RATE_LIMIT_GRAPHQL_PER_MIN: '7',
       })
     ).toEqual({ webform: 5, envelope: 8, webhook: 6, graphql: 7 });
   });
 
   it('ignores a value that is not a number or is negative', () => {
     expect(
-      rateLimitsFromEnv({ RATE_LIMIT_WEBFORM_PER_MIN: 'lots', RATE_LIMIT_WEBHOOK_PER_MIN: '-1' })
+      rateLimitsFromEnv({
+        ESIGN_RATE_LIMIT_WEBFORM_PER_MIN: 'lots',
+        ESIGN_RATE_LIMIT_WEBHOOK_PER_MIN: '-1',
+      })
     ).toEqual(DEFAULT_RATE_LIMITS);
   });
 });
@@ -223,7 +226,7 @@ describe('startServer', () => {
   });
 
   it('answers 429 once a route is over its limit, and marks every answer', async () => {
-    server = await start({ RATE_LIMIT_WEBFORM_PER_MIN: '2' });
+    server = await start({ ESIGN_RATE_LIMIT_WEBFORM_PER_MIN: '2' });
     const mint = () =>
       fetch(`${server?.url}/webform/instance`, {
         method: 'POST',
@@ -244,7 +247,7 @@ describe('startServer', () => {
   });
 
   it('gives the 429 the same security headers as every other JSON answer', async () => {
-    server = await start({ RATE_LIMIT_WEBFORM_PER_MIN: '1' });
+    server = await start({ ESIGN_RATE_LIMIT_WEBFORM_PER_MIN: '1' });
     const mint = () =>
       fetch(`${server?.url}/webform/instance`, {
         method: 'POST',
@@ -274,8 +277,8 @@ describe('startServer', () => {
 
   it('gives the 429 the same CORS answer as every other JSON answer', async () => {
     server = await start({
-      RATE_LIMIT_WEBFORM_PER_MIN: '1',
-      CORS_ALLOWED_ORIGINS: 'https://app.example.com',
+      ESIGN_RATE_LIMIT_WEBFORM_PER_MIN: '1',
+      ESIGN_CORS_ALLOWED_ORIGINS: 'https://app.example.com',
     });
     const mint = () =>
       fetch(`${server?.url}/webform/instance`, {
@@ -303,8 +306,8 @@ describe('startServer', () => {
     expect(response.headers.get('ratelimit')).toBeNull();
   });
 
-  it('keys the limit on the forwarded client when TRUST_PROXY is set', async () => {
-    server = await start({ TRUST_PROXY: 'true', RATE_LIMIT_GRAPHQL_PER_MIN: '1' });
+  it('keys the limit on the forwarded client when ESIGN_TRUST_PROXY is set', async () => {
+    server = await start({ ESIGN_TRUST_PROXY: 'true', ESIGN_RATE_LIMIT_GRAPHQL_PER_MIN: '1' });
     const call = (client: string) =>
       fetch(`${server?.url}/graphql`, {
         method: 'POST',
@@ -319,8 +322,8 @@ describe('startServer', () => {
     expect((await call('203.0.113.2')).status).not.toBe(429);
   });
 
-  it('ignores the forwarded header without TRUST_PROXY', async () => {
-    server = await start({ RATE_LIMIT_GRAPHQL_PER_MIN: '1' });
+  it('ignores the forwarded header without ESIGN_TRUST_PROXY', async () => {
+    server = await start({ ESIGN_RATE_LIMIT_GRAPHQL_PER_MIN: '1' });
     const call = (client: string) =>
       fetch(`${server?.url}/graphql`, {
         method: 'POST',
@@ -336,7 +339,7 @@ describe('startServer', () => {
   it('falls back to an unknown client when the platform reports no address', async () => {
     server = await start(
       {
-        RATE_LIMIT_GRAPHQL_PER_MIN: '1',
+        ESIGN_RATE_LIMIT_GRAPHQL_PER_MIN: '1',
       },
       { clientAddress: () => undefined }
     );

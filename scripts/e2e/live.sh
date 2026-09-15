@@ -20,7 +20,7 @@ npm run --silent docusign:check -w "$SERVICE"
 # The whole API live suite: the Web Forms mint, the envelope client, and the
 # envelope mint on the fixture template (DOCUSIGN_TEMPLATE_ID, the one
 # make docusign-template creates) - a locked value read back from the
-# envelope's tabs, several templates as one session, TERMS_URL deciding
+# envelope's tabs, several templates as one session, ESIGN_PREFILL_URL deciding
 echo "== api live tests"
 npm run --silent "$LIVE_TEST" -w "$SERVICE"
 
@@ -28,7 +28,7 @@ npm run --silent "$LIVE_TEST" -w "$SERVICE"
 # allow this worktree's Vite origins (ports-env.sh, sourced by live-service.sh)
 ORIGINS="http://localhost:$ESIGN_WEB_PORT,http://localhost:$ESIGN_WEB_WEBFORM_PORT,http://localhost:$ESIGN_WEB_PUBLICURL_PORT"
 trap live_service_down EXIT
-live_service_up CORS_ALLOWED_ORIGINS="$ORIGINS"
+live_service_up ESIGN_CORS_ALLOWED_ORIGINS="$ORIGINS"
 
 echo "== playwright: locked fields on the real form"
 E2E_LIVE_API_ORIGIN="http://localhost:$LIVE_PORT" npm run --silent test:e2e:webform:live -w examples/react-demo

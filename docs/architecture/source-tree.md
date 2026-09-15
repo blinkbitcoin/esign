@@ -163,7 +163,7 @@ esign/
 │       │   ├── capabilities.ts    # What the environment turns on (pure) ⭐
 │       │   ├── mint.ts            # The mint mode: Web Form or envelope, one entry each
 │       │   ├── session.ts         # Session verification: JWKS or HS256, via jose
-│       │   ├── terms.ts           # The TERMS_URL callback and its merge rule
+│       │   ├── terms.ts           # The ESIGN_PREFILL_URL callback and its merge rule
 │       │   ├── envelopes.ts       # The envelope capability: Fetch webhook + Apollo (Node-only)
 │       │   ├── loadEnvelopes.ts   # The one place that names ./envelopes (Node targets only)
 │       │   ├── schema.ts          # createGraphQL over the envelope service ⭐
@@ -173,7 +173,7 @@ esign/
 │       │   ├── migrate.ts         # Applies the package's migrations (node dist/node.js migrate)
 │       │   ├── db.ts              # Knex instance (fail-fast)
 │       │   ├── env.ts             # The Env type + ALLOW_INSECURE_DEV
-│       │   ├── proxy.ts           # TRUST_PROXY: whether x-forwarded-for names the client
+│       │   ├── proxy.ts           # ESIGN_TRUST_PROXY: whether x-forwarded-for names the client
 │       │   ├── port.ts            # PORT / ESIGN_PORT_BASE resolution
 │       │   ├── config.ts          # The boot guard: validateConfig(env, { runtime }), pure ⭐
 │       │   ├── instrumentation.ts # OpenTelemetry init (before the app loads)

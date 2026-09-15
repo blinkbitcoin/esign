@@ -60,7 +60,7 @@ adapter works internally.
    order, and the signer role must carry the same name and routing order in
    each (that is what DocuSign merges the signer by).
    The host-side recipe for prefilled, locked values on the document is
-   [locked-terms-envelopes.md](locked-terms-envelopes.md).
+   [locked-prefill-envelopes.md](locked-prefill-envelopes.md).
 
 ## 2. Backend Configuration (`packages/esign-service/.env`)
 
