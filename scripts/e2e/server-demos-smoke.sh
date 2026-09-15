@@ -27,8 +27,17 @@ PIDS=()
 cleanup() { for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null || true; done; }
 trap cleanup EXIT
 
+# Each demo serves its own return bridge (GET /signing/return, from
+# esign-node), so its returnUrl is its own origin - derived here, never
+# inherited: a DOCUSIGN_RETURN_URL in the ambient environment (live.sh
+# sources packages/esign-service/.env) points at the SERVICE's port, which
+# would send DocuSign back to the wrong host. Deriving it also makes a local
+# run and CI identical - the env-var branch of live_env sets no return URL,
+# so CI used to boot these demos without one at all.
 start() { # <workspace> <port>
-  ESIGN_PROVIDER="$PROVIDER" PORT="$2" npm run dev -w "examples/$1" > "$LOG_DIR/$1.log" 2>&1 &
+  ESIGN_PROVIDER="$PROVIDER" PORT="$2" \
+    DOCUSIGN_RETURN_URL="http://localhost:$2/signing/return" \
+    npm run dev -w "examples/$1" > "$LOG_DIR/$1.log" 2>&1 &
   PIDS+=($!)
 }
 up() { # <name> <url> - the demo answers (2xx, or 4xx from a route that exists)

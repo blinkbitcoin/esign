@@ -95,7 +95,16 @@ which arrives as `client_id=***` when the integration key is a secret.
 | `missing configuration: DOCUSIGN_PRIVATE_KEY` | the variables resolved but the one secret did not (a fork PR, or the environment's secret is gone) | check the environment's secret and the trigger |
 | Playwright cannot find the Start button / sees a CAPTCHA | DocuSign challenged the runner's datacenter IP | nothing to fix in the repo; the API half still passed - run the browser half locally (`make e2e-live`) |
 | `the form did not advance past …` | the capability test form changed (a new required field) | update the defaults in `scripts/e2e/live.sh` |
+| `missing configuration: DOCUSIGN_RETURN_URL` | a demo booted without its own return-URL bridge; the local run hid it | already fixed - `server-demos-smoke.sh` derives each demo's<br>returnUrl from its port; do not re-add it to the job env |
 
 Everything above maps one to one onto the local run, which is the place to
 debug: [webforms.md](../integration/webforms.md), section "Live run against
 real DocuSign".
+
+The one asymmetry to watch for: locally `live_env` sources
+`packages/esign-service/.env` with `set -a`, so every value in that file leaks
+into everything the suite starts. In CI the `DOCUSIGN_*` job environment is
+exactly what `live_env`'s env-var branch exports and nothing more. A component
+that quietly relies on a leaked variable is therefore green locally and red in
+CI - so give each process the values it needs explicitly, the way
+`live_service_up` and `server-demos-smoke.sh`'s `start` do.
