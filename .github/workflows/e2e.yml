@@ -31,7 +31,7 @@ on:
         type: string
         default: ''
       live:
-        description: Run the live DocuSign suite (needs the docusign-demo environment secrets; docs/operations/live-e2e-ci.md)
+        description: Run the live DocuSign suite (needs the docusign-demo environment config; docs/operations/live-e2e-ci.md)
         type: boolean
         default: false
     outputs:
@@ -88,8 +88,10 @@ jobs:
 
   # Live DocuSign (opt-in, docs/operations/live-e2e-ci.md): the JWT grant,
   # a real Web Forms instance mint, and Playwright walking the real
-  # capability test form and tampering with its locked fields. Secrets come
-  # from the `docusign-demo` environment; the caller decides when this runs
+  # capability test form and tampering with its locked fields. The config
+  # comes from the `docusign-demo` environment - the RSA key as its one
+  # secret, the identifiers as variables, so a failing grant prints a usable
+  # consent URL instead of `client_id=***`; the caller decides when this runs
   # (never for fork PRs - they get no secrets). Mints instances on the demo
   # account, hence opt-in and serialized.
   live:
@@ -102,9 +104,9 @@ jobs:
       group: live-docusign
       cancel-in-progress: false
     env:
-      DOCUSIGN_INTEGRATION_KEY: ${{ secrets.DOCUSIGN_INTEGRATION_KEY }}
-      DOCUSIGN_USER_ID: ${{ secrets.DOCUSIGN_USER_ID }}
-      DOCUSIGN_ACCOUNT_ID: ${{ secrets.DOCUSIGN_ACCOUNT_ID }}
+      DOCUSIGN_INTEGRATION_KEY: ${{ vars.DOCUSIGN_INTEGRATION_KEY }}
+      DOCUSIGN_USER_ID: ${{ vars.DOCUSIGN_USER_ID }}
+      DOCUSIGN_ACCOUNT_ID: ${{ vars.DOCUSIGN_ACCOUNT_ID }}
       DOCUSIGN_PRIVATE_KEY: ${{ secrets.DOCUSIGN_PRIVATE_KEY }}
       DOCUSIGN_TEMPLATE_ID: ${{ vars.DOCUSIGN_TEMPLATE_ID }}
       DOCUSIGN_WEBFORM_ID: ${{ vars.DOCUSIGN_WEBFORM_ID }}
