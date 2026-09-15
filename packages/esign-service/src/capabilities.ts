@@ -1,7 +1,8 @@
 // What this deployment can do, decided by the environment alone.
 //
-// The mint (POST /webform/instance, the return-URL bridge, /health) is always
-// on: it needs no database and no state, so every target - a container, a
+// The mint (POST /webform/instance or POST /envelope/instance - mint.ts
+// decides which - plus the return-URL bridge and /health) is always on: it
+// needs no database and no state, so every target - a container, a
 // Vercel route, a Cloudflare Worker - serves it. Envelope orchestration (the
 // GraphQL API, the provider webhook, the Knex store and its migrations) needs
 // Postgres, so it follows DATABASE_URL: set it and the routes exist, leave it

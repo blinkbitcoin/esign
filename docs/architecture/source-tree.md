@@ -33,16 +33,16 @@ esign/
 │   └── packages/esign-node/
 │       ├── src/
 │       │   ├── index.ts           # Public API: client, domain, handlers, prefill ⭐
-│       │   ├── express.ts         # ./express entry: createESignRouter + createHostedFormRouter (mint-only preset), pages via signingPage.ts (express is a peer) ⭐
+│       │   ├── express.ts         # ./express entry: createESignRouter + createHostedFormRouter (mint-only preset) + createEnvelopeRouter (its envelope spelling), pages via signingPage.ts (express is a peer) ⭐
 │       │   ├── knex.ts            # ./knex entry: Knex EnvelopeStore + migration source (knex is a peer) ⭐
 │       │   ├── docusign.ts        # ./docusign entry: the DocuSign adapter on its own (peer-free) ⭐
 │       │   ├── knex/              #   store.ts, migrations.ts (ESIGN_MIGRATIONS, programmatic source)
 │       │   ├── envelopes.ts       # createEnvelopeService: rules, audit, webhook state machine ⭐
 │       │   ├── provider.ts        # ESignProvider port (+ hosted-form capability: supportsHostedForms, hostedFormMint)
-│       │   ├── registry.ts        # providerFromEnv + defaultRegistry (boot checks) + hostedFormProviderFromEnv: ESIGN_PROVIDER → adapter, lazily
+│       │   ├── registry.ts        # providerFromEnv + defaultRegistry (boot checks) + hostedFormProviderFromEnv / envelopeProviderFromEnv: ESIGN_PROVIDER → adapter, lazily
 │       │   ├── production.ts      # ESIGN_ENV=production guard: productionErrors / assertProductionConfig (provider-agnostic, never NODE_ENV)
 │       │   ├── store.ts           # EnvelopeStore port + in-memory implementation
-│       │   ├── handlers.ts        # Fetch-API mint + webhook handlers + createHostedFormApp (the whole mint-only surface); MintTarget = provider | mint fn ⭐
+│       │   ├── handlers.ts        # Fetch-API mint (Web Forms + envelope) + webhook handlers + createHostedFormApp / createEnvelopeApp (the whole mint-only surface, per mint); MintTarget = provider | mint fn ⭐
 │       │   ├── signingPage.ts     # Signing-page CSP + nonce; signingPageResponse (Fetch); signingPageExpress.ts is its Express spelling
 │       │   ├── graphql.ts         # SDL + resolvers factory (createESignGraphQL)
 │       │   ├── pages.ts           # Mock signing page + the neutral mock-form renderer (renderMockFormPage)
@@ -161,6 +161,7 @@ esign/
 │       │   ├── cloudflare.ts      # ./cloudflare: the Worker default export (mint only)
 │       │   ├── app.ts             # The Fetch core (createESignApp): capabilities → routes ⭐
 │       │   ├── capabilities.ts    # What the environment turns on (pure) ⭐
+│       │   ├── mint.ts            # The mint mode: Web Form or envelope, one entry each
 │       │   ├── session.ts         # Session verification: JWKS or HS256, via jose
 │       │   ├── terms.ts           # The TERMS_URL callback and its merge rule
 │       │   ├── envelopes.ts       # The envelope capability: Fetch webhook + Apollo (Node-only)
@@ -271,6 +272,7 @@ esign/
 |------|---------|
 | `packages/esign-service/src/app.ts` | The Fetch core (`createESignApp`) |
 | `packages/esign-service/src/capabilities.ts` | What the environment turns on |
+| `packages/esign-service/src/mint.ts` | The mint mode (`ESIGN_MINT_MODE`), one entry per way to mint |
 | `packages/esign-service/src/config.ts` | The boot guard (`validateConfig`) |
 | `packages/esign-service/src/schema.ts` | GraphQL API |
 | `packages/esign-service/src/envelopes.ts` | The envelope capability: webhook + GraphQL |

@@ -25,8 +25,8 @@ export const getConfig = (env: Env = process.env): DocuSignConfig => {
 
 // The settings this deployment's capabilities need: the JWT credentials
 // always, and the envelope template only when envelope orchestration is on
-// (a mint-only deployment sends no template-based envelopes). The hosted-form
-// settings are the boot guard's (config.ts, via hostedFormProviderFromEnv).
+// (a mint-only deployment sends no template-based envelopes). The mint's own
+// settings are the boot guard's (config.ts, via the mode's selectProvider).
 const requiredSettings = (env: Env): DocuSignConfigKey[] => [
   ...JWT_CREDENTIALS,
   ...(hasEnvelopes(env) ? (['templateId'] as const) : []),

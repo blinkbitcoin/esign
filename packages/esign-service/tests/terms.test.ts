@@ -4,6 +4,7 @@
 import { vi } from 'vitest';
 
 import {
+  createEnvelopeTerms,
   createTermsPrefill,
   DEFAULT_TERMS_TIMEOUT_MS,
   TERMS_FAILURE_MESSAGE,
@@ -206,5 +207,149 @@ describe('createTermsPrefill without an injected fetch', () => {
     await expect(terms({ userId: 'u', prefill: {}, request: request() })).rejects.toThrow(
       TERMS_FAILURE_MESSAGE
     );
+  });
+});
+
+// The envelope spelling: the host is asked with the client's signer beside its
+// prefill, and who signs is the host's to decide, like every value it locks
+describe('createEnvelopeTerms', () => {
+  // Synthetic signers - nothing here is anyone's data
+  const signer = { name: 'Test Signer', email: 'signer@example.com' };
+  const verified = { name: 'Verified Name', email: 'verified@example.com' };
+
+  const envelopeRequest = (authorization?: string): Request =>
+    new Request('https://api.example.com/envelope/instance', {
+      method: 'POST',
+      ...(authorization ? { headers: { authorization } } : {}),
+    });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  // Unlike the Web Forms merge: on an envelope the lock travels with each
+  // value, so a client entry the host did not name could lock a term the host
+  // never computed. The client's values reach the host as input, and nothing
+  // the host does not answer reaches the document.
+  it('posts the caller, the client prefill and signer, and mints exactly the reply', async () => {
+    const fetchStub = replyWith({
+      recipient: verified,
+      prefill: { total_usd: { value: '1000.00', locked: true } },
+    });
+    const terms = createEnvelopeTerms({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
+
+    const minted = await terms({
+      userId: 'user-1',
+      recipient: signer,
+      prefill: { total_usd: '1', notes: 'hi', fee_usd: { value: '0.00', locked: true } },
+      request: envelopeRequest('Bearer token-abc'),
+    });
+
+    expect(minted).toEqual({
+      recipient: verified,
+      prefill: { total_usd: { value: '1000.00', locked: true } },
+    });
+    const [url, init] = fetchStub.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(URL_);
+    expect(JSON.parse(init.body as string)).toEqual({
+      userId: 'user-1',
+      input: { total_usd: '1', notes: 'hi', fee_usd: { value: '0.00', locked: true } },
+      recipient: signer,
+    });
+    expect(new Headers(init.headers).get('authorization')).toBe('Bearer token-abc');
+  });
+
+  // A reply naming no term leaves the template its own values: the same
+  // envelope the no-callback path asks for, not one with an empty tab list
+  it('mints the signer the host names and no prefill when it names no term', async () => {
+    const terms = createEnvelopeTerms(
+      { url: URL_, timeoutMs: 1000 },
+      { fetch: replyWith({ prefill: {}, recipient: verified }) }
+    );
+
+    await expect(
+      terms({ userId: 'u', recipient: signer, request: envelopeRequest() })
+    ).resolves.toEqual({ recipient: verified, prefill: undefined });
+  });
+
+  it('asks with an empty input and no signer when the client sent neither', async () => {
+    const fetchStub = replyWith({ prefill: {}, recipient: verified });
+    const terms = createEnvelopeTerms({ url: URL_, timeoutMs: 1000 }, { fetch: fetchStub });
+
+    await terms({ userId: 'u', request: envelopeRequest() });
+
+    expect(
+      JSON.parse((fetchStub.mock.calls[0] as [string, RequestInit])[1].body as string)
+    ).toEqual({ userId: 'u', input: {} });
+  });
+
+  // Who signs is the host's to decide: a reply that names nobody must not
+  // leave the caller's signer in force with the host's locked terms attached
+  it('fails when the host names no signer', async () => {
+    const terms = createEnvelopeTerms(
+      { url: URL_, timeoutMs: 1000 },
+      { fetch: replyWith({ prefill: {} }) }
+    );
+
+    await expect(
+      terms({ userId: 'u', recipient: signer, request: envelopeRequest() })
+    ).rejects.toThrow(TermsError);
+  });
+
+  // A reply the envelope could not carry is a failure, never minted as sent
+  it('fails on a prefill outside the envelope contract', async () => {
+    const terms = createEnvelopeTerms(
+      { url: URL_, timeoutMs: 1000 },
+      { fetch: replyWith({ prefill: { total_usd: 1000 } }) }
+    );
+
+    await expect(
+      terms({ userId: 'u', recipient: signer, request: envelopeRequest() })
+    ).rejects.toThrow(TermsError);
+  });
+
+  it('fails on a signer without a name and an email', async () => {
+    for (const recipient of [{ name: 'Only A Name' }, 'verified@example.com', null, undefined]) {
+      const terms = createEnvelopeTerms(
+        { url: URL_, timeoutMs: 1000 },
+        { fetch: replyWith({ prefill: {}, recipient }) }
+      );
+
+      await expect(
+        terms({ userId: 'u', recipient: signer, request: envelopeRequest() })
+      ).rejects.toThrow(TermsError);
+    }
+  });
+
+  it('fails as the Web Form terms do when the host does not answer', async () => {
+    const terms = createEnvelopeTerms(
+      { url: URL_, timeoutMs: 1000 },
+      { fetch: replyWith({ error: 'nope' }, 500) }
+    );
+
+    await expect(terms({ userId: 'u', request: envelopeRequest() })).rejects.toThrow(
+      TERMS_FAILURE_MESSAGE
+    );
+  });
+
+  it('holds the reply to the prefill contract it is given', async () => {
+    const parsePrefill = vi.fn(() => ({ ok: false as const, error: 'host contract' }));
+    const terms = createEnvelopeTerms(
+      { url: URL_, timeoutMs: 1000 },
+      { fetch: replyWith({ prefill: {} }), parsePrefill }
+    );
+
+    await expect(terms({ userId: 'u', request: envelopeRequest() })).rejects.toThrow(TermsError);
+    expect(parsePrefill).toHaveBeenCalledWith({});
+  });
+
+  it('uses the platform fetch when none is injected', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ prefill: {}, recipient: verified })))
+    );
+    const terms = createEnvelopeTerms({ url: URL_, timeoutMs: 1000 });
+
+    await expect(
+      terms({ userId: 'u', recipient: signer, request: envelopeRequest() })
+    ).resolves.toEqual({ recipient: verified, prefill: undefined });
   });
 });

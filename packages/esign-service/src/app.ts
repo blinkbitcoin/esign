@@ -4,9 +4,10 @@
 // the boot guard runs once at construction (so a misconfigured function fails
 // at first import, exactly as a container fails at boot), the capabilities
 // decide which routes exist, and the routes themselves are the package's
-// presets - createHostedFormApp for the mint half, and, only when
-// DATABASE_URL turned envelopes on, this service's Fetch webhook + GraphQL
-// handlers, reached through the loader its entry supplied.
+// presets - the mint mode's (mint.ts: a Web Form, or an envelope under
+// ESIGN_MINT_MODE=envelope) for the mint half, and, only when DATABASE_URL
+// turned envelopes on, this service's Fetch webhook + GraphQL handlers,
+// reached through the loader its entry supplied.
 //
 // Node-only pieces (Apollo, Knex, `pg`) are reachable only through the
 // `loadEnvelopes` loader an entry hands in - this module never names
@@ -16,21 +17,23 @@
 // The host's two obligations are the two hooks:
 //   - session verification (JWKS or a shared secret) turns the caller's
 //     bearer token into the user id the mint locks the instance to
-//   - TERMS_URL computes what is actually minted, so a client value can
-//     never become a locked one
+//   - TERMS_URL computes what is actually minted (for an envelope, who signs
+//     it too), so a client value can never become a locked one unless the
+//     deployment opts in with ESIGN_ALLOW_CLIENT_PREFILL
 
-import { bearerToken, createHostedFormApp } from '@blinkbitcoin/esign-node';
+import { bearerToken } from '@blinkbitcoin/esign-node';
 
 import { type Capability, ENVELOPES, mockPagesEnabled } from './capabilities';
 import { ESIGN_ENV, getAllowedOrigins, type Runtime, validateConfig } from './config';
 import type { Env } from './env';
 import type { LoadEnvelopes } from './envelopes';
+import { isTermsFailure, mintModeFromEnv } from './mint';
 import { type MockPrefillLookup, selectProvider } from './providers';
 import { mockPageResponse } from './providers/pages';
 import type { ESignProvider } from './providers/port';
 import { trustsProxy } from './proxy';
 import { sessionVerifierFromEnv } from './session';
-import { createTermsPrefill, TERMS_FAILURE_MESSAGE, termsConfigFromEnv } from './terms';
+import { TERMS_FAILURE_MESSAGE, termsConfigFromEnv } from './terms';
 
 const HEALTH_PATH = '/health';
 const WEBHOOK_PATH = '/webhook/esign';
@@ -107,12 +110,6 @@ export const withDefaults = (response: Response, headers: Record<string, string>
   return response;
 };
 
-// The terms callback failed for this request. The mint's own error contract
-// (@blinkbitcoin/esign-node) maps an unrecognized throw to a generic 502, so
-// the reason is carried out here and the answer is rewritten with it: the
-// terms could not be computed, which is not a signing failure.
-const termsFailures = new WeakSet<Request>();
-
 export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}): ESignApp => {
   // Fail closed before anything is constructed: one message, every problem,
   // and the capabilities that were on.
@@ -126,32 +123,10 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
   const origins = getAllowedOrigins(env);
   const terms = termsConfigFromEnv(env);
   const mockPages = mockPagesEnabled(env);
+  const mode = mintModeFromEnv(env);
 
   const authenticate = (request: Request): Promise<string | null> =>
     verify(bearerToken(request.headers.get('authorization') ?? undefined) ?? '');
-
-  const lockedPrefill = terms ? createTermsPrefill(terms, { fetch: deps.fetch }) : undefined;
-
-  // The mint half: POST /webform/instance, the return-URL bridge, the CORS
-  // preflight. /health is this app's own (it reports the capabilities).
-  const hostedForm = createHostedFormApp({
-    provider,
-    authenticate,
-    health: false,
-    ...(origins.length > 0 ? { cors: { origins } } : {}),
-    ...(lockedPrefill
-      ? {
-          prefill: async (input) => {
-            try {
-              return await lockedPrefill(input);
-            } catch (error) {
-              termsFailures.add(input.request);
-              throw error;
-            }
-          },
-        }
-      : {}),
-  });
 
   // Envelope orchestration, built once and only when it is on, through the
   // loader the entry supplied. A target without one cannot serve the
@@ -176,9 +151,32 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
   // only marks the promise handled so it is not an unhandled rejection
   envelopes?.catch(() => undefined);
 
+  // The envelope domain, for a mint that creates through it: the same
+  // capability, so its failure surfaces on the first mint that needs it and,
+  // like the capability's, is only marked handled here
+  const domain = envelopes?.then((capability) => capability.envelopes);
+  domain?.catch(() => undefined);
+
+  // The mint half: the mode's endpoint with the return-URL bridge and the CORS
+  // preflight around it. /health is this app's own (it reports the
+  // capabilities).
+  const mint = mode.createApp({
+    provider,
+    authenticate,
+    origins,
+    terms,
+    fetch: deps.fetch,
+    envelopes: domain,
+  });
+
   const route = async (request: Request, url: URL): Promise<Response> => {
     if (request.method === 'GET' && url.pathname === HEALTH_PATH) {
-      return json({ status: 'ok', capabilities, timestamp: new Date().toISOString() });
+      return json({
+        status: 'ok',
+        capabilities,
+        mint: mode.name,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     if (envelopes && url.pathname === WEBHOOK_PATH && request.method === 'POST') {
@@ -196,7 +194,7 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
       }
     }
 
-    return hostedForm.fetch(request);
+    return mint.fetch(request);
   };
 
   return {
@@ -224,7 +222,7 @@ export const createESignApp = (env: Env = process.env, deps: ESignAppDeps = {}):
 
       const response = await route(request, url);
 
-      if (response.status === 502 && termsFailures.has(request)) {
+      if (response.status === 502 && isTermsFailure(request)) {
         return withDefaults(json({ error: TERMS_FAILURE_MESSAGE }, 502, cors), SECURITY_HEADERS);
       }
 

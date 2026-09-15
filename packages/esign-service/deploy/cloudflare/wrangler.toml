@@ -20,6 +20,10 @@ ESIGN_PROVIDER = "docusign"
 SESSION_JWKS_URL = "https://id.example.com/.well-known/jwks.json"
 TERMS_URL = "https://api.example.com/internal/esign/terms"
 DOCUSIGN_WEBFORM_ID = "change-me"
+# Or mint envelopes instead (POST /envelope/instance, one envelope from the
+# template; several ids, comma-separated, in that order) - no Web Form:
+# ESIGN_MINT_MODE = "envelope"
+# DOCUSIGN_TEMPLATE_ID = "change-me"
 DOCUSIGN_RETURN_URL = "https://esign.example.com/signing/return"
 DOCUSIGN_BASE_URL = "https://na4.docusign.net/restapi"
 DOCUSIGN_OAUTH_URL = "https://account.docusign.com"

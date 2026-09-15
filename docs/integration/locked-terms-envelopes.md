@@ -1,10 +1,11 @@
 # Locked terms on a template envelope: the recipe, API side
 
 The envelope counterpart of [locked-terms.md](locked-terms.md): the signer
-opens the agreement itself (mode 3, proxy envelopes), with the host's values
-already on the document and locked where the signer must not change them,
-instead of a Web Form that asks for them first. Nothing is configured at
-DocuSign for the lock: it travels with the value.
+opens the agreement itself (mode 3's envelope mint - `ESIGN_MINT_MODE=envelope`
+on the service, or the envelope preset in your own API - no database needed),
+with the host's values already on the document and locked where the signer
+must not change them, instead of a Web Form that asks for them first.
+Nothing is configured at DocuSign for the lock: it travels with the value.
 
 Read first, once: [docusign-lessons.md](docusign-lessons.md) (the rules that
 are not obvious, one page) and section 1 of
@@ -83,17 +84,37 @@ contractType, recipient, prefill)`) is the same contract one layer down;
 the mock provider keeps what it was sent (`getEnvelopePrefill(envelopeId)`)
 for the host's tests.
 
-**esign-service deployments**: the packaged service forwards a prefill
-through its tracing wrapper and envelope service, but nothing supplies one
-yet - resolving it server-side from `TERMS_URL`, as the mint does, is a
-follow-up. Until then, envelope prefill is for hosts that embed
-`@blinkbitcoin/esign-node`.
+**esign-service deployments**: `ESIGN_MINT_MODE=envelope` turns the mint
+into this recipe, with no database needed. `POST /envelope/instance` takes
+`{ recipient: { name, email }, prefill }` from the authenticated caller,
+checks the prefill with `parseEnvelopePrefill`, creates one envelope from
+`DOCUSIGN_TEMPLATE_ID` (several ids, one envelope, in that order) and
+answers `{ url, envelopeId }` (the Web Forms mint answers
+`{ url, instanceId }`). So the app needs its own minting call, one that
+sends the recipient unless the host names it; opening the URL is the same
+as for a Web Forms instance. With `TERMS_URL` set the service asks the host
+first: it POSTs `{ userId, input, recipient }` and mints exactly the host's
+`{ prefill, recipient }`. Unlike the Web Forms mint, nothing of the caller's
+is kept: on an envelope the lock travels with each value, so a caller entry
+the host did not name could lock a term the host never computed or unlock one
+the template locked. The prefill must satisfy the envelope contract (empty
+leaves the template its own values) and the `recipient` is required - who
+signs is the host's to decide, like every value it locks. Without `TERMS_URL` the
+caller's signer and prefill are minted as sent, and production needs
+`ESIGN_ALLOW_CLIENT_PREFILL=true`. With `DATABASE_URL` set the mint
+creates through the envelope service, so the envelope is stored and audited
+like one the GraphQL `createEnvelope` made (which still takes no prefill),
+and `envelopeId` is the stored id.
 
 ## 3. Verify
 
 - `make test-live` in `packages/esign-service` against the demo account
-  with the fixture: the created envelope's recipient view shows `reference`
-  filled and locked.
-- A two-id `DOCUSIGN_TEMPLATE_ID`: one signing session, both documents.
+  with the fixture (`tests/live/envelope-mint.live.test.ts`): the service
+  endpoint mints with `reference` locked, and the envelope's tabs read back
+  from DocuSign carry the value and the lock; two ids of the same fixture go
+  out as one envelope, one signing session, the value on both documents; a
+  stubbed `TERMS_URL` names the signer and the locked value over what the
+  caller sent. CI runs it on every `main` push and on a PR labelled
+  `e2e:live` ([operations/live-e2e-ci.md](../operations/live-e2e-ci.md)).
 - Then the same against the production account
   ([operations/production.md](../operations/production.md)).

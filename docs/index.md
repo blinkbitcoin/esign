@@ -38,8 +38,8 @@
 - **Entry Points:** `src/index.ts` (the core), `src/node.ts` (the process; also `npx esign-service`), `src/vercel.ts`, `src/cloudflare.ts`
 - **Capabilities by env:** the mint is always on; `DATABASE_URL` adds the GraphQL API, the webhook and the store. `GET /health` reports which
 - **Role:** The reference host for mode 3 (and the Web Forms mint endpoint); the backend every E2E suite runs against; ships as a container image (`ghcr.io/blinkbitcoin/esign-service`) and as a package with deploy templates in `deploy/`
-- **API:** mint at `POST /webform/instance`, bridge at `GET /signing/return`, health at `GET /health`; with envelopes, GraphQL at `/graphql` and the webhook at `/webhook/esign`
-- **The host's two obligations:** expose JWKS or share an HS256 secret (session verification), and expose `TERMS_URL` when the locked terms come from host data
+- **API:** mint at `POST /webform/instance` (or `POST /envelope/instance` under `ESIGN_MINT_MODE=envelope`), bridge at `GET /signing/return`, health at `GET /health`; with envelopes, GraphQL at `/graphql` and the webhook at `/webhook/esign`
+- **The host's two obligations:** expose JWKS or share an HS256 secret (session verification), and expose `TERMS_URL` when the locked terms (or an envelope mint's signer) come from host data
 
 #### Tooling (`scripts/`)
 - **Type:** `tooling` npm workspace: ci/, e2e/, release/ shell + node; `lib/*.mjs` Vitest-covered at 100%

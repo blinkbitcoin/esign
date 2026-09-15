@@ -8,7 +8,7 @@ flowchart TB
     end
 
     subgraph TierA["Tier A - in-process: your API imports esign-node"]
-        API["Your Node API<br/>createHostedFormRouter (Express)<br/>createHostedFormApp (Fetch)<br/>or one GraphQL mutation"]
+        API["Your Node API<br/>createHostedFormRouter / createEnvelopeRouter (Express)<br/>createHostedFormApp / createEnvelopeApp (Fetch)<br/>or one GraphQL mutation"]
         HOOKA["your authenticate() + prefill() hooks<br/>session and terms never leave your process"]
         API --> HOOKA
     end
@@ -17,9 +17,10 @@ flowchart TB
         ENTRY{"entries<br/>./node = the image · ./vercel<br/>./cloudflare = mint only"}
         APP["createESignApp(env)<br/>boot guard · CORS · security headers"]
         subgraph Mint["mint - always on"]
-            WFI[/"POST /webform/instance"/]
+            WFI[/"POST /webform/instance<br/>ESIGN_MINT_MODE=webform (default)"/]
+            EVI[/"POST /envelope/instance<br/>ESIGN_MINT_MODE=envelope"/]
             SP[/"GET /signing/return + mock pages"/]
-            HEALTH[/"GET /health -> capabilities"/]
+            HEALTH[/"GET /health -> capabilities + mint"/]
         end
         subgraph Envelopes["envelopes - only with DATABASE_URL"]
             GQL[/"/graphql (Apollo)"/]
@@ -28,7 +29,7 @@ flowchart TB
         end
         PROV{"ESignProvider<br/>providerFromEnv(ESIGN_PROVIDER)"}
         ENTRY --> APP
-        APP --> WFI & SP & HEALTH
+        APP --> WFI & EVI & SP & HEALTH
         APP -->|DATABASE_URL set| Envelopes
         GQL --> KNEX
         WH --> KNEX
@@ -36,7 +37,7 @@ flowchart TB
 
     subgraph Host["The host's two obligations (Tier B)"]
         IDP[["SESSION_JWKS_URL<br/>or SESSION_HS256_SECRET<br/>-> the user id"]]
-        TERMS[["TERMS_URL<br/>-> the locked prefill"]]
+        TERMS[["TERMS_URL<br/>-> the locked prefill<br/>(and an envelope's signer)"]]
     end
 
     subgraph External["External"]
@@ -46,6 +47,7 @@ flowchart TB
 
     CORE -->|"mint (REST)"| API
     CORE -->|"mint (REST)"| WFI
+    CORE -->|"mint (REST)"| EVI
     CORE -->|GraphQL - proxy mode| GQL
     RN -.->|embedded signing + bridge| SP
     WEB -.->|embedded signing + bridge| SP
@@ -54,6 +56,10 @@ flowchart TB
     WFI -->|verify the bearer token| IDP
     WFI -->|POST userId + input| TERMS
     WFI --> PROV
+    EVI -->|verify the bearer token| IDP
+    EVI -->|POST userId + input + recipient| TERMS
+    EVI --> PROV
+    EVI -->|DATABASE_URL set: stored| KNEX
     GQL --> PROV
     PROV -->|REST| DOCU
     DOCU -->|Connect webhook| WH

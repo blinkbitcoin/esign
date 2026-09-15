@@ -10,12 +10,14 @@ import {
 import {
   DOCUSIGN_DEMO_URLS,
   DocuSignConfigError,
+  ENVELOPE_SETTINGS,
   HOSTED_FORM_SETTINGS,
   JWT_CREDENTIALS,
 } from '../providers/docusign/config';
 import {
   defaultRegistry,
   ESIGN_PROVIDER_ENV,
+  envelopeProviderFromEnv,
   hostedFormProviderFromEnv,
   type ProviderRegistry,
   providerFromEnv,
@@ -397,5 +399,68 @@ describe('hostedFormProviderFromEnv', () => {
         { registry: noCapability, default: 'none' },
       ),
     ).toThrow('The selected provider cannot mint hosted forms');
+  });
+});
+
+describe('envelopeProviderFromEnv', () => {
+  const envelopeEnv = {
+    ...credentials,
+    DOCUSIGN_WEBFORM_ID: undefined,
+    DOCUSIGN_TEMPLATE_ID: 'membership,subscription',
+    DOCUSIGN_RETURN_URL: 'https://api.example.com/signing/return',
+  };
+
+  it('defaults to DocuSign and requires everything an envelope needs, not a Web Form', () => {
+    expect(ENVELOPE_SETTINGS).toEqual([
+      ...JWT_CREDENTIALS,
+      'templateId',
+      'returnUrl',
+    ]);
+    expect(() => envelopeProviderFromEnv({})).toThrow(
+      /DOCUSIGN_TEMPLATE_ID, DOCUSIGN_RETURN_URL/,
+    );
+    expect(() => envelopeProviderFromEnv(envelopeEnv)).not.toThrow();
+  });
+
+  // A template setting that names no template must fail at boot like an
+  // unset one, not on the first envelope
+  it('treats a template list naming no template as missing', () => {
+    expect(() =>
+      envelopeProviderFromEnv({ ...envelopeEnv, DOCUSIGN_TEMPLATE_ID: ' , ' }),
+    ).toThrow(/DOCUSIGN_TEMPLATE_ID/);
+  });
+
+  it('selects the mock when ESIGN_PROVIDER says so, and creates envelopes with it', async () => {
+    const provider = envelopeProviderFromEnv({
+      ESIGN_PROVIDER: 'mock',
+      MOCK_PAGES_ORIGIN: 'http://pages:4000',
+    });
+    const { signingUrl } = await provider.createEnvelope('u', 'agreement', {
+      name: 'Test Signer',
+      email: 'signer@example.com',
+    });
+    expect(signingUrl).toMatch(/^http:\/\/pages:4000\/signing\/mock\//);
+  });
+
+  it('refuses DocuSign on the demo hosts in production, unless demo is allowed', () => {
+    const production = { ...envelopeEnv, ESIGN_ENV: 'production' };
+    expect(() => envelopeProviderFromEnv(production)).toThrow(
+      ProductionConfigError,
+    );
+    expect(() =>
+      envelopeProviderFromEnv({ ...production, ESIGN_ALLOW_DEMO: 'true' }),
+    ).not.toThrow();
+  });
+
+  it('takes the registry, the default entry and a required set of its own', () => {
+    const r = registry();
+    expect(
+      envelopeProviderFromEnv({}, { registry: r.entries, default: 'mock' }),
+    ).toEqual({ name: 'mock' });
+    expect(() =>
+      envelopeProviderFromEnv(credentials, {
+        docusign: { required: JWT_CREDENTIALS },
+      }),
+    ).not.toThrow();
   });
 });

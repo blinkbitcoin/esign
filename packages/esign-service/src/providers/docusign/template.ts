@@ -15,6 +15,10 @@ export const TEMPLATE_NAME = 'esign proxy live template (demo fixture)';
 // optional one (an editable prefill)
 export const FIXTURE_TEXT_TABS = ['reference', 'notes'] as const;
 
+// The role the fixture's one recipient carries (the default
+// DOCUSIGN_SIGNER_ROLE): what an envelope from this template fills
+export const FIXTURE_SIGNER_ROLE = 'signer';
+
 // One tab anchored on a label the PDF prints, placed to its right
 const anchored = (anchorString: string, tabLabel: string, xOffset: string, yOffset: string) => ({
   documentId: '1',
@@ -24,6 +28,48 @@ const anchored = (anchorString: string, tabLabel: string, xOffset: string, yOffs
   anchorYOffset: yOffset,
   tabLabel,
 });
+
+// The two Text tabs as the template API wants them, anchored on the PDF's
+// own labels. Optional on purpose: a Text tab is required by default, and a
+// required tab nobody prefilled stops the signer from finishing the ceremony
+// - the proxy demo signs this fixture with no prefill at all.
+const FIXTURE_TAB_REQUIRED = 'false';
+
+export const FIXTURE_TEXT_TAB_DEFINITIONS = [
+  { ...anchored('Reference', FIXTURE_TEXT_TABS[0], '120', '-2'), width: '300' },
+  { ...anchored('Notes', FIXTURE_TEXT_TABS[1], '120', '-2'), width: '300' },
+].map((tab) => ({ ...tab, required: FIXTURE_TAB_REQUIRED }));
+
+// One Text tab as the account has it
+export interface AccountTextTab {
+  tabLabel: string;
+  tabId?: string;
+  required?: string;
+}
+
+// What an existing fixture in the account is missing, given the Text tabs it
+// carries: a template created before a tab was added to the definition keeps
+// the account on the old shape, and the envelope prefill then writes to a tab
+// that is not there (DocuSign answers 200 and drops the value).
+export const missingTextTabs = (
+  present: readonly AccountTextTab[]
+): typeof FIXTURE_TEXT_TAB_DEFINITIONS =>
+  FIXTURE_TEXT_TAB_DEFINITIONS.filter(
+    (tab) => !present.some((existing) => existing.tabLabel === tab.tabLabel)
+  );
+
+// The fixture's own tabs that the account still has on the wrong setting:
+// only `required` is reconciled, and only on tabs the definition names - a
+// position an operator moved in the web editor is theirs to keep.
+export const outdatedTextTabs = (
+  present: readonly AccountTextTab[]
+): { tabId: string; tabLabel: string; required: string }[] =>
+  present.flatMap((existing) => {
+    const defined = FIXTURE_TEXT_TAB_DEFINITIONS.find((tab) => tab.tabLabel === existing.tabLabel);
+    return defined && existing.tabId && existing.required !== defined.required
+      ? [{ tabId: existing.tabId, tabLabel: existing.tabLabel, required: defined.required }]
+      : [];
+  });
 
 export const templateDefinition = (documentBase64: string) => ({
   name: TEMPLATE_NAME,
@@ -43,16 +89,13 @@ export const templateDefinition = (documentBase64: string) => ({
   recipients: {
     signers: [
       {
-        roleName: 'signer',
+        roleName: FIXTURE_SIGNER_ROLE,
         recipientId: '1',
         routingOrder: '1',
         tabs: {
           signHereTabs: [anchored('Signature:', 'signature', '70', '-8')],
           dateSignedTabs: [anchored('Date signed:', 'date_signed', '80', '-2')],
-          textTabs: [
-            { ...anchored('Reference', 'reference', '120', '-2'), width: '300' },
-            { ...anchored('Notes', 'notes', '120', '-2'), width: '300' },
-          ],
+          textTabs: FIXTURE_TEXT_TAB_DEFINITIONS,
         },
       },
     ],

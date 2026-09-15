@@ -1,7 +1,7 @@
 # API Contracts - Backend
 
 **Part:** backend
-**Updated:** 2026-09-10
+**Updated:** 2026-09-14
 
 ## Overview
 
@@ -11,7 +11,9 @@ environment (`src/capabilities.ts`): the mint half is always served, and
 orchestration on. `GET /health` reports which.
 
 1. **REST Web Forms** - `POST /webform/instance` (authenticated) mints a
-   prefilled DocuSign Web Forms instance via the configured provider (always)
+   prefilled DocuSign Web Forms instance via the configured provider (always).
+   Under `ESIGN_MINT_MODE=envelope` the same slot is `POST /envelope/instance`,
+   which creates one envelope from the template and answers its signing URL
 2. **HTML signing pages** - `GET /signing/return` (the DocuSign return-URL
    bridge, always); `GET /signing/mock/:id`, `GET /signing/mock-webform/:id`
    (mock ceremonies for E2E, only with the mock provider and `MOCK_PAGES`
@@ -260,12 +262,14 @@ GET /health
 {
   "status": "ok",
   "capabilities": ["mint", "envelopes"],
+  "mint": "webform",
   "timestamp": "2026-09-10T12:00:00.000Z"
 }
 ```
 
 `capabilities` is `["mint"]` without `DATABASE_URL` and `["mint",
-"envelopes"]` with it - the deployment says what it serves.
+"envelopes"]` with it - the deployment says what it serves. `mint` is the
+`ESIGN_MINT_MODE` it answers with: `webform` (the default) or `envelope`.
 
 ### E-Sign Provider Webhook
 
@@ -346,12 +350,70 @@ enforced when set. The domain rejects `userId: null` with `UNAUTHORIZED`.
 | Status | Body | When |
 |--------|------|------|
 | `200` | `{ url, instanceId }` | Minted |
+| `400` | `{ "error": "Invalid JSON body" }` | The body is not JSON |
+| `400` | `{ "error": "Invalid body: expected a JSON object" }` | The body is JSON but not an object (an array, a string), refused before any check or hook |
 | `400` | `{ "error": "<reason>" }` | The prefill is outside the provider's contract (checked before any provider call), the provider cannot mint hosted forms, or the host's `prefill` hook threw `Errors.validationError(message)` |
 | `401` | `{ "error": "Unauthorized" }` | No verified session (or the hook threw `Errors.unauthorized()`) |
 | `502` | `{ "error": "..." }` | Minting failed - including a failed `TERMS_URL` callback, which answers `Could not compute the signing terms` |
 
 The same table, from the package's side, is
 [`packages/esign-node/README.md`](../../packages/esign-node/README.md).
+
+### Envelope mint (`POST /envelope/instance`)
+
+Served instead of `POST /webform/instance` under `ESIGN_MINT_MODE=envelope`
+(no database needed). The signer opens the documents themselves, with the
+prefill already on them. With `DATABASE_URL` set the envelope is also stored
+and audited, as one `createEnvelope` created: its status follows the
+webhook, `getSigningUrl` reopens it, and `envelopeId` is the stored id the
+GraphQL API takes. The envelope is created at the provider before it is
+stored, as with `createEnvelope`: when storing fails the answer is `502` and
+the envelope stays at the provider unrecorded.
+
+```json
+{
+  "recipient": { "name": "Jane Doe", "email": "jane@example.com" },
+  "prefill": {
+    "reference": { "value": "Q-1042", "locked": true },
+    "notes": "Anything to add?"
+  }
+}
+```
+
+Both fields are optional on the wire: the host's `TERMS_URL` may name the
+signer, and a prefill the caller did not send is not sent to the provider,
+so the template keeps its own values. The prefill contract is
+`parseEnvelopePrefill`: Text tab labels to a string or `{ value, locked? }`.
+
+| Status | Body | When |
+|--------|------|------|
+| `200` | `{ url, envelopeId }` | Created; `url` is the embedded signing URL (a Web Forms mint answers `{ url, instanceId }`); `envelopeId` is the provider's id, or the stored one with `DATABASE_URL` |
+| `400` | `{ "error": "Invalid JSON body" }` | The body is not JSON |
+| `400` | `{ "error": "Invalid body: expected a JSON object" }` | The body is JSON but not an object (an array, a string), refused before any check or hook |
+| `400` | `{ "error": "Invalid recipient: ..." }` | `recipient` is present but not `{ name, email }` strings |
+| `400` | `{ "error": "Invalid prefill: <reason>" }` | The prefill is outside the envelope contract (checked before any provider call) |
+| `400` | `{ "error": "recipient is required: a name and an email" }` | No signer was sent and no `TERMS_URL` names one (a host's own hook may name none too); a bad name or email answers the recipient validation's own message |
+| `401` | `{ "error": "Unauthorized" }` | No verified session |
+| `502` | `{ "error": "..." }` | Creating the envelope failed (`Could not create signing session`; the log names the error code only) - including a failed or invalid `TERMS_URL` answer, `Could not compute the signing terms` |
+
+### Terms callback (`TERMS_URL`)
+
+The service's own outbound call, made per mint when `TERMS_URL` is set:
+`POST` with the caller's `Authorization` header forwarded,
+`x-esign-terms-secret` when `TERMS_SHARED_SECRET` is set, and a
+`TERMS_TIMEOUT_MS` timeout (default 5000).
+
+| Mint | Request body | Answer |
+|------|--------------|--------|
+| Web Forms | `{ userId, input }` - `input` is the client's validated prefill | `{ prefill }`, laid over `input` key by key |
+| Envelope | `{ userId, input, recipient }` - `input` is the client's prefill (or `{}`), `recipient` the client's signer (absent when it sent none) | `{ prefill, recipient }`: the prefill is the whole of what is minted (nothing from `input` is kept, since on an envelope the lock travels with each value; an empty prefill leaves the template its own values) and must satisfy the envelope contract; the `recipient` is required, `{ name, email }` strings, and is who signs |
+
+A non-2xx, a timeout, a non-JSON answer or one without a prefill object -
+and, for an envelope, an out-of-contract prefill or a recipient that is
+missing or malformed - answers `502 Could not compute the signing terms`,
+never a fallback to what the client sent. Without `TERMS_URL` the client's values (for an envelope,
+its signer too) are minted as sent; `ESIGN_ENV=production` refuses that
+unless `ESIGN_ALLOW_CLIENT_PREFILL=true`.
 
 ### Webhook Security
 

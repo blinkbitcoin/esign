@@ -17,6 +17,7 @@ import {
   type DocuSignConfigKey,
   docuSignConfigFromEnv,
   docuSignDemoHostsInUse,
+  ENVELOPE_SETTINGS,
   type Env,
   HOSTED_FORM_SETTINGS,
   type ReadFile,
@@ -149,26 +150,52 @@ export const hostedFormProviderFromEnv = (
   env: Env,
   options: HostedFormProviderOptions = {},
 ): HostedFormProvider => {
+  const provider = providerRequiring(env, options, HOSTED_FORM_SETTINGS);
+  if (!supportsHostedForms(provider)) {
+    throw new Error('The selected provider cannot mint hosted forms');
+  }
+  return provider;
+};
+
+// ESIGN_PROVIDER over the registry given (default: defaultRegistry), DocuSign
+// unless set, with `required` as the settings the DocuSign entry checks when
+// the host declared none of its own. What both mint selections share.
+const providerRequiring = (
+  env: Env,
+  options: HostedFormProviderOptions,
+  required: readonly DocuSignConfigKey[],
+): ESignProvider => {
   const {
     registry,
     default: fallback,
     onUnknown,
     ...registryOptions
   } = options;
-  const provider = providerFromEnv(
+  return providerFromEnv(
     env,
     registry ??
       defaultRegistry(env, {
         ...registryOptions,
         docusign: {
           ...registryOptions.docusign,
-          required: registryOptions.docusign?.required ?? HOSTED_FORM_SETTINGS,
+          required: registryOptions.docusign?.required ?? required,
         },
       }),
     { default: fallback ?? 'docusign', onUnknown },
   );
-  if (!supportsHostedForms(provider)) {
-    throw new Error('The selected provider cannot mint hosted forms');
-  }
-  return provider;
 };
+
+// What envelopeProviderFromEnv takes: the same registry and selection as the
+// hosted-form host's
+export type EnvelopeProviderOptions = HostedFormProviderOptions;
+
+// The provider an envelope host mints with: ESIGN_PROVIDER over the default
+// registry, DocuSign unless set, with everything an envelope needs required
+// at selection time (the grant, the template list and the return URL).
+// Throws as hostedFormProviderFromEnv does - at boot, never on the first
+// request. Every provider creates envelopes, so there is no capability to
+// check.
+export const envelopeProviderFromEnv = (
+  env: Env,
+  options: EnvelopeProviderOptions = {},
+): ESignProvider => providerRequiring(env, options, ENVELOPE_SETTINGS);

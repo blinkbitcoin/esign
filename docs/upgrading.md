@@ -75,7 +75,9 @@ as well as for the rate limits: without it, `x-forwarded-for` is ignored
 everywhere (it is a caller-controlled header).
 
 New, optional: `TERMS_URL` (the host computes the prefill actually minted;
-its answer wins over client values key by key), `TERMS_SHARED_SECRET`,
+its answer wins over client values key by key on the Web Forms mint, and is
+minted whole with a required recipient on the envelope mint),
+`TERMS_SHARED_SECRET`,
 `TERMS_TIMEOUT_MS`, `TERMS_ALLOW_INSECURE` (production requires an https
 `TERMS_URL` unless its host is private - loopback, `*.svc`,
 `*.svc.cluster.local`, `*.internal` - because the callback carries the
@@ -112,6 +114,38 @@ bridge can delete that code.
 disk. `defaultRegistry(env, options)` takes `docusign.required`: the
 settings that must be present when the DocuSign entry is selected (nothing
 by default, so existing hosts are unaffected).
+
+## Additive: the envelope mint
+
+Nothing changes for an existing deployment or host: unset, `ESIGN_MINT_MODE`
+is `webform`, and every route answers as before.
+
+`@blinkbitcoin/esign-service`, new, optional: `ESIGN_MINT_MODE` (`webform`,
+the default, or `envelope`: `POST /envelope/instance` takes
+`{ recipient, prefill }`, creates one envelope from `DOCUSIGN_TEMPLATE_ID`
+and answers `{ url, envelopeId }`, served instead of `POST /webform/instance`
+and with no database; any other value refuses to start) and
+`RATE_LIMIT_ENVELOPE_PER_MIN` (default 60, container only). `TERMS_URL`
+applies to the envelope mint too: the callback also receives the client's
+`recipient` and may answer the one who signs. `GET /health` now answers
+`{ status, capabilities, mint, timestamp }` (the extra field is additive).
+
+`@blinkbitcoin/esign-node`, new exports:
+
+| You want | Use |
+|---|---|
+| The envelope mint's HTTP decisions, framework-free | `mintEnvelopeInstanceHttp({ userId, body, mint, parsePrefill?,`<br>`logger? })` - `401`, `400` with the reason, `502`,<br>`200 { url, envelopeId }` |
+| `POST /envelope/instance` as a Fetch handler | `createEnvelopeInstanceHandler({ provider or mint, authenticate })` |
+| The whole envelope mint surface (mint + return bridge + health) | `createEnvelopeApp({ ... }).fetch`; on Express, `createEnvelopeRouter`<br>(`@blinkbitcoin/esign-node/express`, `middleware.envelope`) |
+| Decide who signs and what the envelope locks, server-side | the envelope presets' `terms` hook: it receives<br>`{ userId, recipient?, prefill? }` and returns `{ recipient?, prefill? }` |
+| The provider an envelope mint needs, checked at boot | `envelopeProviderFromEnv(env, options?)` - `ESIGN_PROVIDER`,<br>DocuSign by default, `ENVELOPE_SETTINGS` required |
+
+Their types are exported too: `EnvelopeAppOptions`, `EnvelopeAppTermsInput`,
+`EnvelopeHandlerOptions`, `EnvelopeInstanceHandlerOptions`,
+`EnvelopeInstanceResult`, `EnvelopeMintFn`, `EnvelopeMintHttpInput`,
+`EnvelopeMintRequest`, `EnvelopeMintTarget`, `EnvelopePrefillParser`,
+`EnvelopeTermsHook`, `EnvelopeTermsInput`, `ParsedEnvelopeMintPrefill` and
+`EnvelopeProviderOptions`. `ESignRouterMiddleware` gained `envelope`.
 
 ## Deprecated names (kept until the next major)
 

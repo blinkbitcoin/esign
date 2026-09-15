@@ -25,10 +25,11 @@ describe('rateLimitsFromEnv', () => {
     expect(
       rateLimitsFromEnv({
         RATE_LIMIT_WEBFORM_PER_MIN: '5',
+        RATE_LIMIT_ENVELOPE_PER_MIN: '8',
         RATE_LIMIT_WEBHOOK_PER_MIN: '6',
         RATE_LIMIT_GRAPHQL_PER_MIN: '7',
       })
-    ).toEqual({ webform: 5, webhook: 6, graphql: 7 });
+    ).toEqual({ webform: 5, envelope: 8, webhook: 6, graphql: 7 });
   });
 
   it('ignores a value that is not a number or is negative', () => {
@@ -75,9 +76,9 @@ describe('sweepWindows', () => {
 });
 
 describe('createRateLimiter', () => {
-  const limits = { webform: 2, webhook: 2, graphql: 2 };
+  const limits = { webform: 2, envelope: 2, webhook: 2, graphql: 2 };
 
-  it('does not limit routes outside the three API endpoints', () => {
+  it('does not limit routes outside the four API endpoints', () => {
     const limiter = createRateLimiter(limits);
     expect(limiter('/health', 'ip')).toBeUndefined();
     expect(limiter('/signing/return', 'ip')).toBeUndefined();
@@ -85,7 +86,7 @@ describe('createRateLimiter', () => {
 
   it('limits each API route', () => {
     const limiter = createRateLimiter(limits);
-    for (const path of ['/webform/instance', '/webhook/esign', '/graphql']) {
+    for (const path of ['/webform/instance', '/envelope/instance', '/webhook/esign', '/graphql']) {
       expect(limiter(path, 'ip')?.allowed).toBe(true);
       expect(limiter(path, 'ip')?.allowed).toBe(true);
       expect(limiter(path, 'ip')?.allowed).toBe(false);
@@ -129,7 +130,10 @@ describe('createRateLimiter', () => {
     // A flood from many source addresses: the limiter sweeps at the cap, so
     // the windows it keeps stay bounded rather than one per address forever
     let now = 1_000;
-    const limiter = createRateLimiter({ webform: 1, webhook: 1, graphql: 1 }, () => now);
+    const limiter = createRateLimiter(
+      { webform: 1, envelope: 1, webhook: 1, graphql: 1 },
+      () => now
+    );
 
     for (let i = 0; i < RATE_LIMIT_MAX_WINDOWS + 100; i += 1) {
       // Half the clients' windows have elapsed by the time the cap is hit

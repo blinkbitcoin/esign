@@ -26,6 +26,18 @@ export {
 export type { ESignGraphQLOptions, GraphQLContext } from './graphql';
 export { createESignGraphQL, typeDefs } from './graphql';
 export type {
+  EnvelopeAppOptions,
+  EnvelopeAppTermsInput,
+  EnvelopeHandlerOptions,
+  EnvelopeInstanceHandlerOptions,
+  EnvelopeInstanceResult,
+  EnvelopeMintFn,
+  EnvelopeMintHttpInput,
+  EnvelopeMintRequest,
+  EnvelopeMintTarget,
+  EnvelopePrefillParser,
+  EnvelopeTermsHook,
+  EnvelopeTermsInput,
   HostedFormApp,
   HostedFormAppCors,
   HostedFormAppOptions,
@@ -35,23 +47,43 @@ export type {
   HostedFormPrefillHook,
   HostedFormPrefillInput,
   HttpResult,
+  MintAppOptions,
+  MintAppSurfaceOptions,
   MintFn,
+  MintHandlerOptions,
+  MintHook,
   MintHttpInput,
+  MintInstanceHttpInput,
+  MintKind,
+  MintKindTarget,
+  MintOf,
   MintTarget,
+  ParsedEnvelopeMintPrefill,
   ParsedPrefill,
+  ParsedRequest,
   PrefillParser,
   WebFormInstanceHandlerOptions,
+  WebFormMintRequest,
   WebhookHandlerOptions,
   WebhookHttpInput,
 } from './handlers';
 // --- Wire layer pieces that need no framework --------------------------------
 export {
+  createEnvelopeApp,
+  createEnvelopeInstanceHandler,
   createHostedFormApp,
   createHostedFormInstanceHandler,
+  createMintApp,
+  createMintHandler,
   createWebFormInstanceHandler,
   createWebhookHandler,
+  ENVELOPE_MINT,
+  envelopeMint,
+  mintEnvelopeInstanceHttp,
+  mintInstanceHttp,
   mintWebFormInstanceHttp,
   processWebhookHttp,
+  WEB_FORM_MINT,
 } from './handlers';
 export type { ValidateHmacOptions } from './hmac';
 export { validateHmac } from './hmac';
@@ -121,6 +153,7 @@ export {
   DocuSignConfigError,
   docuSignConfigFromEnv,
   docuSignDemoHostsInUse,
+  ENVELOPE_SETTINGS,
   HOSTED_FORM_SETTINGS,
   isDocuSignDemoHost,
   JWT_CREDENTIALS,
@@ -180,6 +213,7 @@ export type {
 export { createMockProvider } from './providers/mock/provider';
 export type {
   DefaultRegistryOptions,
+  EnvelopeProviderOptions,
   HostedFormProviderOptions,
   ProviderFromEnvOptions,
   ProviderRegistry,
@@ -187,6 +221,7 @@ export type {
 export {
   defaultRegistry,
   ESIGN_PROVIDER_ENV,
+  envelopeProviderFromEnv,
   hostedFormProviderFromEnv,
   providerFromEnv,
 } from './registry';

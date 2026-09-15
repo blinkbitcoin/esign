@@ -2,7 +2,7 @@
 
 **Part:** backend
 **Type:** Fetch-native service, capability by environment
-**Updated:** 2026-09-10
+**Updated:** 2026-09-14
 
 ## Technology Stack
 
@@ -34,6 +34,7 @@ createESignApp(env)  - boot guard, session verification, CORS, headers
     ↓
 ┌────────────────────────────────────────────────────────────┐
 │  ALWAYS: POST /webform/instance  → TERMS_URL → the provider │
+│          (or POST /envelope/instance, ESIGN_MINT_MODE)      │
 │          GET  /signing/return, GET /health                  │
 │  DATABASE_URL: /graphql (Apollo)   POST /webhook/esign      │
 │      └── Resolvers                 └── ESignProvider        │
@@ -56,11 +57,16 @@ packages/esign-service/src/
 ├── vercel.ts         # ./vercel: GET/POST/OPTIONS route handlers
 ├── cloudflare.ts     # ./cloudflare: the Worker default export (mint only)
 ├── app.ts            # The Fetch core (createESignApp): capabilities → routes, with
-│                     #   session verification, locked terms, CORS and the security
-│                     #   headers around the package's createHostedFormApp
+│                     #   session verification, CORS and the security headers
+│                     #   around the mint mode's preset
 ├── capabilities.ts   # What the environment turns on (pure)
+├── mint.ts           # The mint mode (ESIGN_MINT_MODE): one entry per way to mint -
+│                     #   its provider selection, its terms hook, its preset
+│                     #   (createHostedFormApp or createEnvelopeApp)
 ├── session.ts        # Session verification: JWKS or HS256, via jose (pure factory)
 ├── terms.ts          # The TERMS_URL callback: the host's prefill wins key by key
+│                     #   (for an envelope, the host's reply is minted whole and
+│                     #   its recipient signs)
 ├── envelopes.ts      # The envelope capability: Fetch webhook + Apollo over Fetch
 │                     #   (Node-only; reached only by dynamic import)
 ├── schema.ts         # createGraphQL(envelopes): typeDefs + resolvers from the package
@@ -313,7 +319,7 @@ npm run test:e2e
 | ID protection | Internal UUIDs only; provider envelope IDs never exposed |
 | User scoping | All envelope queries filtered by userId (no info leak on miss) |
 | Audit logging | All actions tracked; metadata sanitized against a PII allow-list |
-| Fail-fast config | `configErrors` (`src/config.ts`) aborts startup on any problem: no session source, bad provider config, demo settings under `ESIGN_ENV=production`, a bad/plaintext `TERMS_URL`, a missing `DOCUSIGN_HMAC_KEY` with envelopes + docusign, `DATABASE_URL` on edge |
+| Fail-fast config | `configErrors` (`src/config.ts`) aborts startup on any problem: no session source, an unknown `ESIGN_MINT_MODE`, bad provider config (the Web Form's settings, or under `ESIGN_MINT_MODE=envelope` the template's), demo settings under `ESIGN_ENV=production`, a bad/plaintext `TERMS_URL`, a missing `DOCUSIGN_HMAC_KEY` with envelopes + docusign, `DATABASE_URL` on edge |
 
 ## Environment Variables
 
@@ -323,10 +329,11 @@ npm run test:e2e
 | `SESSION_JWKS_URL` | Remote key set (RS/ES) for session verification |
 | `SESSION_HS256_SECRET` | Shared secret instead of a key set (`JWT_SECRET` is an accepted alias) |
 | `SESSION_ISSUER` / `SESSION_AUDIENCE` / `SESSION_USER_CLAIM` | Enforced when set; claim default `sub` |
-| `TERMS_URL`, `TERMS_SHARED_SECRET`, `TERMS_TIMEOUT_MS`, `TERMS_ALLOW_INSECURE` | The host callback that computes the locked prefill |
+| `TERMS_URL`, `TERMS_SHARED_SECRET`, `TERMS_TIMEOUT_MS`, `TERMS_ALLOW_INSECURE` | The host callback that computes the locked prefill (and, for an envelope mint, may name the signer) |
 | `ESIGN_ENV` / `ESIGN_ALLOW_DEMO` | `production` refuses demo settings and disables introspection; `true` is the one bypass |
-| `ESIGN_ALLOW_CLIENT_PREFILL` | Mint the client's own prefill in production |
+| `ESIGN_ALLOW_CLIENT_PREFILL` | Mint the client's own prefill (and an envelope's signer) in production |
 | `ESIGN_PROVIDER` | Provider selection: `mock` (default) / `docusign` |
+| `ESIGN_MINT_MODE` | What the mint answers with: `webform` (default, `POST /webform/instance`) / `envelope` (`POST /envelope/instance`, one envelope from `DOCUSIGN_TEMPLATE_ID`); anything else refuses to start |
 | `MOCK_PAGES` | `false` turns the mock provider's signing pages off |
 | `DOCUSIGN_*` | DocuSign credentials (required when provider=docusign) |
 | `DOCUSIGN_HMAC_KEY` | Webhook HMAC key (required when envelopes are on and the provider signs) |
@@ -349,8 +356,9 @@ runnable template: `packages/esign-service/.env.example`.
 | `src/server.ts` | `./node`: `startServer(env, deps) → { url, stop }` over `@hono/node-server`, with the rate limits and the SIGTERM drain |
 | `src/vercel.ts` | `./vercel`: `export { GET, POST, OPTIONS }` |
 | `src/cloudflare.ts` | `./cloudflare`: `export default { fetch(request, env) }` (mint only) |
-| `POST /webform/instance` | Mint a hosted-form instance (always on) |
+| `POST /webform/instance` | Mint a hosted-form instance (always on, unless `ESIGN_MINT_MODE=envelope`) |
+| `POST /envelope/instance` | Create one envelope from `DOCUSIGN_TEMPLATE_ID` and answer `{ url, envelopeId }` (instead of `/webform/instance`, under `ESIGN_MINT_MODE=envelope`; stored and audited with `DATABASE_URL`) |
 | `GET /signing/return` | The return-URL bridge (always on) |
 | `POST /graphql` | GraphQL endpoint (with `DATABASE_URL`) |
 | `POST /webhook/esign` | Provider webhook endpoint (with `DATABASE_URL`) |
-| `GET /health` | Health check: `{ status, capabilities, timestamp }` |
+| `GET /health` | Health check: `{ status, capabilities, mint, timestamp }` (`mint`: `webform` or `envelope`) |

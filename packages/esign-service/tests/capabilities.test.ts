@@ -1,5 +1,6 @@
 // The capability set is decided by the environment alone: the mint is
-// always on, envelope orchestration follows DATABASE_URL.
+// always on (which one is mint.ts's), envelope orchestration follows
+// DATABASE_URL.
 
 import {
   capabilitiesFromEnv,

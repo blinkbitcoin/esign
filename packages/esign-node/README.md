@@ -157,7 +157,7 @@ files, knexfile or TypeScript loader are needed at runtime; `rollback` and
 
 ## As a serverless / route handler (no framework)
 
-The two endpoints exist as Fetch API `Request → Response` handlers, the
+The endpoints exist as Fetch API `Request → Response` handlers, the
 shape Vercel and Netlify functions, Next.js route handlers and Lambda
 adapters mount directly. Keep the config at module scope so a warm instance
 reuses its access token; a cold start costs one token exchange.
@@ -184,6 +184,34 @@ stays DocuSign's, so the `400` reasons do not change). Both answer the same stat
 (`401`, `400` with the reason, `502` / `500`), because both call the same
 `mintWebFormInstanceHttp` / `processWebhookHttp` decision functions. Runs
 on Node runtimes (needs `node:crypto`); not on edge runtimes.
+
+The envelope mint has the same shape:
+`createEnvelopeInstanceHandler({ provider, authenticate, parsePrefill? })`
+(or `{ mint }`: `envelopeMint(provider)`, over any `createEnvelope`, or your
+own) takes `{ recipient: { name, email }, prefill }`, creates one
+envelope from the provider's template (or templates) and answers
+`{ url, envelopeId }` where a Web Forms mint answers `{ url, instanceId }`.
+Its decisions are `mintEnvelopeInstanceHttp`: `401`; `400` for a body that
+is not JSON or is JSON but not an object (`Invalid body: expected a JSON
+object`, both mints), for `Invalid recipient: …` and for `Invalid prefill: …` (the
+contract is `parseEnvelopePrefill`: Text tab labels to a string or
+`{ value, locked? }`), all before any provider call; `400 recipient is
+required: a name and an email` when no signer is named; `502 Could not
+create signing session` when creating the envelope fails (logged by error
+code only). A prefill the caller did not send is not sent to the provider,
+so the template keeps its own values.
+
+The two mints are one stack. A `MintKind` (`WEB_FORM_MINT`, `ENVELOPE_MINT`)
+is the three things that differ - the request parser (the body as the mint's
+input), the prefill parser (the contract the `400` reasons come from) and
+the provider call - plus the kind's names for itself (its path and its two
+messages); everything around a kind exists once and takes it -
+`mintInstanceHttp(kind, …)` (the decision), `createMintHandler(kind, …)`
+(the Fetch handler), `createMintApp(kind, …)` (the Fetch surface) and
+`createMintRouter(kind, …)` (the Express surface). The named presets above
+are those over their kind, the contract is tested once for both, and a
+structural test asserts every preset reaches its kind. A third way to mint
+is a third kind, not a third copy of the stack.
 
 The return-URL bridge every Web Forms host serves is a `Response` too:
 
@@ -227,6 +255,7 @@ const { typeDefs, resolvers } = createESignGraphQL({ envelopes }); // → your A
 |---|---|
 | `GET /health` | `{ status, timestamp }` |
 | `POST /webform/instance` | mint for the authenticated caller (`401`), validated prefill (`400` with the<br>reason), a `prefill` hook throwing `Errors.validationError`/`unauthorized`<br>(`400`/`401` too), provider failure `502` |
+| `POST /envelope/instance` | `createEnvelopeRouter` only (below): the envelope mint for the<br>authenticated caller (`401`), a validated `recipient` and prefill (`400`<br>with the reason), no signer after the `terms` hook (`400`), provider<br>failure `502`, else `200 { url, envelopeId }` |
 | `POST /webhook/esign` | raw-body signature check (`401`), parse (`400`), `handleWebhookEvent` (`500` =<br>retry, `200 { received: true }`) |
 | `GET /signing/return` | the return-URL bridge for real DocuSign (postMessage protocol, nonce<br>CSP) |
 | `GET /signing/mock/:id`, `GET /signing/mock-webform/:id` | the mock provider's pages, when `mockPages` is given |
@@ -296,6 +325,57 @@ a `prefill` hook's own `Errors.validationError`/`unauthorized`, `502`)
 because both go through `mintWebFormInstanceHttp`; anything else is a
 `404`.
 
+#### The envelope spelling
+
+A host whose signer opens the documents themselves - the values already on
+them, locked where the signer must not change them - mounts the envelope
+preset instead. Same surface, but `POST /envelope/instance` creates one
+envelope from the provider's template (or templates, one envelope) and
+answers `{ url, envelopeId }`:
+
+```ts
+import { createEnvelopeRouter } from '@blinkbitcoin/esign-node/express';
+import { bearerToken, envelopeProviderFromEnv } from '@blinkbitcoin/esign-node';
+
+app.use(createEnvelopeRouter({
+  provider: envelopeProviderFromEnv(process.env),        // the grant, DOCUSIGN_TEMPLATE_ID, DOCUSIGN_RETURN_URL
+  authenticate: req => yourAuth(bearerToken(req.headers.authorization)), // user id or null
+  terms: ({ userId, prefill }) => ({                     // who signs and what is locked
+    recipient: yourSigner(userId),                       // { name, email }
+    prefill: { ...prefill, ...yourLockedTabs(userId) },
+  }),
+}));
+```
+
+The body is `{ recipient?: { name, email }, prefill? }`, the prefill Text
+tab labels to a string or `{ value, locked? }` (`parseEnvelopePrefill`).
+The `terms` hook receives the caller's *validated* signer and prefill and
+returns the ones the envelope is created with; it rejects a request the
+way the `prefill` hook does (`Errors.validationError` → `400`,
+`Errors.unauthorized()` → `401`). Without a hook both are minted as sent,
+so any authenticated caller chooses who signs: DocuSign's envelope
+`clientUserId` is the signer's email, not the session's user id. A request
+left with no signer is `400 recipient is required: a name and an email`.
+
+`envelopeProviderFromEnv` is `hostedFormProviderFromEnv` for this preset:
+the same `ESIGN_PROVIDER` selection and production refusal, with
+`ENVELOPE_SETTINGS` required instead of `HOSTED_FORM_SETTINGS` (the grant,
+`templateId` and `returnUrl`; a template list naming no template counts as
+missing). Every provider creates envelopes, so there is no capability to
+check.
+
+| Option | Router (`createEnvelopeRouter`) | App (`createEnvelopeApp`) |
+|---|---|---|
+| target | `{ provider }` or `{ mint }` | same |
+| mint path | `path` (default `/envelope/instance`) | same |
+| terms hook | `({ userId, recipient, prefill, req })` | `({ userId, recipient, prefill, request })` |
+| health | `health` (default `true`) | same |
+| CORS | `middleware.cors` + `middleware.envelope` | `cors: { origins }` |
+| pages | `GET /signing/return` | same |
+
+Both go through `mintEnvelopeInstanceHttp`, so they answer the same status
+codes; anything else is a `404`.
+
 ## The DocuSign adapter (`@blinkbitcoin/esign-node/docusign`)
 
 Everything DocuSign-specific is also on its own entry, peer-free: the
@@ -317,20 +397,20 @@ import { createDocuSignProvider, docuSignConfigFromEnv } from '@blinkbitcoin/esi
 |---|---|---|
 | `@blinkbitcoin/esign-node` | everything: domain, ports, registry, handlers, pages, DocuSign + mock<br>adapters | none |
 | `@blinkbitcoin/esign-node/docusign` | the DocuSign adapter | none |
-| `@blinkbitcoin/esign-node/express` | `createESignRouter`, `createHostedFormRouter`,<br>`mountDocuSignPages` | `express` |
+| `@blinkbitcoin/esign-node/express` | `createESignRouter`, `createHostedFormRouter`,<br>`createEnvelopeRouter`, `mountDocuSignPages` | `express` |
 | `@blinkbitcoin/esign-node/knex` | the Postgres store + migrations | `knex` (types only) |
 
 ## Configuration
 
 | Variable | Setting | Notes |
 |---|---|---|
-| `ESIGN_PROVIDER` | provider | the registry entry to select (`docusign`, `mock`); the hosted-form<br>presets default to `docusign` |
+| `ESIGN_PROVIDER` | provider | the registry entry to select (`docusign`, `mock`); the hosted-form<br>and envelope presets (`hostedFormProviderFromEnv`,<br>`envelopeProviderFromEnv`) default to `docusign` |
 | `ESIGN_ENV` | boot guard | `production` refuses a demo provider and demo DocuSign hosts, at<br>selection time; `NODE_ENV` is never the gate |
 | `ESIGN_ALLOW_DEMO` | boot guard | `true` allows demo settings under `ESIGN_ENV=production` (a staging<br>deployment on the sandbox) |
 | `DOCUSIGN_INTEGRATION_KEY`, `DOCUSIGN_USER_ID`, `DOCUSIGN_ACCOUNT_ID`,<br>`DOCUSIGN_PRIVATE_KEY` | JWT grant | consent granted once per integration key |
 | `DOCUSIGN_PRIVATE_KEY_BASE64`, `DOCUSIGN_PRIVATE_KEY_FILE` | JWT grant | the same PEM base64-encoded, or a file (a mounted secret); used in<br>that order after `DOCUSIGN_PRIVATE_KEY`, literal `\n` normalised |
 | `DOCUSIGN_WEBFORM_ID` | Web Forms | the form to mint instances of |
-| `DOCUSIGN_TEMPLATE_ID` | envelopes | only for template envelopes; several ids, comma-separated,<br>go out as one envelope in that order |
+| `DOCUSIGN_TEMPLATE_ID` | envelopes | only for template envelopes; several ids, comma-separated,<br>go out as one envelope in that order. `envelopeProviderFromEnv`<br>requires it (`ENVELOPE_SETTINGS`: the grant, this and<br>`DOCUSIGN_RETURN_URL`) |
 | `DOCUSIGN_SIGNER_ROLE` | envelopes | the template role the signer fills (default `signer`) |
 | `DOCUSIGN_RETURN_URL` | both | default `returnUrl` for instances / signing views |
 | `DOCUSIGN_BASE_URL`, `DOCUSIGN_OAUTH_URL`, `DOCUSIGN_WEBFORMS_BASE_URL` | hosts | default to the developer (demo) environment |

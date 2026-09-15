@@ -1,6 +1,6 @@
 # Security Model — packages/esign-service
 
-**Updated:** 2026-09-10
+**Updated:** 2026-09-14
 
 The service's security posture, as the code enforces it. Controls are checked
 once at boot and then per request; the defaults are fail-closed.
@@ -19,11 +19,15 @@ Vercel/Cloudflare function fails at first import. It refuses:
 
 - **no session source**: neither `SESSION_JWKS_URL` nor `SESSION_HS256_SECRET`
   (`JWT_SECRET` is an accepted alias)
-- an unknown `ESIGN_PROVIDER`, or a provider missing what a mint needs
+- an unknown `ESIGN_PROVIDER`, or a provider missing what a mint needs (the
+  Web Form and the return URL; under `ESIGN_MINT_MODE=envelope`, the
+  template and the return URL)
+- an `ESIGN_MINT_MODE` other than `webform` or `envelope`
 - under `ESIGN_ENV=production`: the mock provider, and DocuSign hosts still
   pointing at the sandbox (`ESIGN_ALLOW_DEMO=true` is the one bypass)
 - under `ESIGN_ENV=production`: no `TERMS_URL`, unless
-  `ESIGN_ALLOW_CLIENT_PREFILL=true`; and a plaintext `http:` `TERMS_URL`
+  `ESIGN_ALLOW_CLIENT_PREFILL=true` (under `ESIGN_MINT_MODE=envelope` that
+  opt-in covers the client's signer too); and a plaintext `http:` `TERMS_URL`
   unless the host is private (loopback, `*.svc`, `*.svc.cluster.local`,
   `*.internal`) or `TERMS_ALLOW_INSECURE=true`
 - `DOCUSIGN_HMAC_KEY` missing when envelopes are on **and** the provider is
@@ -91,12 +95,15 @@ their equivalents are hand-set here.
   same-origin` and HSTS. The signing pages bring their own nonce-based CSP
   (below) and keep it.
 - **CORS**: allow-list from `CORS_ALLOWED_ORIGINS` (comma-separated),
-  echoed back with `Vary: origin`; empty means same-origin only. `/graphql`
-  gets its own preflight.
+  echoed back with `Vary: origin`; empty means same-origin only. The mint's
+  preflight is the package preset's (`createHostedFormApp`, or
+  `createEnvelopeApp` under `ESIGN_MINT_MODE=envelope`); `/graphql` gets its
+  own preflight.
 - **Rate limiting** is **container-only** (`src/server.ts`): an in-memory
   fixed window per client, per route, per minute — 60 on
-  `/webform/instance`, 120 on `/webhook/esign`, 100 on `/graphql`, settable
-  with `RATE_LIMIT_{WEBFORM,WEBHOOK,GRAPHQL}_PER_MIN` (`0` switches a route's
+  `/webform/instance`, 60 on `/envelope/instance`, 120 on `/webhook/esign`,
+  100 on `/graphql`, settable with
+  `RATE_LIMIT_{WEBFORM,ENVELOPE,WEBHOOK,GRAPHQL}_PER_MIN` (`0` switches a route's
   limit off, for a deployment behind its own gateway). A function relies on
   its platform instead. The window map is swept so a flood cannot grow the
   heap without bound.
@@ -137,6 +144,19 @@ key, and a non-2xx, a timeout or a reply without a prefill object is a `502`
 forwards the caller's session bearer and `TERMS_SHARED_SECRET`, the boot
 guard requires `https` in production (see above).
 
+Under `ESIGN_MINT_MODE=envelope` the callback also receives the client's
+`recipient`, and a `recipient` in the host's answer (`{ name, email }`
+strings) is who signs; an answered prefill outside the envelope contract or
+a malformed recipient is the same `502`.
+
+**Without `TERMS_URL`, the caller chooses the envelope's signer.** Any
+authenticated caller sends the recipient's name and email, and the DocuSign
+envelope client uses that email as the signer's `clientUserId`. The Web
+Forms mint is different: its instance is locked to the session's user id. A
+deployment that needs the signer tied to the account sets `TERMS_URL`; the
+production refusal above, and its `ESIGN_ALLOW_CLIENT_PREFILL` opt-in, cover
+the signer as well as the prefill.
+
 ## Logging & telemetry
 
 - Attacker-influenced fields are CR/LF-sanitized before logging
@@ -153,6 +173,9 @@ guard requires `https` in production (see above).
 amplification; email is format-checked. The mint's own prefill contract is
 `parseWebFormPrefill` (`packages/esign-node/src/providers/docusign/prefill.ts`),
 which rejects out-of-contract values with a `400` before any provider call.
+The envelope mint's is `parseEnvelopePrefill` (same file); its `recipient`
+must be `{ name, email }` strings and then passes the same name and email
+checks as a GraphQL recipient.
 
 ## Environment variables
 
@@ -167,10 +190,11 @@ The full table is the service README's
 | `SESSION_ISSUER`,<br>`SESSION_AUDIENCE`,<br>`SESSION_USER_CLAIM` | no | enforced when set; claim default `sub` |
 | `ESIGN_ENV` | prod | `production` refuses demo settings and<br>disables introspection |
 | `ESIGN_ALLOW_DEMO` | no | the one bypass of that refusal |
-| `TERMS_URL` | prod, unless<br>`ESIGN_ALLOW_CLIENT_PREFILL` | where the host computes the locked prefill |
+| `ESIGN_MINT_MODE` | no | `webform` (default) or `envelope`; under<br>`envelope` the signer comes from the client<br>unless `TERMS_URL` names it |
+| `TERMS_URL` | prod, unless<br>`ESIGN_ALLOW_CLIENT_PREFILL` | where the host computes the locked prefill<br>(and an envelope's signer) |
 | `TERMS_SHARED_SECRET` | no | sent as `x-esign-terms-secret` |
 | `TERMS_ALLOW_INSECURE` | no | opt into a plaintext `TERMS_URL` in prod |
-| `ESIGN_ALLOW_CLIENT_PREFILL` | no | mint the client's own prefill in prod |
+| `ESIGN_ALLOW_CLIENT_PREFILL` | no | mint the client's own prefill (and an<br>envelope's signer) in prod |
 | `DOCUSIGN_HMAC_KEY` | envelopes + docusign | webhook signature key |
 | `ALLOW_INSECURE_DEV` | no | opt into running without the above<br>(never in prod) |
 | `CORS_ALLOWED_ORIGINS` | no | comma-separated CORS allow-list |

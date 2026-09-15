@@ -9,7 +9,11 @@
 // Worker's entry point at all.
 
 import { ApolloServer, HeaderMap, type HTTPGraphQLResponse } from '@apollo/server';
-import { createWebhookHandler, type EnvelopeStore } from '@blinkbitcoin/esign-node';
+import {
+  createWebhookHandler,
+  type EnvelopeService,
+  type EnvelopeStore,
+} from '@blinkbitcoin/esign-node';
 
 import type { Env } from './env';
 import type { ESignProvider } from './providers/port';
@@ -28,6 +32,9 @@ type HTTPGraphQLResponseBody = HTTPGraphQLResponse['body'];
 export interface EnvelopeCapability {
   webhook: (request: Request) => Promise<Response>;
   graphql: (request: Request) => Promise<Response>;
+  // The envelope domain both handlers run on, for a mint that creates
+  // envelopes to create through (stored and audited like the mutation's)
+  envelopes: EnvelopeService;
   stop: () => Promise<void>;
 }
 
@@ -139,6 +146,7 @@ export const createEnvelopeCapability = async (
         headers,
       });
     },
+    envelopes,
     stop: () => apollo.stop(),
   };
 };
