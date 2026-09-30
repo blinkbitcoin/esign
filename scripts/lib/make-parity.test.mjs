@@ -45,7 +45,7 @@ describe('isDelegation', () => {
     'npm ci --prefer-offline --no-audit',
     'docker run --rm rhysd/actionlint:latest',
     'make test-db-up',
-    'npx audit-ci --config audit-ci.jsonc',
+    'osv-scanner scan source -L package-lock.json',
     'actionlint',
     '',
   ])('treats %s as nothing a target would wrap', command => {

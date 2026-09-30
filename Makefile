@@ -61,13 +61,11 @@ check-code: lint typecheck format-check ## Lint + typecheck + format check
 shellcheck: ## shellcheck every repo shell script (scripts/**)
 	shellcheck -x scripts/*.sh scripts/*/*.sh
 
-# The binary directly, not `npx` or `npm run`: audit-ci shells out to `npm
-# audit`, and a parent npm exports its own npm_config_* into the child - a
-# developer with allow-scripts configured globally gets EALLOWSCRIPTS from
-# the inner call. audit-ci is a devDependency, so the path always exists.
-audit: ## Dependency audit (known upstream issues allowlisted in audit-ci.jsonc)
-	./node_modules/.bin/audit-ci --config audit-ci.jsonc
-	bash scripts/ci/ruby-audit.sh
+# osv-scanner over every lockfile (npm + the RN demo's Gemfile.lock); a
+# local binary (the flake's) or the pinned container. Accepted findings are in
+# osv-scanner.toml.
+audit: ## Dependency audit (accepted findings in osv-scanner.toml)
+	bash scripts/ci/osv-scanner.sh
 
 check-parity: ## Fail if a workflow step runs a command a make target already runs
 	node scripts/ci/make-parity.mjs
