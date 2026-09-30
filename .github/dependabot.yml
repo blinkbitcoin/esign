@@ -20,6 +20,11 @@ updates:
       prefix: chore # -> "chore(deps): bump ..." / "chore(deps-dev): ..."
       include: scope
     groups:
+      # vitest pins @vitest/* to its exact version (peer), so a lone bump
+      # of either leaves the other unresolvable (#113). First match wins,
+      # so this sits above npm-minor-patch; no update-types = majors too.
+      vitest:
+        patterns: ['vitest', '@vitest/*']
       npm-minor-patch:
         update-types: ['minor', 'patch']
     open-pull-requests-limit: 5
