@@ -3,6 +3,7 @@
 
 import { vi } from 'vitest';
 
+vi.mock('dotenv/config', () => ({}));
 const destroy = vi.fn(async () => undefined);
 vi.mock('../src/db', () => ({
   DATABASE_URL: 'DATABASE_URL',
