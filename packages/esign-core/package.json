@@ -60,15 +60,15 @@
     "graphql": "^16.8.0 || ^17.0.0"
   },
   "devDependencies": {
-    "@apollo/client": "^4.3.0",
+    "@apollo/client": "^4.3.1",
     "@babel/preset-env": "^7.29.7",
     "@babel/preset-typescript": "^7.29.0",
-    "@graphql-codegen/cli": "^7.4.1",
+    "@graphql-codegen/cli": "^7.4.3",
     "@graphql-codegen/typescript": "^6.0.2",
-    "@graphql-codegen/typescript-operations": "^6.0.5",
+    "@graphql-codegen/typescript-operations": "^6.1.7",
     "@types/jest": "^30.0.0",
     "graphql": "^16.14.2",
-    "jest": "^30.5.0",
+    "jest": "^30.5.2",
     "tsup": "^8.5.0",
     "typescript": "^6.0.3"
   },
