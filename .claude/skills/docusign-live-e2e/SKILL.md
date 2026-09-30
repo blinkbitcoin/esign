@@ -55,7 +55,7 @@ ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS unless Chromium runs with
 `--disable-features=LocalNetworkAccessChecks` (the live configs do). Two
 `Finish` buttons exist - use `.first()`. The envelope must be persisted, so
 the runner brings up the E2E Postgres and exports its DATABASE_URL before
-migrating (dotenv-cli never overrides an existing variable).
+migrating (`dotenv run` never overrides an existing variable).
 
 ## Read-only Number and Date fields break the submission (demo env)
 

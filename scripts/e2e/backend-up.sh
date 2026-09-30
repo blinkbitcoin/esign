@@ -15,5 +15,5 @@ cd "$(dirname "$0")/../../packages/esign-service"
 LOG="${RUNNER_TEMP:-/tmp}/backend.log"
 PORT="$ESIGN_API_PORT" DATABASE_URL="$ESIGN_TEST_DATABASE_URL" \
   ESIGN_CORS_ALLOWED_ORIGINS="http://localhost:$ESIGN_WEB_PORT,http://localhost:$ESIGN_WEB_WEBFORM_PORT,http://localhost:$ESIGN_WEB_PUBLICURL_PORT" \
-  ESIGN_PROVIDER=mock npx dotenv-cli -e .env.test -- npm run dev > "$LOG" 2>&1 &
+  ESIGN_PROVIDER=mock npx dotenv run -q -f .env.test -- npm run dev > "$LOG" 2>&1 &
 wait_for backend 30 2 "$LOG" http_ok "http://localhost:$ESIGN_API_PORT/health"
