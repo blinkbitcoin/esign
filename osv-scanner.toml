@@ -1,0 +1,8 @@
+# Accepted findings for `make audit` (scripts/ci/osv-scanner.sh). Every entry
+# needs a reason and an ignoreUntil, so it gets looked at again on a dep bump
+# or when it expires, whichever comes first.
+#
+# [[IgnoredVulns]]
+# id = "GHSA-xxxx-xxxx-xxxx"
+# ignoreUntil = 2027-01-01
+# reason = "why it is not reachable, and what unblocks the fix"

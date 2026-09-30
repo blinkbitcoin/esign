@@ -44,6 +44,7 @@
           # CI-as-code lint (make check-ci): the workflows and scripts/**
           shellcheck
           actionlint
+          osv-scanner
         ]
         ++ lib.optionals stdenv.isDarwin [
           watchman

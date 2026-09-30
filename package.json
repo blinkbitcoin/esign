@@ -2,11 +2,7 @@
   "name": "esign-monorepo",
   "version": "0.6.0",
   "private": true,
-  "workspaces": [
-    "packages/*",
-    "examples/*",
-    "scripts"
-  ],
+  "workspaces": ["packages/*", "examples/*", "scripts"],
   "scripts": {
     "start": "npm run start -w examples/react-native-demo",
     "ios": "npm run ios -w examples/react-native-demo",
@@ -36,7 +32,6 @@
     "@react-native/eslint-config": "^0.87.1",
     "@typescript-eslint/eslint-plugin": "^8.70.0",
     "@typescript-eslint/parser": "^8.69.0",
-    "audit-ci": "^7.1.0",
     "badge-maker": "^6.0.0",
     "eslint": "^9.39.5",
     "eslint-plugin-ft-flow": "^3.0.11",
