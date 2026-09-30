@@ -15,9 +15,9 @@
     "@blinkbitcoin/esign-node": "0.0.0-development"
   },
   "devDependencies": {
-    "@types/node": "^26.5.1",
+    "@types/node": "^26.6.3",
     "@vitest/coverage-v8": "^5.0.3",
-    "tsx": "^4.23.12",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitest": "^5.0.3"
   },
