@@ -77,6 +77,11 @@ jobs:
       # the one that stalls, so it gets (nearly) the whole step budget - a
       # stall must outlast 4.5 min to fail. audit-ci does not retry a timeout.
       # A dead advisory endpoint fails PRs soft and main hard.
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
       - name: Dependency audit (known upstream issues allowlisted)
         timeout-minutes: 5
         continue-on-error: ${{ github.event_name == 'pull_request' }}

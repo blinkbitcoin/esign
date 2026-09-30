@@ -67,6 +67,7 @@ shellcheck: ## shellcheck every repo shell script (scripts/**)
 # the inner call. audit-ci is a devDependency, so the path always exists.
 audit: ## Dependency audit (known upstream issues allowlisted in audit-ci.jsonc)
 	./node_modules/.bin/audit-ci --config audit-ci.jsonc
+	bash scripts/ci/ruby-audit.sh
 
 check-parity: ## Fail if a workflow step runs a command a make target already runs
 	node scripts/ci/make-parity.mjs
