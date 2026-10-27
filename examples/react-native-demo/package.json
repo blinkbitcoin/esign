@@ -18,20 +18,20 @@
     "test:e2e:android": "maestro test .maestro/ --exclude-tags=webform,live -e APP_ID=com.reactnativesandbox"
   },
   "dependencies": {
-    "@apollo/client": "^4.3.1",
+    "@apollo/client": "^4.3.5",
     "@blinkbitcoin/esign-react-native": "0.0.0-development",
     "@react-native-community/netinfo": "^12.0.1",
     "@react-native/new-app-screen": "0.86.3",
     "graphql": "^16.14.2",
-    "react": "19.3.0",
+    "react": "19.3.1",
     "react-native": "0.86.3",
-    "react-native-safe-area-context": "^5.10.0",
+    "react-native-safe-area-context": "^5.10.1",
     "react-native-webview": "^14.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
     "@babel/preset-env": "^7.29.7",
-    "@babel/runtime": "^7.29.7",
+    "@babel/runtime": "^7.29.10",
     "@react-native-community/cli": "20.2.0",
     "@react-native-community/cli-platform-android": "20.2.0",
     "@react-native-community/cli-platform-ios": "20.2.0",
@@ -44,7 +44,7 @@
     "@types/react-test-renderer": "^19.3.0",
     "babel-plugin-transform-inline-environment-variables": "^0.4.4",
     "jest": "^30.5.2",
-    "react-test-renderer": "19.3.0",
+    "react-test-renderer": "19.3.1",
     "typescript": "^6.0.3"
   },
   "engines": {
